@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find C:1Wesbadminton_v2 -type f \\\\\\(-name *.py -o -name *.js -o -name *.ts -o -name *.go -o -name *.java -o -name *.rb \\\\\\))",
+      "Bash(find C:1Wesbadminton_v2_bmadbmm -name *.md -type f)",
+      "WebSearch",
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init --defaults)",
+      "Bash(npm run:*)"
+    ]
+  }
+}

@@ -1,0 +1,88 @@
+BADMINTON APP — ITERATIVE ON vs OFF VARIABLE MAP
+==================================================
+Source: badminton_app/badminton_app.py
+Last updated: 2026-03-18
+
+This table answers: "Which variables are active, greyed out, or irrelevant in each mode?"
+Note: Greyed-out (disabled) Streamlit widgets still return their default value in code.
+      They are blocked from user input only — not from being read.
+
+
+=== SIDEBAR CONTROLS ===
+
+Variable                        Iterative ON        Iterative OFF       Notes
+──────────────────────────────  ──────────────────  ──────────────────  ─────────────────────────────────────
+is_iterative                    ON (True)           OFF (False)         The switch itself
+num_iterations                  ACTIVE              GREYED OUT          Unused in single-pass — no loop runs
+avoid_repeats                   ACTIVE              ACTIVE              Shared — passed to generate_matches
+streak_limit                    ACTIVE              ACTIVE              Shared — engine + evaluator
+disable_gender_rules            ACTIVE              ACTIVE              Shared — passed to generate_matches
+priority_gender_doubles         ACTIVE              ACTIVE              Shared — passed to generate_matches
+requested_num_matches           ACTIVE              ACTIVE              Shared — passed to generate_matches
+max_spread_limit                ACTIVE              ACTIVE              Shared — passed to generate_matches
+p_streak_weight                 ACTIVE              GREYED OUT          Evaluator only — no evaluator in OFF
+p_imbalance                     ACTIVE              GREYED OUT          Evaluator only — no evaluator in OFF
+r_wishlist                      ACTIVE              GREYED OUT          Evaluator only — no evaluator in OFF
+p_repeat_partner                ACTIVE              GREYED OUT          Evaluator only — no evaluator in OFF
+p_fairness_weight               ACTIVE              GREYED OUT          Evaluator only — no evaluator in OFF
+p_spread_penalty                ACTIVE              GREYED OUT          Evaluator only — no evaluator in OFF
+
+
+=== FUNCTIONS CALLED ===
+
+Function                        Iterative ON        Iterative OFF
+──────────────────────────────  ──────────────────  ──────────────────
+generate_matches()              Called N times      Called 1 time
+evaluate_session_score()        Called N times      NEVER called
+balance_participation()         Called N times      Called 1 time       (runs inside generate_matches)
+
+
+=== SESSION STATE WRITTEN ===
+
+Variable                        Iterative ON        Iterative OFF
+──────────────────────────────  ──────────────────  ──────────────────
+last_matches                    Written (winner)    Written (single run)
+last_stats                      Written (winner)    Written (single run)
+last_audit                      Written (winner)    Set to None
+best_score                      Written (winner)    NOT written
+auto_session_id                 Reset (new ID)      Reset (new ID)
+
+
+=== UI SECTIONS VISIBLE ===
+
+Section                         Iterative ON        Iterative OFF
+──────────────────────────────  ──────────────────  ──────────────────
+Progress bar                    SHOWN               NOT shown
+"Optimized Schedule Found!"     SHOWN               NOT shown
+Engine Audit Report (metrics)   SHOWN               HIDDEN (last_audit=None + is_iterative gate)
+Detailed Scoring Math expander  SHOWN               HIDDEN
+Scoring Weights caption         HIDDEN              SHOWN ("Weights only used in Iterative mode")
+
+
+=== SCORING WEIGHT EFFECTIVENESS ===
+Even when Iterative is ON, not all weights actively differentiate trials.
+Engine guarantees eliminate some violations before scoring runs.
+
+Weight                  Iterative ON — Fires?   Why
+──────────────────────  ──────────────────────  ──────────────────────────────────────────────
+p_streak_weight         Rarely (near 0%)        Engine hard-blocks streak violations
+p_fairness_weight       Rarely (near 0%)        balance_participation() guarantees gap=0
+p_spread_penalty        Never  (0%)             Hard skill gap filter blocks all violations
+p_imbalance             YES — active            Level diff between T1/T2 varies per trial
+p_repeat_partner        YES — active            Repeat pairs vary per trial (~4 avg)
+r_wishlist              YES — active            Wishlist fulfillment varies per trial
+
+
+=== CROSS-REFERENCE AUDIT (confirmed clean) ===
+
+Question: Does iterative ON use any variable that belongs to OFF? No.
+Question: Does iterative OFF use any variable that belongs to ON? No.
+
+Single-pass branch references:  requested_num_matches, avoid_repeats, streak_limit,
+                                 priority_gender_doubles, disable_gender_rules, max_spread_limit
+                                 → all shared, all correct
+
+Iterative branch references:    all of the above PLUS num_iterations, p_streak_weight,
+                                 p_imbalance, r_wishlist, p_repeat_partner, p_fairness_weight,
+                                 p_spread_penalty, wishlist_str
+                                 → all correctly isolated to iterative branch only

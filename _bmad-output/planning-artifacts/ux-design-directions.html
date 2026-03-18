@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>badminton_v2 — UX Design Directions</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #9C51B6;
+    --primary-hover: #B472CC;
+    --primary-pressed: #7A3D8E;
+    --primary-subtle: #F0E6F7;
+    --success: #22C55E;
+    --muted: #6B7280;
+    --muted-surface: #F4F4F6;
+    --border: #E4E4E7;
+    --foreground: #18181B;
+    --background: #FFFFFF;
+    --kiosk-bg: #0F0F17;
+    --kiosk-surface: #1C1C28;
+    --kiosk-border: #2E2E3E;
+    --kiosk-fg: #F4F4F6;
+    --kiosk-primary: #B472CC;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: #0F0F17;
+    color: #F4F4F6;
+    min-height: 100vh;
+  }
+
+  /* ─── NAV ─── */
+  .nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(15,15,23,0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid #2E2E3E;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo { font-size: 0.875rem; font-weight: 600; color: var(--kiosk-primary); letter-spacing: 0.05em; text-transform: uppercase; }
+  .nav-label { font-size: 0.75rem; color: #6B7280; }
+
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+  }
+
+  .tab {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+    color: #9CA3AF;
+    background: transparent;
+  }
+
+  .tab:hover { color: #F4F4F6; background: #1C1C28; }
+  .tab.active { color: #F4F4F6; background: #1C1C28; border-color: #2E2E3E; }
+
+  /* ─── MAIN ─── */
+  .main {
+    padding-top: 80px;
+    padding-bottom: 48px;
+  }
+
+  .section-label {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--kiosk-primary);
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #F4F4F6;
+    margin-bottom: 4px;
+  }
+
+  .section-sub {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #6B7280;
+    margin-bottom: 40px;
+  }
+
+  /* ─── DIRECTION PANELS ─── */
+  .direction-panel { display: none; }
+  .direction-panel.active { display: block; }
+
+  .mockup-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .mockup-grid.single {
+    grid-template-columns: 1fr;
+    max-width: 700px;
+  }
+
+  .mockup-grid.triple {
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 1200px;
+  }
+
+  .mockup-card {
+    background: #1C1C28;
+    border: 1px solid #2E2E3E;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .mockup-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #2E2E3E;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mockup-title { font-size: 0.8rem; font-weight: 600; color: #9CA3AF; }
+  .mockup-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .badge-kiosk { background: #2E2E3E; color: var(--kiosk-primary); }
+  .badge-player { background: #162032; color: #60A5FA; }
+  .badge-admin { background: #1C2814; color: #86EFAC; }
+
+  .mockup-body { padding: 0; }
+
+  /* ═══════════════════════════════════════════
+     DIRECTION A: KIOSK — DARK MINIMAL
+  ═══════════════════════════════════════════ */
+  .kiosk-dark-minimal {
+    background: var(--kiosk-bg);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 320px;
+    gap: 0;
+  }
+
+  .kiosk-court {
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .kiosk-court + .kiosk-court {
+    border-left: 1px solid var(--kiosk-border);
+  }
+
+  .court-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #4B5563;
+  }
+
+  .game-card-kiosk {
+    background: var(--kiosk-surface);
+    border: 1px solid var(--kiosk-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .game-card-kiosk.current {
+    background: rgba(180, 114, 204, 0.12);
+    border-color: var(--kiosk-primary);
+  }
+
+  .game-number-hero {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--kiosk-primary);
+    margin-bottom: 4px;
+  }
+
+  .game-number-hero.muted {
+    font-size: 1.75rem;
+    color: #4B5563;
+  }
+
+  .kiosk-players {
+    font-size: 0.8rem;
+    color: var(--kiosk-fg);
+    line-height: 1.5;
+  }
+
+  .kiosk-players.dim { color: #4B5563; font-size: 0.72rem; }
+
+  .kiosk-status-chip {
+    display: inline-block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 100px;
+    margin-bottom: 6px;
+  }
+
+  .chip-live { background: rgba(180,114,204,0.2); color: var(--kiosk-primary); border: 1px solid rgba(180,114,204,0.4); }
+  .chip-next { background: rgba(75,85,99,0.2); color: #6B7280; border: 1px solid rgba(75,85,99,0.3); }
+
+  .finish-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: var(--kiosk-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: auto;
+    text-align: center;
+  }
+
+  /* ═══════════════════════════════════════════
+     DIRECTION B: KIOSK — PURPLE COURT HEADERS
+  ═══════════════════════════════════════════ */
+  .kiosk-court-header {
+    background: var(--kiosk-primary);
+    padding: 8px 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: white;
+  }
+
+  .kiosk-court-b { padding: 20px; display: flex; flex-direction: column; gap: 12px; background: var(--kiosk-bg); }
+
+  .game-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--kiosk-surface);
+    border-radius: 8px;
+    border: 1px solid var(--kiosk-border);
+  }
+
+  .game-row.active-row { border-color: var(--kiosk-primary); background: rgba(180,114,204,0.08); }
+
+  .game-num-sm {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--kiosk-primary);
+    min-width: 48px;
+  }
+
+  .game-num-sm.dim { font-size: 1.4rem; color: #374151; }
+
+  .game-info { flex: 1; }
+  .game-teams { font-size: 0.78rem; color: var(--kiosk-fg); line-height: 1.6; }
+  .game-teams.dim { color: #4B5563; font-size: 0.72rem; }
+
+  .finish-btn-sm {
+    padding: 8px 14px;
+    background: var(--kiosk-primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ═══════════════════════════════════════════
+     PLAYER VIEW
+  ═══════════════════════════════════════════ */
+  .player-mobile {
+    background: #F8F8FA;
+    padding: 0;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  .player-header {
+    background: var(--primary);
+    padding: 16px 16px 20px;
+    color: white;
+  }
+
+  .player-header-label { font-size: 0.7rem; opacity: 0.75; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .player-header-name { font-size: 1.25rem; font-weight: 700; }
+  .player-header-sub { font-size: 0.78rem; opacity: 0.75; margin-top: 2px; }
+
+  .player-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .game-card-player {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .game-card-player.active-game {
+    border-color: var(--primary);
+    background: var(--primary-subtle);
+  }
+
+  .game-card-player.done {
+    background: #FAFAFA;
+    opacity: 0.6;
+  }
+
+  .player-game-num {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--primary);
+    min-width: 44px;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .player-game-num.done-num { color: var(--success); font-size: 1.2rem; }
+  .player-game-num.queued-num { color: #D1D5DB; font-size: 1.4rem; }
+
+  .player-match-info { flex: 1; }
+  .player-match-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 2px; }
+  .player-match-teams { font-size: 0.82rem; color: var(--foreground); line-height: 1.5; }
+  .player-match-teams.dim { color: #9CA3AF; }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-active { background: var(--primary); box-shadow: 0 0 0 3px rgba(156,81,182,0.2); }
+  .dot-done { background: var(--success); }
+  .dot-queue { background: #E4E4E7; }
+
+  /* ═══════════════════════════════════════════
+     ADMIN VIEWS
+  ═══════════════════════════════════════════ */
+  .admin-desktop {
+    background: white;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 360px;
+  }
+
+  .admin-sidebar {
+    background: #FAFAFA;
+    border-right: 1px solid var(--border);
+    padding: 0;
+  }
+
+  .admin-sidebar-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .admin-sidebar-title { font-size: 0.8rem; font-weight: 700; color: var(--foreground); }
+
+  .admin-match-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .admin-match-item:hover { background: var(--muted-surface); }
+  .admin-match-item.selected { background: var(--primary-subtle); border-left: 3px solid var(--primary); }
+
+  .admin-match-num { font-size: 1.1rem; font-weight: 800; color: var(--primary); min-width: 28px; }
+  .admin-match-num.done { color: var(--success); font-size: 0.9rem; }
+  .admin-match-teams { font-size: 0.75rem; color: var(--foreground); line-height: 1.5; }
+  .admin-match-teams.dim { color: #9CA3AF; }
+
+  .admin-content {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .admin-content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .admin-content-title { font-size: 1rem; font-weight: 700; color: var(--foreground); }
+  .admin-badge { font-size: 0.65rem; font-weight: 600; padding: 3px 10px; border-radius: 100px; background: rgba(156,81,182,0.12); color: var(--primary); border: 1px solid rgba(156,81,182,0.3); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .admin-detail-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .admin-detail-card {
+    background: var(--muted-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .admin-detail-label { font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .admin-detail-value { font-size: 0.85rem; color: var(--foreground); line-height: 1.5; }
+
+  .admin-action-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+  }
+
+  .btn-primary-sm {
+    padding: 7px 14px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-ghost-sm {
+    padding: 7px 14px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ─── Mobile admin ─── */
+  .admin-mobile {
+    background: white;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .admin-mobile-header {
+    background: var(--foreground);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .admin-mobile-title { color: white; font-size: 0.9rem; font-weight: 700; }
+  .admin-live-pill { font-size: 0.6rem; font-weight: 700; background: rgba(34,197,94,0.2); color: #22C55E; border: 1px solid rgba(34,197,94,0.4); padding: 2px 8px; border-radius: 100px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  .court-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .court-tab {
+    padding: 10px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+
+  .court-tab.active-tab {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
+
+  .admin-mobile-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+  .admin-mobile-card {
+    background: var(--muted-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .admin-mobile-card.active-card { background: var(--primary-subtle); border-color: var(--primary); }
+
+  .admin-mobile-num { font-size: 1.5rem; font-weight: 800; color: var(--primary); margin-bottom: 2px; }
+  .admin-mobile-teams { font-size: 0.78rem; color: var(--foreground); line-height: 1.6; }
+  .admin-mobile-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .edit-btn { padding: 5px 10px; background: transparent; border: 1px solid var(--border); border-radius: 5px; font-size: 0.7rem; color: var(--muted); cursor: pointer; }
+
+  /* ─── DIRECTION SELECTOR ─── */
+  .direction-selector {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    flex-wrap: wrap;
+  }
+
+  .dir-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid #2E2E3E;
+    background: #1C1C28;
+    color: #9CA3AF;
+    transition: all 0.15s;
+  }
+
+  .dir-btn:hover { color: #F4F4F6; border-color: #4B5563; }
+  .dir-btn.active { background: rgba(180,114,204,0.15); color: var(--kiosk-primary); border-color: rgba(180,114,204,0.5); }
+
+  .direction-meta {
+    text-align: center;
+    padding: 0 24px 24px;
+    font-size: 0.8rem;
+    color: #6B7280;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .divider { border: none; border-top: 1px solid #2E2E3E; margin: 24px 0; }
+
+  /* strikethrough for done */
+  .strikethrough { text-decoration: line-through; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <span class="nav-logo">badminton_v2</span>
+  <div class="tab-bar">
+    <button class="tab active" onclick="showTab(this, 'kiosk')">Kiosk</button>
+    <button class="tab" onclick="showTab(this, 'player')">Player</button>
+    <button class="tab" onclick="showTab(this, 'admin')">Admin</button>
+  </div>
+  <span class="nav-label">UX Design Directions</span>
+</nav>
+
+<main class="main">
+
+  <!-- ══════════════════════════════════════
+       KIOSK DIRECTIONS
+  ══════════════════════════════════════ -->
+  <div id="tab-kiosk" class="direction-panel active">
+
+    <div class="direction-selector">
+      <button class="dir-btn active" onclick="showDir(this, 'kiosk-a')">A — Dark Minimal</button>
+      <button class="dir-btn" onclick="showDir(this, 'kiosk-b')">B — Purple Court Headers</button>
+      <button class="dir-btn" onclick="showDir(this, 'kiosk-c')">C — Split Cards</button>
+    </div>
+    <p class="direction-meta" id="kiosk-meta">Full-viewport dark display. Game number is the visual hero. Two-panel split mirrors the physical court layout. Departure-board simplicity.</p>
+
+    <!-- KIOSK A -->
+    <div id="dir-kiosk-a" class="direction-panel active" style="padding: 0 24px;">
+      <div style="max-width:1100px; margin:0 auto;">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <span class="mockup-title">Kiosk View — Direction A: Dark Minimal</span>
+            <span class="mockup-badge badge-kiosk">Tablet Landscape</span>
+          </div>
+          <div class="mockup-body">
+            <div class="kiosk-dark-minimal">
+              <!-- Court 1 -->
+              <div class="kiosk-court">
+                <div class="court-label">Court 1</div>
+                <!-- Current game -->
+                <div class="game-card-kiosk current">
+                  <div class="kiosk-status-chip chip-live">Live</div>
+                  <div class="game-number-hero">7</div>
+                  <div class="kiosk-players">Ali + Marco<br>vs<br>Wes + James</div>
+                </div>
+                <!-- Next game -->
+                <div class="game-card-kiosk">
+                  <div class="kiosk-status-chip chip-next">Up Next</div>
+                  <div class="game-number-hero muted">9</div>
+                  <div class="kiosk-players dim">Sarah + Tom<br>vs<br>Ben + Kai</div>
+                </div>
+                <button class="finish-btn">Finish Game 7</button>
+              </div>
+              <!-- Court 2 -->
+              <div class="kiosk-court">
+                <div class="court-label">Court 2</div>
+                <div class="game-card-kiosk current">
+                  <div class="kiosk-status-chip chip-live">Live</div>
+                  <div class="game-number-hero">8</div>
+                  <div class="kiosk-players">Dana + Leo<br>vs<br>Priya + Sam</div>
+                </div>
+                <div class="game-card-kiosk">
+                  <div class="kiosk-status-chip chip-next">Up Next</div>
+                  <div class="game-number-hero muted">10</div>
+                  <div class="kiosk-players dim">Chris + Mia<br>vs<br>Jake + Zoe</div>
+                </div>
+                <button class="finish-btn">Finish Game 8</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KIOSK B -->
+    <div id="dir-kiosk-b" class="direction-panel" style="padding: 0 24px;">
+      <div style="max-width:1100px; margin:0 auto;">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <span class="mockup-title">Kiosk View — Direction B: Purple Court Headers</span>
+            <span class="mockup-badge badge-kiosk">Tablet Landscape</span>
+          </div>
+          <div class="mockup-body">
+            <div style="background: var(--kiosk-bg); display: grid; grid-template-columns: 1fr 1fr; min-height: 320px;">
+              <!-- Court 1 -->
+              <div>
+                <div class="kiosk-court-header">Court 1</div>
+                <div class="kiosk-court-b">
+                  <div class="game-row active-row">
+                    <div class="game-num-sm">7</div>
+                    <div class="game-info">
+                      <div style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color: var(--kiosk-primary); margin-bottom:3px;">Live</div>
+                      <div class="game-teams">Ali + Marco vs Wes + James</div>
+                    </div>
+                    <button class="finish-btn-sm">Finish</button>
+                  </div>
+                  <div class="game-row">
+                    <div class="game-num-sm dim">9</div>
+                    <div class="game-info">
+                      <div style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color: #4B5563; margin-bottom:3px;">Up Next</div>
+                      <div class="game-teams dim">Sarah + Tom vs Ben + Kai</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Court 2 -->
+              <div style="border-left: 1px solid var(--kiosk-border);">
+                <div class="kiosk-court-header">Court 2</div>
+                <div class="kiosk-court-b">
+                  <div class="game-row active-row">
+                    <div class="game-num-sm">8</div>
+                    <div class="game-info">
+                      <div style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color: var(--kiosk-primary); margin-bottom:3px;">Live</div>
+                      <div class="game-teams">Dana + Leo vs Priya + Sam</div>
+                    </div>
+                    <button class="finish-btn-sm">Finish</button>
+                  </div>
+                  <div class="game-row">
+                    <div class="game-num-sm dim">10</div>
+                    <div class="game-info">
+                      <div style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color: #4B5563; margin-bottom:3px;">Up Next</div>
+                      <div class="game-teams dim">Chris + Mia vs Jake + Zoe</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KIOSK C -->
+    <div id="dir-kiosk-c" class="direction-panel" style="padding: 0 24px;">
+      <div style="max-width:1100px; margin:0 auto;">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <span class="mockup-title">Kiosk View — Direction C: Split Cards (more whitespace)</span>
+            <span class="mockup-badge badge-kiosk">Tablet Landscape</span>
+          </div>
+          <div class="mockup-body">
+            <div style="background: var(--kiosk-bg); display: grid; grid-template-columns: 1fr 1fr; min-height: 320px; padding: 20px; gap: 16px;">
+              <!-- Court 1 card -->
+              <div style="background: var(--kiosk-surface); border: 1px solid rgba(180,114,204,0.5); border-radius: 12px; overflow: hidden;">
+                <div style="background: rgba(180,114,204,0.1); padding: 10px 16px; border-bottom: 1px solid rgba(180,114,204,0.3); display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color: var(--kiosk-primary);">Court 1</span>
+                  <span style="font-size:0.6rem; background:rgba(180,114,204,0.2); color:var(--kiosk-primary); padding:2px 8px; border-radius:100px; text-transform:uppercase; font-weight:700; letter-spacing:0.08em; border: 1px solid rgba(180,114,204,0.4);">Live</span>
+                </div>
+                <div style="padding: 20px 16px; display:flex; flex-direction:column; gap:16px;">
+                  <div>
+                    <div style="font-size:4rem; font-weight:800; color: var(--kiosk-primary); line-height:1;">7</div>
+                    <div style="font-size:0.85rem; color: var(--kiosk-fg); line-height:1.7; margin-top:4px;">Ali + Marco<br>vs<br>Wes + James</div>
+                  </div>
+                  <div style="border-top:1px solid var(--kiosk-border); padding-top:12px;">
+                    <div style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; color:#4B5563; margin-bottom:6px;">Up Next → Game 9</div>
+                    <div style="font-size:0.75rem; color:#4B5563;">Sarah + Tom vs Ben + Kai</div>
+                  </div>
+                  <button class="finish-btn" style="margin-top:0;">Finish Game 7</button>
+                </div>
+              </div>
+              <!-- Court 2 card -->
+              <div style="background: var(--kiosk-surface); border: 1px solid rgba(180,114,204,0.5); border-radius: 12px; overflow: hidden;">
+                <div style="background: rgba(180,114,204,0.1); padding: 10px 16px; border-bottom: 1px solid rgba(180,114,204,0.3); display:flex; justify-content:space-between; align-items:center;">
+                  <span style="font-size:0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color: var(--kiosk-primary);">Court 2</span>
+                  <span style="font-size:0.6rem; background:rgba(180,114,204,0.2); color:var(--kiosk-primary); padding:2px 8px; border-radius:100px; text-transform:uppercase; font-weight:700; letter-spacing:0.08em; border: 1px solid rgba(180,114,204,0.4);">Live</span>
+                </div>
+                <div style="padding: 20px 16px; display:flex; flex-direction:column; gap:16px;">
+                  <div>
+                    <div style="font-size:4rem; font-weight:800; color: var(--kiosk-primary); line-height:1;">8</div>
+                    <div style="font-size:0.85rem; color: var(--kiosk-fg); line-height:1.7; margin-top:4px;">Dana + Leo<br>vs<br>Priya + Sam</div>
+                  </div>
+                  <div style="border-top:1px solid var(--kiosk-border); padding-top:12px;">
+                    <div style="font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; color:#4B5563; margin-bottom:6px;">Up Next → Game 10</div>
+                    <div style="font-size:0.75rem; color:#4B5563;">Chris + Mia vs Jake + Zoe</div>
+                  </div>
+                  <button class="finish-btn" style="margin-top:0;">Finish Game 8</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-kiosk -->
+
+
+  <!-- ══════════════════════════════════════
+       PLAYER DIRECTIONS
+  ══════════════════════════════════════ -->
+  <div id="tab-player" class="direction-panel">
+
+    <div class="direction-selector">
+      <button class="dir-btn active" onclick="showDir(this, 'player-a')">A — Purple Header + Cards</button>
+      <button class="dir-btn" onclick="showDir(this, 'player-b')">B — Minimal List</button>
+    </div>
+    <p class="direction-meta" id="player-meta">Mobile-first. Public, no login. Player lands directly on their personal schedule. Game number is the hero.</p>
+
+    <!-- PLAYER A -->
+    <div id="dir-player-a" class="direction-panel active" style="padding: 0 24px;">
+      <div style="max-width:420px; margin:0 auto;">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <span class="mockup-title">Player View — Direction A: Purple Header + Cards</span>
+            <span class="mockup-badge badge-player">Mobile</span>
+          </div>
+          <div class="mockup-body">
+            <div class="player-mobile">
+              <div class="player-header">
+                <div class="player-header-label">Your Schedule</div>
+                <div class="player-header-name">Marco Reyes</div>
+                <div class="player-header-sub">Sunday Session · 8 games</div>
+              </div>
+              <div class="player-list">
+                <!-- Completed -->
+                <div class="game-card-player done">
+                  <div class="player-game-num done-num">✓ 3</div>
+                  <div class="player-match-info">
+                    <div class="player-match-label">Completed</div>
+                    <div class="player-match-teams dim strikethrough">Marco + Ali vs Wes + Sam</div>
+                  </div>
+                  <div class="status-dot dot-done"></div>
+                </div>
+                <div class="game-card-player done">
+                  <div class="player-game-num done-num">✓ 5</div>
+                  <div class="player-match-info">
+                    <div class="player-match-label">Completed</div>
+                    <div class="player-match-teams dim strikethrough">Marco + Dana vs Tom + Kai</div>
+                  </div>
+                  <div class="status-dot dot-done"></div>
+                </div>
+                <!-- Active -->
+                <div class="game-card-player active-game">
+                  <div class="player-game-num">7</div>
+                  <div class="player-match-info">
+                    <div class="player-match-label" style="color: var(--primary);">Now Playing</div>
+                    <div class="player-match-teams">Marco + Ali vs Wes + James</div>
+                  </div>
+                  <div class="status-dot dot-active"></div>
+                </div>
+                <!-- Queued -->
+                <div class="game-card-player">
+                  <div class="player-game-num queued-num">11</div>
+                  <div class="player-match-info">
+                    <div class="player-match-label">Upcoming</div>
+                    <div class="player-match-teams">Marco + Ben vs Priya + Leo</div>
+                  </div>
+                  <div class="status-dot dot-queue"></div>
+                </div>
+                <div class="game-card-player">
+                  <div class="player-game-num queued-num">14</div>
+                  <div class="player-match-info">
+                    <div class="player-match-label">Upcoming</div>
+                    <div class="player-match-teams">Marco + Zoe vs Chris + Sarah</div>
+                  </div>
+                  <div class="status-dot dot-queue"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PLAYER B -->
+    <div id="dir-player-b" class="direction-panel" style="padding: 0 24px;">
+      <div style="max-width:420px; margin:0 auto;">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <span class="mockup-title">Player View — Direction B: Minimal List</span>
+            <span class="mockup-badge badge-player">Mobile</span>
+          </div>
+          <div class="mockup-body">
+            <div style="background: white; max-width:380px; margin:0 auto;">
+              <!-- Minimal header -->
+              <div style="padding: 16px; border-bottom: 1px solid var(--border);">
+                <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:2px;">Marco Reyes</div>
+                <div style="font-size:1rem; font-weight:700; color:var(--foreground);">Sunday Session</div>
+              </div>
+              <!-- List -->
+              <div style="padding:8px 0;">
+                <!-- Done rows -->
+                <div style="display:flex; align-items:center; padding:9px 16px; gap:12px; opacity:0.5;">
+                  <div style="font-size:0.9rem; font-weight:800; color:var(--success); min-width:28px;">3</div>
+                  <div style="flex:1; font-size:0.78rem; color:var(--foreground); text-decoration:line-through;">Marco + Ali vs Wes + Sam</div>
+                  <span style="font-size:0.65rem; color:var(--success);">Done</span>
+                </div>
+                <div style="display:flex; align-items:center; padding:9px 16px; gap:12px; opacity:0.5;">
+                  <div style="font-size:0.9rem; font-weight:800; color:var(--success); min-width:28px;">5</div>
+                  <div style="flex:1; font-size:0.78rem; color:var(--foreground); text-decoration:line-through;">Marco + Dana vs Tom + Kai</div>
+                  <span style="font-size:0.65rem; color:var(--success);">Done</span>
+                </div>
+                <!-- Active row -->
+                <div style="display:flex; align-items:center; padding:12px 16px; gap:12px; background:var(--primary-subtle); border-left:3px solid var(--primary);">
+                  <div style="font-size:1.4rem; font-weight:800; color:var(--primary); min-width:28px;">7</div>
+                  <div style="flex:1; font-size:0.82rem; color:var(--foreground); font-weight:500;">Marco + Ali vs Wes + James</div>
+                  <span style="font-size:0.65rem; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.06em;">Now</span>
+                </div>
+                <!-- Queued -->
+                <div style="display:flex; align-items:center; padding:9px 16px; gap:12px;">
+                  <div style="font-size:0.9rem; font-weight:700; color:#D1D5DB; min-width:28px;">11</div>
+                  <div style="flex:1; font-size:0.78rem; color:#9CA3AF;">Marco + Ben vs Priya + Leo</div>
+                </div>
+                <div style="display:flex; align-items:center; padding:9px 16px; gap:12px;">
+                  <div style="font-size:0.9rem; font-weight:700; color:#D1D5DB; min-width:28px;">14</div>
+                  <div style="flex:1; font-size:0.78rem; color:#9CA3AF;">Marco + Zoe vs Chris + Sarah</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-player -->
+
+
+  <!-- ══════════════════════════════════════
+       ADMIN DIRECTIONS
+  ══════════════════════════════════════ -->
+  <div id="tab-admin" class="direction-panel">
+
+    <div class="direction-selector">
+      <button class="dir-btn active" onclick="showDir(this, 'admin-a')">A — Desktop Sidebar</button>
+      <button class="dir-btn" onclick="showDir(this, 'admin-b')">B — Mobile Day-of</button>
+    </div>
+    <p class="direction-meta" id="admin-meta">Desktop view for pre-session schedule management. Sidebar shows full game list; main area shows selected game detail with inline edit actions.</p>
+
+    <!-- ADMIN A -->
+    <div id="dir-admin-a" class="direction-panel active" style="padding: 0 24px;">
+      <div style="max-width:1100px; margin:0 auto;">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <span class="mockup-title">Admin View — Direction A: Desktop Sidebar</span>
+            <span class="mockup-badge badge-admin">Desktop</span>
+          </div>
+          <div class="mockup-body">
+            <div class="admin-desktop">
+              <!-- Sidebar -->
+              <div class="admin-sidebar">
+                <div class="admin-sidebar-header">
+                  <span class="admin-sidebar-title">Schedule · 20 games</span>
+                  <span style="font-size:0.65rem; color:var(--muted);">2 courts</span>
+                </div>
+                <div class="admin-match-item done">
+                  <div class="admin-match-num done">✓</div>
+                  <div>
+                    <div style="font-size:0.65rem; color:var(--muted); margin-bottom:1px;">Game 1 · Done</div>
+                    <div class="admin-match-teams dim">Ali + Sam vs Wes + Leo</div>
+                  </div>
+                </div>
+                <div class="admin-match-item done">
+                  <div class="admin-match-num done">✓</div>
+                  <div>
+                    <div style="font-size:0.65rem; color:var(--muted); margin-bottom:1px;">Game 2 · Done</div>
+                    <div class="admin-match-teams dim">Dana + Tom vs Kai + Mia</div>
+                  </div>
+                </div>
+                <div class="admin-match-item selected">
+                  <div class="admin-match-num">7</div>
+                  <div>
+                    <div style="font-size:0.65rem; color:var(--primary); margin-bottom:1px;">Game 7 · Live</div>
+                    <div class="admin-match-teams">Marco + Ali vs Wes + James</div>
+                  </div>
+                </div>
+                <div class="admin-match-item">
+                  <div class="admin-match-num" style="color:#D1D5DB; font-size:0.9rem;">8</div>
+                  <div>
+                    <div style="font-size:0.65rem; color:var(--muted); margin-bottom:1px;">Game 8 · Live</div>
+                    <div class="admin-match-teams">Dana + Leo vs Priya + Sam</div>
+                  </div>
+                </div>
+                <div class="admin-match-item">
+                  <div class="admin-match-num" style="color:#D1D5DB; font-size:0.9rem;">9</div>
+                  <div>
+                    <div style="font-size:0.65rem; color:var(--muted); margin-bottom:1px;">Game 9 · Next</div>
+                    <div class="admin-match-teams">Sarah + Tom vs Ben + Kai</div>
+                  </div>
+                </div>
+              </div>
+              <!-- Content -->
+              <div class="admin-content">
+                <div class="admin-content-header">
+                  <span class="admin-content-title">Game 7</span>
+                  <span class="admin-badge">Live on Court 1</span>
+                </div>
+                <div class="admin-detail-row">
+                  <div class="admin-detail-card">
+                    <div class="admin-detail-label">Team A</div>
+                    <div class="admin-detail-value">Marco Reyes<br>Ali Hassan</div>
+                  </div>
+                  <div class="admin-detail-card">
+                    <div class="admin-detail-label">Team B</div>
+                    <div class="admin-detail-value">Wes Ancog<br>James Liu</div>
+                  </div>
+                </div>
+                <div class="admin-detail-row">
+                  <div class="admin-detail-card">
+                    <div class="admin-detail-label">Position in Queue</div>
+                    <div class="admin-detail-value">Court 1 · Currently playing</div>
+                  </div>
+                  <div class="admin-detail-card">
+                    <div class="admin-detail-label">Next on Court 1</div>
+                    <div class="admin-detail-value">Game 9 — Sarah + Tom<br>vs Ben + Kai</div>
+                  </div>
+                </div>
+                <div class="admin-action-bar">
+                  <button class="btn-primary-sm">Edit Match</button>
+                  <button class="btn-ghost-sm">Move in Queue</button>
+                  <button class="btn-ghost-sm">Mark Finished</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN B -->
+    <div id="dir-admin-b" class="direction-panel" style="padding: 0 24px;">
+      <div style="max-width:420px; margin:0 auto;">
+        <div class="mockup-card">
+          <div class="mockup-header">
+            <span class="mockup-title">Admin View — Direction B: Mobile Day-of</span>
+            <span class="mockup-badge badge-admin">Mobile</span>
+          </div>
+          <div class="mockup-body">
+            <div class="admin-mobile">
+              <div class="admin-mobile-header">
+                <span class="admin-mobile-title">Session · Sunday</span>
+                <span class="admin-live-pill">Live</span>
+              </div>
+              <div class="court-tabs">
+                <div class="court-tab active-tab">Court 1</div>
+                <div class="court-tab">Court 2</div>
+              </div>
+              <div class="admin-mobile-body">
+                <div class="admin-mobile-card active-card">
+                  <div class="admin-mobile-num">7</div>
+                  <div style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--primary); margin-bottom:3px;">Live</div>
+                  <div class="admin-mobile-teams">Marco + Ali vs Wes + James</div>
+                  <div class="admin-mobile-actions">
+                    <button class="edit-btn">Edit</button>
+                    <button class="edit-btn">Swap Players</button>
+                    <button class="btn-primary-sm" style="font-size:0.68rem; padding:5px 10px;">Mark Done</button>
+                  </div>
+                </div>
+                <div class="admin-mobile-card">
+                  <div style="font-size:1.2rem; font-weight:800; color:#9CA3AF; margin-bottom:2px;">9</div>
+                  <div style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:3px;">Up Next</div>
+                  <div class="admin-mobile-teams">Sarah + Tom vs Ben + Kai</div>
+                  <div class="admin-mobile-actions">
+                    <button class="edit-btn">Edit</button>
+                    <button class="edit-btn">Move</button>
+                  </div>
+                </div>
+                <div class="admin-mobile-card">
+                  <div style="font-size:1.1rem; font-weight:700; color:#D1D5DB; margin-bottom:2px;">11</div>
+                  <div style="font-size:0.6rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#D1D5DB; margin-bottom:3px;">Queued</div>
+                  <div class="admin-mobile-teams" style="color:#9CA3AF; font-size:0.75rem;">Marco + Ben vs Priya + Leo</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-admin -->
+
+</main>
+
+<script>
+  const kioskMeta = {
+    'kiosk-a': 'Full-viewport dark display. Game number is the visual hero. Two-panel split mirrors the physical court layout. Departure-board simplicity.',
+    'kiosk-b': 'Purple court headers create clear visual separation. Row-based layout fits more information. Finish button is inline with the active game row.',
+    'kiosk-c': 'Each court is a distinct card with maximum visual breathing room. 4rem game number. More spacious — works well on large tablets.'
+  };
+
+  const playerMeta = {
+    'player-a': 'Purple header establishes identity. Card-based with clear status differentiation. Active game is visually dominant via tinted background.',
+    'player-b': 'Ultra-minimal list. No cards — just rows. Active game uses a left border accent. Fastest to scan on a small phone screen.'
+  };
+
+  const adminMeta = {
+    'admin-a': 'Desktop sidebar + detail panel. Full schedule in sidebar; selected match shows editable detail. Familiar app shell pattern.',
+    'admin-b': 'Mobile day-of view. Court tabs switch context. Each match card shows quick-action buttons inline — no navigation needed to edit.'
+  };
+
+  let currentTab = 'kiosk';
+  const activeDirs = { kiosk: 'kiosk-a', player: 'player-a', admin: 'admin-a' };
+
+  function showTab(btn, tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.direction-panel[id^="tab-"]').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    currentTab = tab;
+
+    // Reset direction buttons for this tab
+    const panel = document.getElementById('tab-' + tab);
+    panel.querySelectorAll('.dir-btn').forEach((b, i) => {
+      b.classList.remove('active');
+      if (i === 0) b.classList.add('active');
+    });
+
+    const defaultDir = activeDirs[tab];
+    panel.querySelectorAll('.direction-panel').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('dir-' + defaultDir);
+    if (target) target.classList.add('active');
+
+    updateMeta(tab, defaultDir);
+  }
+
+  function showDir(btn, dir) {
+    const panel = btn.closest('.direction-panel');
+    panel.querySelectorAll('.dir-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    panel.querySelectorAll('.direction-panel').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('dir-' + dir);
+    if (target) target.classList.add('active');
+
+    activeDirs[currentTab] = dir;
+    updateMeta(currentTab, dir);
+  }
+
+  function updateMeta(tab, dir) {
+    const metaEl = document.querySelector('#tab-' + tab + ' .direction-meta');
+    if (!metaEl) return;
+    const map = tab === 'kiosk' ? kioskMeta : tab === 'player' ? playerMeta : adminMeta;
+    if (map[dir]) metaEl.textContent = map[dir];
+  }
+</script>
+</body>
+</html>

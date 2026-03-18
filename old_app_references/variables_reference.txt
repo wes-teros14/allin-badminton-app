@@ -1,0 +1,199 @@
+BADMINTON APP — VARIABLE REFERENCE
+====================================
+Source: badminton_app/badminton_app.py
+Last updated: 2026-03-18
+
+
+=== SIDEBAR VARIABLES ===
+These are rendered once per page load. Disabled widgets still return their default value.
+
+--- Generation Mode ---
+
+is_iterative        bool        Toggle: "Enable Iterative Optimizer"
+                                True  = run N trials, score each, keep best
+                                False = run 1 trial, no scoring
+                                Default: True
+
+num_iterations      int         Slider: "Optimization Trials"
+                                Range: 10–500, step 10
+                                Default: 50
+                                Disabled when: is_iterative=False
+                                Used by: iterative loop only
+
+--- Rules & Logic (shared by both modes) ---
+
+avoid_repeats       bool        Checkbox: "No Repeat Partners"
+                                True  = Phase 1 avoids repeat partner pairs (best-effort)
+                                False = repeat partners freely allowed
+                                Default: True
+                                Note: best-effort only — Phase 2 overrides when needed
+
+streak_limit        int         Slider: "Streak Limit"
+                                Range: 1–5
+                                Default: 2
+                                Meaning: max consecutive games a player can play
+                                streak_limit=1 → no consecutive games allowed
+                                streak_limit=2 → max 2 in a row, blocked on 3rd
+                                Used by: generate_matches (hard check) + evaluate_session_score
+
+disable_gender_rules bool       Checkbox: "Disable Gender Rules"
+                                True  = any 4-player group is valid
+                                False = only 4M, 4F, or 2M+2F groups allowed
+                                Default: False
+
+priority_gender_doubles bool    Checkbox: "Prioritize MD/WD"
+                                True  = Phase 1 forces Men's/Women's Doubles only
+                                False = Mixed Doubles also allowed in Phase 1
+                                Default: True
+                                Disabled when: disable_gender_rules=True
+
+requested_num_matches int       Slider: "Number of Matches"
+                                Range: 1–50
+                                Default: 20
+                                Used by: generate_matches as num_matches_requested
+
+max_spread_limit    int         Slider: "Max Skill Gap per Match"
+                                Range: 0–5, step 1
+                                Default: 2
+                                Meaning: max allowed difference between highest and
+                                lowest player level in a 4-player group
+                                Hard-filtered in generate_matches before any phase check
+                                Also passed to evaluate_session_score for audit scoring
+                                Note: uses round() not int() for comparison
+
+--- Scoring Weights (iterative mode only) ---
+All disabled when is_iterative=False. Only consumed by evaluate_session_score().
+
+p_streak_weight     int         "Fatigue Penalty (Per Game Over Limit)"
+                                Default: 1000
+                                Deducted per streak violation in evaluator
+                                NOTE: engine hard-prevents violations → penalty rarely fires
+
+p_imbalance         int         "Level Imbalance Penalty"
+                                Default: 100
+                                Deducted per 1.0 level difference between T1 and T2
+                                Active differentiator between trials
+
+r_wishlist          int         "Partner Wishlist Reward"
+                                Default: 500
+                                Added per wishlist pair successfully placed on same team
+                                Active differentiator between trials
+
+p_repeat_partner    int         "Repeat Partner Penalty"
+                                Default: 200
+                                Deducted each time the same pair plays together again
+                                Active differentiator between trials
+
+p_fairness_weight   int         "Fairness Penalty (Game Count Gap)"
+                                Default: 5000
+                                Deducted per game difference between most/least played player
+                                NOTE: balance_participation() guarantees gap=0 → rarely fires
+
+p_spread_penalty    int         "Level Gap Violation Penalty"
+                                Default: 2000
+                                Deducted per match that exceeds max_spread_limit
+                                NOTE: hard filter in engine guarantees 0 violations → never fires
+
+
+=== GENERATE_MATCHES() — INTERNAL VARIABLES ===
+
+player_names        list[str]   All player names extracted from players_list
+gender_map          dict        { name → "M"|"F" } for O(1) lookup
+level_map           dict        { name → float } for O(1) lookup (integer levels stored as float)
+games_played_count  dict        { name → int } running count of games assigned per player
+                                Used for fairness sort at start of each game slot
+player_streaks      dict        { name → int } running consecutive game counter
+                                Resets to 0 when player rests a game slot
+                                Replaces old is_player_on_streak() + player_match_history
+teammate_pairing_history set    Set of sorted tuples: { (p1, p2), ... }
+                                Tracks all pairs assigned to same team
+                                Only populated when avoid_repeat_partners=True
+search_limit        int         = 12 (hardcoded constant)
+                                Top N players (by games_played_count) considered per game slot
+                                C(12,4) = 495 combinations per phase
+                                Tested vs 16 — identical results, keep at 12
+final_match_schedule list       Accumulates match dicts as games are assigned
+                                Passed to balance_participation() before return
+
+--- Phases (constraint relaxation) ---
+
+Phase 1:  respect_rest=True,  respect_partner=True,  force_gender=priority_gender_doubles
+Phase 2:  respect_rest=True,  respect_partner=False, force_gender=priority_gender_doubles
+Phase 3:  respect_rest=False, respect_partner=False, force_gender=False
+
+--- balance_participation() — internal nested function ---
+
+target              int         = (len(schedule) * 4) // len(player_names)
+                                Perfect games-per-player. Skips if not evenly divisible.
+                                Example: 20 matches × 4 = 80 slots ÷ 16 players = 5
+improved            bool        Loop control flag. Restarts scan after every valid swap.
+                                Loop exits when no valid swap found in a full pass.
+over / under        set         Players with counts > target (over) or < target (under)
+Swap conditions:    same gender, not already in the match, skill gap within max_spread_limit
+
+
+=== EVALUATE_SESSION_SCORE() — INTERNAL VARIABLES ===
+
+score               int         Starts at 10,000. Penalties subtracted, bonuses added.
+audit_data          dict        Running counters returned alongside score:
+                                  "Streak Violations"  int   games where streak > limit
+                                  "Repeat Partners"    int   same pair appearing again
+                                  "Wishes Granted"     int   wishlist pairs fulfilled
+                                  "Level Gaps"         float total T1 vs T2 level diff
+                                  "Participation Gap"  int   max(counts) - min(counts)
+                                  "Wide Gaps"          int   matches exceeding max_spread
+partner_counts      dict        { (p1,p2) → count } tracks how many times each pair played
+individual_game_counts dict     { name → count } tracks games per player for fairness check
+player_streaks      dict        { name → int } same counter logic as generate_matches
+target_pairs        list[set]   Parsed from wishlist_str (e.g. "Wes-Yelli,AJ-Karen")
+
+
+=== SESSION STATE VARIABLES ===
+
+st.session_state.db                 Firestore client (cached after first init)
+st.session_state.auto_session_id    str  Current session ID (e.g. "match-ab3x9z")
+                                         Reset on every new generation
+st.session_state.last_matches       list Match dicts for current session (None if not generated)
+st.session_state.last_stats         dict { name → game_count } from generate_matches
+st.session_state.last_audit         dict audit_data from winning iterative trial
+                                         Set to None in single-pass mode
+                                         Hidden in UI when is_iterative=False
+st.session_state.best_score         int  Score of the winning trial
+st.session_state.last_push_links    dict { session: str, host_key: str }
+st.session_state.pair_wishlist      list Wishlist pairs e.g. ["AJ-Karen", "Wes-Yelli"]
+st.session_state.recovered_player_list list  Player list loaded from Firestore on recovery
+
+--- Kiosk-specific session state ---
+
+st.session_state.kiosk_L            int  Game number currently on Court 1
+st.session_state.kiosk_R            int  Game number currently on Court 2
+st.session_state.prev_L             int  Previous game on Court 1 (for undo). None if no history.
+st.session_state.prev_R             int  Previous game on Court 2 (for undo). None if no history.
+
+
+=== URL QUERY PARAMS ===
+
+?session={id}               Player view / Recovery view identifier
+?host={key}                 Marks URL as a recovery/host link
+?view=kiosk                 Triggers kiosk view
+
+
+=== FIRESTORE DOCUMENT SCHEMA ===
+
+Collection: "sessions"
+Document ID: session_id  (e.g. "match-ab3x9z")
+
+Fields:
+  matches       list    List of match dicts (see Match data model in high_level_flow.txt)
+  player_list   list    List of player dicts at time of push
+  stats         dict    { name: game_count } from generate_matches
+  updated_at    datetime  UTC timestamp of last push or status change
+
+
+=== CONSTANTS ===
+
+search_limit    12      Max players considered per game slot in generate_matches
+                        C(12,4)=495 combinations. Tested vs 16 — identical output.
+BASE_SCORE      10000   Starting score in evaluate_session_score before penalties
+GMT_OFFSET      +8      Hours added to UTC for Philippines timezone display
+SESSION_ID_LEN  6       Length of random alphanumeric session/host keys

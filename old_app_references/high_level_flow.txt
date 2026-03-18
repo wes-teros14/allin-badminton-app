@@ -1,0 +1,176 @@
+BADMINTON APP — HIGH-LEVEL FLOW & SIDE EFFECTS (FX)
+=====================================================
+Source: badminton_app/badminton_app.py (1,331 lines)
+Stack: Python 3.11 + Streamlit + Google Firestore + Altair
+
+
+=== ENTRY POINT / ROUTING ===
+
+App loads → checks URL query params → branches into 4 views:
+
+  1. ?view=kiosk                  → KIOSK VIEW
+  2. ?session=X  (no host)        → PLAYER VIEW
+  3. ?session=X & host=Y          → RECOVERY VIEW
+  4. (no params) or ?host=Y       → HOST/ADMIN VIEW
+
+
+=== VIEW 1: HOST / ADMIN VIEW ===
+
+Flow:
+  → Password check ("badminton")
+  → Show Sidebar Controls:
+      - Generation mode toggle (Single / Iterative)
+      - Rules: repeat partners, gender rules, streak limit
+      - Match count, skill gap, scoring weights
+      - Partner wishlist manager
+  → Player Editor (editable table: name, gender, level, payment)
+  → "Generate Matches" button pressed
+      → generate_matches() called
+      → If Iterative mode: optimizer loop runs N times (default 50)
+          → each iteration: generate + score → keep best
+          → progress bar shown
+      → Best match schedule saved to session_state
+  → Match table displayed (editable names)
+  → Engine Audit Report shown (6 metrics + scoring breakdown)
+  → Charts shown: participation bar chart, match type distribution
+  → Consecutive game violations table
+  → "Push to Live Board" button
+      → [FX] Firestore WRITE: sessions/{session_id}.set({matches, player_list, stats, updated_at})
+      → Sharing links generated (Player URL, Kiosk URL, Recovery URL)
+  → Live Match Control (segmented buttons per game: Waiting/Next/Playing/End)
+      → status change
+      → [FX] Firestore UPDATE: sessions/{session_id}.update({matches, updated_at})
+
+
+=== VIEW 2: PLAYER VIEW (read-only) ===
+
+Flow:
+  → [FX] Firestore READ: sessions/{session_id} → fetch live matches
+  → Display match table with color-coded status
+  → Player name filter dropdown
+  → "Refresh" button re-triggers read
+  → Shows last updated timestamp
+
+
+=== VIEW 3: KIOSK VIEW (court display) ===
+
+Flow:
+  → [FX] Firestore READ (cached, TTL=5s): sessions/{session_id} → get_kiosk_data()
+  → Shows 2 courts side-by-side (left/right)
+  → Each court shows: game number, player names, match type
+  → "FINISH GAME" button (tall 150px, touch-friendly)
+      → increments court game counter
+      → saves previous state for undo
+      → [FX] Firestore UPDATE: sessions/{session_id} (kiosk state)
+  → "Undo" button
+      → restores prev_L / prev_R state
+      → [FX] Firestore UPDATE: sessions/{session_id}
+  → Auto-refresh every ~5s via cached read
+
+
+=== VIEW 4: RECOVERY VIEW ===
+
+Flow:
+  → Validates session_id + host_key combo
+  → [FX] Firestore READ: sessions/{session_id}
+  → Hydrates session_state: matches, stats, player_list
+  → Redirects into HOST VIEW with full state restored
+
+
+=== CORE ALGORITHM: generate_matches() ===
+
+Input:  players_list, num_matches, rules/constraints
+Output: list of Match objects
+
+Steps:
+  1. SORT players by game count (fewest games first = fairness)
+  2. ENUMERATE all 4-player combinations (itertools.combinations)
+  3. VALIDATE each group:
+       - gender rules (4M, 4F, or 2M/2F mix)
+       - rest periods (streak limit: no X consecutive games)
+       - skill gap (max_spread_limit threshold)
+  4. For each valid group, EVALUATE 3 possible team splits:
+       - Choose split with smallest level difference between teams
+  5. SCORE match via evaluate_session_score()
+  6. REPEAT until num_matches filled or fallback phases triggered
+
+  Fallback Phases (if not enough valid matches found):
+       Phase 1: respect rest + respect partners + force gender
+       Phase 2: respect rest + ignore partners + force gender
+       Phase 3: ignore rest + ignore partners + allow any gender
+
+
+=== CORE ALGORITHM: evaluate_session_score() ===
+
+Base score: 10,000 points
+
+Deductions (penalties):
+  - Streak/fatigue violation:    -1000 per violation  (p_streak_weight)
+  - Team skill imbalance:        -100 per 1.0 gap     (p_imbalance)
+  - Repeat partner:              -200 per repeat      (p_repeat_partner)
+  - Participation fairness gap:  -5000 per game gap   (p_fairness_weight)
+  - Wide skill spread violation: -2000 per violation  (p_spread_penalty)
+
+Bonuses:
+  - Wishlist pair granted:       +500 per pair        (r_wishlist)
+
+Returns: numeric score + audit report dict
+
+
+=== ITERATIVE OPTIMIZER LOOP ===
+
+  for i in range(num_iterations):   # default 50, max 500
+      candidate = generate_matches(...)
+      score     = evaluate_session_score(candidate)
+      if score > best_score:
+          best_score   = score
+          best_matches = candidate
+          best_audit   = audit_report
+  → return best_matches
+
+
+=== ALL SIDE EFFECTS (FX) SUMMARY ===
+
+  #  Trigger                          Type          Operation
+  ── ──────────────────────────────── ───────────── ─────────────────────────────────────────
+  1  App load (first run)             Firestore     Initialize db client from secrets.toml
+  2  "Push to Live Board" button      Firestore     WRITE  sessions/{id}.set(full payload)
+  3  Match status segmented control   Firestore     UPDATE sessions/{id}.update(matches)
+  4  "FINISH GAME" kiosk button       Firestore     UPDATE sessions/{id} (court state)
+  5  "Undo" kiosk button              Firestore     UPDATE sessions/{id} (restore prev state)
+  6  Player view load / refresh       Firestore     READ   sessions/{id} (live matches)
+  7  Kiosk view auto-refresh (5s TTL) Firestore     READ   sessions/{id} via cached query
+  8  Recovery view load               Firestore     READ   sessions/{id} (hydrate host state)
+  9  "Wipe All Sessions" button       Firestore     DELETE all documents in sessions collection
+  10 Generate Matches (iterative)     CPU/In-memory Optimizer loop N iterations, no I/O
+  11 Session ID generation            In-memory     random alphanumeric string (6 chars)
+  12 GMT+8 timestamp                  System clock  datetime.utcnow() + timedelta(hours=8)
+
+
+=== DATA MODELS ===
+
+Player:
+  { name: str, gender: "M"|"F", level: float (1-99), payment: "Paid"|"No" }
+
+Match:
+  { Game: int, Team 1: str, Team 2: str, Type: str,
+    T1 Level: int, T2 Level: int, Player Levels: list[float],
+    Status: "Waiting"|"Next"|"Playing"|"End" }
+
+Firestore Document  (collection: "sessions", doc: {session_id}):
+  { matches: [...], player_list: [...], stats: {name: count}, updated_at: datetime }
+
+
+=== STATUS COLOR CODES ===
+
+  Waiting  → #B5B5B5  (gray)
+  Next     → #e69138  (orange)
+  Playing  → #00E60E  (green)
+  End      → #990000  (dark red)
+
+
+=== SHARING LINKS GENERATED AFTER PUSH ===
+
+  Player URL   → ?session={id}
+  Kiosk URL    → ?session={id}&view=kiosk
+  Recovery URL → ?session={id}&host={host_key}
