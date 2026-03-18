@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd badminton-v2 && npm install && npm run build",
+  "outputDirectory": "badminton-v2/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
