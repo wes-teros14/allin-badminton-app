@@ -1,11 +1,11 @@
 sprint:
   project: badminton_v2
   generated: '2026-03-18'
-  last_updated: '2026-03-18'
+  last_updated: '2026-03-19'
   total_stories: 21
   complete: 0
   in_progress: 0
-  backlog: 20
+  backlog: 18
   ready_for_dev: 1
 
 epics:
@@ -38,23 +38,23 @@ epics:
     stories:
       - key: 2-1-create-new-session
         title: Create New Session
-        status: backlog
-        file: null
+        status: review
+        file: 2-1-create-new-session.md
 
       - key: 2-2-registration-url-generation
         title: Registration URL Generation
-        status: backlog
-        file: null
+        status: review
+        file: 2-2-registration-url-generation.md
 
       - key: 2-3-player-registration-via-oauth-link
         title: Player Registration via OAuth Link
-        status: backlog
-        file: null
+        status: review
+        file: 2-3-player-registration-via-oauth-link.md
 
       - key: 2-4-roster-management-and-registration-close
         title: Roster Management and Registration Close
-        status: backlog
-        file: null
+        status: review
+        file: 2-4-roster-management-and-registration-close.md
 
   - id: 3
     title: Match Generation

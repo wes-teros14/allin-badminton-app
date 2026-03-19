@@ -1,0 +1,172 @@
+import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+
+type SessionStatus =
+  | 'setup'
+  | 'registration_open'
+  | 'registration_closed'
+  | 'schedule_locked'
+  | 'in_progress'
+  | 'complete'
+
+export interface Session {
+  id: string
+  name: string
+  date: string
+  status: SessionStatus
+  created_by: string
+  created_at: string
+}
+
+export interface Invitation {
+  id: string
+  session_id: string
+  is_active: boolean
+  created_at: string
+}
+
+interface SessionState {
+  session: Session | null
+  invitation: Invitation | null
+  playerCount: number
+  isLoading: boolean
+  createSession: (name: string, date: string) => Promise<Session | null>
+  openRegistration: () => Promise<void>
+  closeRegistration: () => Promise<void>
+}
+
+export function useSession(): SessionState {
+  const [session, setSession] = useState<Session | null>(null)
+  const [invitation, setInvitation] = useState<Invitation | null>(null)
+  const [playerCount, setPlayerCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchLatestSession() {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        toast.error(error.message)
+      } else {
+        setSession(data as Session | null)
+
+        // After fetching session, if status is registration_open, fetch active invitation + player count
+        if (data && (data as Session).status === 'registration_open') {
+          const { data: inv } = await supabase
+            .from('session_invitations')
+            .select('*')
+            .eq('session_id', (data as Session).id)
+            .eq('is_active', true)
+            .maybeSingle()
+          setInvitation(inv as Invitation | null)
+
+          const { count } = await supabase
+            .from('session_registrations')
+            .select('*', { count: 'exact', head: true })
+            .eq('session_id', (data as Session).id)
+          setPlayerCount(count ?? 0)
+        }
+      }
+      setIsLoading(false)
+    }
+
+    fetchLatestSession()
+  }, [])
+
+  async function createSession(name: string, date: string): Promise<Session | null> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      toast.error('Not authenticated')
+      return null
+    }
+
+    const { data, error } = await supabase
+      .from('sessions')
+      .insert({ name, date, created_by: user.id })
+      .select()
+      .single()
+
+    if (error) {
+      toast.error(error.message)
+      return null
+    }
+
+    const newSession = data as Session
+    setSession(newSession)
+    return newSession
+  }
+
+  async function openRegistration(): Promise<void> {
+    if (!session) return
+
+    // 1. Insert invitation row (id = the shareable UUID token)
+    const { data: inv, error: invError } = await supabase
+      .from('session_invitations')
+      .insert({ session_id: session.id })
+      .select()
+      .single()
+
+    if (invError) {
+      toast.error(invError.message)
+      return
+    }
+
+    // 2. Update session status to registration_open
+    const { data: updated, error: sessionError } = await supabase
+      .from('sessions')
+      .update({ status: 'registration_open' })
+      .eq('id', session.id)
+      .select()
+      .single()
+
+    if (sessionError) {
+      toast.error(sessionError.message)
+      return
+    }
+
+    setInvitation(inv as Invitation)
+    setSession(updated as Session)
+  }
+
+  async function closeRegistration(): Promise<void> {
+    if (!session || !invitation) return
+
+    // 1. Deactivate the invitation token
+    const { error: invError } = await supabase
+      .from('session_invitations')
+      .update({ is_active: false })
+      .eq('id', invitation.id)
+
+    if (invError) {
+      toast.error(invError.message)
+      return
+    }
+
+    // 2. Update session status to registration_closed
+    const { data: updated, error: sessionError } = await supabase
+      .from('sessions')
+      .update({ status: 'registration_closed' })
+      .eq('id', session.id)
+      .select()
+      .single()
+
+    if (sessionError) {
+      toast.error(sessionError.message)
+      return
+    }
+
+    setSession(updated as Session)
+    setInvitation(null)
+  }
+
+  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration }
+}

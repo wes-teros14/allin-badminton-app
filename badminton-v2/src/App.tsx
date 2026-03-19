@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { Toaster } from '@/components/ui/sonner'
 
 function AdminRoute() {
   const { role, isLoading } = useAuth()
@@ -9,12 +10,15 @@ function AdminRoute() {
   return <Outlet />
 }
 
-const KioskView = lazy(() => import('@/views/KioskView'))
-const PlayerView = lazy(() => import('@/views/PlayerView'))
-const AdminView  = lazy(() => import('@/views/AdminView'))
+const KioskView    = lazy(() => import('@/views/KioskView'))
+const PlayerView   = lazy(() => import('@/views/PlayerView'))
+const AdminView    = lazy(() => import('@/views/AdminView'))
+const RegisterView = lazy(() => import('@/views/RegisterView'))
 
 function App() {
   return (
+    <>
+    <Toaster />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
         <Route path="/"                 element={<div>badminton v2</div>} />
@@ -24,9 +28,11 @@ function App() {
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminView />} />
         </Route>
+        <Route path="/register" element={<RegisterView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
+    </>
   )
 }
 

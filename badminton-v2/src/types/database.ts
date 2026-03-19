@@ -26,9 +26,80 @@ export type Database = {
         }
         Relationships: []
       }
+      sessions: {
+        Row: {
+          id: string
+          name: string
+          date: string
+          status: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          date: string
+          status?: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          date?: string
+          status?: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      session_invitations: {
+        Row: {
+          id: string
+          session_id: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      session_registrations: {
+        Row: {
+          id: string
+          session_id: string
+          player_id: string
+          registered_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          player_id: string
+          registered_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          player_id?: string
+          registered_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
-    Enums: Record<string, never>
+    Enums: {
+      session_status: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
+    }
   }
 }
