@@ -58,9 +58,9 @@ export function RegisterView() {
     return (
       <div className="p-6 max-w-sm mx-auto">
         <Card>
-          <CardHeader><CardTitle>Already Registered</CardTitle></CardHeader>
+          <CardHeader><CardTitle>You're registered!</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">You're already registered for this session.</p>
+            <p className="text-sm text-muted-foreground">Thank you for registering and see you at the court! :)</p>
           </CardContent>
         </Card>
       </div>

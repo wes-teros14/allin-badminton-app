@@ -95,6 +95,14 @@ export function useRegistration(token: string | null): RegistrationState {
   async function register() {
     if (!user || !sessionId) return
 
+    // Upsert profile with Google display name so roster shows a readable name
+    const displayName = (user.user_metadata?.full_name as string | undefined)
+      ?? user.email
+      ?? user.id
+    await supabase
+      .from('profiles')
+      .upsert({ id: user.id, name_slug: displayName, role: 'player' }, { onConflict: 'id', ignoreDuplicates: true })
+
     const { error } = await supabase
       .from('session_registrations')
       .insert({ session_id: sessionId, player_id: user.id })
