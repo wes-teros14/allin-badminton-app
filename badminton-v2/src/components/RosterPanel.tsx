@@ -4,10 +4,13 @@ import { useRoster } from '@/hooks/useRoster'
 
 interface Props {
   sessionId: string
+  editable?: boolean
 }
 
-export function RosterPanel({ sessionId }: Props) {
-  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer } =
+const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+export function RosterPanel({ sessionId, editable = false }: Props) {
+  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updatePlayerProfile } =
     useRoster(sessionId)
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading roster…</div>
@@ -18,19 +21,59 @@ export function RosterPanel({ sessionId }: Props) {
         <CardTitle>Roster ({players.length})</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Registered players */}
         {players.length === 0 ? (
           <p className="text-sm text-muted-foreground">No players registered yet.</p>
         ) : (
           <ul className="space-y-2">
             {players.map((player) => (
-              <li key={player.registrationId} className="flex items-center justify-between text-sm">
-                <span>{player.nameSlug}</span>
+              <li key={player.registrationId} className="flex items-center gap-2 text-sm">
+                <span className="flex-1 truncate">{player.nameSlug}</span>
+
+                {editable && (
+                  <>
+                    {/* Gender toggle */}
+                    <div className="flex rounded overflow-hidden border text-xs">
+                      {(['M', 'F'] as const).map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => updatePlayerProfile(player.playerId, g, player.level)}
+                          className={`px-2 py-1 transition-colors ${
+                            player.gender === g
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-background text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Level select */}
+                    <select
+                      value={player.level ?? ''}
+                      onChange={(e) => updatePlayerProfile(player.playerId, player.gender, e.target.value ? +e.target.value : null)}
+                      className="h-7 rounded border border-input bg-background px-1 text-xs w-14"
+                    >
+                      <option value="">Lvl</option>
+                      {LEVELS.map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
+
+                {!editable && player.gender && (
+                  <span className="text-xs text-muted-foreground">{player.gender}</span>
+                )}
+                {!editable && player.level && (
+                  <span className="text-xs text-muted-foreground">L{player.level}</span>
+                )}
+
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => removePlayer(player.registrationId)}
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive shrink-0"
                 >
                   Remove
                 </Button>
@@ -47,13 +90,7 @@ export function RosterPanel({ sessionId }: Props) {
               {unregisteredPlayers.map((player) => (
                 <li key={player.id} className="flex items-center justify-between text-sm">
                   <span>{player.nameSlug}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => addPlayer(player.id)}
-                  >
-                    Add
-                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => addPlayer(player.id)}>Add</Button>
                 </li>
               ))}
             </ul>

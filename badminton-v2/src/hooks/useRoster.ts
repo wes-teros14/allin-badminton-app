@@ -6,6 +6,8 @@ export interface RosterPlayer {
   registrationId: string
   playerId: string
   nameSlug: string
+  gender: 'M' | 'F' | null
+  level: number | null
 }
 
 export interface UnregisteredPlayer {
@@ -19,6 +21,7 @@ interface RosterState {
   isLoading: boolean
   addPlayer: (playerId: string) => Promise<void>
   removePlayer: (registrationId: string) => Promise<void>
+  updatePlayerProfile: (playerId: string, gender: 'M' | 'F' | null, level: number | null) => Promise<void>
 }
 
 export function useRoster(sessionId: string | undefined): RosterState {
@@ -29,50 +32,45 @@ export function useRoster(sessionId: string | undefined): RosterState {
   async function fetchRoster() {
     if (!sessionId) return
 
-    // 1. Fetch session_registrations rows
     const { data: regs, error: regsError } = await supabase
       .from('session_registrations')
       .select('id, player_id')
       .eq('session_id', sessionId)
 
-    if (regsError) {
-      toast.error(regsError.message)
-      return
-    }
+    if (regsError) { toast.error(regsError.message); return }
 
     const registrations = (regs ?? []) as { id: string; player_id: string }[]
     const registeredIds = registrations.map((r) => r.player_id)
 
-    // 2a. Fetch profiles for registered players (no role filter — any user can register)
+    // Profiles for registered players (include level + gender)
     const registeredProfiles =
       registeredIds.length > 0
-        ? ((
-            await supabase.from('profiles').select('id, name_slug').in('id', registeredIds)
-          ).data ?? []) as { id: string; name_slug: string }[]
+        ? ((await supabase.from('profiles').select('id, name_slug, gender, level').in('id', registeredIds)).data ?? []) as
+            { id: string; name_slug: string; gender: 'M' | 'F' | null; level: number | null }[]
         : []
 
-    // 2b. Fetch all known player profiles (role = player) for the "Add player" list
+    // Known players (role=player) for "Add player" list
     const { data: allProfiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name_slug')
       .eq('role', 'player')
 
-    if (profilesError) {
-      toast.error(profilesError.message)
-      return
-    }
+    if (profilesError) { toast.error(profilesError.message); return }
 
     const playerProfiles = (allProfiles ?? []) as { id: string; name_slug: string }[]
+    const profileMap = new Map(registeredProfiles.map((p) => [p.id, p]))
 
-    // 3. Build roster using registered-player profiles
-    const nameMap = new Map(registeredProfiles.map((p) => [p.id, p.name_slug]))
-    const rosterPlayers: RosterPlayer[] = registrations.map((r) => ({
-      registrationId: r.id,
-      playerId: r.player_id,
-      nameSlug: nameMap.get(r.player_id) ?? r.player_id,
-    }))
+    const rosterPlayers: RosterPlayer[] = registrations.map((r) => {
+      const p = profileMap.get(r.player_id)
+      return {
+        registrationId: r.id,
+        playerId: r.player_id,
+        nameSlug: p?.name_slug ?? r.player_id,
+        gender: p?.gender ?? null,
+        level: p?.level ?? null,
+      }
+    })
 
-    // 4. Unregistered = known players not already registered
     const unregistered: UnregisteredPlayer[] = playerProfiles
       .filter((p) => !registeredIds.includes(p.id))
       .map((p) => ({ id: p.id, nameSlug: p.name_slug }))
@@ -82,64 +80,42 @@ export function useRoster(sessionId: string | undefined): RosterState {
     setIsLoading(false)
   }
 
-  // Initial fetch
   useEffect(() => {
     fetchRoster()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
-  // Real-time subscription — refetch on any change to session_registrations for this session
   useEffect(() => {
     if (!sessionId) return
-
     const channel = supabase
       .channel(`roster:${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'session_registrations',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        () => {
-          fetchRoster()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_registrations', filter: `session_id=eq.${sessionId}` }, fetchRoster)
       .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return () => { supabase.removeChannel(channel) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
   async function addPlayer(playerId: string) {
     if (!sessionId) return
-
-    const { error } = await supabase
-      .from('session_registrations')
-      .insert({ session_id: sessionId, player_id: playerId })
-
-    if (error) {
-      toast.error(error.message)
-      return
-    }
+    const { error } = await supabase.from('session_registrations').insert({ session_id: sessionId, player_id: playerId })
+    if (error) { toast.error(error.message); return }
     fetchRoster()
   }
 
   async function removePlayer(registrationId: string) {
-    const { error } = await supabase
-      .from('session_registrations')
-      .delete()
-      .eq('id', registrationId)
-
-    if (error) {
-      toast.error(error.message)
-      return
-    }
+    const { error } = await supabase.from('session_registrations').delete().eq('id', registrationId)
+    if (error) { toast.error(error.message); return }
     fetchRoster()
   }
 
-  return { players, unregisteredPlayers, isLoading, addPlayer, removePlayer }
+  async function updatePlayerProfile(playerId: string, gender: 'M' | 'F' | null, level: number | null) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ gender, level })
+      .eq('id', playerId)
+    if (error) { toast.error(error.message); return }
+    setPlayers((prev) => prev.map((p) => p.playerId === playerId ? { ...p, gender, level } : p))
+  }
+
+  return { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updatePlayerProfile }
 }
