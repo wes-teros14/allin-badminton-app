@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -33,7 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
   registration_open: 'text-[#EB5B00]',
   registration_closed: 'text-[#FFB200]',
   schedule_locked: 'text-[#FFB200]',
-  in_progress: 'text-primary font-bold',
+  in_progress: 'text-[#D91656] font-bold',
   complete: 'text-muted-foreground',
 }
 
@@ -149,6 +149,11 @@ export function AdminView() {
 
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-primary">Admin</h1>
+        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
+      </div>
+
       {/* Create new session */}
       <Card>
         <CardHeader>

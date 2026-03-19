@@ -12,7 +12,7 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: #D91656;
+    --primary: #640D5F;
     --primary-foreground: #ffffff;
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
@@ -39,9 +39,9 @@
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
     /* New brand-only tokens */
-    --primary-hover: #F0185E;
-    --primary-pressed: #A8113E;
-    --primary-subtle: #FDE8EF;
+    --primary-hover: #8A1282;
+    --primary-pressed: #430840;
+    --primary-subtle: #F5E6F5;
     --success: #22C55E;
     --muted-surface: #F4F4F6;
 }
@@ -53,7 +53,7 @@
     --card-foreground: oklch(0.985 0 0);
     --popover: oklch(0.205 0 0);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: #D91656;
+    --primary: #640D5F;
     --primary-foreground: #ffffff;
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
