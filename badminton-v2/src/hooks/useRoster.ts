@@ -43,7 +43,15 @@ export function useRoster(sessionId: string | undefined): RosterState {
     const registrations = (regs ?? []) as { id: string; player_id: string }[]
     const registeredIds = registrations.map((r) => r.player_id)
 
-    // 2. Fetch all player profiles
+    // 2a. Fetch profiles for registered players (no role filter — any user can register)
+    const registeredProfiles =
+      registeredIds.length > 0
+        ? ((
+            await supabase.from('profiles').select('id, name_slug').in('id', registeredIds)
+          ).data ?? []) as { id: string; name_slug: string }[]
+        : []
+
+    // 2b. Fetch all known player profiles (role = player) for the "Add player" list
     const { data: allProfiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name_slug')
@@ -54,20 +62,18 @@ export function useRoster(sessionId: string | undefined): RosterState {
       return
     }
 
-    const profiles = (allProfiles ?? []) as { id: string; name_slug: string }[]
+    const playerProfiles = (allProfiles ?? []) as { id: string; name_slug: string }[]
 
-    // 3. Build roster: merge registrations with profile name_slug
-    const rosterPlayers: RosterPlayer[] = registrations.map((r) => {
-      const profile = profiles.find((p) => p.id === r.player_id)
-      return {
-        registrationId: r.id,
-        playerId: r.player_id,
-        nameSlug: profile?.name_slug ?? r.player_id,
-      }
-    })
+    // 3. Build roster using registered-player profiles
+    const nameMap = new Map(registeredProfiles.map((p) => [p.id, p.name_slug]))
+    const rosterPlayers: RosterPlayer[] = registrations.map((r) => ({
+      registrationId: r.id,
+      playerId: r.player_id,
+      nameSlug: nameMap.get(r.player_id) ?? r.player_id,
+    }))
 
-    // 4. Unregistered = all players not in registeredIds
-    const unregistered: UnregisteredPlayer[] = profiles
+    // 4. Unregistered = known players not already registered
+    const unregistered: UnregisteredPlayer[] = playerProfiles
       .filter((p) => !registeredIds.includes(p.id))
       .map((p) => ({ id: p.id, nameSlug: p.name_slug }))
 
