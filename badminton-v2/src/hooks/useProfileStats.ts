@@ -6,8 +6,29 @@ export interface ProfileStats {
   gamesPlayed: number
   wins: number
   winRate: number
-  bestPartner: { nameSlug: string; wins: number } | null
-  toughestOpponent: { nameSlug: string; losses: number } | null
+  bestPartners: Array<{ nameSlug: string; wins: number }>
+  toughestOpponents: Array<{ nameSlug: string; losses: number }>
+}
+
+function topRanked(
+  countMap: Map<string, number>,
+  nameMap: Map<string, string>,
+): Array<{ nameSlug: string; count: number }> {
+  const sorted = Array.from(countMap.entries())
+    .map(([id, count]) => ({ nameSlug: nameMap.get(id) ?? id, count }))
+    .sort((a, b) => b.count - a.count)
+  const result: Array<{ nameSlug: string; count: number }> = []
+  let i = 0
+  while (i < sorted.length && result.length < 3) {
+    const count = sorted[i].count
+    const names: string[] = []
+    while (i < sorted.length && sorted[i].count === count) {
+      names.push(sorted[i].nameSlug)
+      i++
+    }
+    result.push({ nameSlug: names.join(' & '), count })
+  }
+  return result
 }
 
 export function useProfileStats(userId: string | undefined) {
@@ -42,7 +63,7 @@ export function useProfileStats(userId: string | undefined) {
       }>
 
       if (matches.length === 0) {
-        setStats({ sessionsAttended: sessionsAttended ?? 0, gamesPlayed: 0, wins: 0, winRate: 0, bestPartner: null, toughestOpponent: null })
+        setStats({ sessionsAttended: sessionsAttended ?? 0, gamesPlayed: 0, wins: 0, winRate: 0, bestPartners: [], toughestOpponents: [] })
         setIsLoading(false)
         return
       }
@@ -105,21 +126,11 @@ export function useProfileStats(userId: string | undefined) {
         }
       }
 
-      // Best partner — most wins together
-      let bestPartner: ProfileStats['bestPartner'] = null
-      for (const [id, w] of partnerWins) {
-        if (!bestPartner || w > bestPartner.wins) {
-          bestPartner = { nameSlug: nameMap.get(id) ?? id, wins: w }
-        }
-      }
+      const bestPartners = topRanked(partnerWins, nameMap)
+        .map(({ nameSlug, count }) => ({ nameSlug, wins: count }))
 
-      // Toughest opponent — most losses against
-      let toughestOpponent: ProfileStats['toughestOpponent'] = null
-      for (const [id, l] of opponentLosses) {
-        if (!toughestOpponent || l > toughestOpponent.losses) {
-          toughestOpponent = { nameSlug: nameMap.get(id) ?? id, losses: l }
-        }
-      }
+      const toughestOpponents = topRanked(opponentLosses, nameMap)
+        .map(({ nameSlug, count }) => ({ nameSlug, losses: count }))
 
       const gamesWithResults = matches.filter((m) => resultMap.has(m.id)).length
 
@@ -128,8 +139,8 @@ export function useProfileStats(userId: string | undefined) {
         gamesPlayed: matches.length,
         wins,
         winRate: gamesWithResults > 0 ? Math.round((wins / gamesWithResults) * 100) : 0,
-        bestPartner,
-        toughestOpponent,
+        bestPartners,
+        toughestOpponents,
       })
       setIsLoading(false)
     }

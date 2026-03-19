@@ -15,6 +15,37 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   )
 }
 
+const RANK_LABELS = ['🥇', '🥈', '🥉']
+
+function RankListCard({ label, items, subLabel }: {
+  label: string
+  items: Array<{ nameSlug: string; count: number }>
+  subLabel: (count: number) => string
+}) {
+  return (
+    <Card className="col-span-2">
+      <CardContent className="pt-5 pb-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">{label}</p>
+        {items.length === 0 ? (
+          <p className="text-2xl font-bold text-primary">—</p>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((item, i) => (
+              <li key={i} className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <span className="text-base">{RANK_LABELS[i]}</span>
+                  <span className="font-semibold text-sm">{item.nameSlug}</span>
+                </span>
+                <span className="text-xs text-muted-foreground shrink-0">{subLabel(item.count)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export function ProfileView() {
   const { user, role, isLoading: authLoading } = useAuth()
   const { stats, isLoading: statsLoading } = useProfileStats(user?.id)
@@ -48,9 +79,11 @@ export function ProfileView() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Stats</h2>
         {statsLoading ? (
           <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />
             ))}
+            <div className="col-span-2 h-24 bg-muted rounded-xl animate-pulse" />
+            <div className="col-span-2 h-24 bg-muted rounded-xl animate-pulse" />
           </div>
         ) : stats ? (
           <div className="grid grid-cols-2 gap-3">
@@ -67,15 +100,15 @@ export function ProfileView() {
               value={stats.gamesPlayed > 0 ? `${stats.winRate}%` : '—'}
               sub={stats.gamesPlayed > 0 ? `${stats.wins} / ${stats.gamesPlayed} wins` : 'No recorded games'}
             />
-            <StatCard
-              label="Best Partner"
-              value={stats.bestPartner?.nameSlug ?? '—'}
-              sub={stats.bestPartner ? `${stats.bestPartner.wins} wins together` : undefined}
+            <RankListCard
+              label="Best Partners"
+              items={stats.bestPartners.map(p => ({ nameSlug: p.nameSlug, count: p.wins }))}
+              subLabel={(w) => `${w} win${w !== 1 ? 's' : ''} together`}
             />
-            <StatCard
-              label="Toughest Opponent"
-              value={stats.toughestOpponent?.nameSlug ?? '—'}
-              sub={stats.toughestOpponent ? `Lost ${stats.toughestOpponent.losses}x against them` : undefined}
+            <RankListCard
+              label="Toughest Opponents"
+              items={stats.toughestOpponents.map(o => ({ nameSlug: o.nameSlug, count: o.losses }))}
+              subLabel={(l) => `Lost ${l}x`}
             />
           </div>
         ) : null}
