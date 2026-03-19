@@ -43,6 +43,7 @@ interface SessionState {
   closeRegistration: () => Promise<void>
   lockSchedule: (matches: MatchInput[]) => Promise<boolean>
   startSession: () => Promise<void>
+  closeSession: () => Promise<void>
 }
 
 export function useSession(): SessionState {
@@ -246,5 +247,17 @@ export function useSession(): SessionState {
     setSession(updated as Session)
   }
 
-  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession }
+  async function closeSession(): Promise<void> {
+    if (!session) return
+    const { data: updated, error } = await supabase
+      .from('sessions')
+      .update({ status: 'complete' })
+      .eq('id', session.id)
+      .select()
+      .single()
+    if (error) { toast.error(error.message); return }
+    setSession(updated as Session)
+  }
+
+  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession, closeSession }
 }

@@ -19,7 +19,7 @@ const sessionSchema = z.object({
 type SessionFormValues = z.infer<typeof sessionSchema>
 
 export function AdminView() {
-  const { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession } =
+  const { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession, closeSession } =
     useSession()
 
   const [confirmingClose, setConfirmingClose] = useState(false)
@@ -121,6 +121,9 @@ export function AdminView() {
             <Button className="w-full">Open Session View ↗</Button>
           </a>
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
+          <Button variant="destructive" onClick={closeSession} className="w-full">
+            Close Session
+          </Button>
         </div>
       ) : (
         <Card>
