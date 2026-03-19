@@ -82,6 +82,10 @@ export function useRegistration(token: string | null): RegistrationState {
 
       setIsAlreadyRegistered(!!existing)
 
+      // Always ensure profile exists — decoupled from registration status.
+      // Handles users whose trigger failed and who are already in session_registrations.
+      await ensureProfile(user)
+
       // Check if session is full (only matters if not already registered)
       if (!existing && inv.max_players != null) {
         const { count } = await supabase
@@ -97,6 +101,31 @@ export function useRegistration(token: string | null): RegistrationState {
     validateToken()
   }, [token, user])
 
+  async function ensureProfile(u: User) {
+    const { data: existing } = await supabase.from('profiles').select('id').eq('id', u.id).maybeSingle()
+
+    if (!existing) {
+      const displayName = (u.user_metadata?.full_name as string | undefined) ?? u.email?.split('@')[0] ?? 'user'
+      const baseSlug = displayName.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '') || 'user'
+
+      let { error } = await supabase
+        .from('profiles')
+        .insert({ id: u.id, name_slug: baseSlug, email: u.email ?? null, role: 'player' } as never)
+
+      if (error?.code === '23505') {
+        const retry = await supabase
+          .from('profiles')
+          .insert({ id: u.id, name_slug: `${baseSlug}-${u.id.slice(0, 6)}`, email: u.email ?? null, role: 'player' } as never)
+        error = retry.error
+      }
+
+      if (error) console.error('[ensureProfile] insert error:', error)
+    } else {
+      const { error } = await supabase.from('profiles').update({ email: u.email ?? null } as never).eq('id', u.id)
+      if (error) console.error('[ensureProfile] email update error:', error)
+    }
+  }
+
   async function signIn() {
     if (token) localStorage.setItem('registration_token', token)
     await supabase.auth.signInWithOAuth({
@@ -107,67 +136,6 @@ export function useRegistration(token: string | null): RegistrationState {
 
   async function register() {
     if (!user || !sessionId) return
-
-    // Safety net: ensure profile row exists (trigger may have failed silently).
-    // First check if a profile already exists, then INSERT if missing.
-    // We avoid upsert+ignoreDuplicates because ON CONFLICT DO NOTHING
-    // silently swallows RLS denials, making failures invisible.
-    console.log('[register] user.id:', user.id, 'user.email:', user.email)
-
-    const { data: existingProfile, error: selectError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle()
-
-    console.log('[register] existingProfile:', existingProfile, 'selectError:', selectError)
-
-    if (!existingProfile) {
-      console.log('[register] no profile found — inserting')
-      // Build a readable slug from Google display name; fall back to short user ID suffix on conflict
-      const displayName = (user.user_metadata?.full_name as string | undefined)
-        ?? user.email?.split('@')[0]
-        ?? 'user'
-      const baseSlug = displayName.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '') || 'user'
-
-      let { data: insertData, error: insertError } = await supabase
-        .from('profiles')
-        .insert({ id: user.id, name_slug: baseSlug, email: user.email ?? null, role: 'player' } as never)
-        .select()
-
-      // If name_slug conflicts with another user, append short id suffix
-      if (insertError?.code === '23505') {
-        const fallbackSlug = `${baseSlug}-${user.id.slice(0, 6)}`
-        const retry = await supabase
-          .from('profiles')
-          .insert({ id: user.id, name_slug: fallbackSlug, email: user.email ?? null, role: 'player' } as never)
-          .select()
-        insertData = retry.data
-        insertError = retry.error
-      }
-
-      console.log('[register] insert result:', insertData, insertError)
-
-      if (insertError) {
-        console.error('[register] profile insert error:', insertError)
-        toast.error('Failed to create profile: ' + insertError.message)
-        return
-      }
-    } else {
-      console.log('[register] profile exists — patching email')
-      const { data: updateData, error: profileError } = await supabase
-        .from('profiles')
-        .update({ email: user.email ?? null } as never)
-        .eq('id', user.id)
-        .select()
-
-      console.log('[register] update result:', updateData, profileError)
-
-      if (profileError) {
-        console.error('[register] profile email update error:', profileError)
-        console.warn('[register] continuing despite email update failure')
-      }
-    }
 
     const { error } = await supabase
       .from('session_registrations')
