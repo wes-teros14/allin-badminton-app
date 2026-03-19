@@ -6,22 +6,22 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --background: #FFFFFF;
+    --foreground: #18181B;
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
+    --primary: #9C51B6;
+    --primary-foreground: #ffffff;
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
+    --muted: #6B7280;
     --muted-foreground: oklch(0.556 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
+    --border: #E4E4E7;
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
     --chart-1: oklch(0.809 0.105 251.813);
@@ -38,6 +38,12 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    /* New brand-only tokens */
+    --primary-hover: #B472CC;
+    --primary-pressed: #7A3D8E;
+    --primary-subtle: #F0E6F7;
+    --success: #22C55E;
+    --muted-surface: #F4F4F6;
 }
 
 .dark {
@@ -72,6 +78,14 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+}
+
+.kiosk-dark {
+    --background: #0F0F17;
+    --surface: #1C1C28;
+    --border: #2E2E3E;
+    --foreground: #F4F4F6;
+    --primary: #B472CC;
 }
 
 @theme inline {
@@ -114,6 +128,13 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    /* Brand token extensions */
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-pressed: var(--primary-pressed);
+    --color-primary-subtle: var(--primary-subtle);
+    --color-success: var(--success);
+    --color-muted-surface: var(--muted-surface);
+    --color-surface: var(--surface);
 }
 
 @layer base {
@@ -125,5 +146,16 @@
     }
   html {
     @apply font-sans;
+    }
+}
+
+@utility game-hero {
+    font-size: 4rem;
+    font-weight: 700;
+}
+
+@media (min-width: 768px) {
+    .game-hero {
+        font-size: 6rem;
     }
 }

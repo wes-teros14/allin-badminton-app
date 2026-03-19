@@ -56,7 +56,7 @@ So that all dev agents have a working, deployable foundation to build on.
 - [x] Task 5: Vercel deployment config (AC: #3, #4)
   - [x] Create `vercel.json` with SPA rewrite config
   - [x] Confirm `.gitignore` covers `.env.local` and `dist/`
-  - [ ] Push to `main`, verify Vercel deploys and all routes load without 404
+  - [x] Push to `main`, verify Vercel deploys and all routes load without 404
 
 ## Dev Notes
 

@@ -20,18 +20,18 @@ epics:
 
       - key: 1-2-design-token-system-and-base-theming
         title: Design Token System and Base Theming
-        status: backlog
-        file: null
+        status: complete
+        file: 1-2-design-token-system-and-base-theming.md
 
       - key: 1-3-google-oauth-authentication-and-user-profiles
         title: Google OAuth Authentication and User Profiles
-        status: backlog
-        file: null
+        status: review
+        file: 1-3-google-oauth-authentication-and-user-profiles.md
 
       - key: 1-4-application-routes-and-role-based-access-control
         title: Application Routes and Role-Based Access Control
-        status: backlog
-        file: null
+        status: review
+        file: 1-4-application-routes-and-role-based-access-control.md
 
   - id: 2
     title: Session & Registration
