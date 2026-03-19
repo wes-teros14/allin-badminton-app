@@ -7,13 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSession } from '@/hooks/useSession'
-import { useAdminSession } from '@/hooks/useAdminSession'
-import { useRealtime } from '@/hooks/useRealtime'
 import { RegistrationURLCard } from '@/components/RegistrationURLCard'
 import { RosterPanel } from '@/components/RosterPanel'
 import { MatchGeneratorPanel } from '@/components/MatchGeneratorPanel'
-import { CourtTabs } from '@/components/CourtTabs'
-import { LiveIndicator } from '@/components/LiveIndicator'
 
 const sessionSchema = z.object({
   name: z.string().min(1, 'Session name is required'),
@@ -21,25 +17,6 @@ const sessionSchema = z.object({
 })
 
 type SessionFormValues = z.infer<typeof sessionSchema>
-
-function AdminLiveView() {
-  const { court1Current, court2Current, queued, sessionId, isLoading, refresh } = useAdminSession()
-  const { status } = useRealtime(sessionId, refresh, 'admin')
-
-  return (
-    <div className="relative space-y-6">
-      <LiveIndicator status={status} onRefresh={refresh} />
-      <CourtTabs
-        court1Current={court1Current}
-        court2Current={court2Current}
-        queued={queued}
-        isLoading={isLoading}
-        sessionId={sessionId}
-        onDone={refresh}
-      />
-    </div>
-  )
-}
 
 export function AdminView() {
   const { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession } =
@@ -134,19 +111,23 @@ export function AdminView() {
           </Button>
         </div>
       ) : session.status === 'in_progress' ? (
-        <div className="space-y-3">
-          <div className="flex justify-end">
+        <Card>
+          <CardHeader>
+            <CardTitle>{session.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>Date: {session.date}</p>
+            <p>Status: <span className="font-medium">In Progress</span></p>
             <a
               href={`/session/${session.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
+              className="block w-full"
             >
-              Open Session View ↗
+              <Button className="w-full">Open Session View ↗</Button>
             </a>
-          </div>
-          <AdminLiveView />
-        </div>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardHeader>
