@@ -108,28 +108,38 @@ export function useRegistration(token: string | null): RegistrationState {
   async function register() {
     if (!user || !sessionId) return
 
-    // Safety net: insert profile if trigger somehow didn't create it.
-    // Use user.id as name_slug to guarantee uniqueness — trigger sets a nicer slug on first sign-in.
-    const { error: upsertError } = await supabase
+    // Safety net: ensure profile row exists (trigger may have failed silently).
+    // First check if a profile already exists, then INSERT if missing.
+    // We avoid upsert+ignoreDuplicates because ON CONFLICT DO NOTHING
+    // silently swallows RLS denials, making failures invisible.
+    const { data: existingProfile } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, name_slug: user.id, role: 'player' } as never, { onConflict: 'id', ignoreDuplicates: true })
-
-    if (upsertError) {
-      console.error('[register] profile upsert error:', upsertError)
-      toast.error('Failed to create profile: ' + upsertError.message)
-      return
-    }
-
-    // Patch email onto existing profile — trigger doesn't set it
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ email: user.email ?? null } as never)
+      .select('id')
       .eq('id', user.id)
+      .maybeSingle()
 
-    if (profileError) {
-      console.error('[register] profile email update error:', profileError)
-      toast.error('Failed to update profile: ' + profileError.message)
-      return
+    if (!existingProfile) {
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert({ id: user.id, name_slug: user.id, email: user.email ?? null, role: 'player' } as never)
+
+      if (insertError) {
+        console.error('[register] profile insert error:', insertError)
+        toast.error('Failed to create profile: ' + insertError.message)
+        return
+      }
+    } else {
+      // Profile exists — patch email if not already set
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ email: user.email ?? null } as never)
+        .eq('id', user.id)
+
+      if (profileError) {
+        console.error('[register] profile email update error:', profileError)
+        // Non-fatal: email update failure shouldn't block registration
+        console.warn('[register] continuing despite email update failure')
+      }
     }
 
     const { error } = await supabase
