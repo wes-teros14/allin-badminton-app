@@ -8,7 +8,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
     <Card>
       <CardContent className="pt-5 pb-4">
         <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold text-primary">{value}</p>
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </CardContent>
     </Card>

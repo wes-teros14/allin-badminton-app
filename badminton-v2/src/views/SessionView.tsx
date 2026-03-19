@@ -113,7 +113,7 @@ export function SessionView() {
     <div className="p-6 max-w-lg mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold">{session.name}</h1>
+          <h1 className="text-lg font-semibold text-primary">{session.name}</h1>
           <p className="text-sm text-muted-foreground">
             {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
           </p>

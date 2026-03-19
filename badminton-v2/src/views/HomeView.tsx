@@ -15,7 +15,7 @@ export function HomeView() {
   return (
     <div className="h-screen flex flex-col items-center justify-center gap-8">
       <div className="text-center space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">All In Badminton</h1>
+        <h1 className="text-4xl font-bold tracking-tight text-primary">All In Badminton</h1>
         <p className="text-muted-foreground text-sm">Track your games. Know your rivals.</p>
       </div>
 

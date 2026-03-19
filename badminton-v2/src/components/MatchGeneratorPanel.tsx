@@ -501,7 +501,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                               key={key}
                               value={editForm[key]}
                               onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                              className="h-8 rounded border border-input bg-background px-2 text-xs"
+                              className="h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
                             >
                               <option value="">— {['Team 1 P1','Team 1 P2','Team 2 P1','Team 2 P2'][si]} —</option>
                               {players.map((p) => (

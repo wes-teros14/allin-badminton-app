@@ -24,16 +24,16 @@ const STATUS_LABELS: Record<string, string> = {
   registration_open: 'Registration Open',
   registration_closed: 'Registration Closed',
   schedule_locked: 'Schedule Locked',
-  in_progress: 'In Progress',
+  in_progress: 'Playing',
   complete: 'Complete',
 }
 
 const STATUS_COLORS: Record<string, string> = {
   setup: 'text-muted-foreground',
-  registration_open: 'text-blue-500',
-  registration_closed: 'text-yellow-500',
-  schedule_locked: 'text-orange-500',
-  in_progress: 'text-primary',
+  registration_open: 'text-blue-400',
+  registration_closed: 'text-yellow-400',
+  schedule_locked: 'text-yellow-400',
+  in_progress: 'text-primary font-bold',
   complete: 'text-muted-foreground',
 }
 

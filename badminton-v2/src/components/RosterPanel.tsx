@@ -52,7 +52,7 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
                     <select
                       value={player.level ?? ''}
                       onChange={(e) => updatePlayerProfile(player.playerId, player.gender, e.target.value ? +e.target.value : null)}
-                      className="h-7 rounded border border-input bg-background px-1 text-xs w-14"
+                      className="h-7 rounded border border-input bg-background text-foreground px-1 text-xs w-14"
                     >
                       <option value="">Lvl</option>
                       {LEVELS.map((l) => (
