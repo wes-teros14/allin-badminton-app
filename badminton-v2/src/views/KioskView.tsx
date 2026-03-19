@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useParams } from 'react-router'
 import { useCourtState } from '@/hooks/useCourtState'
 import { useRealtime } from '@/hooks/useRealtime'
 import { CourtCard } from '@/components/CourtCard'
 
 export function KioskView() {
-  const { court1, court2, sessionId, isLoading, hasSession, refresh } = useCourtState()
+  const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
+  const { court1, court2, sessionId, isLoading, hasSession, refresh } = useCourtState(sessionIdParam)
   useRealtime(sessionId, refresh)
   const [isPortrait, setIsPortrait] = useState(false)
 

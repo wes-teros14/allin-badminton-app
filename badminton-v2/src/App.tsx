@@ -39,7 +39,8 @@ function App() {
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
         <Route path="/"                 element={<div>badminton v2</div>} />
-        <Route path="/kiosk"            element={<KioskView />} />
+        <Route path="/kiosk"                      element={<KioskView />} />
+        <Route path="/kiosk/:sessionId"           element={<KioskView />} />
         <Route path="/player"           element={<PlayerView />} />
         <Route path="/player/:nameSlug" element={<PlayerView />} />
         <Route element={<AdminRoute />}>

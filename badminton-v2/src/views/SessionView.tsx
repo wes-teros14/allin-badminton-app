@@ -29,7 +29,15 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
       <LiveIndicator status={status} onRefresh={refresh} />
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">{sessionName || 'Session'}</h1>
-        <BackToAdmin />
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.open(`/kiosk/${sessionId}`, '_blank')}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Open Kiosk ↗
+          </button>
+          <BackToAdmin />
+        </div>
       </div>
       <CourtTabs
         court1Current={court1Current}
@@ -148,6 +156,7 @@ export function SessionView() {
         <div className="space-y-4">
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
           <Button onClick={startSession} className="w-full">Start Session</Button>
+          <Button variant="outline" onClick={() => window.open(`/kiosk/${session.id}`, '_blank')} className="w-full">Open Kiosk ↗</Button>
           <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>
         </div>
       )}

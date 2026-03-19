@@ -37,7 +37,7 @@ type MatchRow = {
   court_number: number | null
 }
 
-export function useCourtState(): UseCourtStateResult {
+export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
   const [court1, setCourt1] = useState<CourtData>(EMPTY)
   const [court2, setCourt2] = useState<CourtData>(EMPTY)
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -54,27 +54,31 @@ export function useCourtState(): UseCourtStateResult {
     async function load() {
       if (isFirstLoad.current) setIsLoading(true)
 
-      // 1. Find latest active session
-      const { data: session } = await supabase
-        .from('sessions')
-        .select('id')
-        .in('status', ['schedule_locked', 'in_progress'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      // 1. Find session — by ID if provided, otherwise latest active
+      let sid: string
+      if (sessionIdParam) {
+        sid = sessionIdParam
+      } else {
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('id')
+          .in('status', ['schedule_locked', 'in_progress'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (!session) {
-        setHasSession(false)
-        setSessionId(null)
-        setCourt1(EMPTY)
-        setCourt2(EMPTY)
-        setIsLoading(false)
-        return
+        if (!session) {
+          setHasSession(false)
+          setSessionId(null)
+          setCourt1(EMPTY)
+          setCourt2(EMPTY)
+          setIsLoading(false)
+          return
+        }
+        sid = (session as { id: string }).id
       }
-
-      const sid = (session as { id: string }).id
       setHasSession(true)
       setSessionId(sid)
 
@@ -146,7 +150,7 @@ export function useCourtState(): UseCourtStateResult {
 
     load()
     return () => { cancelled = true }
-  }, [refreshKey])
+  }, [refreshKey, sessionIdParam])
 
   return { court1, court2, sessionId, isLoading, hasSession, refresh }
 }
