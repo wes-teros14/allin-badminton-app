@@ -108,15 +108,19 @@ export function useRegistration(token: string | null): RegistrationState {
   async function register() {
     if (!user || !sessionId) return
 
-    // Safety net: insert profile if trigger somehow didn't create it
-    const displayName = (user.user_metadata?.full_name as string | undefined)
-      ?? user.email
-      ?? user.id
-    await supabase
+    // Safety net: insert profile if trigger somehow didn't create it.
+    // Use user.id as name_slug to guarantee uniqueness — trigger sets a nicer slug on first sign-in.
+    const { error: upsertError } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, name_slug: displayName, role: 'player' } as never, { onConflict: 'id', ignoreDuplicates: true })
+      .upsert({ id: user.id, name_slug: user.id, role: 'player' } as never, { onConflict: 'id', ignoreDuplicates: true })
 
-    // Explicitly update email — trigger doesn't set it, upsert UPDATE can conflict on name_slug unique constraint
+    if (upsertError) {
+      console.error('[register] profile upsert error:', upsertError)
+      toast.error('Failed to create profile: ' + upsertError.message)
+      return
+    }
+
+    // Patch email onto existing profile — trigger doesn't set it
     const { error: profileError } = await supabase
       .from('profiles')
       .update({ email: user.email ?? null } as never)
