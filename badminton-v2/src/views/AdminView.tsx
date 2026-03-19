@@ -83,6 +83,7 @@ function SessionCard({ session, onClose }: { session: Session; onClose: () => vo
 
 export function AdminView() {
   const { sessions, isLoading, refresh } = useSessionList()
+  const [showPast, setShowPast] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
@@ -92,7 +93,10 @@ export function AdminView() {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<SessionFormValues>({ resolver: zodResolver(sessionSchema) })
+  } = useForm<SessionFormValues>({
+    resolver: zodResolver(sessionSchema),
+    defaultValues: { name: 'Palo palo' },
+  })
 
   async function onSubmit(values: SessionFormValues) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -104,9 +108,12 @@ export function AdminView() {
 
     if (error) { toast.error(error.message); return }
 
-    reset()
+    reset({ name: 'Palo palo', date: '' })
     refresh()
   }
+
+  const activeSessions = sessions.filter((s) => s.status !== 'complete')
+  const pastSessions = sessions.filter((s) => s.status === 'complete')
 
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
@@ -119,7 +126,7 @@ export function AdminView() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="name">Session name</Label>
-              <Input id="name" placeholder="e.g. Friday Night Badminton" {...register('name')} />
+              <Input id="name" {...register('name')} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
@@ -134,19 +141,34 @@ export function AdminView() {
         </CardContent>
       </Card>
 
-      {/* Session list */}
+      {/* Active sessions */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Sessions</h2>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />
           ))
-        ) : sessions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No sessions yet.</p>
+        ) : activeSessions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No active sessions.</p>
         ) : (
-          sessions.map((s) => <SessionCard key={s.id} session={s} onClose={refresh} />)
+          activeSessions.map((s) => <SessionCard key={s.id} session={s} onClose={refresh} />)
         )}
       </div>
+
+      {/* Past sessions (collapsed by default) */}
+      {!isLoading && pastSessions.length > 0 && (
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowPast((p) => !p)}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showPast ? '▾' : '▸'} Past Sessions ({pastSessions.length})
+          </button>
+          {showPast && pastSessions.map((s) => (
+            <SessionCard key={s.id} session={s} onClose={refresh} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
