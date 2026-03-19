@@ -1,6 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { AdminMatchDisplay } from '@/hooks/useAdminSession'
 import { useAdminActions } from '@/hooks/useAdminActions'
+
+function formatElapsed(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
 
 interface Props {
   court1Current: AdminMatchDisplay | null
@@ -24,6 +30,24 @@ function CourtCard({
   isSaving: boolean
   onMarkDone: (matchId: string, court: 1 | 2, sessionId: string) => void
 }) {
+  const [elapsed, setElapsed] = useState(0)
+  const matchStartRef = useRef<number>(Date.now())
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    matchStartRef.current = Date.now()
+    setElapsed(0)
+  }, [current?.id])
+
+  useEffect(() => {
+    if (current) {
+      intervalRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - matchStartRef.current) / 1000))
+      }, 1000)
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [current?.id])
+
   return (
     <div>
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
@@ -34,10 +58,11 @@ function CourtCard({
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-3">
               <span className="text-3xl font-bold text-primary">{current.gameNumber}</span>
-              <span className="flex items-center gap-1.5 text-xs font-bold text-primary tracking-widest">
-                <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 tracking-widest">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                 LIVE
               </span>
+              <span className="text-xs font-mono font-semibold text-[#FFB200]">{formatElapsed(elapsed)}</span>
             </div>
             <button
               onClick={() => sessionId && onMarkDone(current.id, courtNumber, sessionId)}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { CourtData } from '@/hooks/useCourtState'
 
@@ -10,11 +10,36 @@ interface Props {
   refresh: () => void
 }
 
+function formatElapsed(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: Props) {
   const { current } = data
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [sessionComplete, setSessionComplete] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+  const matchStartRef = useRef<number>(Date.now())
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Reset timer when match changes
+  useEffect(() => {
+    matchStartRef.current = Date.now()
+    setElapsed(0)
+  }, [current?.id])
+
+  // Run timer while playing, pause while confirming finish
+  useEffect(() => {
+    if (current && !confirmingFinish) {
+      intervalRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - matchStartRef.current) / 1000))
+      }, 1000)
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+  }, [current?.id, confirmingFinish])
 
   async function handleFinish(winningPairIndex: 1 | 2 | null) {
     if (!current || !sessionId || isSaving) return
@@ -104,10 +129,15 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
           COURT {courtNumber}
         </h2>
         {current && (
-          <span className="flex items-center gap-1.5 text-xs font-bold text-primary tracking-widest">
-            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            LIVE
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-mono font-semibold text-[#FFB200]">
+              {formatElapsed(elapsed)}
+            </span>
+            <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 tracking-widest">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              LIVE
+            </span>
+          </div>
         )}
       </div>
 
