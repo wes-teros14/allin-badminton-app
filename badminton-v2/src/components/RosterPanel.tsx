@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRoster } from '@/hooks/useRoster'
@@ -12,15 +13,20 @@ const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 export function RosterPanel({ sessionId, editable = false }: Props) {
   const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride } =
     useRoster(sessionId)
+  const [open, setOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading roster…</div>
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Roster ({players.length})</CardTitle>
+      <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
+        <CardTitle className="flex items-center justify-between">
+          <span>Roster ({players.length})</span>
+          <span className="text-sm text-muted-foreground">{open ? '▲' : '▼'}</span>
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      {open && <CardContent className="space-y-4">
         {players.length === 0 ? (
           <p className="text-sm text-muted-foreground">No players registered yet.</p>
         ) : (
@@ -85,18 +91,26 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
         {/* Add Player section */}
         {unregisteredPlayers.length > 0 && (
           <div className="border-t pt-3">
-            <p className="text-xs text-muted-foreground mb-2">Add player:</p>
-            <ul className="space-y-1">
-              {unregisteredPlayers.map((player) => (
-                <li key={player.id} className="flex items-center justify-between text-sm">
-                  <span>{player.nameSlug}</span>
-                  <Button variant="ghost" size="sm" onClick={() => addPlayer(player.id)}>Add</Button>
-                </li>
-              ))}
-            </ul>
+            <button
+              className="flex items-center justify-between w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setAddOpen((v) => !v)}
+            >
+              <span>Add player ({unregisteredPlayers.length})</span>
+              <span>{addOpen ? '▲' : '▼'}</span>
+            </button>
+            {addOpen && (
+              <ul className="space-y-1 mt-2">
+                {unregisteredPlayers.map((player) => (
+                  <li key={player.id} className="flex items-center justify-between text-sm">
+                    <span>{player.nameSlug}</span>
+                    <Button variant="ghost" size="sm" onClick={() => addPlayer(player.id)}>Add</Button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
-      </CardContent>
+      </CardContent>}
     </Card>
   )
 }

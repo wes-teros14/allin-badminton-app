@@ -1,11 +1,41 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { usePlayers } from '@/hooks/usePlayers'
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
+function NicknameCell({ id, initial, onSave }: { id: string; initial: string | null; onSave: (id: string, val: string | null) => Promise<void> }) {
+  const [value, setValue] = useState(initial ?? '')
+  const [saving, setSaving] = useState(false)
+  const dirty = value !== (initial ?? '')
+
+  async function handleBlur() {
+    if (!dirty) return
+    setSaving(true)
+    await onSave(id, value.trim() || null)
+    setSaving(false)
+  }
+
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={handleBlur}
+      placeholder="—"
+      disabled={saving}
+      className="h-7 w-28 rounded border border-transparent bg-transparent px-1 text-xs text-foreground placeholder:text-muted-foreground hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 transition-colors"
+    />
+  )
+}
+
 export function PlayersView() {
   const { players, isLoading, updatePlayer } = usePlayers()
+
+  async function saveNickname(id: string, nickname: string | null) {
+    await updatePlayer(id, { nickname })
+  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-4">
@@ -33,7 +63,10 @@ export function PlayersView() {
                     <th className="text-left py-2 pr-3 font-medium">Email</th>
                     <th className="text-left py-2 pr-3 font-medium">Nickname</th>
                     <th className="text-left py-2 pr-3 font-medium">Gender</th>
-                    <th className="text-left py-2 font-medium">Level</th>
+                    <th className="text-left py-2 font-medium">
+                      Level
+                      <span className="block text-[10px] font-normal text-muted-foreground normal-case tracking-normal">1=Newbie · 10=Pro</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -41,7 +74,9 @@ export function PlayersView() {
                     <tr key={player.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="py-2 pr-3 font-medium max-w-[150px] truncate">{player.nameSlug}</td>
                       <td className="py-2 pr-3 text-muted-foreground text-xs max-w-[180px] truncate">{player.email ?? '—'}</td>
-                      <td className="py-2 pr-3 text-muted-foreground text-xs">{player.nickname ?? '—'}</td>
+                      <td className="py-2 pr-3">
+                        <NicknameCell id={player.id} initial={player.nickname} onSave={saveNickname} />
+                      </td>
                       <td className="py-2 pr-3">
                         <div className="flex rounded overflow-hidden border text-xs w-fit">
                           {(['M', 'F'] as const).map((g) => (

@@ -10,7 +10,23 @@
       "Bash(npm run:*)",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:github.com)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(ls:*)",
+      "Bash(npx shadcn:*)",
+      "Read(//c//**)",
+      "Read(//c/Users/MarkWesleyAncog/**)",
+      "Read(//c/1Wes/badminton_v2/badminton-v2/**)",
+      "Bash(cd:*)",
+      "Bash(find /c/1Wes/badminton_v2/badminton-v2 -name *match_results* -type f)",
+      "Bash(find C:1Wesbadminton_v2badminton-v2 -path *.githubworkflows* -type f)",
+      "Bash(grep:*)",
+      "Bash(find /c/1Wes/badminton_v2 -name *.sql)",
+      "Bash(find /c/1Wes/badminton_v2 -name *.sql -o -name migration*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

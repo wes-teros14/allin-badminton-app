@@ -3,8 +3,39 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRegistration } from '@/hooks/useRegistration'
 
+function isInAppBrowser() {
+  const ua = navigator.userAgent
+  return /FBAN|FBAV|FB_IAB|Instagram|LinkedInApp|Twitter|Line\/|MicroMessenger|Snapchat/i.test(ua)
+}
+
 export function RegisterView() {
   const [searchParams] = useSearchParams()
+
+  if (isInAppBrowser()) {
+    const currentUrl = window.location.href
+    return (
+      <div className="p-6 max-w-sm mx-auto">
+        <Card>
+          <CardHeader><CardTitle>Open in Browser</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Google sign-in doesn't work inside Messenger or other apps.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Please open this link in <strong>Chrome</strong> or <strong>Safari</strong> to register.
+            </p>
+            <button
+              onClick={() => navigator.clipboard?.writeText(currentUrl).catch(() => {})}
+              className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Copy Link
+            </button>
+            <p className="text-xs text-center text-muted-foreground">Then paste it in Chrome or Safari</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   // After OAuth redirect, Supabase drops query params — restore token from sessionStorage
   const token = searchParams.get('token') ?? sessionStorage.getItem('registration_token')
   const { user, isLoading, isValidToken, isAlreadyRegistered, isFull, signIn, register } =
