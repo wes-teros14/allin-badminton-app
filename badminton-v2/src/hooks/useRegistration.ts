@@ -44,11 +44,13 @@ export function useRegistration(token: string | null): RegistrationState {
         return
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('session_invitations')
         .select('session_id, is_active')
         .eq('id', token)
         .maybeSingle()
+
+      if (error) console.error('[useRegistration] token validation error:', error)
 
       const inv = data as { session_id: string; is_active: boolean } | null
 
