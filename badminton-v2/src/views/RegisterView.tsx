@@ -7,7 +7,7 @@ export function RegisterView() {
   const [searchParams] = useSearchParams()
   // After OAuth redirect, Supabase drops query params — restore token from sessionStorage
   const token = searchParams.get('token') ?? sessionStorage.getItem('registration_token')
-  const { user, isLoading, isValidToken, isAlreadyRegistered, signIn, register } =
+  const { user, isLoading, isValidToken, isAlreadyRegistered, isFull, signIn, register } =
     useRegistration(token)
 
   // No token in URL at all — definitely closed
@@ -48,6 +48,19 @@ export function RegisterView() {
           <CardHeader><CardTitle>Registration Closed</CardTitle></CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Registration is closed. Contact the admin.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (isFull) {
+    return (
+      <div className="p-6 max-w-sm mx-auto">
+        <Card>
+          <CardHeader><CardTitle>Session Full</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Registration is full. Contact the admin.</p>
           </CardContent>
         </Card>
       </div>

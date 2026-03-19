@@ -23,6 +23,7 @@ export interface Invitation {
   id: string
   session_id: string
   is_active: boolean
+  max_players: number | null
   created_at: string
 }
 

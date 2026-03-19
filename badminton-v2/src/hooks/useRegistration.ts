@@ -8,6 +8,7 @@ interface RegistrationState {
   isLoading: boolean
   isValidToken: boolean
   isAlreadyRegistered: boolean
+  isFull: boolean
   signIn: () => Promise<void>
   register: () => Promise<void>
 }
@@ -17,6 +18,7 @@ export function useRegistration(token: string | null): RegistrationState {
   const [isLoading, setIsLoading] = useState(true)
   const [isValidToken, setIsValidToken] = useState(false)
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false)
+  const [isFull, setIsFull] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
 
   // Auth listener
@@ -52,13 +54,13 @@ export function useRegistration(token: string | null): RegistrationState {
 
       const { data, error } = await supabase
         .from('session_invitations')
-        .select('session_id, is_active')
+        .select('session_id, is_active, max_players')
         .eq('id', token)
         .maybeSingle()
 
       if (error) console.error('[useRegistration] token validation error:', error)
 
-      const inv = data as { session_id: string; is_active: boolean } | null
+      const inv = data as { session_id: string; is_active: boolean; max_players: number | null } | null
 
       if (!inv || !inv.is_active) {
         setIsValidToken(false)
@@ -78,6 +80,16 @@ export function useRegistration(token: string | null): RegistrationState {
         .maybeSingle()
 
       setIsAlreadyRegistered(!!existing)
+
+      // Check if session is full (only matters if not already registered)
+      if (!existing && inv.max_players != null) {
+        const { count } = await supabase
+          .from('session_registrations')
+          .select('*', { count: 'exact', head: true })
+          .eq('session_id', inv.session_id)
+        setIsFull((count ?? 0) >= inv.max_players)
+      }
+
       setIsLoading(false)
     }
 
@@ -115,5 +127,5 @@ export function useRegistration(token: string | null): RegistrationState {
     setIsAlreadyRegistered(true)
   }
 
-  return { user, isLoading, isValidToken, isAlreadyRegistered, signIn, register }
+  return { user, isLoading, isValidToken, isAlreadyRegistered, isFull, signIn, register }
 }
