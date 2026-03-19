@@ -26,7 +26,7 @@ export function RegistrationURLCard({ invitation, playerCount = 0 }: Props) {
   async function handleSaveLimit() {
     setSaving(true)
     const val = limitInput.trim() === '' ? null : Math.max(1, parseInt(limitInput))
-    await supabase.from('session_invitations').update({ max_players: val }).eq('id', invitation.id)
+    await supabase.from('session_invitations').update({ max_players: val } as never).eq('id', invitation.id)
     setSavedLimit(val)
     setSaving(false)
   }
