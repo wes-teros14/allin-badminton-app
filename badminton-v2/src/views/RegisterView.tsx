@@ -1,5 +1,5 @@
+import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRegistration } from '@/hooks/useRegistration'
 
@@ -43,6 +43,15 @@ export function RegisterView() {
   console.log('[Register] token used:', token)
   const { user, isLoading, isValidToken, isAlreadyRegistered, isFull, signIn, register } =
     useRegistration(token)
+
+  // Auto-register once conditions are confirmed — skip manual confirmation step
+  const hasAutoRegistered = useRef(false)
+  useEffect(() => {
+    if (user && isValidToken && !isAlreadyRegistered && !isFull && !isLoading && !hasAutoRegistered.current) {
+      hasAutoRegistered.current = true
+      register()
+    }
+  }, [user, isValidToken, isAlreadyRegistered, isFull, isLoading])
 
   // No token in URL at all — definitely closed
   if (!token) {
@@ -117,10 +126,9 @@ export function RegisterView() {
   return (
     <div className="p-6 max-w-sm mx-auto">
       <Card>
-        <CardHeader><CardTitle>Register for Session</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">Signed in as: {user.email}</p>
-          <Button onClick={register} className="w-full">Register</Button>
+        <CardHeader><CardTitle>Registering…</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Please wait while we complete your registration.</p>
         </CardContent>
       </Card>
     </div>
