@@ -10,7 +10,7 @@ interface Props {
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export function RosterPanel({ sessionId, editable = false }: Props) {
-  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updatePlayerProfile } =
+  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride } =
     useRoster(sessionId)
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading roster…</div>
@@ -36,7 +36,7 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
                       {(['M', 'F'] as const).map((g) => (
                         <button
                           key={g}
-                          onClick={() => updatePlayerProfile(player.playerId, g, player.level)}
+                          onClick={() => updateSessionOverride(player.registrationId, g, player.level)}
                           className={`px-2 py-1 transition-colors ${
                             player.gender === g
                               ? 'bg-primary text-primary-foreground'
@@ -51,7 +51,7 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
                     {/* Level select */}
                     <select
                       value={player.level ?? ''}
-                      onChange={(e) => updatePlayerProfile(player.playerId, player.gender, e.target.value ? +e.target.value : null)}
+                      onChange={(e) => updateSessionOverride(player.registrationId, player.gender, e.target.value ? +e.target.value : null)}
                       className="h-7 rounded border border-input bg-background text-foreground px-1 text-xs w-14"
                     >
                       <option value="">Lvl</option>

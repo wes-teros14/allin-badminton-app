@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
+import { supabase } from '@/lib/supabase'
+import { toast } from 'sonner'
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -49,6 +52,23 @@ function RankListCard({ label, items, subLabel }: {
 export function ProfileView() {
   const { user, role, isLoading: authLoading } = useAuth()
   const { stats, isLoading: statsLoading } = useProfileStats(user?.id)
+  const [nickname, setNickname] = useState('')
+  const [savingNickname, setSavingNickname] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    supabase.from('profiles').select('nickname').eq('id', user.id).maybeSingle()
+      .then(({ data }) => { if (data) setNickname((data as any).nickname ?? '') })
+  }, [user?.id])
+
+  async function handleSaveNickname() {
+    if (!user) return
+    setSavingNickname(true)
+    const { error } = await supabase.from('profiles').update({ nickname: nickname.trim() || null } as never).eq('id', user.id)
+    if (error) toast.error(error.message)
+    else toast.success('Nickname saved')
+    setSavingNickname(false)
+  }
 
   if (authLoading) return <div className="p-6">Loading…</div>
 
@@ -72,6 +92,24 @@ export function ProfileView() {
           <p className="text-sm text-muted-foreground">{user.email}</p>
         </div>
         <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
+      </div>
+
+      {/* Nickname */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="Add a nickname…"
+          className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        <button
+          onClick={handleSaveNickname}
+          disabled={savingNickname}
+          className="px-4 h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
+        >
+          {savingNickname ? 'Saving…' : 'Save'}
+        </button>
       </div>
 
       {/* Stats */}

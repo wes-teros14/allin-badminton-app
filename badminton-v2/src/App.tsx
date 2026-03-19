@@ -32,6 +32,7 @@ const KioskView    = lazy(() => import('@/views/KioskView'))
 const PlayerView   = lazy(() => import('@/views/PlayerView'))
 const AdminView    = lazy(() => import('@/views/AdminView'))
 const SessionView  = lazy(() => import('@/views/SessionView'))
+const PlayersView  = lazy(() => import('@/views/PlayersView'))
 const RegisterView = lazy(() => import('@/views/RegisterView'))
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminView />} />
           <Route path="/session/:sessionId" element={<SessionView />} />
+          <Route path="/players" element={<PlayersView />} />
         </Route>
         <Route path="/register" element={<RegisterView />} />
         <Route path="*" element={<Navigate to="/" replace />} />

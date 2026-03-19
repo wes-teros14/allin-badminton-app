@@ -140,6 +140,19 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
   }
 
   function handleGenerate() {
+    // Guard: check for missing gender/level before generating
+    const issues: string[] = []
+    for (const p of players) {
+      const missing: string[] = []
+      if (p.level == null) missing.push('level')
+      if (!settings.disableGenderRules && !p.gender) missing.push('gender')
+      if (missing.length > 0) issues.push(`${p.nameSlug} (no ${missing.join(', ')})`)
+    }
+    if (issues.length > 0) {
+      toast.error(`Fix player data first: ${issues.join(' · ')}`, { duration: 6000 })
+      return
+    }
+
     const fromPreview = stage === 'preview'
     if (fromPreview) {
       setIsRegenerating(true)

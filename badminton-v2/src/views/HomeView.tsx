@@ -37,12 +37,20 @@ export function HomeView() {
             My Profile
           </Link>
           {role === 'admin' && (
-            <Link
-              to="/admin"
-              className="text-center px-8 py-3 rounded-lg border border-border text-foreground font-semibold hover:bg-muted transition-colors"
-            >
-              Admin
-            </Link>
+            <>
+              <Link
+                to="/admin"
+                className="text-center px-8 py-3 rounded-lg border border-border text-foreground font-semibold hover:bg-muted transition-colors"
+              >
+                Admin
+              </Link>
+              <Link
+                to="/players"
+                className="text-center px-8 py-3 rounded-lg border border-border text-foreground font-semibold hover:bg-muted transition-colors"
+              >
+                Players
+              </Link>
+            </>
           )}
         </div>
       )}

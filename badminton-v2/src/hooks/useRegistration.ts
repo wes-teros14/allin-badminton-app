@@ -113,7 +113,7 @@ export function useRegistration(token: string | null): RegistrationState {
       ?? user.id
     await supabase
       .from('profiles')
-      .upsert({ id: user.id, name_slug: displayName, role: 'player' }, { onConflict: 'id', ignoreDuplicates: true })
+      .upsert({ id: user.id, name_slug: displayName, email: user.email ?? null, role: 'player' } as never, { onConflict: 'id', ignoreDuplicates: true })
 
     const { error } = await supabase
       .from('session_registrations')

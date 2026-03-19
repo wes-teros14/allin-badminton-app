@@ -18,6 +18,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
     async function fetch() {
       if (!sessionId) return
 
+      // Fetch registrations with session-level gender/level overrides
       const { data: regs, error: regsError } = await supabase
         .from('session_registrations')
         .select('player_id')
@@ -29,7 +30,8 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
         return
       }
 
-      const playerIds = (regs ?? []).map((r) => (r as { player_id: string }).player_id)
+      const regsFull = (regs ?? []) as any[]
+      const playerIds = regsFull.map((r) => r.player_id as string)
 
       if (playerIds.length === 0) {
         setPlayers([])
@@ -48,13 +50,17 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
         return
       }
 
-      const result = (profiles ?? []).map((p) => {
-        const profile = p as { id: string; name_slug: string; gender: 'M' | 'F' | null; level: number | null }
+      const profileMap = new Map(
+        (profiles ?? []).map((p: any) => [p.id as string, p as { id: string; name_slug: string; gender: 'M' | 'F' | null; level: number | null }])
+      )
+
+      const result: PlayerInput[] = regsFull.map((r) => {
+        const profile = profileMap.get(r.player_id)
         return {
-          id: profile.id,
-          nameSlug: profile.name_slug,
-          gender: profile.gender,
-          level: profile.level,
+          id: r.player_id,
+          nameSlug: profile?.name_slug ?? r.player_id,
+          gender: (r.gender ?? profile?.gender ?? null) as 'M' | 'F' | null,
+          level: r.level ?? profile?.level ?? null,
         }
       })
 

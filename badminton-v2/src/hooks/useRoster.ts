@@ -21,7 +21,7 @@ interface RosterState {
   isLoading: boolean
   addPlayer: (playerId: string) => Promise<void>
   removePlayer: (registrationId: string) => Promise<void>
-  updatePlayerProfile: (playerId: string, gender: 'M' | 'F' | null, level: number | null) => Promise<void>
+  updateSessionOverride: (registrationId: string, gender: 'M' | 'F' | null, level: number | null) => Promise<void>
 }
 
 export function useRoster(sessionId: string | undefined): RosterState {
@@ -32,6 +32,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
   async function fetchRoster() {
     if (!sessionId) return
 
+    // Fetch registrations including session-specific gender/level overrides
     const { data: regs, error: regsError } = await supabase
       .from('session_registrations')
       .select('id, player_id')
@@ -40,16 +41,17 @@ export function useRoster(sessionId: string | undefined): RosterState {
     if (regsError) { toast.error(regsError.message); return }
 
     const registrations = (regs ?? []) as { id: string; player_id: string }[]
+    const regsFull = (regs ?? []) as any[]
     const registeredIds = registrations.map((r) => r.player_id)
 
-    // Profiles for registered players (include level + gender)
+    // Profile defaults (name, gender, level)
     const registeredProfiles =
       registeredIds.length > 0
         ? ((await supabase.from('profiles').select('id, name_slug, gender, level').in('id', registeredIds)).data ?? []) as
             { id: string; name_slug: string; gender: 'M' | 'F' | null; level: number | null }[]
         : []
 
-    // Known players (role=player) for "Add player" list
+    // All known players for "Add player" list
     const { data: allProfiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name_slug')
@@ -60,14 +62,14 @@ export function useRoster(sessionId: string | undefined): RosterState {
     const playerProfiles = (allProfiles ?? []) as { id: string; name_slug: string }[]
     const profileMap = new Map(registeredProfiles.map((p) => [p.id, p]))
 
-    const rosterPlayers: RosterPlayer[] = registrations.map((r) => {
+    const rosterPlayers: RosterPlayer[] = regsFull.map((r) => {
       const p = profileMap.get(r.player_id)
       return {
         registrationId: r.id,
         playerId: r.player_id,
         nameSlug: p?.name_slug ?? r.player_id,
-        gender: p?.gender ?? null,
-        level: p?.level ?? null,
+        gender: (r.gender ?? p?.gender ?? null) as 'M' | 'F' | null,
+        level: r.level ?? p?.level ?? null,
       }
     })
 
@@ -108,14 +110,15 @@ export function useRoster(sessionId: string | undefined): RosterState {
     fetchRoster()
   }
 
-  async function updatePlayerProfile(playerId: string, gender: 'M' | 'F' | null, level: number | null) {
+  // Writes session-specific gender/level override (does NOT touch profiles)
+  async function updateSessionOverride(registrationId: string, gender: 'M' | 'F' | null, level: number | null) {
     const { error } = await supabase
-      .from('profiles')
-      .update({ gender, level })
-      .eq('id', playerId)
+      .from('session_registrations')
+      .update({ gender, level } as never)
+      .eq('id', registrationId)
     if (error) { toast.error(error.message); return }
-    setPlayers((prev) => prev.map((p) => p.playerId === playerId ? { ...p, gender, level } : p))
+    setPlayers((prev) => prev.map((p) => p.registrationId === registrationId ? { ...p, gender, level } : p))
   }
 
-  return { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updatePlayerProfile }
+  return { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride }
 }
