@@ -112,16 +112,24 @@ export function useRegistration(token: string | null): RegistrationState {
     // First check if a profile already exists, then INSERT if missing.
     // We avoid upsert+ignoreDuplicates because ON CONFLICT DO NOTHING
     // silently swallows RLS denials, making failures invisible.
-    const { data: existingProfile } = await supabase
+    console.log('[register] user.id:', user.id, 'user.email:', user.email)
+
+    const { data: existingProfile, error: selectError } = await supabase
       .from('profiles')
       .select('id')
       .eq('id', user.id)
       .maybeSingle()
 
+    console.log('[register] existingProfile:', existingProfile, 'selectError:', selectError)
+
     if (!existingProfile) {
-      const { error: insertError } = await supabase
+      console.log('[register] no profile found — inserting')
+      const { data: insertData, error: insertError } = await supabase
         .from('profiles')
         .insert({ id: user.id, name_slug: user.id, email: user.email ?? null, role: 'player' } as never)
+        .select()
+
+      console.log('[register] insert result:', insertData, insertError)
 
       if (insertError) {
         console.error('[register] profile insert error:', insertError)
@@ -129,15 +137,17 @@ export function useRegistration(token: string | null): RegistrationState {
         return
       }
     } else {
-      // Profile exists — patch email if not already set
-      const { error: profileError } = await supabase
+      console.log('[register] profile exists — patching email')
+      const { data: updateData, error: profileError } = await supabase
         .from('profiles')
         .update({ email: user.email ?? null } as never)
         .eq('id', user.id)
+        .select()
+
+      console.log('[register] update result:', updateData, profileError)
 
       if (profileError) {
         console.error('[register] profile email update error:', profileError)
-        // Non-fatal: email update failure shouldn't block registration
         console.warn('[register] continuing despite email update failure')
       }
     }
