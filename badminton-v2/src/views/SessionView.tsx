@@ -6,7 +6,7 @@ import { LiveIndicator } from '@/components/LiveIndicator'
 
 export function SessionView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId: string }>()
-  const { court1Current, court2Current, queued, sessionId, sessionName, isLoading, refresh } =
+  const { court1Current, court2Current, queued, sessionId, sessionName, sessionStatus, isLoading, refresh } =
     useAdminSession(sessionIdParam)
   const { status } = useRealtime(sessionId, refresh, 'session')
 
@@ -14,6 +14,16 @@ export function SessionView() {
     return (
       <div className="h-screen flex items-center justify-center">
         <p className="text-muted-foreground text-lg">Session not found</p>
+      </div>
+    )
+  }
+
+  if (!isLoading && sessionStatus === 'complete') {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center gap-3">
+        <p className="text-lg font-semibold">{sessionName}</p>
+        <p className="text-muted-foreground">This session has been closed.</p>
+        <Link to="/admin" className="text-sm text-primary hover:underline">← Back to Admin</Link>
       </div>
     )
   }

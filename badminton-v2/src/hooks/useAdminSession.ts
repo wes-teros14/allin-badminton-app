@@ -16,6 +16,7 @@ interface UseAdminSessionResult {
   queued: AdminMatchDisplay[]
   sessionId: string | null
   sessionName: string
+  sessionStatus: string | null
   isLoading: boolean
   refresh: () => void
 }
@@ -37,6 +38,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
   const [queued, setQueued] = useState<AdminMatchDisplay[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessionName, setSessionName] = useState('')
+  const [sessionStatus, setSessionStatus] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const isFirstLoad = useRef(true)
@@ -56,7 +58,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
         // Load specific session by ID
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name')
+          .select('id, name, status')
           .eq('id', sessionIdParam)
           .maybeSingle()
 
@@ -72,13 +74,14 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
           return
         }
 
-        sid = (session as { id: string; name: string }).id
-        sessionLabel = (session as { id: string; name: string }).name
+        sid = (session as { id: string; name: string; status: string }).id
+        sessionLabel = (session as { id: string; name: string; status: string }).name
+        setSessionStatus((session as { id: string; name: string; status: string }).status)
       } else {
         // Find active session
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name')
+          .select('id, name, status')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -96,8 +99,9 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
           return
         }
 
-        sid = (session as { id: string; name: string }).id
-        sessionLabel = (session as { id: string; name: string }).name
+        sid = (session as { id: string; name: string; status: string }).id
+        sessionLabel = (session as { id: string; name: string; status: string }).name
+        setSessionStatus((session as { id: string; name: string; status: string }).status)
       }
 
       setSessionId(sid)
@@ -169,5 +173,5 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
   }, [sessionIdParam, refreshKey])
 
 
-  return { court1Current, court2Current, queued, sessionId, sessionName, isLoading, refresh }
+  return { court1Current, court2Current, queued, sessionId, sessionName, sessionStatus, isLoading, refresh }
 }
