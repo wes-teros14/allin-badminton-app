@@ -30,9 +30,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   setup: 'text-muted-foreground',
-  registration_open: 'text-blue-400',
-  registration_closed: 'text-yellow-400',
-  schedule_locked: 'text-yellow-400',
+  registration_open: 'text-[#EB5B00]',
+  registration_closed: 'text-[#FFB200]',
+  schedule_locked: 'text-[#FFB200]',
   in_progress: 'text-primary font-bold',
   complete: 'text-muted-foreground',
 }

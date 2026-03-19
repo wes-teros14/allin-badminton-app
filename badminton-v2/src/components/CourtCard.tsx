@@ -115,7 +115,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
       {confirmingFinish && current ? (
         /* Who Won — takes over the full middle area */
         <div className="flex-1 flex flex-col items-center justify-center gap-4 animate-[court-fade-in_0.3s_ease-out]">
-          <p className="text-2xl font-bold uppercase tracking-widest text-yellow-400">Who won?</p>
+          <p className="text-2xl font-bold uppercase tracking-widest text-[#FFB200]">Who won?</p>
           <button
             onClick={() => handleFinish(1)}
             disabled={isSaving}
