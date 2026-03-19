@@ -46,27 +46,30 @@ interface SessionState {
   closeSession: () => Promise<void>
 }
 
-export function useSession(): SessionState {
+export function useSession(sessionId?: string): SessionState {
   const [session, setSession] = useState<Session | null>(null)
   const [invitation, setInvitation] = useState<Invitation | null>(null)
   const [playerCount, setPlayerCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchLatestSession() {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+    async function fetchSession() {
+      setIsLoading(true)
+      let query = supabase.from('sessions').select('*')
+
+      if (sessionId) {
+        query = query.eq('id', sessionId)
+      } else {
+        query = query.order('created_at', { ascending: false }).limit(1)
+      }
+
+      const { data, error } = await query.maybeSingle()
 
       if (error) {
         toast.error(error.message)
       } else {
         setSession(data as Session | null)
 
-        // After fetching session, if status is registration_open, fetch active invitation + player count
         if (data && (data as Session).status === 'registration_open') {
           const { data: inv } = await supabase
             .from('session_invitations')
@@ -86,8 +89,8 @@ export function useSession(): SessionState {
       setIsLoading(false)
     }
 
-    fetchLatestSession()
-  }, [])
+    fetchSession()
+  }, [sessionId])
 
   async function createSession(name: string, date: string): Promise<Session | null> {
     const {
