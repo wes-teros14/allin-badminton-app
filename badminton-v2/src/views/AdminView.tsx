@@ -37,9 +37,14 @@ const STATUS_COLORS: Record<string, string> = {
   complete: 'text-muted-foreground',
 }
 
-function SessionCard({ session, onClose }: { session: Session; onClose: () => void }) {
+function SessionCard({ session, onClose, onDelete }: { session: Session; onClose: () => void; onDelete: () => void }) {
   const navigate = useNavigate()
   const [closing, setClosing] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => { if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current) }, [])
 
   async function handleClose(e: React.MouseEvent) {
     e.stopPropagation()
@@ -51,6 +56,26 @@ function SessionCard({ session, onClose }: { session: Session; onClose: () => vo
     if (error) toast.error(error.message)
     else onClose()
     setClosing(false)
+  }
+
+  function handleDeleteClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      deleteTimerRef.current = setTimeout(() => setConfirmDelete(false), 3000)
+    } else {
+      clearTimeout(deleteTimerRef.current!)
+      setConfirmDelete(false)
+      handleDelete()
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    const { error } = await supabase.from('sessions').delete().eq('id', session.id)
+    if (error) toast.error(error.message)
+    else onDelete()
+    setDeleting(false)
   }
 
   return (
@@ -66,16 +91,21 @@ function SessionCard({ session, onClose }: { session: Session; onClose: () => vo
             {STATUS_LABELS[session.status] ?? session.status}
           </p>
         </div>
-        {session.status === 'in_progress' && (
+        <div className="flex gap-2 shrink-0">
+          {session.status === 'in_progress' && (
+            <Button variant="destructive" size="sm" disabled={closing} onClick={handleClose}>
+              Close
+            </Button>
+          )}
           <Button
-            variant="destructive"
+            variant={confirmDelete ? 'destructive' : 'ghost'}
             size="sm"
-            disabled={closing}
-            onClick={handleClose}
+            disabled={deleting}
+            onClick={handleDeleteClick}
           >
-            Close
+            {confirmDelete ? 'Confirm?' : 'Delete'}
           </Button>
-        )}
+        </div>
       </CardContent>
     </Card>
   )
@@ -151,7 +181,7 @@ export function AdminView() {
         ) : activeSessions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No active sessions.</p>
         ) : (
-          activeSessions.map((s) => <SessionCard key={s.id} session={s} onClose={refresh} />)
+          activeSessions.map((s) => <SessionCard key={s.id} session={s} onClose={refresh} onDelete={refresh} />)
         )}
       </div>
 
@@ -165,7 +195,7 @@ export function AdminView() {
             {showPast ? '▾' : '▸'} Past Sessions ({pastSessions.length})
           </button>
           {showPast && pastSessions.map((s) => (
-            <SessionCard key={s.id} session={s} onClose={refresh} />
+            <SessionCard key={s.id} session={s} onClose={refresh} onDelete={refresh} />
           ))}
         </div>
       )}
