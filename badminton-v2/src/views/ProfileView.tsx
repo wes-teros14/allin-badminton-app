@@ -53,6 +53,7 @@ export function ProfileView() {
   const { user, role, isLoading: authLoading } = useAuth()
   const { stats, isLoading: statsLoading } = useProfileStats(user?.id)
   const [nickname, setNickname] = useState('')
+  const [editingNickname, setEditingNickname] = useState(false)
   const [savingNickname, setSavingNickname] = useState(false)
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export function ProfileView() {
     setSavingNickname(true)
     const { error } = await supabase.from('profiles').update({ nickname: nickname.trim() || null } as never).eq('id', user.id)
     if (error) toast.error(error.message)
-    else toast.success('Nickname saved')
+    else { toast.success('Nickname saved'); setEditingNickname(false) }
     setSavingNickname(false)
   }
 
@@ -96,20 +97,44 @@ export function ProfileView() {
 
       {/* Nickname */}
       <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={nickname}
-          onChange={(e) => setNickname(e.target.value)}
-          placeholder="Add a nickname…"
-          className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-        />
-        <button
-          onClick={handleSaveNickname}
-          disabled={savingNickname}
-          className="px-4 h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
-        >
-          {savingNickname ? 'Saving…' : 'Save'}
-        </button>
+        {editingNickname ? (
+          <>
+            <input
+              autoFocus
+              type="text"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="Add a nickname…"
+              className="flex-1 h-9 rounded-md border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <button
+              onClick={handleSaveNickname}
+              disabled={savingNickname}
+              className="px-4 h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors shrink-0"
+            >
+              {savingNickname ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              onClick={() => setEditingNickname(false)}
+              className="px-3 h-9 rounded-md border text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="flex-1 text-sm text-foreground">
+              {nickname || <span className="text-muted-foreground">No nickname set</span>}
+            </span>
+            <button
+              onClick={() => setEditingNickname(true)}
+              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title="Edit nickname"
+            >
+              ✏️
+            </button>
+          </>
+        )}
       </div>
 
       {/* Stats */}

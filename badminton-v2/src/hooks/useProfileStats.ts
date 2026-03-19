@@ -119,10 +119,10 @@ export function useProfileStats(userId: string | undefined) {
       if (idsToResolve.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, name_slug')
+          .select('id, name_slug, nickname')
           .in('id', idsToResolve)
-        for (const p of (profiles ?? []) as Array<{ id: string; name_slug: string }>) {
-          nameMap.set(p.id, p.name_slug)
+        for (const p of (profiles ?? []) as Array<{ id: string; name_slug: string; nickname?: string | null }>) {
+          nameMap.set(p.id, p.nickname ?? p.name_slug)
         }
       }
 
