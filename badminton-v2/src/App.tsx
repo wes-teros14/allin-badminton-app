@@ -1,11 +1,27 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '@/lib/supabase'
 import { Toaster } from '@/components/ui/sonner'
 
 function AdminRoute() {
-  const { role, isLoading } = useAuth()
+  const { user, role, isLoading } = useAuth()
   if (isLoading) return <div>Loading…</div>
+  if (!user) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <button
+          onClick={() => supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: `${window.location.origin}/admin` },
+          })}
+          className="px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+        >
+          Sign in with Google
+        </button>
+      </div>
+    )
+  }
   if (role !== 'admin') return <Navigate to="/" replace />
   return <Outlet />
 }
