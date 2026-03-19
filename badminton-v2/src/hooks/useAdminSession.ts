@@ -31,7 +31,7 @@ type MatchRow = {
   court_number: number | null
 }
 
-export function useAdminSession(): UseAdminSessionResult {
+export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult {
   const [court1Current, setCourt1Current] = useState<AdminMatchDisplay | null>(null)
   const [court2Current, setCourt2Current] = useState<AdminMatchDisplay | null>(null)
   const [queued, setQueued] = useState<AdminMatchDisplay[]>([])
@@ -49,30 +49,59 @@ export function useAdminSession(): UseAdminSessionResult {
     async function load() {
       if (isFirstLoad.current) setIsLoading(true)
 
-      // 1. Find active session
-      const { data: session } = await supabase
-        .from('sessions')
-        .select('id, name')
-        .in('status', ['schedule_locked', 'in_progress'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      let sid: string
+      let sessionLabel: string
 
-      if (cancelled) return
+      if (sessionIdParam) {
+        // Load specific session by ID
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('id, name')
+          .eq('id', sessionIdParam)
+          .maybeSingle()
 
-      if (!session) {
-        setSessionId(null)
-        setCourt1Current(null)
-        setCourt2Current(null)
-        setQueued([])
-        isFirstLoad.current = false
-        setIsLoading(false)
-        return
+        if (cancelled) return
+
+        if (!session) {
+          setSessionId(null)
+          setCourt1Current(null)
+          setCourt2Current(null)
+          setQueued([])
+          isFirstLoad.current = false
+          setIsLoading(false)
+          return
+        }
+
+        sid = (session as { id: string; name: string }).id
+        sessionLabel = (session as { id: string; name: string }).name
+      } else {
+        // Find active session
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('id, name')
+          .in('status', ['schedule_locked', 'in_progress'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (cancelled) return
+
+        if (!session) {
+          setSessionId(null)
+          setCourt1Current(null)
+          setCourt2Current(null)
+          setQueued([])
+          isFirstLoad.current = false
+          setIsLoading(false)
+          return
+        }
+
+        sid = (session as { id: string; name: string }).id
+        sessionLabel = (session as { id: string; name: string }).name
       }
 
-      const sid = (session as { id: string; name: string }).id
       setSessionId(sid)
-      setSessionName((session as { id: string; name: string }).name)
+      setSessionName(sessionLabel)
 
       // 2. Fetch all matches
       const { data: rows } = await supabase
@@ -137,7 +166,7 @@ export function useAdminSession(): UseAdminSessionResult {
 
     load()
     return () => { cancelled = true }
-  }, [refreshKey])
+  }, [sessionIdParam, refreshKey])
 
 
   return { court1Current, court2Current, queued, sessionId, sessionName, isLoading, refresh }

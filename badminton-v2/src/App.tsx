@@ -29,6 +29,7 @@ function AdminRoute() {
 const KioskView    = lazy(() => import('@/views/KioskView'))
 const PlayerView   = lazy(() => import('@/views/PlayerView'))
 const AdminView    = lazy(() => import('@/views/AdminView'))
+const SessionView  = lazy(() => import('@/views/SessionView'))
 const RegisterView = lazy(() => import('@/views/RegisterView'))
 
 function App() {
@@ -43,6 +44,7 @@ function App() {
         <Route path="/player/:nameSlug" element={<PlayerView />} />
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminView />} />
+          <Route path="/session/:sessionId" element={<SessionView />} />
         </Route>
         <Route path="/register" element={<RegisterView />} />
         <Route path="*" element={<Navigate to="/" replace />} />

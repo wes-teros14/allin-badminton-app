@@ -134,7 +134,19 @@ export function AdminView() {
           </Button>
         </div>
       ) : session.status === 'in_progress' ? (
-        <AdminLiveView />
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <a
+              href={`/session/${session.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm px-3 py-1.5 rounded border border-border hover:bg-muted transition-colors"
+            >
+              Open Session View ↗
+            </a>
+          </div>
+          <AdminLiveView />
+        </div>
       ) : (
         <Card>
           <CardHeader>
