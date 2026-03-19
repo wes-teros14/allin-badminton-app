@@ -111,9 +111,14 @@ export function useRegistration(token: string | null): RegistrationState {
     const displayName = (user.user_metadata?.full_name as string | undefined)
       ?? user.email
       ?? user.id
-    await supabase
+    const { error: profileError } = await supabase
       .from('profiles')
       .upsert({ id: user.id, name_slug: displayName, email: user.email ?? null, role: 'player' } as never, { onConflict: 'id', ignoreDuplicates: true })
+
+    if (profileError) {
+      toast.error('Failed to create profile: ' + profileError.message)
+      return
+    }
 
     const { error } = await supabase
       .from('session_registrations')
