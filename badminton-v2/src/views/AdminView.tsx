@@ -7,8 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useSession } from '@/hooks/useSession'
+import { useAdminSession } from '@/hooks/useAdminSession'
+import { useRealtime } from '@/hooks/useRealtime'
 import { RegistrationURLCard } from '@/components/RegistrationURLCard'
 import { RosterPanel } from '@/components/RosterPanel'
+import { MatchGeneratorPanel } from '@/components/MatchGeneratorPanel'
+import { CourtTabs } from '@/components/CourtTabs'
+import { LiveIndicator } from '@/components/LiveIndicator'
 
 const sessionSchema = z.object({
   name: z.string().min(1, 'Session name is required'),
@@ -17,8 +22,27 @@ const sessionSchema = z.object({
 
 type SessionFormValues = z.infer<typeof sessionSchema>
 
+function AdminLiveView() {
+  const { court1Current, court2Current, queued, sessionId, isLoading, refresh } = useAdminSession()
+  const { status } = useRealtime(sessionId, refresh, 'admin')
+
+  return (
+    <div className="relative space-y-6">
+      <LiveIndicator status={status} onRefresh={refresh} />
+      <CourtTabs
+        court1Current={court1Current}
+        court2Current={court2Current}
+        queued={queued}
+        isLoading={isLoading}
+        sessionId={sessionId}
+        onDone={refresh}
+      />
+    </div>
+  )
+}
+
 export function AdminView() {
-  const { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration } =
+  const { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession } =
     useSession()
 
   const [confirmingClose, setConfirmingClose] = useState(false)
@@ -100,6 +124,17 @@ export function AdminView() {
             {confirmingClose ? 'Confirm Close?' : 'Close Registration'}
           </Button>
         </div>
+      ) : session.status === 'registration_closed' ? (
+        <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} />
+      ) : session.status === 'schedule_locked' ? (
+        <div className="space-y-4">
+          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
+          <Button onClick={startSession} className="w-full">
+            Start Session
+          </Button>
+        </div>
+      ) : session.status === 'in_progress' ? (
+        <AdminLiveView />
       ) : (
         <Card>
           <CardHeader>

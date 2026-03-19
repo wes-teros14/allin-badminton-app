@@ -10,18 +10,24 @@ export type Database = {
           id: string
           role: 'admin' | 'player'
           name_slug: string
+          gender: 'M' | 'F' | null
+          level: number | null
           created_at: string
         }
         Insert: {
           id: string
           role?: 'admin' | 'player'
           name_slug: string
+          gender?: 'M' | 'F' | null
+          level?: number | null
           created_at?: string
         }
         Update: {
           id?: string
           role?: 'admin' | 'player'
           name_slug?: string
+          gender?: 'M' | 'F' | null
+          level?: number | null
           created_at?: string
         }
         Relationships: []
@@ -95,11 +101,72 @@ export type Database = {
         }
         Relationships: []
       }
+      matches: {
+        Row: {
+          id: string
+          session_id: string
+          queue_position: number
+          team1_player1_id: string
+          team1_player2_id: string
+          team2_player1_id: string
+          team2_player2_id: string
+          status: 'queued' | 'playing' | 'complete'
+          court_number: number | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          queue_position: number
+          team1_player1_id: string
+          team1_player2_id: string
+          team2_player1_id: string
+          team2_player2_id: string
+          status?: 'queued' | 'playing' | 'complete'
+          court_number?: number | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          queue_position?: number
+          team1_player1_id?: string
+          team1_player2_id?: string
+          team2_player1_id?: string
+          team2_player2_id?: string
+          status?: 'queued' | 'playing' | 'complete'
+          court_number?: number | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      match_results: {
+        Row: {
+          id: string
+          match_id: string
+          winning_pair_index: 1 | 2
+          completed_at: string
+        }
+        Insert: {
+          id?: string
+          match_id: string
+          winning_pair_index: 1 | 2
+          completed_at?: string
+        }
+        Update: {
+          id?: string
+          match_id?: string
+          winning_pair_index?: 1 | 2
+          completed_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
     Enums: {
       session_status: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
+      match_status: 'queued' | 'playing' | 'complete'
     }
   }
 }

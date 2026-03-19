@@ -3,10 +3,11 @@ sprint:
   generated: '2026-03-18'
   last_updated: '2026-03-19'
   total_stories: 21
-  complete: 0
+  complete: 19
   in_progress: 0
-  backlog: 18
-  ready_for_dev: 1
+  backlog: 2
+  deferred: 2
+  ready_for_dev: 0
 
 epics:
   - id: 1
@@ -15,7 +16,7 @@ epics:
     stories:
       - key: 1-1-project-scaffold-and-deployment-pipeline
         title: Project Scaffold and Deployment Pipeline
-        status: review
+        status: complete
         file: 1-1-project-scaffold-and-deployment-pipeline.md
 
       - key: 1-2-design-token-system-and-base-theming
@@ -25,12 +26,12 @@ epics:
 
       - key: 1-3-google-oauth-authentication-and-user-profiles
         title: Google OAuth Authentication and User Profiles
-        status: review
+        status: complete
         file: 1-3-google-oauth-authentication-and-user-profiles.md
 
       - key: 1-4-application-routes-and-role-based-access-control
         title: Application Routes and Role-Based Access Control
-        status: review
+        status: complete
         file: 1-4-application-routes-and-role-based-access-control.md
 
   - id: 2
@@ -38,22 +39,22 @@ epics:
     stories:
       - key: 2-1-create-new-session
         title: Create New Session
-        status: review
+        status: complete
         file: 2-1-create-new-session.md
 
       - key: 2-2-registration-url-generation
         title: Registration URL Generation
-        status: review
+        status: complete
         file: 2-2-registration-url-generation.md
 
       - key: 2-3-player-registration-via-oauth-link
         title: Player Registration via OAuth Link
-        status: review
+        status: complete
         file: 2-3-player-registration-via-oauth-link.md
 
       - key: 2-4-roster-management-and-registration-close
         title: Roster Management and Registration Close
-        status: review
+        status: complete
         file: 2-4-roster-management-and-registration-close.md
 
   - id: 3
@@ -61,67 +62,67 @@ epics:
     stories:
       - key: 3-1-match-schedule-generation-and-preview
         title: Match Schedule Generation and Preview
-        status: backlog
-        file: null
+        status: complete
+        file: 3-1-match-schedule-generation-and-preview.md
 
       - key: 3-2-lock-schedule-and-initialise-match-queue
         title: Lock Schedule and Initialise Match Queue
-        status: backlog
-        file: null
+        status: complete
+        file: 3-2-lock-schedule-and-initialise-match-queue.md
 
       - key: 3-3-post-lock-match-editing
         title: Post-Lock Match Editing
-        status: backlog
-        file: null
+        status: complete
+        file: 3-3-post-lock-match-editing.md
 
   - id: 4
     title: Live Kiosk
     stories:
       - key: 4-1-kiosk-layout-and-court-display
         title: Kiosk Layout and Court Display
-        status: backlog
-        file: null
+        status: complete
+        file: 4-1-kiosk-layout-and-court-display.md
 
       - key: 4-2-finish-action-queue-advancement-and-outcome-capture
         title: Finish Action, Queue Advancement and Outcome Capture
-        status: backlog
-        file: null
+        status: complete
+        file: 4-2-finish-action-queue-advancement-and-outcome-capture.md
 
       - key: 4-3-real-time-kiosk-updates-and-manual-refresh-fallback
         title: Real-Time Kiosk Updates and Manual Refresh Fallback
-        status: backlog
-        file: null
+        status: complete
+        file: 4-3-real-time-kiosk-updates-and-manual-refresh-fallback.md
 
   - id: 5
     title: Player View
     stories:
       - key: 5-1-player-list-and-personal-schedule-navigation
         title: Player List and Personal Schedule Navigation
-        status: backlog
-        file: null
+        status: complete
+        file: 5-1-player-list-and-personal-schedule-navigation.md
 
       - key: 5-2-personal-match-schedule-display
         title: Personal Match Schedule Display
-        status: backlog
-        file: null
+        status: complete
+        file: 5-2-personal-match-schedule-display.md
 
       - key: 5-3-real-time-player-view-updates
         title: Real-Time Player View Updates
-        status: backlog
-        file: null
+        status: complete
+        file: 5-3-real-time-player-view-updates.md
 
   - id: 6
     title: Admin Day-of
     stories:
       - key: 6-1-admin-mobile-live-court-view
         title: Admin Mobile Live Court View
-        status: backlog
-        file: null
+        status: complete
+        file: 6-1-admin-mobile-live-court-view.md
 
       - key: 6-2-remote-queue-intervention
         title: Remote Queue Intervention
-        status: backlog
-        file: null
+        status: complete
+        file: 6-2-remote-queue-intervention.md
 
   - id: 7
     title: Stats & Attendance
@@ -129,7 +130,7 @@ epics:
       - key: 7-1-player-stats-view
         title: Player Stats View
         status: backlog
-        file: null
+        file: 7-1-player-stats-view.md
 
       - key: 7-2-admin-stats-view
         title: Admin Stats View

@@ -26,6 +26,13 @@ export interface Invitation {
   created_at: string
 }
 
+export interface MatchInput {
+  team1Player1: string
+  team1Player2: string
+  team2Player1: string
+  team2Player2: string
+}
+
 interface SessionState {
   session: Session | null
   invitation: Invitation | null
@@ -34,6 +41,8 @@ interface SessionState {
   createSession: (name: string, date: string) => Promise<Session | null>
   openRegistration: () => Promise<void>
   closeRegistration: () => Promise<void>
+  lockSchedule: (matches: MatchInput[]) => Promise<boolean>
+  startSession: () => Promise<void>
 }
 
 export function useSession(): SessionState {
@@ -168,5 +177,74 @@ export function useSession(): SessionState {
     setInvitation(null)
   }
 
-  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration }
+  async function lockSchedule(matches: MatchInput[]): Promise<boolean> {
+    if (!session) return false
+
+    // 1. Bulk insert all matches with sequential queue_position
+    const insertData = matches.map((m, i) => ({
+      session_id: session.id,
+      queue_position: i + 1,
+      team1_player1_id: m.team1Player1,
+      team1_player2_id: m.team1Player2,
+      team2_player1_id: m.team2Player1,
+      team2_player2_id: m.team2Player2,
+    }))
+
+    const { error: matchError } = await supabase.from('matches').insert(insertData)
+    if (matchError) {
+      toast.error(matchError.message)
+      return false
+    }
+
+    // 2. Update session status to schedule_locked
+    const { data: updated, error: sessionError } = await supabase
+      .from('sessions')
+      .update({ status: 'schedule_locked' })
+      .eq('id', session.id)
+      .select()
+      .single()
+
+    if (sessionError) {
+      toast.error(sessionError.message)
+      return false
+    }
+
+    setSession(updated as Session)
+    return true
+  }
+
+  async function startSession(): Promise<void> {
+    if (!session) return
+
+    // Take first 2 queued matches and set them playing on court 1 & 2
+    const { data: queued } = await supabase
+      .from('matches')
+      .select('id')
+      .eq('session_id', session.id)
+      .eq('status', 'queued')
+      .order('queue_position')
+      .limit(2)
+
+    if (!queued || queued.length === 0) {
+      toast.error('No queued matches found')
+      return
+    }
+
+    const updates = (queued as Array<{ id: string }>).map((m, i) =>
+      supabase.from('matches').update({ status: 'playing', court_number: i + 1 }).eq('id', m.id)
+    )
+    await Promise.all(updates)
+
+    const { data: updated, error } = await supabase
+      .from('sessions')
+      .update({ status: 'in_progress' })
+      .eq('id', session.id)
+      .select()
+      .single()
+
+    if (error) { toast.error(error.message); return }
+    setSession(updated as Session)
+  }
+
+  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession }
 }

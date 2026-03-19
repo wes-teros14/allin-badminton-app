@@ -15,6 +15,15 @@ This project uses the **BMAD framework (v6.2.0)** — an AI-driven project orche
 - Plans go in `tasks/todo.md`
 - Lessons learned go in `tasks/lessons.md`
 
+## Bug & Resolution Log
+
+After every bug fixed or issue resolved, add an entry to `tasks/lessons.md` with:
+- What the symptom was
+- Root cause
+- Fix applied
+
+This applies to both code bugs and infrastructure issues (RLS, Realtime, migrations, etc).
+
 ## BMAD Workflow Phases
 
 Work progresses through four sequential phases, each producing artifacts in `_bmad-output/`:

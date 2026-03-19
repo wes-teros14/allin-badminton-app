@@ -52,6 +52,47 @@
 
 ---
 
+## Supabase SQL Editor
+
+- **Multi-column `ALTER TABLE` with comma-separated `ADD COLUMN` fails in Supabase Dashboard**: Running `ALTER TABLE t ADD COLUMN a ..., ADD COLUMN b ...;` in the SQL Editor errors on the second column line. Fix: split into separate statements and run one at a time — `ALTER TABLE t ADD COLUMN a ...;` then `ALTER TABLE t ADD COLUMN b ...;`.
+
+---
+
+## React / TypeScript
+
+- **Never use dynamic `await import(...)` for error handling utilities like `toast`**: Dynamic imports inside async functions can fail silently, making errors invisible to the user (the function just stops with no feedback). Always import `toast` (and similar utilities) statically at the top of the file. Silent early returns (`if (!x) return`) are equally dangerous — always pair them with a `toast.error(...)` so the user knows something went wrong.
+
+---
+
+## Supabase Realtime
+
+- **Symptom**: `postgres_changes` subscriptions never fire — views don't auto-update when DB rows change.
+  **Root cause**: Table not added to the `supabase_realtime` publication. Supabase only broadcasts changes for tables explicitly in this publication.
+  **Fix**: `ALTER PUBLICATION supabase_realtime ADD TABLE public.matches;`
+  **Note**: Confirmed working — updates arrive in under 4 seconds after applying this fix. Always run this migration for any new table that needs Realtime.
+
+- **Symptom**: Filtered subscriptions (`filter: session_id=eq.xxx`) don't trigger on UPDATE/DELETE.
+  **Root cause**: Table has default REPLICA IDENTITY (primary key only), so Postgres can't match filter columns on old row values.
+  **Fix**: `ALTER TABLE public.matches REPLICA IDENTITY FULL;`
+
+- **Symptom**: Two views (kiosk + admin) open simultaneously — realtime stops working on one.
+  **Root cause**: Both subscribed to the same channel name (`kiosk-{sessionId}`). Duplicate channel names conflict in the Supabase client.
+  **Fix**: Use distinct channel prefixes per view (`kiosk-`, `admin-`, `player-`). The `useRealtime` hook accepts a `channelPrefix` param.
+
+---
+
+## Supabase RLS — Player / Anon Access
+
+- **Symptom**: `/player` page showed "Find your name" heading but no player list — empty results with no error.
+  **Root cause**: `session_registrations` had no `anon` SELECT policy and no `GRANT SELECT TO anon`. The browser was also authenticated as a user whose `player_id` had no matching profile row, so only their own registration was visible via the `player read own` policy.
+  **Fix**: Migration 008 added `CREATE POLICY "session_registrations: anon read" ... TO anon USING (true)` + `GRANT SELECT ON public.session_registrations TO anon`. Also deleted the orphaned registration row with no matching profile.
+
+- **Symptom**: Logged-in players visiting `/player` still saw an empty list despite anon policy being applied.
+  **Root cause**: Authenticated users bypass the `anon` policy — the `player read own` policy only allows them to see their own registration row.
+  **Fix**: Migration 009 added `CREATE POLICY "session_registrations: authenticated read all" ... TO authenticated USING (true)`.
+
+---
+
 ## General
 
 - **Always run `npm run build` + `npm run lint` before marking a story complete.** Both must pass clean.
