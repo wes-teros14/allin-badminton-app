@@ -63,6 +63,7 @@ const DEFAULTS: Settings = {
 export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props) {
   const { players, isLoading } = useRegisteredPlayers(sessionId)
   const [stage, setStage] = useState<'idle' | 'generating' | 'preview' | 'locking' | 'locked'>('idle')
+  const [isRegenerating, setIsRegenerating] = useState(false)
   const [matches, setMatches] = useState<GeneratedMatch[]>([])
   const [audit, setAudit] = useState<AuditData | null>(null)
   const [showSettings, setShowSettings] = useState(false)
@@ -139,7 +140,12 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
   }
 
   function handleGenerate() {
-    setStage('generating')
+    const fromPreview = stage === 'preview'
+    if (fromPreview) {
+      setIsRegenerating(true)
+    } else {
+      setStage('generating')
+    }
 
     // Defer computation so React can render the loading state first
     setTimeout(() => {
@@ -188,6 +194,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
       }
 
       setStage('preview')
+      setIsRegenerating(false)
     }, 50)
   }
 
@@ -394,8 +401,10 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
           </div>
         ) : stage === 'preview' ? (
           <>
-            <Button variant="outline" onClick={handleGenerate} className="w-full">
-              {settings.isIterative ? `Generate Again (${settings.numTrials} trials)` : 'Generate Again'}
+            <Button variant="outline" onClick={handleGenerate} disabled={isRegenerating} className="w-full">
+              {isRegenerating
+                ? <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />Generating…</span>
+                : settings.isIterative ? `Generate Again (${settings.numTrials} trials)` : 'Generate Again'}
             </Button>
 
             {/* Engine Audit Report (iterative mode only) */}
