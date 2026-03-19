@@ -68,7 +68,6 @@ export function useRegistration(token: string | null): RegistrationState {
 
       setIsValidToken(true)
       setSessionId(inv.session_id)
-      sessionStorage.removeItem('registration_token')
 
       // Check duplicate registration
       const { data: existing } = await supabase

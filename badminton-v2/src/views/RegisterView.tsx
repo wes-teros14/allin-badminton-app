@@ -10,9 +10,6 @@ export function RegisterView() {
   const { user, isLoading, isValidToken, isAlreadyRegistered, signIn, register } =
     useRegistration(token)
 
-  // DEBUG — remove after fix
-  console.log('[RegisterView]', { token: token?.slice(0, 8), user: !!user, isLoading, isValidToken })
-
   // No token in URL at all — definitely closed
   if (!token) {
     return (
