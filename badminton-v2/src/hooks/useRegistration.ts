@@ -124,10 +124,27 @@ export function useRegistration(token: string | null): RegistrationState {
 
     if (!existingProfile) {
       console.log('[register] no profile found — inserting')
-      const { data: insertData, error: insertError } = await supabase
+      // Build a readable slug from Google display name; fall back to short user ID suffix on conflict
+      const displayName = (user.user_metadata?.full_name as string | undefined)
+        ?? user.email?.split('@')[0]
+        ?? 'user'
+      const baseSlug = displayName.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/^-+|-+$/g, '') || 'user'
+
+      let { data: insertData, error: insertError } = await supabase
         .from('profiles')
-        .insert({ id: user.id, name_slug: user.id, email: user.email ?? null, role: 'player' } as never)
+        .insert({ id: user.id, name_slug: baseSlug, email: user.email ?? null, role: 'player' } as never)
         .select()
+
+      // If name_slug conflicts with another user, append short id suffix
+      if (insertError?.code === '23505') {
+        const fallbackSlug = `${baseSlug}-${user.id.slice(0, 6)}`
+        const retry = await supabase
+          .from('profiles')
+          .insert({ id: user.id, name_slug: fallbackSlug, email: user.email ?? null, role: 'player' } as never)
+          .select()
+        insertData = retry.data
+        insertError = retry.error
+      }
 
       console.log('[register] insert result:', insertData, insertError)
 
