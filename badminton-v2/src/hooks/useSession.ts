@@ -43,6 +43,7 @@ interface SessionState {
   closeRegistration: () => Promise<void>
   reopenRegistration: () => Promise<void>
   lockSchedule: (matches: MatchInput[]) => Promise<boolean>
+  unlockSchedule: () => Promise<void>
   startSession: () => Promise<void>
   closeSession: () => Promise<void>
 }
@@ -242,6 +243,27 @@ export function useSession(sessionId?: string): SessionState {
     return true
   }
 
+  async function unlockSchedule(): Promise<void> {
+    if (!session) return
+
+    const { error: deleteError } = await supabase
+      .from('matches')
+      .delete()
+      .eq('session_id', session.id)
+
+    if (deleteError) { toast.error(deleteError.message); return }
+
+    const { data: updated, error } = await supabase
+      .from('sessions')
+      .update({ status: 'registration_closed' })
+      .eq('id', session.id)
+      .select()
+      .single()
+
+    if (error) { toast.error(error.message); return }
+    setSession(updated as Session)
+  }
+
   async function startSession(): Promise<void> {
     if (!session) return
 
@@ -287,5 +309,5 @@ export function useSession(sessionId?: string): SessionState {
     setSession(updated as Session)
   }
 
-  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, startSession, closeSession }
+  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, closeSession }
 }

@@ -47,7 +47,7 @@ export function SessionView() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const {
     session, invitation, playerCount, isLoading,
-    openRegistration, closeRegistration, reopenRegistration, lockSchedule, startSession,
+    openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession,
   } = useSession(sessionId)
 
   const [confirmingClose, setConfirmingClose] = useState(false)
@@ -148,6 +148,7 @@ export function SessionView() {
         <div className="space-y-4">
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
           <Button onClick={startSession} className="w-full">Start Session</Button>
+          <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>
         </div>
       )}
 
