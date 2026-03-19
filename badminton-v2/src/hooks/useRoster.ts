@@ -123,8 +123,9 @@ export function useRoster(sessionId: string | undefined): RosterState {
 
     if (error) {
       toast.error(error.message)
+      return
     }
-    // Real-time subscription triggers fetchRoster automatically
+    fetchRoster()
   }
 
   async function removePlayer(registrationId: string) {
@@ -135,8 +136,9 @@ export function useRoster(sessionId: string | undefined): RosterState {
 
     if (error) {
       toast.error(error.message)
+      return
     }
-    // Real-time subscription triggers fetchRoster automatically
+    fetchRoster()
   }
 
   return { players, unregisteredPlayers, isLoading, addPlayer, removePlayer }
