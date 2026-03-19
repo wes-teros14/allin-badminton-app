@@ -37,7 +37,7 @@ export function RegisterView() {
     )
   }
   // After OAuth redirect, Supabase drops query params — restore token from sessionStorage
-  const token = searchParams.get('token')
+  const token = searchParams.get('token') ?? localStorage.getItem('registration_token')
   const { user, isLoading, isValidToken, isAlreadyRegistered, isFull, signIn, register } =
     useRegistration(token)
 
