@@ -19,7 +19,7 @@ export function usePlayers() {
   async function fetchPlayers() {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name_slug, gender, level, role')
+      .select('id, name_slug, email, nickname, gender, level, role')
       .order('name_slug')
     if (error) { toast.error(error.message); return }
     setPlayers(
