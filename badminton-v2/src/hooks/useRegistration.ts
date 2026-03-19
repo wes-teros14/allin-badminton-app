@@ -112,11 +112,19 @@ export function useRegistration(token: string | null): RegistrationState {
         .from('profiles')
         .insert({ id: u.id, name_slug: baseSlug, email: u.email ?? null, role: 'player' } as never)
 
-      if (error?.code === '23505') {
+      // name_slug conflict — retry with short id suffix
+      if (error?.code === '23505' && error.message.includes('name_slug')) {
         const retry = await supabase
           .from('profiles')
           .insert({ id: u.id, name_slug: `${baseSlug}-${u.id.slice(0, 6)}`, email: u.email ?? null, role: 'player' } as never)
         error = retry.error
+      }
+
+      // Primary key conflict — profile exists but SELECT was blocked by RLS, just patch email
+      if (error?.code === '23505' && error.message.includes('pkey')) {
+        const { error: updateErr } = await supabase.from('profiles').update({ email: u.email ?? null } as never).eq('id', u.id)
+        if (updateErr) console.error('[ensureProfile] email patch error:', updateErr)
+        return
       }
 
       if (error) console.error('[ensureProfile] insert error:', error)
