@@ -113,7 +113,7 @@ export function useRegistration(token: string | null): RegistrationState {
       ?? user.id
     const { error: profileError } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, name_slug: displayName, email: user.email ?? null, role: 'player' } as never, { onConflict: 'id', ignoreDuplicates: true })
+      .upsert({ id: user.id, name_slug: displayName, email: user.email ?? null, role: 'player' } as never, { onConflict: 'id' })
 
     if (profileError) {
       toast.error('Failed to create profile: ' + profileError.message)
@@ -129,7 +129,6 @@ export function useRegistration(token: string | null): RegistrationState {
       return
     }
 
-    localStorage.removeItem('registration_token')
     setIsAlreadyRegistered(true)
   }
 
