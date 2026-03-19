@@ -26,6 +26,8 @@ function AdminRoute() {
   return <Outlet />
 }
 
+const HomeView     = lazy(() => import('@/views/HomeView'))
+const ProfileView  = lazy(() => import('@/views/ProfileView'))
 const KioskView    = lazy(() => import('@/views/KioskView'))
 const PlayerView   = lazy(() => import('@/views/PlayerView'))
 const AdminView    = lazy(() => import('@/views/AdminView'))
@@ -38,7 +40,8 @@ function App() {
     <Toaster />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
-        <Route path="/"                 element={<div>badminton v2</div>} />
+        <Route path="/"                 element={<HomeView />} />
+        <Route path="/profile"          element={<ProfileView />} />
         <Route path="/kiosk"                      element={<KioskView />} />
         <Route path="/kiosk/:sessionId"           element={<KioskView />} />
         <Route path="/player"           element={<PlayerView />} />
