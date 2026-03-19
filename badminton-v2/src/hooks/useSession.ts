@@ -41,6 +41,7 @@ interface SessionState {
   createSession: (name: string, date: string) => Promise<Session | null>
   openRegistration: () => Promise<void>
   closeRegistration: () => Promise<void>
+  reopenRegistration: () => Promise<void>
   lockSchedule: (matches: MatchInput[]) => Promise<boolean>
   startSession: () => Promise<void>
   closeSession: () => Promise<void>
@@ -145,6 +146,30 @@ export function useSession(sessionId?: string): SessionState {
       toast.error(sessionError.message)
       return
     }
+
+    setInvitation(inv as Invitation)
+    setSession(updated as Session)
+  }
+
+  async function reopenRegistration(): Promise<void> {
+    if (!session) return
+
+    const { data: inv, error: invError } = await supabase
+      .from('session_invitations')
+      .insert({ session_id: session.id })
+      .select()
+      .single()
+
+    if (invError) { toast.error(invError.message); return }
+
+    const { data: updated, error: sessionError } = await supabase
+      .from('sessions')
+      .update({ status: 'registration_open' })
+      .eq('id', session.id)
+      .select()
+      .single()
+
+    if (sessionError) { toast.error(sessionError.message); return }
 
     setInvitation(inv as Invitation)
     setSession(updated as Session)
@@ -262,5 +287,5 @@ export function useSession(sessionId?: string): SessionState {
     setSession(updated as Session)
   }
 
-  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, lockSchedule, startSession, closeSession }
+  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, startSession, closeSession }
 }
