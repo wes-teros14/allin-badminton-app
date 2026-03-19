@@ -111,23 +111,17 @@ export function AdminView() {
           </Button>
         </div>
       ) : session.status === 'in_progress' ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{session.name}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p>Date: {session.date}</p>
-            <p>Status: <span className="font-medium">In Progress</span></p>
-            <a
-              href={`/session/${session.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full"
-            >
-              <Button className="w-full">Open Session View ↗</Button>
-            </a>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <a
+            href={`/session/${session.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block w-full"
+          >
+            <Button className="w-full">Open Session View ↗</Button>
+          </a>
+          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
+        </div>
       ) : (
         <Card>
           <CardHeader>
