@@ -97,10 +97,9 @@ export function useRegistration(token: string | null): RegistrationState {
   }, [token, user])
 
   async function signIn() {
-    if (token) sessionStorage.setItem('registration_token', token)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/register` },
+      options: { redirectTo: `${window.location.origin}/register${token ? `?token=${token}` : ''}` },
     })
   }
 

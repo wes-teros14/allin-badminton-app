@@ -39,7 +39,7 @@ export function usePlayers() {
   useEffect(() => { fetchPlayers() }, [])
 
   async function updatePlayer(id: string, updates: Partial<Pick<Player, 'gender' | 'level' | 'nickname'>>) {
-    const { error } = await supabase.from('profiles').update(updates as never).eq('id', id)
+    const { error } = await supabase.from('profiles').update(updates as Record<string, unknown>).eq('id', id)
     if (error) { toast.error(error.message); return }
     setPlayers((prev) => prev.map((p) => p.id === id ? { ...p, ...updates } : p))
   }

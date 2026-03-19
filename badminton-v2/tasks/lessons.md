@@ -27,6 +27,23 @@ git commit --allow-empty -m "chore: trigger Vercel rebuild" && git push
 
 ---
 
+## Supabase: Admin Updating Other Users' Rows Needs Explicit RLS Policy
+
+**Symptom:** Admin edits in /players view appear to work (no error toast) but don't persist on refresh.
+
+**Root cause:** Default RLS UPDATE policy only allows `auth.uid() = id` — users can only update their own row. Admin updating another player's profile gets silently blocked by RLS even with GRANT in place.
+
+**Fix:** Add a separate policy allowing admins to update any profile row:
+```sql
+CREATE POLICY "Admins can update any profile" ON public.profiles
+FOR UPDATE TO authenticated
+USING (EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin'));
+```
+
+**How to apply:** Any time an admin needs to write to rows they don't own, add an admin-specific RLS policy. GRANT alone is not enough — RLS USING clause must also pass.
+
+---
+
 ## Supabase: RLS Policy Alone Is Not Enough — GRANT Required Too
 
 **Symptom:** `permission denied for table X` even though an RLS policy allowing the operation exists.
