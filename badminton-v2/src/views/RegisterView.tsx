@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRegistration } from '@/hooks/useRegistration'
 
@@ -67,6 +68,9 @@ export function RegisterView() {
     )
   }
 
+  // Show loading while auth resolves — prevents sign-in screen flashing on OAuth return
+  if (isLoading) return <div className="p-6">Loading…</div>
+
   // Token present but not signed in — prompt sign-in (validate after OAuth)
   if (!user) {
     return (
@@ -81,8 +85,6 @@ export function RegisterView() {
       </div>
     )
   }
-
-  if (isLoading) return <div className="p-6">Loading…</div>
 
   if (!isValidToken) {
     return (
