@@ -39,6 +39,7 @@ export function useRegistration(token: string | null): RegistrationState {
   // Validate token — only runs when user is signed in (authenticated read policy works reliably)
   useEffect(() => {
     async function validateToken() {
+      setIsLoading(true)
       // No token at all — show "closed"
       if (!token) {
         setIsValidToken(false)
@@ -107,16 +108,23 @@ export function useRegistration(token: string | null): RegistrationState {
   async function register() {
     if (!user || !sessionId) return
 
-    // Upsert profile with Google display name so roster shows a readable name
+    // Safety net: insert profile if trigger somehow didn't create it
     const displayName = (user.user_metadata?.full_name as string | undefined)
       ?? user.email
       ?? user.id
+    await supabase
+      .from('profiles')
+      .upsert({ id: user.id, name_slug: displayName, role: 'player' } as never, { onConflict: 'id', ignoreDuplicates: true })
+
+    // Explicitly update email — trigger doesn't set it, upsert UPDATE can conflict on name_slug unique constraint
     const { error: profileError } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, name_slug: displayName, email: user.email ?? null, role: 'player' } as never, { onConflict: 'id' })
+      .update({ email: user.email ?? null } as never)
+      .eq('id', user.id)
 
     if (profileError) {
-      toast.error('Failed to create profile: ' + profileError.message)
+      console.error('[register] profile email update error:', profileError)
+      toast.error('Failed to update profile: ' + profileError.message)
       return
     }
 
