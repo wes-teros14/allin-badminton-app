@@ -86,7 +86,9 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
       <CardContent className="pt-4 pb-4 flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p className="font-semibold truncate">{session.name}</p>
-          <p className="text-sm text-muted-foreground">{session.date}</p>
+          <p className="text-sm text-muted-foreground">
+            {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
+          </p>
           <p className={`text-xs font-medium mt-0.5 ${STATUS_COLORS[session.status] ?? 'text-muted-foreground'}`}>
             {STATUS_LABELS[session.status] ?? session.status}
           </p>
