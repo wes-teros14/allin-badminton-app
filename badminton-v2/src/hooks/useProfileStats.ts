@@ -24,7 +24,7 @@ export function useProfileStats(userId: string | undefined) {
       const { count: sessionsAttended } = await supabase
         .from('session_registrations')
         .select('*', { count: 'exact', head: true })
-        .eq('player_id', userId)
+        .eq('player_id', userId!)
 
       // All completed matches the player was in
       const { data: matchRows } = await supabase
