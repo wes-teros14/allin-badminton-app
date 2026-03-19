@@ -18,9 +18,8 @@ export function useRegistration(token: string | null): RegistrationState {
   const [isValidToken, setIsValidToken] = useState(false)
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [tokenChecked, setTokenChecked] = useState(false)
 
-  // Auth listener — synchronous callback, same pattern as useAuth to avoid JWT race condition
+  // Auth listener
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -35,12 +34,19 @@ export function useRegistration(token: string | null): RegistrationState {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Validate token — anon can read session_invitations (policy allows it)
+  // Validate token — only runs when user is signed in (authenticated read policy works reliably)
   useEffect(() => {
     async function validateToken() {
+      // No token at all — show "closed"
       if (!token) {
         setIsValidToken(false)
-        setTokenChecked(true)
+        setIsLoading(false)
+        return
+      }
+
+      // Not signed in yet — show sign-in prompt, skip query
+      if (!user) {
+        setIsLoading(false)
         return
       }
 
@@ -56,48 +62,30 @@ export function useRegistration(token: string | null): RegistrationState {
 
       if (!inv || !inv.is_active) {
         setIsValidToken(false)
-      } else {
-        setIsValidToken(true)
-        setSessionId(inv.session_id)
-        sessionStorage.removeItem('registration_token')
-      }
-      setTokenChecked(true)
-    }
-
-    validateToken()
-  }, [token])
-
-  // Check duplicate registration — only when both auth and token are resolved
-  useEffect(() => {
-    async function checkRegistration() {
-      if (!tokenChecked) return
-
-      if (!isValidToken || !sessionId) {
         setIsLoading(false)
         return
       }
 
-      if (!user) {
-        setIsLoading(false)
-        return
-      }
+      setIsValidToken(true)
+      setSessionId(inv.session_id)
+      sessionStorage.removeItem('registration_token')
 
-      const { data } = await supabase
+      // Check duplicate registration
+      const { data: existing } = await supabase
         .from('session_registrations')
         .select('id')
-        .eq('session_id', sessionId)
+        .eq('session_id', inv.session_id)
         .eq('player_id', user.id)
         .maybeSingle()
 
-      setIsAlreadyRegistered(!!data)
+      setIsAlreadyRegistered(!!existing)
       setIsLoading(false)
     }
 
-    checkRegistration()
-  }, [user, sessionId, isValidToken, tokenChecked])
+    validateToken()
+  }, [token, user])
 
   async function signIn() {
-    // Save token before OAuth redirect — query params are lost after Supabase redirect back
     if (token) sessionStorage.setItem('registration_token', token)
     await supabase.auth.signInWithOAuth({
       provider: 'google',
