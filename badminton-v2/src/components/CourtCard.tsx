@@ -16,7 +16,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
   const [isSaving, setIsSaving] = useState(false)
   const [sessionComplete, setSessionComplete] = useState(false)
 
-  async function handleFinish(winningPairIndex: 1 | 2) {
+  async function handleFinish(winningPairIndex: 1 | 2 | null) {
     if (!current || !sessionId || isSaving) return
     setIsSaving(true)
 
@@ -24,11 +24,13 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
       // 1. Mark current match complete
       await supabase.from('matches').update({ status: 'complete' }).eq('id', current.id)
 
-      // 2. Record result
-      await supabase.from('match_results').insert({
-        match_id: current.id,
-        winning_pair_index: winningPairIndex,
-      })
+      // 2. Record result (skip if not recording)
+      if (winningPairIndex !== null) {
+        await supabase.from('match_results').insert({
+          match_id: current.id,
+          winning_pair_index: winningPairIndex,
+        })
+      }
 
       // 3. Find next queued match
       const { data: nextMatch } = await supabase
@@ -129,9 +131,16 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
             {current.t2p1} &amp; {current.t2p2}
           </button>
           <button
+            onClick={() => handleFinish(null)}
+            disabled={isSaving}
+            className="w-full py-3 rounded-lg border border-border text-muted-foreground text-lg font-semibold hover:text-foreground hover:border-foreground/30 disabled:opacity-50 transition-colors"
+          >
+            Don't Record
+          </button>
+          <button
             onClick={() => setConfirmingFinish(false)}
             disabled={isSaving}
-            className="w-full py-3 rounded-lg border border-border text-muted-foreground text-2xl font-semibold hover:text-foreground hover:border-foreground/30 disabled:opacity-50 transition-colors"
+            className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
           >
             Cancel
           </button>
