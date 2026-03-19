@@ -7,7 +7,7 @@ interface Props {
   editable?: boolean
 }
 
-const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export function RosterPanel({ sessionId, editable = false }: Props) {
   const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updatePlayerProfile } =
