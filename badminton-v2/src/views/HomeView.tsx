@@ -16,7 +16,7 @@ export function HomeView() {
     <div className="h-screen flex flex-col items-center justify-center gap-8">
       <div className="text-center space-y-2">
         <h1 className="text-4xl font-bold tracking-tight text-primary">Badminton Gang</h1>
-        <p className="text-muted-foreground text-sm">Game Na Kahit Hindi Ready</p>
+        <p className="text-muted-foreground text-sm">Game Na Kahit Walang Warm Up</p>
       </div>
 
       {isLoading ? (
