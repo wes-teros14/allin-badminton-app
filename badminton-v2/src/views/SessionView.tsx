@@ -161,6 +161,7 @@ export function SessionView() {
         <div className="space-y-4">
           <RosterPanel sessionId={session.id} editable />
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} />
+          <Button variant="outline" onClick={() => window.open(`/match-schedule/session/${session.id}`, '_blank')} className="w-full">Share Match Schedule ↗</Button>
           <Button variant="outline" onClick={reopenRegistration} className="w-full">Reopen Registration</Button>
         </div>
       )}
