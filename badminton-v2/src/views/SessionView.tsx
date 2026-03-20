@@ -38,6 +38,12 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={() => window.open(`/match-schedule/session/${sessionId}`, '_blank')}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Match Schedule ↗
+          </button>
+          <button
             onClick={() => window.open(`/kiosk/${sessionId}`, '_blank')}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
