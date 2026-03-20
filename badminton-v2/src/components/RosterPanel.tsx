@@ -33,7 +33,7 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
           <ul className="space-y-2">
             {players.map((player) => (
               <li key={player.registrationId} className="flex items-center gap-2 text-sm">
-                <span className="flex-1 truncate">{player.nameSlug}</span>
+                <span className="flex-1 truncate">{player.nickname ?? player.nameSlug}</span>
 
                 {editable && (
                   <>
@@ -102,7 +102,7 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
               <ul className="space-y-1 mt-2">
                 {unregisteredPlayers.map((player) => (
                   <li key={player.id} className="flex items-center justify-between text-sm">
-                    <span>{player.nameSlug}</span>
+                    <span>{player.nickname ?? player.nameSlug}</span>
                     <Button variant="ghost" size="sm" onClick={() => addPlayer(player.id)}>Add</Button>
                   </li>
                 ))}

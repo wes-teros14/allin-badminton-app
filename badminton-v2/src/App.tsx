@@ -13,7 +13,7 @@ function AdminRoute() {
         <button
           onClick={() => supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: `${window.location.origin}/admin` },
+            options: { redirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/admin` },
           })}
           className="px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
         >

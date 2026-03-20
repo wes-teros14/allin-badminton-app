@@ -6,6 +6,7 @@ export interface RosterPlayer {
   registrationId: string
   playerId: string
   nameSlug: string
+  nickname: string | null
   gender: 'M' | 'F' | null
   level: number | null
 }
@@ -13,6 +14,7 @@ export interface RosterPlayer {
 export interface UnregisteredPlayer {
   id: string
   nameSlug: string
+  nickname: string | null
 }
 
 interface RosterState {
@@ -47,18 +49,18 @@ export function useRoster(sessionId: string | undefined): RosterState {
     // Profile defaults (name, gender, level)
     const registeredProfiles =
       registeredIds.length > 0
-        ? ((await supabase.from('profiles').select('id, name_slug, gender, level').in('id', registeredIds)).data ?? []) as
-            { id: string; name_slug: string; gender: 'M' | 'F' | null; level: number | null }[]
+        ? ((await supabase.from('profiles').select('id, name_slug, nickname, gender, level').in('id', registeredIds)).data ?? []) as
+            { id: string; name_slug: string; nickname: string | null; gender: 'M' | 'F' | null; level: number | null }[]
         : []
 
     // All known players for "Add player" list (includes admins who can also play)
     const { data: allProfiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, name_slug')
+      .select('id, name_slug, nickname')
 
     if (profilesError) { toast.error(profilesError.message); return }
 
-    const playerProfiles = (allProfiles ?? []) as { id: string; name_slug: string }[]
+    const playerProfiles = (allProfiles ?? []) as { id: string; name_slug: string; nickname: string | null }[]
     const profileMap = new Map(registeredProfiles.map((p) => [p.id, p]))
 
     const rosterPlayers: RosterPlayer[] = regsFull.map((r) => {
@@ -67,6 +69,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
         registrationId: r.id,
         playerId: r.player_id,
         nameSlug: p?.name_slug ?? r.player_id,
+        nickname: p?.nickname ?? null,
         gender: (r.gender ?? p?.gender ?? null) as 'M' | 'F' | null,
         level: r.level ?? p?.level ?? null,
       }
@@ -74,7 +77,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
 
     const unregistered: UnregisteredPlayer[] = playerProfiles
       .filter((p) => !registeredIds.includes(p.id))
-      .map((p) => ({ id: p.id, nameSlug: p.name_slug }))
+      .map((p) => ({ id: p.id, nameSlug: p.name_slug, nickname: p.nickname ?? null }))
 
     setPlayers(rosterPlayers)
     setUnregisteredPlayers(unregistered)

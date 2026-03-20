@@ -8,7 +8,7 @@ export function HomeView() {
   function signIn() {
     supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/` },
+      options: { redirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/` },
     })
   }
 
