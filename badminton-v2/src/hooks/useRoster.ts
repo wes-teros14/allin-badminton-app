@@ -51,11 +51,10 @@ export function useRoster(sessionId: string | undefined): RosterState {
             { id: string; name_slug: string; gender: 'M' | 'F' | null; level: number | null }[]
         : []
 
-    // All known players for "Add player" list
+    // All known players for "Add player" list (includes admins who can also play)
     const { data: allProfiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name_slug')
-      .eq('role', 'player')
 
     if (profilesError) { toast.error(profilesError.message); return }
 
