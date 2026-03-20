@@ -72,9 +72,9 @@ function CourtCard({
               Mark Done
             </button>
           </div>
-          <p className="text-sm font-medium">{current.t1p1} &amp; {current.t1p2}</p>
+          <p className="text-sm font-medium text-primary">{current.t1p1} &amp; {current.t1p2}</p>
           <p className="text-xs text-muted-foreground my-0.5">vs</p>
-          <p className="text-sm font-medium">{current.t2p1} &amp; {current.t2p2}</p>
+          <p className="text-sm font-medium text-primary">{current.t2p1} &amp; {current.t2p2}</p>
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">No match playing</p>
