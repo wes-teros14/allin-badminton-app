@@ -41,104 +41,53 @@ export function useProfileStats(userId: string | undefined) {
     async function load() {
       setIsLoading(true)
 
-      // Sessions attended
-      const { count: sessionsAttended } = await supabase
-        .from('session_registrations')
-        .select('*', { count: 'exact', head: true })
+      // 1. Lifetime totals
+      const { data: statsRow } = await supabase
+        .from('player_stats')
+        .select('sessions_attended, games_played, wins')
+        .eq('player_id', userId!)
+        .maybeSingle()
+
+      const sessionsAttended = (statsRow as any)?.sessions_attended ?? 0
+      const gamesPlayed      = (statsRow as any)?.games_played      ?? 0
+      const wins             = (statsRow as any)?.wins              ?? 0
+
+      // 2. Best partners + toughest opponents
+      const { data: pairRows } = await supabase
+        .from('player_pair_stats')
+        .select('other_player_id, wins_together, losses_against')
         .eq('player_id', userId!)
 
-      // All completed matches the player was in
-      const { data: matchRows } = await supabase
-        .from('matches')
-        .select('id, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id')
-        .eq('status', 'complete')
-        .or(`team1_player1_id.eq.${userId},team1_player2_id.eq.${userId},team2_player1_id.eq.${userId},team2_player2_id.eq.${userId}`)
-
-      const matches = (matchRows ?? []) as Array<{
-        id: string
-        team1_player1_id: string
-        team1_player2_id: string
-        team2_player1_id: string
-        team2_player2_id: string
+      const pairs = (pairRows ?? []) as Array<{
+        other_player_id: string
+        wins_together: number
+        losses_against: number
       }>
 
-      if (matches.length === 0) {
-        setStats({ sessionsAttended: sessionsAttended ?? 0, gamesPlayed: 0, wins: 0, winRate: 0, bestPartners: [], toughestOpponents: [] })
-        setIsLoading(false)
-        return
-      }
+      const partnerMap  = new Map(pairs.filter((r) => r.wins_together  > 0).map((r) => [r.other_player_id, r.wins_together]))
+      const opponentMap = new Map(pairs.filter((r) => r.losses_against > 0).map((r) => [r.other_player_id, r.losses_against]))
 
-      // Match results
-      const matchIds = matches.map((m) => m.id)
-      const { data: resultRows } = await supabase
-        .from('match_results')
-        .select('match_id, winning_pair_index')
-        .in('match_id', matchIds)
-
-      const resultMap = new Map(
-        ((resultRows ?? []) as Array<{ match_id: string; winning_pair_index: number }>)
-          .map((r) => [r.match_id, r.winning_pair_index])
-      )
-
-      // Calculate wins + partner/opponent counts
-      let wins = 0
-      const partnerWins = new Map<string, number>()
-      const opponentLosses = new Map<string, number>()
-
-      for (const m of matches) {
-        const onPair1 = m.team1_player1_id === userId || m.team1_player2_id === userId
-        const userPair = onPair1 ? 1 : 2
-        const partner = onPair1
-          ? (m.team1_player1_id === userId ? m.team1_player2_id : m.team1_player1_id)
-          : (m.team2_player1_id === userId ? m.team2_player2_id : m.team2_player1_id)
-        const opponents = onPair1
-          ? [m.team2_player1_id, m.team2_player2_id]
-          : [m.team1_player1_id, m.team1_player2_id]
-
-        const winningPair = resultMap.get(m.id)
-        if (winningPair === undefined) continue // no result recorded
-
-        const won = winningPair === userPair
-        if (won) {
-          wins++
-          partnerWins.set(partner, (partnerWins.get(partner) ?? 0) + 1)
-        } else {
-          for (const opp of opponents) {
-            opponentLosses.set(opp, (opponentLosses.get(opp) ?? 0) + 1)
-          }
-        }
-      }
-
-      // Resolve names for best partner + toughest opponent
-      const idsToResolve = [
-        ...Array.from(partnerWins.keys()),
-        ...Array.from(opponentLosses.keys()),
-      ]
-
+      // Resolve names
+      const allIds = [...new Set([...partnerMap.keys(), ...opponentMap.keys()])]
       const nameMap = new Map<string, string>()
-      if (idsToResolve.length > 0) {
+      if (allIds.length > 0) {
         const { data: profiles } = await (supabase as any)
           .from('profiles')
           .select('id, name_slug, nickname')
-          .in('id', idsToResolve)
+          .in('id', allIds)
         for (const p of (profiles ?? []) as Array<{ id: string; name_slug: string; nickname?: string | null }>) {
           nameMap.set(p.id, p.nickname ?? p.name_slug)
         }
       }
 
-      const bestPartners = topRanked(partnerWins, nameMap)
-        .map(({ nameSlug, count }) => ({ nameSlug, wins: count }))
-
-      const toughestOpponents = topRanked(opponentLosses, nameMap)
-        .map(({ nameSlug, count }) => ({ nameSlug, losses: count }))
-
-      const gamesWithResults = matches.filter((m) => resultMap.has(m.id)).length
+      const bestPartners     = topRanked(partnerMap,  nameMap).map(({ nameSlug, count }) => ({ nameSlug, wins:   count }))
+      const toughestOpponents = topRanked(opponentMap, nameMap).map(({ nameSlug, count }) => ({ nameSlug, losses: count }))
 
       setStats({
-        sessionsAttended: sessionsAttended ?? 0,
-        gamesPlayed: matches.length,
+        sessionsAttended,
+        gamesPlayed,
         wins,
-        winRate: gamesWithResults > 0 ? Math.round((wins / gamesWithResults) * 100) : 0,
+        winRate: gamesPlayed > 0 ? Math.round((wins / gamesPlayed) * 100) : 0,
         bestPartners,
         toughestOpponents,
       })
