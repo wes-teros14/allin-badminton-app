@@ -21,7 +21,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
       // Fetch registrations with session-level gender/level overrides
       const { data: regs, error: regsError } = await supabase
         .from('session_registrations')
-        .select('player_id')
+        .select('player_id, gender, level')
         .eq('session_id', sessionId)
 
       if (regsError) {
