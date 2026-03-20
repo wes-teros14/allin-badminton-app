@@ -286,22 +286,22 @@ describe('Group 5: Gender Composition', () => {
     }
   })
 
-  it('5.3 — null gender → all types are "Doubles" (FIXTURE_E)', () => {
+  it('5.3 — null gender falls back to M, type still computed from genders (FIXTURE_E)', () => {
+    // All null-gender players default to 'M' in genderMap → all Men's Doubles
     const matches = generateSchedule(FIXTURE_E)
     for (const m of matches) {
-      expect(m.type).toBe('Doubles')
+      expect(m.type).toBe("Men's Doubles")
     }
   })
 
-  it('5.4 — auto-disable fires when any player has null gender', () => {
-    // Mix FIXTURE_A (gender M) with one null-gender player
-    const mixed = [
-      ...FIXTURE_A,
-      { id: 'x1', nameSlug: 'x1', nickname: null, gender: null as null, level: 5 },
-    ]
-    const matches = generateSchedule(mixed)
+  it('5.4 — disableGenderRules only disables composition filter, not type label', () => {
+    // All-male players with disableGenderRules=true should still be "Men's Doubles"
+    const players = Array.from({ length: 6 }, (_, i) => ({
+      id: `m${i}`, nameSlug: `m${i}`, nickname: null, gender: 'M' as const, level: 5,
+    }))
+    const matches = generateSchedule(players, { disableGenderRules: true, numMatches: 5 })
     for (const m of matches) {
-      expect(m.type).toBe('Doubles')
+      expect(m.type).toBe("Men's Doubles")
     }
   })
 

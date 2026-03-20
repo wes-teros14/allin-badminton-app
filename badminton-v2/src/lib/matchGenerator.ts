@@ -114,9 +114,9 @@ export function generateSchedule(
     maxSpreadLimit = 3,
   } = options
 
-  // Auto-disable gender rules if any player is missing gender data
+  // Auto-disable gender rules only when ALL players are missing gender data
   const disableGenderRules =
-    options.disableGenderRules ?? players.some((p) => p.gender == null)
+    options.disableGenderRules ?? players.every((p) => p.gender == null)
 
   const playerIds = players.map((p) => p.id)
   const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
@@ -205,7 +205,7 @@ export function generateSchedule(
         const validOptions: SplitOption[] = []
 
         for (const [t1, t2] of splits) {
-          const matchType = disableGenderRules ? 'Doubles' : getMatchType(t1, t2)
+          const matchType = getMatchType(t1, t2)
 
           if (!disableGenderRules && phase.forceGender) {
             if (matchType === 'Mixed Doubles' || matchType === 'Doubles') continue
@@ -328,19 +328,17 @@ function balanceParticipation(
                 match.team2Level = Math.round((levelMap.get(newTeam[0]) ?? 5) + (levelMap.get(newTeam[1]) ?? 5))
               }
 
-              // Recompute match type after swap
-              if (!disableGenderRules) {
-                const teamCat = (p1: string, p2: string) => {
-                  const g1 = genderMap.get(p1), g2 = genderMap.get(p2)
-                  if ((g1 === 'M' && g2 === 'F') || (g1 === 'F' && g2 === 'M')) return 'Mixed'
-                  return g1 === 'M' ? "Men's" : "Women's"
-                }
-                const c1 = teamCat(match.team1Player1, match.team1Player2)
-                const c2 = teamCat(match.team2Player1, match.team2Player2)
-                match.type = c1 === 'Mixed' && c2 === 'Mixed' ? 'Mixed Doubles'
-                  : c1 === c2 ? `${c1} Doubles`
-                  : 'Doubles'
+              // Recompute match type after swap (always based on player genders)
+              const teamCat = (p1: string, p2: string) => {
+                const g1 = genderMap.get(p1), g2 = genderMap.get(p2)
+                if ((g1 === 'M' && g2 === 'F') || (g1 === 'F' && g2 === 'M')) return 'Mixed'
+                return g1 === 'M' ? "Men's" : "Women's"
               }
+              const c1 = teamCat(match.team1Player1, match.team1Player2)
+              const c2 = teamCat(match.team2Player1, match.team2Player2)
+              match.type = c1 === 'Mixed' && c2 === 'Mixed' ? 'Mixed Doubles'
+                : c1 === c2 ? `${c1} Doubles`
+                : 'Doubles'
 
               counts.set(oldPlayer, (counts.get(oldPlayer) ?? 0) - 1)
               counts.set(newPlayer, (counts.get(newPlayer) ?? 0) + 1)
