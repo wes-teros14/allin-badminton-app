@@ -82,6 +82,7 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
           nameSlug={playerDisplayName}
           sessionName={sessionName}
           gameCount={matches.length}
+          sessionId={sessionId}
         />
       )}
 

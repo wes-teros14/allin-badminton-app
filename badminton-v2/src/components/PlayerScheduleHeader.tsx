@@ -4,12 +4,14 @@ interface Props {
   nameSlug: string
   sessionName: string
   gameCount: number
+  sessionId?: string | null
 }
 
-export function PlayerScheduleHeader({ nameSlug, sessionName, gameCount }: Props) {
+export function PlayerScheduleHeader({ nameSlug, sessionName, gameCount, sessionId }: Props) {
+  const backTo = sessionId ? `/match-schedule/session/${sessionId}` : '/match-schedule'
   return (
     <div className="bg-primary text-primary-foreground px-4 py-5">
-      <Link to="/player" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-sm font-medium mb-3">
+      <Link to={backTo} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-sm font-medium mb-3">
         ← All players
       </Link>
       <p className="text-2xl font-bold">{nameSlug}</p>
