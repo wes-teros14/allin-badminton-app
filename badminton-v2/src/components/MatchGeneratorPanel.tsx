@@ -252,7 +252,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
     setEditingGameNumber(null)
   }
 
-  const nameMap = new Map(players.map((p) => [p.id, p.nameSlug]))
+  const nameMap = new Map(players.map((p) => [p.id, p.nickname ?? p.nameSlug]))
   const name = (id: string) => nameMap.get(id) ?? id
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading players…</div>
@@ -527,7 +527,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                             >
                               <option value="">— {['Team 1 P1','Team 1 P2','Team 2 P1','Team 2 P2'][si]} —</option>
                               {players.map((p) => (
-                                <option key={p.id} value={p.id}>{p.nameSlug}</option>
+                                <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
                               ))}
                             </select>
                           ))}

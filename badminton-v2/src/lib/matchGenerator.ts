@@ -21,6 +21,7 @@
 export interface PlayerInput {
   id: string
   nameSlug: string
+  nickname: string | null
   gender: 'M' | 'F' | null
   level: number | null  // integer 1–10; null treated as 5
 }

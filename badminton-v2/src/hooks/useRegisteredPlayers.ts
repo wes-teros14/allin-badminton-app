@@ -41,7 +41,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, name_slug, gender, level')
+        .select('id, name_slug, nickname, gender, level')
         .in('id', playerIds)
 
       if (profilesError) {
@@ -51,7 +51,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
       }
 
       const profileMap = new Map(
-        (profiles ?? []).map((p: any) => [p.id as string, p as { id: string; name_slug: string; gender: 'M' | 'F' | null; level: number | null }])
+        (profiles ?? []).map((p: any) => [p.id as string, p as { id: string; name_slug: string; nickname: string | null; gender: 'M' | 'F' | null; level: number | null }])
       )
 
       const result: PlayerInput[] = regsFull.map((r) => {
@@ -59,6 +59,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
         return {
           id: r.player_id,
           nameSlug: profile?.name_slug ?? r.player_id,
+          nickname: profile?.nickname ?? null,
           gender: (r.gender ?? profile?.gender ?? null) as 'M' | 'F' | null,
           level: r.level ?? profile?.level ?? null,
         }
