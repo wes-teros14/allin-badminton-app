@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 interface PlayerEntry {
   id: string
   nameSlug: string
+  displayName: string
 }
 
 interface UsePlayerListResult {
@@ -69,14 +70,14 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
       // 3. Fetch profiles
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, name_slug')
+        .select('id, name_slug, nickname')
         .in('id', playerIds)
 
       if (cancelled) return
 
-      const sorted = ((profiles ?? []) as Array<{ id: string; name_slug: string }>)
-        .map((p) => ({ id: p.id, nameSlug: p.name_slug }))
-        .sort((a, b) => a.nameSlug.localeCompare(b.nameSlug))
+      const sorted = ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
+        .map((p) => ({ id: p.id, nameSlug: p.name_slug, displayName: p.nickname ?? p.name_slug }))
+        .sort((a, b) => a.displayName.localeCompare(b.displayName))
 
       setPlayers(sorted)
       setIsLoading(false)

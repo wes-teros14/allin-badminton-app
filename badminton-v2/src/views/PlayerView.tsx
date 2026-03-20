@@ -45,7 +45,7 @@ function PlayerListView({ sessionId }: { sessionId?: string }) {
                     : `/match-schedule/${p.nameSlug}`}
                   className="w-full h-12 flex items-center px-4 rounded-lg border border-border text-foreground font-medium hover:bg-muted/50 transition-colors"
                 >
-                  {p.nameSlug}
+                  {p.displayName}
                 </Link>
               ))}
         </div>
