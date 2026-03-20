@@ -163,7 +163,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
     // Defer computation so React can render the loading state first
     setTimeout(() => {
       // Resolve wishlist: "slug1-slug2, slug3-slug4" → ID pairs
-      const nameToId = new Map(players.map((p) => [p.nameSlug.toLowerCase(), p.id]))
+      const nameToId = new Map(players.map((p) => [(p.nickname ?? p.nameSlug).toLowerCase(), p.id]))
       const wishlistPairs: [string, string][] = []
       if (settings.wishlistStr.trim()) {
         for (const pair of settings.wishlistStr.split(',')) {
