@@ -33,6 +33,3 @@ dist-ssr
 
 # Vitest HTML report (generated artifact)
 /html/
-
-# Temp files
-/temp/

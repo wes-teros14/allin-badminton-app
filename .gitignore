@@ -8,6 +8,9 @@ badminton-v2/.env.local
 *.log
 npm-debug.log*
 
+# Temp files
+/temp/
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
