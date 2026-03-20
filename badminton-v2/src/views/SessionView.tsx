@@ -20,7 +20,7 @@ function BackToAdmin() {
 }
 
 function LiveSessionView({ sessionId }: { sessionId: string }) {
-  const { court1Current, court2Current, queued, sessionId: sid, sessionName, isLoading, refresh } =
+  const { court1Current, court2Current, queued, sessionId: sid, sessionName, sessionDate, isLoading, refresh } =
     useAdminSession(sessionId)
   const { status } = useRealtime(sid, refresh, 'session')
 
@@ -28,7 +28,14 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
     <div className="space-y-4 relative">
       <LiveIndicator status={status} onRefresh={refresh} />
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">{sessionName || 'Session'}</h1>
+        <div>
+          <h1 className="text-lg font-semibold">{sessionName || 'Session'}</h1>
+          {sessionDate && (
+            <p className="text-sm text-muted-foreground">
+              {new Date(sessionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
+            </p>
+          )}
+        </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => window.open(`/kiosk/${sessionId}`, '_blank')}

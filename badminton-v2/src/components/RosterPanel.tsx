@@ -18,11 +18,14 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading roster…</div>
 
+  const maleCount = players.filter((p) => p.gender === 'M').length
+  const femaleCount = players.filter((p) => p.gender === 'F').length
+
   return (
     <Card>
       <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
         <CardTitle className="flex items-center justify-between">
-          <span>Roster ({players.length})</span>
+          <span>Roster ({players.length}), Male ({maleCount}), Female ({femaleCount})</span>
           <span className="text-sm text-muted-foreground">{open ? '▲' : '▼'}</span>
         </CardTitle>
       </CardHeader>

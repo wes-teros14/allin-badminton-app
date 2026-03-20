@@ -50,10 +50,10 @@ export function GameCard({ gameNumber, partnerNameSlug, opp1NameSlug, opp2NameSl
         }
       </div>
       <p className="text-sm text-foreground/80">
-        With: <span className="font-medium">{partnerNameSlug}</span>
+        With: <span className="font-medium text-primary">{partnerNameSlug}</span>
       </p>
       <p className="text-sm text-muted-foreground mt-0.5">
-        vs {opp1NameSlug} &amp; {opp2NameSlug}
+        vs <span className="text-primary">{opp1NameSlug}</span> &amp; <span className="text-primary">{opp2NameSlug}</span>
       </p>
     </div>
   )

@@ -116,14 +116,14 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, name_slug')
+        .select('id, name_slug, nickname')
         .in('id', allIds)
 
       if (cancelled) return
 
       const nameMap = new Map(
-        ((profiles ?? []) as Array<{ id: string; name_slug: string }>)
-          .map((p) => [p.id, p.name_slug])
+        ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
+          .map((p) => [p.id, p.nickname ?? p.name_slug])
       )
       const name = (id: string) => nameMap.get(id) ?? id
 

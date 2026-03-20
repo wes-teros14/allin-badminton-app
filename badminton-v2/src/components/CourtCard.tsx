@@ -161,13 +161,6 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
             {current.t2p1} &amp; {current.t2p2}
           </button>
           <button
-            onClick={() => handleFinish(null)}
-            disabled={isSaving}
-            className="w-full py-3 rounded-lg border border-border text-muted-foreground text-lg font-semibold hover:text-foreground hover:border-foreground/30 disabled:opacity-50 transition-colors"
-          >
-            Don't Record
-          </button>
-          <button
             onClick={() => setConfirmingFinish(false)}
             disabled={isSaving}
             className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"

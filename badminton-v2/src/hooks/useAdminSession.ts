@@ -16,6 +16,7 @@ interface UseAdminSessionResult {
   queued: AdminMatchDisplay[]
   sessionId: string | null
   sessionName: string
+  sessionDate: string
   sessionStatus: string | null
   isLoading: boolean
   refresh: () => void
@@ -38,6 +39,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
   const [queued, setQueued] = useState<AdminMatchDisplay[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessionName, setSessionName] = useState('')
+  const [sessionDate, setSessionDate] = useState('')
   const [sessionStatus, setSessionStatus] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -58,7 +60,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
         // Load specific session by ID
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, status')
+          .select('id, name, status, date')
           .eq('id', sessionIdParam)
           .maybeSingle()
 
@@ -74,14 +76,15 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
           return
         }
 
-        sid = (session as { id: string; name: string; status: string }).id
-        sessionLabel = (session as { id: string; name: string; status: string }).name
-        setSessionStatus((session as { id: string; name: string; status: string }).status)
+        sid = (session as { id: string; name: string; status: string; date: string }).id
+        sessionLabel = (session as { id: string; name: string; status: string; date: string }).name
+        setSessionStatus((session as { id: string; name: string; status: string; date: string }).status)
+        setSessionDate((session as { id: string; name: string; status: string; date: string }).date)
       } else {
         // Find active session
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, status')
+          .select('id, name, status, date')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -99,9 +102,10 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
           return
         }
 
-        sid = (session as { id: string; name: string; status: string }).id
-        sessionLabel = (session as { id: string; name: string; status: string }).name
-        setSessionStatus((session as { id: string; name: string; status: string }).status)
+        sid = (session as { id: string; name: string; status: string; date: string }).id
+        sessionLabel = (session as { id: string; name: string; status: string; date: string }).name
+        setSessionStatus((session as { id: string; name: string; status: string; date: string }).status)
+        setSessionDate((session as { id: string; name: string; status: string; date: string }).date)
       }
 
       setSessionId(sid)
@@ -135,14 +139,14 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, name_slug')
+        .select('id, name_slug, nickname')
         .in('id', allIds)
 
       if (cancelled) return
 
       const nameMap = new Map(
-        ((profiles ?? []) as Array<{ id: string; name_slug: string }>)
-          .map((p) => [p.id, p.name_slug])
+        ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
+          .map((p) => [p.id, p.nickname ?? p.name_slug])
       )
       const name = (id: string) => nameMap.get(id) ?? id
 
@@ -173,5 +177,5 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
   }, [sessionIdParam, refreshKey])
 
 
-  return { court1Current, court2Current, queued, sessionId, sessionName, sessionStatus, isLoading, refresh }
+  return { court1Current, court2Current, queued, sessionId, sessionName, sessionDate, sessionStatus, isLoading, refresh }
 }
