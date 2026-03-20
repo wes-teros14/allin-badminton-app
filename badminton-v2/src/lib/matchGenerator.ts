@@ -213,6 +213,7 @@ export function generateSchedule(
 
           if (phase.respectPartner && avoidRepeatPartners) {
             if (teamPairingHistory.has([...t1].sort().join('|'))) continue
+            if (teamPairingHistory.has([...t2].sort().join('|'))) continue
           }
 
           const t1Sum = (levelMap.get(t1[0]) ?? 5) + (levelMap.get(t1[1]) ?? 5)
