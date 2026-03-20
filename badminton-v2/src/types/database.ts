@@ -10,6 +10,7 @@ export type Database = {
           id: string
           role: 'admin' | 'player'
           name_slug: string
+          nickname: string | null
           gender: 'M' | 'F' | null
           level: number | null
           created_at: string
@@ -18,6 +19,7 @@ export type Database = {
           id: string
           role?: 'admin' | 'player'
           name_slug: string
+          nickname?: string | null
           gender?: 'M' | 'F' | null
           level?: number | null
           created_at?: string
@@ -26,6 +28,7 @@ export type Database = {
           id?: string
           role?: 'admin' | 'player'
           name_slug?: string
+          nickname?: string | null
           gender?: 'M' | 'F' | null
           level?: number | null
           created_at?: string
