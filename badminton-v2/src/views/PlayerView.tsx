@@ -7,17 +7,17 @@ import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 
 export function PlayerView() {
-  const { nameSlug } = useParams<{ nameSlug?: string }>()
+  const { nameSlug, sessionId } = useParams<{ nameSlug?: string; sessionId?: string }>()
 
   if (nameSlug) {
     return <ScheduleView nameSlug={nameSlug} />
   }
 
-  return <PlayerListView />
+  return <PlayerListView sessionId={sessionId} />
 }
 
-function PlayerListView() {
-  const { players, isLoading, hasSession } = usePlayerList()
+function PlayerListView({ sessionId }: { sessionId?: string }) {
+  const { players, isLoading, hasSession } = usePlayerList(sessionId)
 
   if (!isLoading && !hasSession) {
     return (
@@ -40,7 +40,9 @@ function PlayerListView() {
             : players.map((p) => (
                 <Link
                   key={p.id}
-                  to={`/player/${p.nameSlug}`}
+                  to={sessionId
+                    ? `/match-schedule/session/${sessionId}/${p.nameSlug}`
+                    : `/match-schedule/${p.nameSlug}`}
                   className="w-full h-12 flex items-center px-4 rounded-lg border border-border text-foreground font-medium hover:bg-muted/50 transition-colors"
                 >
                   {p.nameSlug}

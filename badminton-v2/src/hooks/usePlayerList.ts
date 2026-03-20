@@ -12,7 +12,7 @@ interface UsePlayerListResult {
   hasSession: boolean
 }
 
-export function usePlayerList(): UsePlayerListResult {
+export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
   const [players, setPlayers] = useState<PlayerEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [hasSession, setHasSession] = useState(false)
@@ -23,25 +23,30 @@ export function usePlayerList(): UsePlayerListResult {
     async function load() {
       setIsLoading(true)
 
-      // 1. Find latest active session
-      const { data: session } = await supabase
-        .from('sessions')
-        .select('id')
-        .in('status', ['schedule_locked', 'in_progress'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      let sid: string
 
-      if (cancelled) return
+      if (sessionIdParam) {
+        sid = sessionIdParam
+      } else {
+        // Find latest active session
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('id')
+          .in('status', ['schedule_locked', 'in_progress'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      if (!session) {
-        setHasSession(false)
-        setPlayers([])
-        setIsLoading(false)
-        return
+        if (cancelled) return
+
+        if (!session) {
+          setHasSession(false)
+          setPlayers([])
+          setIsLoading(false)
+          return
+        }
+        sid = (session as { id: string }).id
       }
-
-      const sid = (session as { id: string }).id
       setHasSession(true)
 
       // 2. Get registered player IDs for this session
@@ -79,7 +84,7 @@ export function usePlayerList(): UsePlayerListResult {
 
     load()
     return () => { cancelled = true }
-  }, [])
+  }, [sessionIdParam])
 
   return { players, isLoading, hasSession }
 }

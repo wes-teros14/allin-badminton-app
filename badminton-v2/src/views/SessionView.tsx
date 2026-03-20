@@ -164,6 +164,7 @@ export function SessionView() {
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
           <Button onClick={startSession} className="w-full">Start Session</Button>
           <Button variant="outline" onClick={() => window.open(`/kiosk/${session.id}`, '_blank')} className="w-full">Open Kiosk ↗</Button>
+          <Button variant="outline" onClick={() => window.open(`/match-schedule/session/${session.id}`, '_blank')} className="w-full">Share Match Schedule ↗</Button>
           <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>
         </div>
       )}

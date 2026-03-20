@@ -45,8 +45,10 @@ function App() {
         <Route path="/profile"          element={<ProfileView />} />
         <Route path="/kiosk"                      element={<KioskView />} />
         <Route path="/kiosk/:sessionId"           element={<KioskView />} />
-        <Route path="/player"           element={<PlayerView />} />
-        <Route path="/player/:nameSlug" element={<PlayerView />} />
+        <Route path="/match-schedule"                               element={<PlayerView />} />
+        <Route path="/match-schedule/:nameSlug"                      element={<PlayerView />} />
+        <Route path="/match-schedule/session/:sessionId"             element={<PlayerView />} />
+        <Route path="/match-schedule/session/:sessionId/:nameSlug"   element={<PlayerView />} />
         <Route element={<AdminRoute />}>
           <Route path="/admin" element={<AdminView />} />
           <Route path="/session/:sessionId" element={<SessionView />} />
