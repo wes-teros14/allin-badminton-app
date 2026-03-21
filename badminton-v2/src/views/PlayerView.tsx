@@ -29,36 +29,11 @@ export function PlayerView() {
   return <PlayerListView sessionId={sessionId} />
 }
 
-type SessionCard = { id: string; name: string; date: string; time: string | null; venue: string | null }
-
 function SessionPickerView() {
   const { user, isLoading: authLoading } = useAuth()
-  const { sessions: registeredSessions, isLoading: sessionsLoading } = usePlayerSessions(user?.id ?? null)
-  const [allSessions, setAllSessions] = useState<SessionCard[]>([])
-  const [allLoading, setAllLoading] = useState(true)
+  const { sessions, isLoading: sessionsLoading } = usePlayerSessions(user?.id ?? null)
 
-  // Always fetch all active sessions as fallback for unauthenticated/unregistered users
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      const { data } = await supabase
-        .from('sessions')
-        .select('id, name, date, time, venue')
-        .in('status', ['schedule_locked', 'in_progress'])
-        .order('created_at', { ascending: false })
-      if (cancelled) return
-      setAllSessions((data ?? []) as unknown as SessionCard[])
-      setAllLoading(false)
-    }
-    load()
-    return () => { cancelled = true }
-  }, [])
-
-  const isLoading = authLoading || sessionsLoading || allLoading
-  // Logged-in + has registered sessions → show only those; otherwise show all active
-  const sessions: SessionCard[] = (!authLoading && user && registeredSessions.length > 0)
-    ? registeredSessions
-    : allSessions
+  const isLoading = authLoading || sessionsLoading
 
   if (isLoading) {
     return (
