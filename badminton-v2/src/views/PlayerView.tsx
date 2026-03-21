@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
@@ -9,6 +9,7 @@ import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { SessionRecapBanner } from '@/components/SessionRecapBanner'
+import { supabase } from '@/lib/supabase'
 
 export function PlayerView() {
   const { nameSlug, sessionId } = useParams<{ nameSlug?: string; sessionId?: string }>()
@@ -114,7 +115,31 @@ function PlayerListView({ sessionId }: { sessionId?: string }) {
 }
 
 function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
+  const { user, isLoading: authLoading } = useAuth()
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const showAll = searchParams.get('show') === 'all'
+
   const { players, session, isLoading, hasSession } = usePlayerList(sessionId)
+
+  // Auto-redirect logged-in player to their own schedule (unless ?show=all)
+  useEffect(() => {
+    if (showAll || !sessionId || !user || authLoading) return
+    let cancelled = false
+    async function detect() {
+      const { data: profile } = await supabase
+        .from('profiles').select('name_slug').eq('id', user!.id).maybeSingle()
+      if (cancelled || !profile) return
+      const nameSlug = (profile as { name_slug: string }).name_slug
+      const { data: reg } = await supabase
+        .from('session_registrations').select('player_id')
+        .eq('session_id', sessionId!).eq('player_id', user!.id).maybeSingle()
+      if (cancelled || !reg) return
+      navigate(`/match-schedule/session/${sessionId}/${nameSlug}`, { replace: true })
+    }
+    detect()
+    return () => { cancelled = true }
+  }, [sessionId, user, authLoading, showAll, navigate])
 
   if (!isLoading && !hasSession) {
     return (
@@ -147,7 +172,7 @@ function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
           </div>
         ) : null}
 
-        <p className="text-sm text-muted-foreground mb-3">Select Your Name</p>
+        <p className="text-sm text-muted-foreground mb-3">Select a player to view their schedule</p>
 
         <div className="flex flex-col gap-2">
           {isLoading
@@ -208,6 +233,17 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
         />
       )}
 
+      {!isLoading && sessionId && (
+        <div className="flex justify-end px-4 mt-2">
+          <Link
+            to={`/match-schedule/session/${sessionId}?show=all`}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            All Players ↗
+          </Link>
+        </div>
+      )}
+
       {!isLoading && (playingMatch || nextUpMatch) && (
         <div className={`mx-4 mt-3 mb-1 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 ${
           playingMatch
@@ -218,7 +254,7 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
             ? '🏸 You\'re on court now!'
             : gamesAhead === 0
             ? '⏳ You\'re up next!'
-            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} ahead · ~${(gamesAhead ?? 0) * 20} min wait`
+            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} ahead · ~${(gamesAhead ?? 0) * 15} min wait`
           }
         </div>
       )}

@@ -27,12 +27,12 @@ function SessionStepper({ status }: { status: string }) {
     <div className="flex items-center gap-1 overflow-x-auto pb-1">
       {steps.map((label, i) => (
         <div key={i} className="flex items-center gap-1 shrink-0">
-          <div className="flex flex-col items-center gap-0.5">
-            <div className={`w-2.5 h-2.5 rounded-full ${i <= current ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
-            <span className={`text-[10px] ${i === current ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>{label}</span>
+          <div className="flex flex-col items-center gap-1">
+            <div className={`w-4 h-4 rounded-full ${i <= current ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+            <span className={`text-xs ${i === current ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>{label}</span>
           </div>
           {i < steps.length - 1 && (
-            <div className={`w-5 h-px mb-4 ${i < current ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+            <div className={`w-8 h-0.5 mb-5 ${i < current ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
           )}
         </div>
       ))}
