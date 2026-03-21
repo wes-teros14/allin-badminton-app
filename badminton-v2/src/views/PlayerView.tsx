@@ -1,6 +1,9 @@
-import { useParams, Link } from 'react-router'
+import { useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
+import { usePlayerSessions } from '@/hooks/usePlayerSessions'
+import { useAuth } from '@/hooks/useAuth'
 import { useRealtime } from '@/hooks/useRealtime'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
@@ -16,7 +19,96 @@ export function PlayerView() {
   return <PlayerListView sessionId={sessionId} />
 }
 
+function SessionPickerView() {
+  const { user, isLoading: authLoading } = useAuth()
+  const { sessions, isLoading: sessionsLoading } = usePlayerSessions(user?.id ?? null)
+  const navigate = useNavigate()
+
+  const isLoading = authLoading || sessionsLoading
+
+  // Auto-redirect when exactly 1 session
+  useEffect(() => {
+    if (!isLoading && sessions.length === 1) {
+      navigate(`/match-schedule/session/${sessions[0].id}`, { replace: true })
+    }
+  }, [isLoading, sessions, navigate])
+
+  // While loading, show skeleton
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="max-w-sm mx-auto px-4 py-8">
+          <div className="mb-6 space-y-1">
+            <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Not authenticated or 0 sessions: fall through to default behavior
+  if (!user || sessions.length === 0) {
+    return <DefaultPlayerListView />
+  }
+
+  // Auto-redirect in progress (1 session) — show nothing while navigating
+  if (sessions.length === 1) {
+    return null
+  }
+
+  // 2+ sessions: show picker
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="max-w-sm mx-auto px-4 py-8">
+        <p className="text-sm text-muted-foreground mb-3">Select Session</p>
+
+        <div className="flex flex-col gap-2">
+          {sessions.map((s) => {
+            const formattedDate = new Date(s.date + 'T00:00:00')
+              .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              .replace(/^(\w{3})/, '$1.')
+            return (
+              <Link
+                key={s.id}
+                to={`/match-schedule/session/${s.id}`}
+                className="w-full flex items-center px-4 py-3 rounded-lg border border-border text-foreground font-medium hover:bg-muted/50 transition-colors"
+              >
+                <div>
+                  <div className="font-bold">{s.name}</div>
+                  <div className="text-sm text-muted-foreground">
+                    {formattedDate}
+                    {s.time && <span> · {s.time}</span>}
+                    {s.venue && <span> · {s.venue}</span>}
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DefaultPlayerListView() {
+  return <PlayerListViewInner />
+}
+
 function PlayerListView({ sessionId }: { sessionId?: string }) {
+  // When no sessionId is provided, show the session picker flow
+  if (!sessionId) {
+    return <SessionPickerView />
+  }
+
+  return <PlayerListViewInner sessionId={sessionId} />
+}
+
+function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
   const { players, session, isLoading, hasSession } = usePlayerList(sessionId)
 
   if (!isLoading && !hasSession) {
