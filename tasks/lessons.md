@@ -93,6 +93,18 @@
 
 ---
 
+## Vercel Environment Variables
+
+- **Supabase redirect URL allowlist blocks preview deployments**: After OAuth sign-in, Supabase redirects to the production URL even when signing in from a Vercel preview URL. Root cause: Supabase only allows redirect URLs explicitly listed in Authentication → URL Configuration → Redirect URLs. Fix: add `https://*.vercel.app/**` as a wildcard redirect URL in Supabase to cover all preview deployments.
+
+- **`VITE_APP_URL` must be Production-only**: Setting `VITE_APP_URL` on Preview environments causes OAuth redirects to land on the production URL instead of the preview URL. Fix: in Vercel → Environment Variables → `VITE_APP_URL` → check **Production only**. Leave it unset for Preview/Development so `window.location.origin` is used, which correctly resolves to the preview deployment URL.
+
+- **Vercel preview URLs require Vercel login by default**: Vercel enables Deployment Protection on preview/branch URLs out of the box. Incognito or non-Vercel-authenticated users get a Vercel login wall. Fix: Vercel Dashboard → project → Settings → Deployment Protection → disable "Vercel Authentication" for Preview deployments.
+
+- **Deleted env vars cause blank black screen**: If Vercel environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) are accidentally deleted, the app renders a blank black screen with console error `supabaseUrl is required`. Re-add the variables with Production + Preview + Development checked, then redeploy.
+
+---
+
 ## General
 
 - **Always run `npm run build` + `npm run lint` before marking a story complete.** Both must pass clean.

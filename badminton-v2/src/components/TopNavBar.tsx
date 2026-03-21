@@ -33,7 +33,6 @@ export function TopNavBar() {
 
   return (
     <nav className="bg-primary text-primary-foreground px-4 py-2 flex items-center gap-6">
-      <span className="font-bold text-sm mr-2 opacity-90">BG</span>
       {tabs.map((tab) => (
         <Link
           key={tab.href}
