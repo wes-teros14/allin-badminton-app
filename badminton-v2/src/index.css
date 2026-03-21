@@ -80,7 +80,7 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
-.kiosk-dark {
+.live-board-dark {
     --background: #0F0F17;
     --surface: #1C1C28;
     --border: #2E2E3E;

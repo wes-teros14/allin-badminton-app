@@ -73,10 +73,10 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
             Match Schedule ↗
           </button>
           <button
-            onClick={() => window.open(`/kiosk/${sessionId}`, '_blank')}
+            onClick={() => window.open(`/live-board/${sessionId}`, '_blank')}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Open Kiosk ↗
+            Open LiveBoard ↗
           </button>
           <BackToAdmin />
         </div>
@@ -234,7 +234,7 @@ export function SessionView() {
         <div className="space-y-4">
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
           <Button onClick={startSession} className="w-full">Start Session</Button>
-          <Button variant="outline" onClick={() => window.open(`/kiosk/${session.id}`, '_blank')} className="w-full">Open Kiosk ↗</Button>
+          <Button variant="outline" onClick={() => window.open(`/live-board/${session.id}`, '_blank')} className="w-full">Open LiveBoard ↗</Button>
           <Button variant="outline" onClick={() => window.open(`/match-schedule/session/${session.id}`, '_blank')} className="w-full">Share Match Schedule ↗</Button>
           <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>
         </div>

@@ -43,7 +43,7 @@ CREATE POLICY "sessions: admin all"
     )
   );
 
--- All roles can read sessions (kiosk + player views need session info)
+-- All roles can read sessions (live board + player views need session info)
 CREATE POLICY "sessions: read all"
   ON public.sessions FOR SELECT
   TO anon, authenticated

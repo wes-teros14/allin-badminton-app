@@ -31,7 +31,7 @@ CREATE POLICY "matches: admin all"
     EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
--- All roles can read matches (kiosk + player views need them)
+-- All roles can read matches (live board + player views need them)
 CREATE POLICY "matches: read all"
   ON public.matches FOR SELECT
   TO anon, authenticated

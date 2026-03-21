@@ -29,7 +29,7 @@ function AdminRoute() {
 
 const HomeView     = lazy(() => import('@/views/HomeView'))
 const ProfileView  = lazy(() => import('@/views/ProfileView'))
-const KioskView    = lazy(() => import('@/views/KioskView'))
+const LiveBoardView = lazy(() => import('@/views/LiveBoardView'))
 const PlayerView   = lazy(() => import('@/views/PlayerView'))
 const TodayView    = lazy(() => import('@/views/TodayView'))
 const AdminView    = lazy(() => import('@/views/AdminView'))
@@ -44,8 +44,8 @@ function App() {
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
         <Route path="/" element={<HomeView />} />
-        <Route path="/kiosk"            element={<KioskView />} />
-        <Route path="/kiosk/:sessionId" element={<KioskView />} />
+        <Route path="/live-board"            element={<LiveBoardView />} />
+        <Route path="/live-board/:sessionId" element={<LiveBoardView />} />
         <Route path="/register"         element={<RegisterView />} />
         {/* Player-facing routes — wrapped in PlayerLayout for top nav bar */}
         <Route element={<PlayerLayout />}>

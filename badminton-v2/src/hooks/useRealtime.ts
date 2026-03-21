@@ -11,7 +11,7 @@ interface UseRealtimeResult {
 export function useRealtime(
   sessionId: string | null,
   onUpdate: () => void,
-  channelPrefix = 'kiosk',
+  channelPrefix = 'live-board',
 ): UseRealtimeResult {
   const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
   const onUpdateRef = useRef(onUpdate)

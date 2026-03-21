@@ -4,7 +4,7 @@ import { useCourtState } from '@/hooks/useCourtState'
 import { useRealtime } from '@/hooks/useRealtime'
 import { CourtCard } from '@/components/CourtCard'
 
-export function KioskView() {
+export function LiveBoardView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
   const { court1, court2, sessionId, isLoading, hasSession, isClosed, refresh } = useCourtState(sessionIdParam)
   useRealtime(sessionId, refresh)
@@ -19,7 +19,7 @@ export function KioskView() {
   }, [])
 
   return (
-    <div className="kiosk-dark h-screen w-screen overflow-hidden bg-background text-foreground relative">
+    <div className="live-board-dark h-screen w-screen overflow-hidden bg-background text-foreground relative">
 
       {/* Portrait orientation guard */}
       {isPortrait && (
@@ -27,7 +27,7 @@ export function KioskView() {
           <div className="text-center space-y-4">
             <p className="text-5xl">↻</p>
             <p className="text-xl font-semibold">Please rotate your device</p>
-            <p className="text-muted-foreground text-sm">Kiosk requires landscape orientation</p>
+            <p className="text-muted-foreground text-sm">LiveBoard requires landscape orientation</p>
           </div>
         </div>
       )}
@@ -58,4 +58,4 @@ export function KioskView() {
   )
 }
 
-export default KioskView
+export default LiveBoardView

@@ -62,7 +62,7 @@ GRANT SELECT ON public.player_pair_stats TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Trigger: update stats when a match result is inserted
--- Fires on match_results INSERT (kiosk records winner)
+-- Fires on match_results INSERT (live board records winner)
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.update_player_stats_on_result()

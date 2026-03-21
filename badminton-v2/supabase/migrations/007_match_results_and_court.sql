@@ -1,7 +1,7 @@
 -- =============================================================
 -- Migration: 007_match_results_and_court
 -- Adds court_number to matches and creates match_results table.
--- Also adds anon RLS policies so the kiosk (unauthenticated) can
+-- Also adds anon RLS policies so the live board (unauthenticated) can
 -- update match status and record results.
 -- NOTE: Run each ALTER TABLE statement separately in Supabase Dashboard.
 -- =============================================================
@@ -9,8 +9,8 @@
 -- Add court_number to matches (1 or 2)
 ALTER TABLE public.matches ADD COLUMN IF NOT EXISTS court_number INTEGER CHECK (court_number IN (1, 2));
 
--- Allow kiosk (anon) to update matches (status + court_number)
-CREATE POLICY "matches: kiosk update"
+-- Allow live board (anon) to update matches (status + court_number)
+CREATE POLICY "matches: live-board update"
   ON public.matches FOR UPDATE
   TO anon
   USING (true)
@@ -43,8 +43,8 @@ CREATE POLICY "match_results: read all"
   TO anon, authenticated
   USING (true);
 
--- Kiosk (anon) can insert results
-CREATE POLICY "match_results: kiosk insert"
+-- Live board (anon) can insert results
+CREATE POLICY "match_results: live-board insert"
   ON public.match_results FOR INSERT
   TO anon
   WITH CHECK (true);
