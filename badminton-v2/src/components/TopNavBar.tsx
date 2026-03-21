@@ -1,22 +1,16 @@
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { useActiveSession } from '@/hooks/useActiveSession'
 
 export function TopNavBar() {
   const { user, role } = useAuth()
-  const { activeSession } = useActiveSession()
   const { pathname } = useLocation()
 
   if (!user || role === 'admin') return null
 
-  const scheduleHref = activeSession
-    ? `/match-schedule/session/${activeSession.sessionId}`
-    : '/match-schedule'
-
   const tabs = [
     {
       label: '🏸 Schedule',
-      href: scheduleHref,
+      href: '/match-schedule',
       active: pathname.startsWith('/match-schedule'),
     },
     {
