@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
-import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import { useAuth } from '@/hooks/useAuth'
 import { useRealtime } from '@/hooks/useRealtime'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
@@ -30,21 +29,31 @@ export function PlayerView() {
 }
 
 function SessionPickerView() {
-  const { user, isLoading: authLoading } = useAuth()
-  const { sessions, isLoading: sessionsLoading } = usePlayerSessions(user?.id ?? null)
+  const [sessions, setSessions] = useState<Array<{ id: string; name: string; date: string; time: string | null; venue: string | null }>>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const isLoading = authLoading || sessionsLoading
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const { data } = await supabase
+        .from('sessions')
+        .select('id, name, date, time, venue')
+        .in('status', ['schedule_locked', 'in_progress'])
+        .order('created_at', { ascending: false })
+      if (cancelled) return
+      setSessions((data ?? []) as unknown as Array<{ id: string; name: string; date: string; time: string | null; venue: string | null }>)
+      setIsLoading(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [])
 
-  // While loading, show skeleton
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
         <div className="max-w-sm mx-auto px-4 py-8">
-          <div className="mb-6 space-y-1">
-            <div className="h-6 w-48 bg-muted rounded animate-pulse" />
-          </div>
           <div className="flex flex-col gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
             ))}
           </div>
@@ -53,18 +62,19 @@ function SessionPickerView() {
     )
   }
 
-  // Not authenticated or 0 sessions: fall through to default behavior
-  if (!user || sessions.length === 0) {
-    return <DefaultPlayerListView />
+  if (sessions.length === 0) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-muted-foreground text-lg">No active session</p>
+      </div>
+    )
   }
 
-  // 1+ sessions: show picker
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SessionRecapBanner />
       <div className="max-w-sm mx-auto px-4 py-8">
         <p className="text-sm text-muted-foreground mb-3">Select Session</p>
-
         <div className="flex flex-col gap-2">
           {sessions.map((s) => {
             const formattedDate = new Date(s.date + 'T00:00:00')
@@ -94,10 +104,6 @@ function SessionPickerView() {
       </div>
     </div>
   )
-}
-
-function DefaultPlayerListView() {
-  return <PlayerListViewInner />
 }
 
 function PlayerListView({ sessionId }: { sessionId?: string }) {
