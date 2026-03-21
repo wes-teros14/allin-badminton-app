@@ -21,3 +21,5 @@ npm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+/.claude/settings.local.json
+/.mcp.json
