@@ -140,6 +140,14 @@ export function ProfileView() {
         )}
       </div>
 
+      {/* Sign out */}
+      <button
+        onClick={() => supabase.auth.signOut()}
+        className="w-full py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
+      >
+        Sign out
+      </button>
+
       {/* Stats */}
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Stats</h2>
