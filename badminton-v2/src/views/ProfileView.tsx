@@ -129,18 +129,14 @@ export function ProfileView() {
             </button>
           </>
         ) : (
-          <>
-            <span className="flex-1 text-sm text-foreground">
-              {nickname || <span className="text-muted-foreground">No nickname set</span>}
-            </span>
-            <button
-              onClick={() => setEditingNickname(true)}
-              className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              title="Edit nickname"
-            >
-              ✏️
-            </button>
-          </>
+          <button
+            onClick={() => setEditingNickname(true)}
+            className="flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition-colors"
+            title="Edit nickname"
+          >
+            <span>{nickname || <span className="text-muted-foreground">No nickname set</span>}</span>
+            <span className="text-muted-foreground text-xs">✏️</span>
+          </button>
         )}
       </div>
 

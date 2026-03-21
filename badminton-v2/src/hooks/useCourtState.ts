@@ -21,6 +21,7 @@ interface UseCourtStateResult {
   sessionId: string | null
   isLoading: boolean
   hasSession: boolean
+  isClosed: boolean
   refresh: () => void
 }
 
@@ -43,6 +44,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasSession, setHasSession] = useState(false)
+  const [isClosed, setIsClosed] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const isFirstLoad = useRef(true)
 
@@ -66,8 +68,18 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
         if (cancelled) return
 
         const s = session as { id: string; status: string } | null
-        if (!s || s.status === 'complete') {
+        if (!s) {
           setHasSession(false)
+          setIsClosed(false)
+          setSessionId(null)
+          setCourt1(EMPTY)
+          setCourt2(EMPTY)
+          setIsLoading(false)
+          return
+        }
+        if (s.status === 'complete') {
+          setHasSession(false)
+          setIsClosed(true)
           setSessionId(null)
           setCourt1(EMPTY)
           setCourt2(EMPTY)
@@ -169,5 +181,5 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
     return () => { cancelled = true }
   }, [refreshKey, sessionIdParam])
 
-  return { court1, court2, sessionId, isLoading, hasSession, refresh }
+  return { court1, court2, sessionId, isLoading, hasSession, isClosed, refresh }
 }

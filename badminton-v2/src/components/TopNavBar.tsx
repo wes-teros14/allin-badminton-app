@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { useActiveSession } from '@/hooks/useActiveSession'
 
 export function TopNavBar() {
   const { user, role } = useAuth()
   const { pathname } = useLocation()
+  const { activeSession } = useActiveSession()
 
   if (!user || role === 'admin') return null
 
@@ -12,22 +14,28 @@ export function TopNavBar() {
       label: '🏸 Schedule',
       href: '/match-schedule',
       active: pathname.startsWith('/match-schedule'),
+      show: true,
     },
     {
       label: '🏆 Today',
       href: '/today',
       active: pathname === '/today',
+      show: !!activeSession,
     },
     {
-      label: '👤 Profile',
+      label: '👤 My Profile',
       href: '/profile',
       active: pathname.startsWith('/profile'),
+      show: true,
     },
   ]
 
   return (
     <nav className="bg-primary text-primary-foreground px-4 py-2 flex items-center gap-6">
-      {tabs.map((tab) => (
+      <div className="w-8 h-8 rounded-md bg-primary-foreground/20 flex items-center justify-center text-xs font-bold shrink-0">
+        PP
+      </div>
+      {tabs.filter((tab) => tab.show).map((tab) => (
         <Link
           key={tab.href}
           to={tab.href}

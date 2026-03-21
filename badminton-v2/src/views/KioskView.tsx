@@ -6,7 +6,7 @@ import { CourtCard } from '@/components/CourtCard'
 
 export function KioskView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
-  const { court1, court2, sessionId, isLoading, hasSession, refresh } = useCourtState(sessionIdParam)
+  const { court1, court2, sessionId, isLoading, hasSession, isClosed, refresh } = useCourtState(sessionIdParam)
   useRealtime(sessionId, refresh)
   const [isPortrait, setIsPortrait] = useState(false)
 
@@ -32,8 +32,15 @@ export function KioskView() {
         </div>
       )}
 
+      {/* Session closed */}
+      {!isLoading && isClosed && (
+        <div className="h-full flex items-center justify-center">
+          <p className="text-muted-foreground text-lg">Session Closed</p>
+        </div>
+      )}
+
       {/* No active session */}
-      {!isLoading && !hasSession && (
+      {!isLoading && !hasSession && !isClosed && (
         <div className="h-full flex items-center justify-center">
           <p className="text-muted-foreground text-lg">No active session</p>
         </div>

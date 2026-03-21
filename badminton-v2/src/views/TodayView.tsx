@@ -51,7 +51,6 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
       .map((s) => [s.player_id, { games: s.games_played, wins: s.wins }])
   )
 
-  // Compute per-player session stats from match data
   const statsMap = new Map<string, { wins: number; games: number }>(
     playerIds.map((id) => [id, { wins: 0, games: 0 }])
   )
@@ -90,38 +89,6 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
   return entries.sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
 }
 
-async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
-  const { data } = await supabase
-    .from('player_stats')
-    .select('player_id, games_played, wins')
-    .gte('games_played', 5)
-    .order('wins', { ascending: false })
-    .limit(20)
-
-  const rows = (data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>
-  if (rows.length === 0) return []
-
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, nickname, name_slug')
-    .in('id', rows.map((r) => r.player_id))
-
-  const nameMap = new Map(
-    ((profiles ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map((p) => [p.id, p.nickname ?? p.name_slug])
-  )
-
-  return rows
-    .map((r) => ({
-      playerId: r.player_id,
-      displayName: nameMap.get(r.player_id) ?? r.player_id,
-      wins: r.wins,
-      games: r.games_played,
-      winRate: r.games_played > 0 ? Math.round((r.wins / r.games_played) * 100) : 0,
-    }))
-    .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
-}
-
 const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
 
 export function TodayView() {
@@ -130,11 +97,10 @@ export function TodayView() {
   const [isLoading, setIsLoading] = useState(true)
 
   const load = useCallback(async () => {
+    if (!activeSession) { setIsLoading(false); return }
     setIsLoading(true)
     try {
-      const data = activeSession
-        ? await fetchSessionLeaderboard(activeSession.sessionId)
-        : await fetchAllTimeLeaderboard()
+      const data = await fetchSessionLeaderboard(activeSession.sessionId)
       setEntries(data)
     } finally {
       setIsLoading(false)
@@ -145,23 +111,21 @@ export function TodayView() {
     if (!sessionLoading) load()
   }, [sessionLoading, load])
 
-  // Realtime: refetch when any player_stats row changes
+  // Realtime: refetch when match_results change
   useEffect(() => {
     const channel = supabase
       .channel('today-leaderboard-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_stats' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_results' }, () => {
         load()
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [load])
 
-  const mostImproved = activeSession
-    ? entries
-        .filter((e) => e.improvement !== undefined && e.improvement > 0 && e.games >= 2)
-        .sort((a, b) => (b.improvement ?? 0) - (a.improvement ?? 0))
-        .slice(0, 3)
-    : []
+  const mostImproved = entries
+    .filter((e) => e.improvement !== undefined && e.improvement > 0 && e.games >= 2)
+    .sort((a, b) => (b.improvement ?? 0) - (a.improvement ?? 0))
+    .slice(0, 3)
 
   if (isLoading || sessionLoading) {
     return (
@@ -173,25 +137,22 @@ export function TodayView() {
     )
   }
 
+  if (!activeSession) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-muted-foreground text-lg">No active session</p>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-10 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-primary">
-          {activeSession ? `🏆 Today — ${activeSession.name}` : '🏆 All Time'}
-        </h1>
-        {!activeSession && (
-          <p className="text-xs text-muted-foreground mt-0.5">Min. 5 games to qualify</p>
-        )}
-      </div>
+      <h1 className="text-xl font-bold text-primary">🏆 {activeSession.name}</h1>
 
       {entries.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {activeSession ? 'No games completed yet.' : 'No stats available yet.'}
-        </p>
+        <p className="text-muted-foreground text-sm">No games completed yet.</p>
       ) : (
         <>
-          {/* Leaderboard */}
           <div className="space-y-2">
             {entries.map((entry, i) => (
               <div
@@ -212,7 +173,6 @@ export function TodayView() {
             ))}
           </div>
 
-          {/* Most Improved Today */}
           {mostImproved.length > 0 && (
             <div>
               <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
