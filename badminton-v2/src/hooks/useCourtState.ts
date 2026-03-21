@@ -57,7 +57,24 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
       // 1. Find session — by ID if provided, otherwise latest active
       let sid: string
       if (sessionIdParam) {
-        sid = sessionIdParam
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('id, status')
+          .eq('id', sessionIdParam)
+          .maybeSingle()
+
+        if (cancelled) return
+
+        const s = session as { id: string; status: string } | null
+        if (!s || s.status === 'complete') {
+          setHasSession(false)
+          setSessionId(null)
+          setCourt1(EMPTY)
+          setCourt2(EMPTY)
+          setIsLoading(false)
+          return
+        }
+        sid = s.id
       } else {
         const { data: session } = await supabase
           .from('sessions')
