@@ -7,14 +7,23 @@ interface PlayerEntry {
   displayName: string
 }
 
+interface SessionInfo {
+  name: string
+  date: string
+  venue: string | null
+  time: string | null
+}
+
 interface UsePlayerListResult {
   players: PlayerEntry[]
+  session: SessionInfo | null
   isLoading: boolean
   hasSession: boolean
 }
 
 export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
   const [players, setPlayers] = useState<PlayerEntry[]>([])
+  const [session, setSession] = useState<SessionInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasSession, setHasSession] = useState(false)
 
@@ -28,11 +37,22 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
 
       if (sessionIdParam) {
         sid = sessionIdParam
+        // Fetch session details for provided id
+        const { data: sessionData } = await supabase
+          .from('sessions')
+          .select('id, name, date, venue, time')
+          .eq('id', sid)
+          .maybeSingle()
+        if (cancelled) return
+        if (sessionData) {
+          const s = sessionData as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+          setSession({ name: s.name, date: s.date, venue: s.venue, time: s.time })
+        }
       } else {
         // Find latest active session
-        const { data: session } = await supabase
+        const { data: sessionData } = await supabase
           .from('sessions')
-          .select('id')
+          .select('id, name, date, venue, time')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -40,13 +60,16 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
 
         if (cancelled) return
 
-        if (!session) {
+        if (!sessionData) {
           setHasSession(false)
           setPlayers([])
+          setSession(null)
           setIsLoading(false)
           return
         }
-        sid = (session as { id: string }).id
+        const s = sessionData as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+        sid = s.id
+        setSession({ name: s.name, date: s.date, venue: s.venue, time: s.time })
       }
       setHasSession(true)
 
@@ -87,5 +110,5 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
     return () => { cancelled = true }
   }, [sessionIdParam])
 
-  return { players, isLoading, hasSession }
+  return { players, session, isLoading, hasSession }
 }

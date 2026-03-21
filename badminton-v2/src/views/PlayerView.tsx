@@ -17,7 +17,7 @@ export function PlayerView() {
 }
 
 function PlayerListView({ sessionId }: { sessionId?: string }) {
-  const { players, isLoading, hasSession } = usePlayerList(sessionId)
+  const { players, session, isLoading, hasSession } = usePlayerList(sessionId)
 
   if (!isLoading && !hasSession) {
     return (
@@ -27,10 +27,30 @@ function PlayerListView({ sessionId }: { sessionId?: string }) {
     )
   }
 
+  const formattedDate = session?.date
+    ? new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')
+    : ''
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="max-w-sm mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Find your name</h1>
+        {isLoading ? (
+          <div className="mb-6 space-y-1">
+            <div className="h-6 w-48 bg-muted rounded animate-pulse" />
+            <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+          </div>
+        ) : session ? (
+          <div className="mb-6">
+            <h1 className="text-xl font-bold">{session.name}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {formattedDate}
+              {session.time && <span> · {session.time}</span>}
+              {session.venue && <span> · {session.venue}</span>}
+            </p>
+          </div>
+        ) : null}
+
+        <p className="text-sm text-muted-foreground mb-3">Select Your Name</p>
 
         <div className="flex flex-col gap-2">
           {isLoading
@@ -55,7 +75,7 @@ function PlayerListView({ sessionId }: { sessionId?: string }) {
 }
 
 function ScheduleView({ nameSlug }: { nameSlug: string }) {
-  const { matches, playerDisplayName, sessionName, sessionId, isLoading, notFound, refresh } = usePlayerSchedule(nameSlug)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, refresh } = usePlayerSchedule(nameSlug)
   const { status } = useRealtime(sessionId, refresh)
 
   if (!isLoading && notFound) {
@@ -81,6 +101,9 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
         <PlayerScheduleHeader
           nameSlug={playerDisplayName}
           sessionName={sessionName}
+          sessionDate={sessionDate}
+          sessionVenue={sessionVenue}
+          sessionTime={sessionTime}
           gameCount={matches.length}
           sessionId={sessionId}
         />

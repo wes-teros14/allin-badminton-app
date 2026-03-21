@@ -15,6 +15,8 @@ import type { Session } from '@/hooks/useSession'
 const sessionSchema = z.object({
   name: z.string().min(1, 'Session name is required'),
   date: z.string().min(1, 'Date is required'),
+  venue: z.string().optional(),
+  time: z.string().optional(),
 })
 
 type SessionFormValues = z.infer<typeof sessionSchema>
@@ -88,7 +90,11 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
           <p className="font-semibold truncate">{session.name}</p>
           <p className="text-sm text-muted-foreground">
             {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
+            {session.time && <span> · {session.time}</span>}
           </p>
+          {session.venue && (
+            <p className="text-sm text-muted-foreground truncate">{session.venue}</p>
+          )}
           <p className={`text-xs font-medium mt-0.5 ${STATUS_COLORS[session.status] ?? 'text-muted-foreground'}`}>
             {STATUS_LABELS[session.status] ?? session.status}
           </p>
@@ -136,7 +142,7 @@ export function AdminView() {
 
     const { error } = await supabase
       .from('sessions')
-      .insert({ name: values.name, date: values.date, created_by: user.id })
+      .insert({ name: values.name, date: values.date, venue: values.venue || null, time: values.time || null, created_by: user.id })
 
     if (error) { toast.error(error.message); return }
 
@@ -170,6 +176,14 @@ export function AdminView() {
               <Label htmlFor="date">Date</Label>
               <Input id="date" type="date" {...register('date')} />
               {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="venue">Venue</Label>
+              <Input id="venue" placeholder="e.g. Sports Hall A" {...register('venue')} />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="time">Time</Label>
+              <Input id="time" type="time" {...register('time')} />
             </div>
             <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? 'Creating…' : 'Create Session'}

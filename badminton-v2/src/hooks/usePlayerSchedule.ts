@@ -14,6 +14,9 @@ interface UsePlayerScheduleResult {
   matches: PlayerMatch[]
   playerDisplayName: string
   sessionName: string
+  sessionDate: string
+  sessionVenue: string | null
+  sessionTime: string | null
   sessionId: string | null
   isLoading: boolean
   notFound: boolean
@@ -34,6 +37,9 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
   const [matches, setMatches] = useState<PlayerMatch[]>([])
   const [playerDisplayName, setPlayerDisplayName] = useState('')
   const [sessionName, setSessionName] = useState('')
+  const [sessionDate, setSessionDate] = useState('')
+  const [sessionVenue, setSessionVenue] = useState<string | null>(null)
+  const [sessionTime, setSessionTime] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -52,7 +58,7 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
       // 1. Resolve nameSlug → player id
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, name_slug')
+        .select('id, name_slug, nickname')
         .eq('name_slug', nameSlug)
         .maybeSingle()
 
@@ -64,13 +70,14 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
         return
       }
 
-      const playerId = (profile as { id: string; name_slug: string }).id
-      setPlayerDisplayName(nameSlug)
+      const p = profile as { id: string; name_slug: string; nickname: string | null }
+      const playerId = p.id
+      setPlayerDisplayName(p.nickname ?? p.name_slug)
 
       // 2. Find active session
       const { data: session } = await supabase
         .from('sessions')
-        .select('id, name')
+        .select('id, name, date, venue, time')
         .in('status', ['schedule_locked', 'in_progress'])
         .order('created_at', { ascending: false })
         .limit(1)
@@ -85,9 +92,13 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
         return
       }
 
-      const sid = (session as { id: string; name: string }).id
-      setSessionId(sid)
-      setSessionName((session as { id: string; name: string }).name)
+      const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+      setSessionId(s.id)
+      setSessionName(s.name)
+      setSessionDate(s.date)
+      setSessionVenue(s.venue)
+      setSessionTime(s.time)
+      const sid = s.id
 
       // 3. Fetch this player's matches
       const { data: rows } = await supabase
@@ -168,5 +179,5 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
     return () => { cancelled = true }
   }, [nameSlug, refreshKey])
 
-  return { matches, playerDisplayName, sessionName, sessionId, isLoading, notFound, refresh }
+  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, refresh }
 }
