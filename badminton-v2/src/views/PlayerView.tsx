@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { useAuth } from '@/hooks/useAuth'
+import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import { useRealtime } from '@/hooks/useRealtime'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
@@ -28,10 +29,15 @@ export function PlayerView() {
   return <PlayerListView sessionId={sessionId} />
 }
 
-function SessionPickerView() {
-  const [sessions, setSessions] = useState<Array<{ id: string; name: string; date: string; time: string | null; venue: string | null }>>([])
-  const [isLoading, setIsLoading] = useState(true)
+type SessionCard = { id: string; name: string; date: string; time: string | null; venue: string | null }
 
+function SessionPickerView() {
+  const { user, isLoading: authLoading } = useAuth()
+  const { sessions: registeredSessions, isLoading: sessionsLoading } = usePlayerSessions(user?.id ?? null)
+  const [allSessions, setAllSessions] = useState<SessionCard[]>([])
+  const [allLoading, setAllLoading] = useState(true)
+
+  // Always fetch all active sessions as fallback for unauthenticated/unregistered users
   useEffect(() => {
     let cancelled = false
     async function load() {
@@ -41,12 +47,18 @@ function SessionPickerView() {
         .in('status', ['schedule_locked', 'in_progress'])
         .order('created_at', { ascending: false })
       if (cancelled) return
-      setSessions((data ?? []) as unknown as Array<{ id: string; name: string; date: string; time: string | null; venue: string | null }>)
-      setIsLoading(false)
+      setAllSessions((data ?? []) as unknown as SessionCard[])
+      setAllLoading(false)
     }
     load()
     return () => { cancelled = true }
   }, [])
+
+  const isLoading = authLoading || sessionsLoading || allLoading
+  // Logged-in + has registered sessions → show only those; otherwise show all active
+  const sessions: SessionCard[] = (!authLoading && user && registeredSessions.length > 0)
+    ? registeredSessions
+    : allSessions
 
   if (isLoading) {
     return (
