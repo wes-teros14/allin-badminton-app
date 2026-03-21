@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router'
+import { useNavigate } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -157,7 +157,6 @@ export function AdminView() {
     <div className="p-6 max-w-lg mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-primary">Admin</h1>
-        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
       </div>
 
       {/* Create new session */}
