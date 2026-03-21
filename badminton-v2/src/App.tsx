@@ -44,7 +44,9 @@ function App() {
     <Toaster />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
-        <Route path="/" element={<HomeView />} />
+        <Route element={<PlayerLayout />}>
+          <Route path="/" element={<HomeView />} />
+        </Route>
         <Route path="/live-board"            element={<LiveBoardView />} />
         <Route path="/live-board/:sessionId" element={<LiveBoardView />} />
         <Route path="/register"         element={<RegisterView />} />
