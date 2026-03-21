@@ -35,7 +35,7 @@ type MatchRow = {
   team2_player2_id: string
 }
 
-export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
+export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string | null): UsePlayerScheduleResult {
   const [matches, setMatches] = useState<PlayerMatch[]>([])
   const [playerDisplayName, setPlayerDisplayName] = useState('')
   const [sessionName, setSessionName] = useState('')
@@ -78,31 +78,43 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
       const playerId = p.id
       setPlayerDisplayName(p.nickname ?? p.name_slug)
 
-      // 2. Find active session
-      const { data: session } = await supabase
-        .from('sessions')
-        .select('id, name, date, venue, time')
-        .in('status', ['schedule_locked', 'in_progress'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      // 2. Find active session (or use override)
+      let sid: string
+      if (sessionIdOverride) {
+        sid = sessionIdOverride
+        const { data: session } = await supabase
+          .from('sessions').select('id, name, date, venue, time')
+          .eq('id', sessionIdOverride).maybeSingle()
+        if (cancelled || !session) { setIsLoading(false); return }
+        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+        setSessionId(s.id); setSessionName(s.name); setSessionDate(s.date)
+        setSessionVenue(s.venue); setSessionTime(s.time)
+      } else {
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('id, name, date, venue, time')
+          .in('status', ['schedule_locked', 'in_progress'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      if (cancelled) return
+        if (cancelled) return
 
-      if (!session) {
-        setMatches([])
-        setSessionId(null)
-        setIsLoading(false)
-        return
+        if (!session) {
+          setMatches([])
+          setSessionId(null)
+          setIsLoading(false)
+          return
+        }
+
+        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+        setSessionId(s.id)
+        setSessionName(s.name)
+        setSessionDate(s.date)
+        setSessionVenue(s.venue)
+        setSessionTime(s.time)
+        sid = s.id
       }
-
-      const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
-      setSessionId(s.id)
-      setSessionName(s.name)
-      setSessionDate(s.date)
-      setSessionVenue(s.venue)
-      setSessionTime(s.time)
-      const sid = s.id
 
       // 3. Fetch this player's matches
       const { data: rows } = await supabase
@@ -223,7 +235,7 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
 
     load()
     return () => { cancelled = true }
-  }, [nameSlug, refreshKey])
+  }, [nameSlug, sessionIdOverride, refreshKey])
 
   return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, gamesAhead, refresh }
 }
