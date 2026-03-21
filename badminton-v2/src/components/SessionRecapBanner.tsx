@@ -5,9 +5,11 @@ import { useAuth } from '@/hooks/useAuth'
 interface RecapData {
   sessionId: string
   sessionName: string
+  sessionDate: string
   wins: number
   losses: number
   bestPartnerName: string | null
+  nemesisName: string | null
 }
 
 export function SessionRecapBanner() {
@@ -31,14 +33,14 @@ export function SessionRecapBanner() {
 
       const { data: sessions } = await supabase
         .from('sessions')
-        .select('id, name')
+        .select('id, name, date')
         .in('id', sessionIds)
         .eq('status', 'complete')
         .order('date', { ascending: false })
         .limit(1)
 
       if (cancelled || !sessions?.length) return
-      const session = (sessions as Array<{ id: string; name: string }>)[0]
+      const session = (sessions as Array<{ id: string; name: string; date: string }>)[0]
 
       // Skip if already dismissed
       if (localStorage.getItem(`recap_seen_${session.id}`)) return
@@ -73,6 +75,7 @@ export function SessionRecapBanner() {
 
       let wins = 0, losses = 0
       const partnerWins = new Map<string, number>()
+      const nemesisLosses = new Map<string, number>()
 
       for (const m of mRows) {
         const result = resultMap.get(m.id)
@@ -87,33 +90,49 @@ export function SessionRecapBanner() {
           partnerWins.set(partnerId, (partnerWins.get(partnerId) ?? 0) + 1)
         } else {
           losses++
+          // Track opponents (both) who beat us
+          const opp1 = onTeam1 ? m.team2_player1_id : m.team1_player1_id
+          const opp2 = onTeam1 ? m.team2_player2_id : m.team1_player2_id
+          nemesisLosses.set(opp1, (nemesisLosses.get(opp1) ?? 0) + 1)
+          nemesisLosses.set(opp2, (nemesisLosses.get(opp2) ?? 0) + 1)
         }
       }
 
-      // Find best partner name
+      // Find best partner and nemesis IDs
       let bestPartnerId: string | null = null
       let bestCount = 0
       for (const [id, count] of partnerWins) {
         if (count > bestCount) { bestCount = count; bestPartnerId = id }
       }
 
-      let bestPartnerName: string | null = null
-      if (bestPartnerId) {
-        const { data: prof } = await supabase
+      let nemesisId: string | null = null
+      let nemesisCount = 0
+      for (const [id, count] of nemesisLosses) {
+        if (count > nemesisCount) { nemesisCount = count; nemesisId = id }
+      }
+
+      // Resolve names in one batch
+      const idsToFetch = [...new Set([bestPartnerId, nemesisId].filter(Boolean) as string[])]
+      let nameMap = new Map<string, string>()
+      if (idsToFetch.length) {
+        const { data: profs } = await supabase
           .from('profiles')
-          .select('name_slug, nickname')
-          .eq('id', bestPartnerId)
-          .maybeSingle()
-        if (prof) {
-          const p = prof as { name_slug: string; nickname: string | null }
-          bestPartnerName = p.nickname ?? p.name_slug
+          .select('id, name_slug, nickname')
+          .in('id', idsToFetch)
+        if (profs) {
+          for (const p of profs as Array<{ id: string; name_slug: string; nickname: string | null }>) {
+            nameMap.set(p.id, p.nickname ?? p.name_slug)
+          }
         }
       }
+
+      const bestPartnerName = bestPartnerId ? (nameMap.get(bestPartnerId) ?? null) : null
+      const nemesisName = nemesisId ? (nameMap.get(nemesisId) ?? null) : null
 
       if (cancelled) return
       if (wins + losses === 0) return // no recorded results, skip recap
 
-      setRecap({ sessionId: session.id, sessionName: session.name, wins, losses, bestPartnerName })
+      setRecap({ sessionId: session.id, sessionName: session.name, sessionDate: session.date, wins, losses, bestPartnerName, nemesisName })
     }
 
     load()
@@ -127,13 +146,21 @@ export function SessionRecapBanner() {
     setRecap(null)
   }
 
+  const formattedDate = recap.sessionDate
+    ? new Date(recap.sessionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')
+    : ''
+  const winRate = recap.wins + recap.losses > 0
+    ? Math.round((recap.wins / (recap.wins + recap.losses)) * 100)
+    : 0
+
   return (
     <div className="mx-4 mt-3 mb-1 px-4 py-3 rounded-lg bg-muted border border-border flex items-start justify-between gap-3">
       <div>
-        <p className="text-sm font-semibold text-foreground">🏸 {recap.sessionName} Recap</p>
+        <p className="text-sm font-semibold text-foreground">🏸 {recap.sessionName} · {formattedDate}</p>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {recap.wins}W {recap.losses}L
-          {recap.bestPartnerName && ` · Best partner: ${recap.bestPartnerName}`}
+          {recap.wins}W {recap.losses}L · {winRate}% win rate
+          {recap.bestPartnerName && ` · 🤝 ${recap.bestPartnerName}`}
+          {recap.nemesisName && ` · 😤 ${recap.nemesisName}`}
         </p>
       </div>
       <button onClick={dismiss} className="text-muted-foreground hover:text-foreground text-lg leading-none shrink-0">&times;</button>
