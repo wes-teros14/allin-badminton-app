@@ -7,7 +7,7 @@ export function TopNavBar() {
   const { pathname } = useLocation()
   const { activeSession } = useActiveSession()
 
-  if (!user || role === 'admin') return null
+  if (!user) return null
 
   const tabs = [
     {
@@ -27,6 +27,12 @@ export function TopNavBar() {
       href: '/profile',
       active: pathname.startsWith('/profile'),
       show: true,
+    },
+    {
+      label: '⚙️ Admin',
+      href: '/admin',
+      active: pathname.startsWith('/admin') || pathname.startsWith('/session') || pathname.startsWith('/players'),
+      show: role === 'admin',
     },
   ]
 
