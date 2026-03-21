@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, Outlet } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { Toaster } from '@/components/ui/sonner'
+import { PlayerLayout } from '@/layouts/PlayerLayout'
 
 function AdminRoute() {
   const { user, role, isLoading } = useAuth()
@@ -30,6 +31,7 @@ const HomeView     = lazy(() => import('@/views/HomeView'))
 const ProfileView  = lazy(() => import('@/views/ProfileView'))
 const KioskView    = lazy(() => import('@/views/KioskView'))
 const PlayerView   = lazy(() => import('@/views/PlayerView'))
+const TodayView    = lazy(() => import('@/views/TodayView'))
 const AdminView    = lazy(() => import('@/views/AdminView'))
 const SessionView  = lazy(() => import('@/views/SessionView'))
 const PlayersView  = lazy(() => import('@/views/PlayersView'))
@@ -41,20 +43,24 @@ function App() {
     <Toaster />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
-        <Route path="/"                 element={<HomeView />} />
-        <Route path="/profile"          element={<ProfileView />} />
-        <Route path="/kiosk"                      element={<KioskView />} />
-        <Route path="/kiosk/:sessionId"           element={<KioskView />} />
-        <Route path="/match-schedule"                               element={<PlayerView />} />
-        <Route path="/match-schedule/:nameSlug"                      element={<PlayerView />} />
-        <Route path="/match-schedule/session/:sessionId"             element={<PlayerView />} />
-        <Route path="/match-schedule/session/:sessionId/:nameSlug"   element={<PlayerView />} />
-        <Route element={<AdminRoute />}>
-          <Route path="/admin" element={<AdminView />} />
-          <Route path="/session/:sessionId" element={<SessionView />} />
-          <Route path="/players" element={<PlayersView />} />
+        <Route path="/" element={<HomeView />} />
+        <Route path="/kiosk"            element={<KioskView />} />
+        <Route path="/kiosk/:sessionId" element={<KioskView />} />
+        <Route path="/register"         element={<RegisterView />} />
+        {/* Player-facing routes — wrapped in PlayerLayout for top nav bar */}
+        <Route element={<PlayerLayout />}>
+          <Route path="/profile"                                             element={<ProfileView />} />
+          <Route path="/today"                                               element={<TodayView />} />
+          <Route path="/match-schedule"                                      element={<PlayerView />} />
+          <Route path="/match-schedule/:nameSlug"                            element={<PlayerView />} />
+          <Route path="/match-schedule/session/:sessionId"                   element={<PlayerView />} />
+          <Route path="/match-schedule/session/:sessionId/:nameSlug"         element={<PlayerView />} />
         </Route>
-        <Route path="/register" element={<RegisterView />} />
+        <Route element={<AdminRoute />}>
+          <Route path="/admin"              element={<AdminView />} />
+          <Route path="/session/:sessionId" element={<SessionView />} />
+          <Route path="/players"            element={<PlayersView />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

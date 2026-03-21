@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
@@ -50,7 +49,7 @@ function RankListCard({ label, items, subLabel }: {
 }
 
 export function ProfileView() {
-  const { user, role, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const { stats, isLoading: statsLoading } = useProfileStats(user?.id)
   const [nickname, setNickname] = useState('')
   const [editingNickname, setEditingNickname] = useState(false)
@@ -77,7 +76,6 @@ export function ProfileView() {
     return (
       <div className="h-screen flex flex-col items-center justify-center gap-3">
         <p className="text-muted-foreground">Please sign in to view your profile.</p>
-        <Link to="/" className="text-sm text-primary hover:underline">← Back</Link>
       </div>
     )
   }
@@ -87,12 +85,9 @@ export function ProfileView() {
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">{displayName}</h1>
-          <p className="text-sm text-muted-foreground">{user.email}</p>
-        </div>
-        <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Home</Link>
+      <div>
+        <h1 className="text-lg font-semibold">{displayName}</h1>
+        <p className="text-sm text-muted-foreground">{user.email}</p>
       </div>
 
       {/* Nickname */}
@@ -177,14 +172,6 @@ export function ProfileView() {
         ) : null}
       </div>
 
-      {role === 'admin' && (
-        <Link
-          to="/admin"
-          className="block w-full text-center py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
-        >
-          Go to Admin
-        </Link>
-      )}
     </div>
   )
 }
