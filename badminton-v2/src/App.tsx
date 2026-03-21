@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/contexts/AuthContext'
+import { AuthProvider } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Toaster } from '@/components/ui/sonner'
 import { PlayerLayout } from '@/layouts/PlayerLayout'
@@ -39,7 +40,7 @@ const RegisterView = lazy(() => import('@/views/RegisterView'))
 
 function App() {
   return (
-    <>
+    <AuthProvider>
     <Toaster />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
@@ -66,7 +67,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
-    </>
+    </AuthProvider>
   )
 }
 
