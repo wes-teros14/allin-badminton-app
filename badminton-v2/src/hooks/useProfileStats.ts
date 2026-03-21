@@ -14,21 +14,10 @@ function topRanked(
   countMap: Map<string, number>,
   nameMap: Map<string, string>,
 ): Array<{ nameSlug: string; count: number }> {
-  const sorted = Array.from(countMap.entries())
+  return Array.from(countMap.entries())
     .map(([id, count]) => ({ nameSlug: nameMap.get(id) ?? id, count }))
     .sort((a, b) => b.count - a.count)
-  const result: Array<{ nameSlug: string; count: number }> = []
-  let i = 0
-  while (i < sorted.length && result.length < 3) {
-    const count = sorted[i].count
-    const names: string[] = []
-    while (i < sorted.length && sorted[i].count === count) {
-      names.push(sorted[i].nameSlug)
-      i++
-    }
-    result.push({ nameSlug: names.join(' & '), count })
-  }
-  return result
+    .slice(0, 3)
 }
 
 export function useProfileStats(userId: string | undefined) {

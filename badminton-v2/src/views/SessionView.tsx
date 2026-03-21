@@ -168,6 +168,7 @@ export function SessionView() {
     return (
       <div className="p-6 max-w-lg mx-auto space-y-4">
         <BackToAdmin />
+        <SessionStepper status={session.status} />
         <Card>
           <CardHeader><CardTitle>{session.name}</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
@@ -181,7 +182,8 @@ export function SessionView() {
 
   if (session.status === 'in_progress') {
     return (
-      <div className="p-4 max-w-lg mx-auto">
+      <div className="p-4 max-w-lg mx-auto space-y-4">
+        <SessionStepper status={session.status} />
         <LiveSessionView sessionId={session.id} />
       </div>
     )
