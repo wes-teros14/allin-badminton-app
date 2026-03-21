@@ -9,7 +9,6 @@ interface RecapData {
   wins: number
   losses: number
   bestPartnerName: string | null
-  nemesisName: string | null
 }
 
 export function SessionRecapBanner() {
@@ -75,7 +74,6 @@ export function SessionRecapBanner() {
 
       let wins = 0, losses = 0
       const partnerWins = new Map<string, number>()
-      const nemesisLosses = new Map<string, number>()
 
       for (const m of mRows) {
         const result = resultMap.get(m.id)
@@ -90,49 +88,33 @@ export function SessionRecapBanner() {
           partnerWins.set(partnerId, (partnerWins.get(partnerId) ?? 0) + 1)
         } else {
           losses++
-          // Track opponents (both) who beat us
-          const opp1 = onTeam1 ? m.team2_player1_id : m.team1_player1_id
-          const opp2 = onTeam1 ? m.team2_player2_id : m.team1_player2_id
-          nemesisLosses.set(opp1, (nemesisLosses.get(opp1) ?? 0) + 1)
-          nemesisLosses.set(opp2, (nemesisLosses.get(opp2) ?? 0) + 1)
         }
       }
 
-      // Find best partner and nemesis IDs
+      // Find best partner ID
       let bestPartnerId: string | null = null
       let bestCount = 0
       for (const [id, count] of partnerWins) {
         if (count > bestCount) { bestCount = count; bestPartnerId = id }
       }
 
-      let nemesisId: string | null = null
-      let nemesisCount = 0
-      for (const [id, count] of nemesisLosses) {
-        if (count > nemesisCount) { nemesisCount = count; nemesisId = id }
-      }
-
-      // Resolve names in one batch
-      const idsToFetch = [...new Set([bestPartnerId, nemesisId].filter(Boolean) as string[])]
-      let nameMap = new Map<string, string>()
-      if (idsToFetch.length) {
-        const { data: profs } = await supabase
+      let bestPartnerName: string | null = null
+      if (bestPartnerId) {
+        const { data: prof } = await supabase
           .from('profiles')
-          .select('id, name_slug, nickname')
-          .in('id', idsToFetch)
-        if (profs) {
-          for (const p of profs as Array<{ id: string; name_slug: string; nickname: string | null }>) {
-            nameMap.set(p.id, p.nickname ?? p.name_slug)
-          }
+          .select('name_slug, nickname')
+          .eq('id', bestPartnerId)
+          .maybeSingle()
+        if (prof) {
+          const p = prof as { name_slug: string; nickname: string | null }
+          bestPartnerName = p.nickname ?? p.name_slug
         }
       }
-
-      const bestPartnerName = bestPartnerId ? (nameMap.get(bestPartnerId) ?? null) : null
-      const nemesisName = nemesisId ? (nameMap.get(nemesisId) ?? null) : null
 
       if (cancelled) return
       if (wins + losses === 0) return // no recorded results, skip recap
 
-      setRecap({ sessionId: session.id, sessionName: session.name, sessionDate: session.date, wins, losses, bestPartnerName, nemesisName })
+      setRecap({ sessionId: session.id, sessionName: session.name, sessionDate: session.date, wins, losses, bestPartnerName })
     }
 
     load()
@@ -159,8 +141,7 @@ export function SessionRecapBanner() {
         <p className="text-sm font-semibold text-foreground">🏸 {recap.sessionName} · {formattedDate}</p>
         <p className="text-sm text-muted-foreground mt-0.5">
           {recap.wins}W {recap.losses}L · {winRate}% win rate
-          {recap.bestPartnerName && ` · 🤝 ${recap.bestPartnerName}`}
-          {recap.nemesisName && ` · 😤 ${recap.nemesisName}`}
+          {recap.bestPartnerName && ` · 🤝 Best Partner: ${recap.bestPartnerName}`}
         </p>
       </div>
       <button onClick={dismiss} className="text-muted-foreground hover:text-foreground text-lg leading-none shrink-0">&times;</button>
