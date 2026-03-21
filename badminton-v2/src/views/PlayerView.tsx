@@ -72,6 +72,9 @@ function SessionPickerView() {
             const formattedDate = new Date(s.date + 'T00:00:00')
               .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
               .replace(/^(\w{3})/, '$1.')
+            const formattedTime = s.time
+              ? new Date(`1970-01-01T${s.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+              : null
             return (
               <Link
                 key={s.id}
@@ -82,7 +85,7 @@ function SessionPickerView() {
                   <div className="font-bold">{s.name}</div>
                   <div className="text-sm text-muted-foreground">
                     {formattedDate}
-                    {s.time && <span> · {s.time}</span>}
+                    {formattedTime && <span> · {formattedTime}</span>}
                     {s.venue && <span> · {s.venue}</span>}
                   </div>
                 </div>
@@ -180,6 +183,8 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
 
   // Find the first queued match index to mark as "up next"
   const firstQueuedIndex = matches.findIndex((m) => m.status === 'queued')
+  const playingMatch = matches.find((m) => m.status === 'playing')
+  const nextUpMatch = firstQueuedIndex >= 0 ? matches[firstQueuedIndex] : null
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
@@ -199,6 +204,16 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
           gameCount={matches.length}
           sessionId={sessionId}
         />
+      )}
+
+      {!isLoading && (playingMatch || nextUpMatch) && (
+        <div className={`mx-4 mt-3 mb-1 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 ${
+          playingMatch
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-foreground'
+        }`}>
+          {playingMatch ? '🏸 You\'re on court now!' : '⏳ You\'re up next!'}
+        </div>
       )}
 
       <div className="max-w-sm mx-auto px-4 py-4 flex flex-col gap-3">
@@ -224,6 +239,7 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
                 opp2NameSlug={m.opp2NameSlug}
                 status={m.status}
                 isNextUp={i === firstQueuedIndex}
+                won={m.won}
               />
             ))}
       </div>

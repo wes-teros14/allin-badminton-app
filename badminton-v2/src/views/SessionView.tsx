@@ -1,7 +1,11 @@
 import { useRef, useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { supabase } from '@/lib/supabase'
 import { useSession } from '@/hooks/useSession'
 import { useAdminSession } from '@/hooks/useAdminSession'
 import { useRealtime } from '@/hooks/useRealtime'
@@ -10,6 +14,31 @@ import { RosterPanel } from '@/components/RosterPanel'
 import { MatchGeneratorPanel } from '@/components/MatchGeneratorPanel'
 import { CourtTabs } from '@/components/CourtTabs'
 import { LiveIndicator } from '@/components/LiveIndicator'
+
+const STATUS_STEP: Record<string, number> = {
+  setup: 0, registration_open: 1, registration_closed: 2,
+  schedule_locked: 3, in_progress: 4, complete: 5,
+}
+
+function SessionStepper({ status }: { status: string }) {
+  const steps = ['Setup', 'Reg Open', 'Reg Closed', 'Locked', 'Live', 'Done']
+  const current = STATUS_STEP[status] ?? 0
+  return (
+    <div className="flex items-center gap-1 overflow-x-auto pb-1">
+      {steps.map((label, i) => (
+        <div key={i} className="flex items-center gap-1 shrink-0">
+          <div className="flex flex-col items-center gap-0.5">
+            <div className={`w-2.5 h-2.5 rounded-full ${i <= current ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+            <span className={`text-[10px] ${i === current ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>{label}</span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className={`w-5 h-px mb-4 ${i < current ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function BackToAdmin() {
   return (
@@ -61,6 +90,43 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
         onDone={refresh}
       />
     </div>
+  )
+}
+
+function SetupCard({ sessionId, initialDate, onOpenRegistration }: { sessionId: string; initialDate: string; onOpenRegistration: () => void }) {
+  const [date, setDate] = useState(initialDate)
+  const [saving, setSaving] = useState(false)
+
+  async function handleSaveDate() {
+    if (!date) return
+    setSaving(true)
+    const { error } = await supabase.from('sessions').update({ date }).eq('id', sessionId)
+    if (error) toast.error(error.message)
+    else toast.success('Date updated')
+    setSaving(false)
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-4 space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="setup-date">Date</Label>
+          <div className="flex gap-2">
+            <Input
+              id="setup-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm" disabled={saving || date === initialDate} onClick={handleSaveDate}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </div>
+        <Button onClick={onOpenRegistration} className="w-full">Open Registration</Button>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -134,13 +200,10 @@ export function SessionView() {
         <BackToAdmin />
       </div>
 
+      <SessionStepper status={session.status} />
+
       {session.status === 'setup' && (
-        <Card>
-          <CardContent className="pt-4 space-y-3 text-sm">
-            <p>Date: {session.date}</p>
-            <Button onClick={openRegistration} className="w-full">Open Registration</Button>
-          </CardContent>
-        </Card>
+        <SetupCard sessionId={session.id} initialDate={session.date} onOpenRegistration={openRegistration} />
       )}
 
       {session.status === 'registration_open' && invitation && (

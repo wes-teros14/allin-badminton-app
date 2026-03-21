@@ -8,6 +8,7 @@ export interface PlayerMatch {
   partnerNameSlug: string
   opp1NameSlug: string
   opp2NameSlug: string
+  won: boolean | null
 }
 
 interface UsePlayerScheduleResult {
@@ -167,8 +168,34 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
           partnerNameSlug,
           opp1NameSlug,
           opp2NameSlug,
+          won: null,
         }
       })
+
+      // 6. Batch-fetch match results for completed matches
+      const completedIds = matchRows.filter((m) => m.status === 'complete').map((m) => m.id)
+      if (completedIds.length > 0) {
+        const { data: resultsData } = await supabase
+          .from('match_results')
+          .select('match_id, winning_pair_index')
+          .in('match_id', completedIds)
+
+        if (!cancelled && resultsData) {
+          const resultMap = new Map(
+            (resultsData as Array<{ match_id: string; winning_pair_index: number }>)
+              .map((r) => [r.match_id, r.winning_pair_index])
+          )
+
+          for (const pm of result) {
+            if (pm.status !== 'complete') continue
+            const winningIndex = resultMap.get(pm.id)
+            if (winningIndex == null) continue // no result recorded → won stays null
+            const row = matchRows.find((r) => r.id === pm.id)!
+            const onTeam1 = row.team1_player1_id === playerId || row.team1_player2_id === playerId
+            pm.won = (onTeam1 && winningIndex === 1) || (!onTeam1 && winningIndex === 2)
+          }
+        }
+      }
 
       setMatches(result)
       isFirstLoad.current = false

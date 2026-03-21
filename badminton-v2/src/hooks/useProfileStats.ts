@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export interface ProfileStats {
@@ -34,6 +34,9 @@ function topRanked(
 export function useProfileStats(userId: string | undefined) {
   const [stats, setStats] = useState<ProfileStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   useEffect(() => {
     if (!userId) { setIsLoading(false); return }
@@ -95,7 +98,7 @@ export function useProfileStats(userId: string | undefined) {
     }
 
     load()
-  }, [userId])
+  }, [userId, refreshKey])
 
-  return { stats, isLoading }
+  return { stats, isLoading, refresh }
 }

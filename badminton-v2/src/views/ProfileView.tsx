@@ -50,7 +50,7 @@ function RankListCard({ label, items, subLabel }: {
 
 export function ProfileView() {
   const { user, isLoading: authLoading } = useAuth()
-  const { stats, isLoading: statsLoading } = useProfileStats(user?.id)
+  const { stats, isLoading: statsLoading, refresh } = useProfileStats(user?.id)
   const [nickname, setNickname] = useState('')
   const [editingNickname, setEditingNickname] = useState(false)
   const [savingNickname, setSavingNickname] = useState(false)
@@ -60,6 +60,18 @@ export function ProfileView() {
     supabase.from('profiles').select('nickname').eq('id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setNickname((data as any).nickname ?? '') })
   }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    const channel = supabase
+      .channel(`profile-stats-${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'player_stats',
+        filter: `player_id=eq.${user.id}`,
+      }, () => { refresh() })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [user?.id, refresh])
 
   async function handleSaveNickname() {
     if (!user) return
@@ -155,8 +167,8 @@ export function ProfileView() {
             />
             <StatCard
               label="Win Rate"
-              value={stats.gamesPlayed > 0 ? `${stats.winRate}%` : '—'}
-              sub={stats.gamesPlayed > 0 ? `${stats.wins} / ${stats.gamesPlayed} wins` : 'No recorded games'}
+              value={stats.gamesPlayed > 0 ? `${stats.wins}W ${stats.gamesPlayed - stats.wins}L` : '—'}
+              sub={stats.gamesPlayed > 0 && stats.winRate > 0 ? `${stats.winRate}% win rate` : 'No recorded games'}
             />
             <RankListCard
               label="Best Partners"
