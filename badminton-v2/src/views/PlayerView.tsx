@@ -32,16 +32,8 @@ export function PlayerView() {
 function SessionPickerView() {
   const { user, isLoading: authLoading } = useAuth()
   const { sessions, isLoading: sessionsLoading } = usePlayerSessions(user?.id ?? null)
-  const navigate = useNavigate()
 
   const isLoading = authLoading || sessionsLoading
-
-  // Auto-redirect when exactly 1 session
-  useEffect(() => {
-    if (!isLoading && sessions.length === 1) {
-      navigate(`/match-schedule/session/${sessions[0].id}`, { replace: true })
-    }
-  }, [isLoading, sessions, navigate])
 
   // While loading, show skeleton
   if (isLoading) {
@@ -66,12 +58,7 @@ function SessionPickerView() {
     return <DefaultPlayerListView />
   }
 
-  // Auto-redirect in progress (1 session) — show nothing while navigating
-  if (sessions.length === 1) {
-    return null
-  }
-
-  // 2+ sessions: show picker
+  // 1+ sessions: show picker
   return (
     <div className="min-h-screen bg-background text-foreground">
       <SessionRecapBanner />
@@ -305,6 +292,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
   return (
     <div className="min-h-screen bg-background text-foreground relative">
       <LiveIndicator status={status} onRefresh={refresh} />
+      <SessionRecapBanner />
       {isLoading ? (
         <div className="bg-primary px-4 py-5 animate-pulse">
           <div className="h-7 w-32 bg-primary-foreground/30 rounded mb-1" />
@@ -343,7 +331,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             ? '🏸 You\'re on court now!'
             : gamesAhead === 0
             ? '⏳ You\'re up next!'
-            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} ahead · ~${(gamesAhead ?? 0) * 15} min wait`
+            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 15} mins wait time)`
           }
         </div>
       )}
