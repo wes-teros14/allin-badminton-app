@@ -57,9 +57,11 @@ function App() {
           <Route path="/match-schedule/session/:sessionId/:nameSlug"         element={<PlayerView />} />
         </Route>
         <Route element={<AdminRoute />}>
-          <Route path="/admin"              element={<AdminView />} />
-          <Route path="/session/:sessionId" element={<SessionView />} />
-          <Route path="/players"            element={<PlayersView />} />
+          <Route element={<PlayerLayout />}>
+            <Route path="/admin"              element={<AdminView />} />
+            <Route path="/session/:sessionId" element={<SessionView />} />
+            <Route path="/players"            element={<PlayersView />} />
+          </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
