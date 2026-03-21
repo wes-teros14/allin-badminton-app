@@ -157,6 +157,29 @@ export function ProfileView() {
           </div>
         ) : stats ? (
           <div className="grid grid-cols-2 gap-3">
+            {/* Bond & Nemesis highlight cards */}
+            {(stats.bestPartners.length > 0 || stats.toughestOpponents.length > 0) && (
+              <>
+                {stats.bestPartners.length > 0 && (
+                  <Card>
+                    <CardContent className="pt-4 pb-3">
+                      <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Bond 🤝</p>
+                      <p className="text-sm font-bold text-primary truncate">{stats.bestPartners[0].nameSlug}</p>
+                      <p className="text-xs text-muted-foreground">{stats.bestPartners[0].wins} win{stats.bestPartners[0].wins !== 1 ? 's' : ''} together</p>
+                    </CardContent>
+                  </Card>
+                )}
+                {stats.toughestOpponents.length > 0 && (
+                  <Card>
+                    <CardContent className="pt-4 pb-3">
+                      <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Nemesis 😤</p>
+                      <p className="text-sm font-bold text-primary truncate">{stats.toughestOpponents[0].nameSlug}</p>
+                      <p className="text-xs text-muted-foreground">Lost {stats.toughestOpponents[0].losses}x</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </>
+            )}
             <StatCard
               label="Sessions Attended"
               value={String(stats.sessionsAttended)}

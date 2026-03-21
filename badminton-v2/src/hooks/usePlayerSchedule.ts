@@ -21,6 +21,7 @@ interface UsePlayerScheduleResult {
   sessionId: string | null
   isLoading: boolean
   notFound: boolean
+  gamesAhead: number | null
   refresh: () => void
 }
 
@@ -44,6 +45,7 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [gamesAhead, setGamesAhead] = useState<number | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const isFirstLoad = useRef(true)
 
@@ -55,6 +57,7 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
     async function load() {
       if (isFirstLoad.current) setIsLoading(true)
       setNotFound(false)
+      setGamesAhead(null)
 
       // 1. Resolve nameSlug → player id
       const { data: profile } = await supabase
@@ -198,6 +201,22 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
       }
 
       setMatches(result)
+
+      // Compute gamesAhead for queue ETA
+      const firstQueuedMatch = result.find(m => m.status === 'queued')
+      if (firstQueuedMatch) {
+        const firstQueuedPos = firstQueuedMatch.gameNumber
+        const { count } = await supabase
+          .from('matches')
+          .select('id', { count: 'exact', head: true })
+          .eq('session_id', sid)
+          .in('status', ['queued', 'playing'])
+          .lt('queue_position', firstQueuedPos)
+        if (!cancelled) setGamesAhead(count ?? 0)
+      } else {
+        setGamesAhead(null)
+      }
+
       isFirstLoad.current = false
       setIsLoading(false)
     }
@@ -206,5 +225,5 @@ export function usePlayerSchedule(nameSlug: string): UsePlayerScheduleResult {
     return () => { cancelled = true }
   }, [nameSlug, refreshKey])
 
-  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, refresh }
+  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, gamesAhead, refresh }
 }

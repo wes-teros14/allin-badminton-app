@@ -8,6 +8,7 @@ import { useRealtime } from '@/hooks/useRealtime'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
+import { SessionRecapBanner } from '@/components/SessionRecapBanner'
 
 export function PlayerView() {
   const { nameSlug, sessionId } = useParams<{ nameSlug?: string; sessionId?: string }>()
@@ -64,6 +65,7 @@ function SessionPickerView() {
   // 2+ sessions: show picker
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <SessionRecapBanner />
       <div className="max-w-sm mx-auto px-4 py-8">
         <p className="text-sm text-muted-foreground mb-3">Select Session</p>
 
@@ -170,7 +172,7 @@ function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
 }
 
 function ScheduleView({ nameSlug }: { nameSlug: string }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, refresh } = usePlayerSchedule(nameSlug)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, gamesAhead, refresh } = usePlayerSchedule(nameSlug)
   const { status } = useRealtime(sessionId, refresh)
 
   if (!isLoading && notFound) {
@@ -212,7 +214,12 @@ function ScheduleView({ nameSlug }: { nameSlug: string }) {
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground'
         }`}>
-          {playingMatch ? '🏸 You\'re on court now!' : '⏳ You\'re up next!'}
+          {playingMatch
+            ? '🏸 You\'re on court now!'
+            : gamesAhead === 0
+            ? '⏳ You\'re up next!'
+            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} ahead · ~${(gamesAhead ?? 0) * 20} min wait`
+          }
         </div>
       )}
 
