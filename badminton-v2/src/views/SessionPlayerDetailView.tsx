@@ -103,7 +103,7 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 // Schedule tab
 // ---------------------------------------------------------------------------
 function ScheduleTab({ nameSlug, sessionId }: { nameSlug: string; sessionId: string }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId: resolvedId, isLoading, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionId)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionId)
   const { status } = useRealtime(resolvedId, refresh)
 
   const firstQueuedIndex = matches.findIndex((m) => m.status === 'queued')
@@ -126,6 +126,7 @@ function ScheduleTab({ nameSlug, sessionId }: { nameSlug: string; sessionId: str
           sessionDate={sessionDate}
           sessionVenue={sessionVenue}
           sessionTime={sessionTime}
+          sessionDuration={sessionDuration}
           gameCount={matches.length}
           sessionId={resolvedId}
         />

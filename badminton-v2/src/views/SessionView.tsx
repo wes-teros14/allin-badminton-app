@@ -94,32 +94,35 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
 }
 
 function SetupCard({
-  sessionId, initialName, initialDate, initialVenue, initialTime, onConfirm,
+  sessionId, initialName, initialDate, initialVenue, initialTime, initialDuration, onConfirm,
 }: {
   sessionId: string
   initialName: string
   initialDate: string
   initialVenue: string | null
   initialTime: string | null
+  initialDuration: string | null
   onConfirm: () => void
 }) {
   const [name, setName] = useState(initialName)
   const [date, setDate] = useState(initialDate)
   const [venue, setVenue] = useState(initialVenue ?? '')
   const [time, setTime] = useState(initialTime ?? '')
+  const [duration, setDuration] = useState(initialDuration ?? '')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { setName(initialName) }, [initialName])
   useEffect(() => { setDate(initialDate) }, [initialDate])
   useEffect(() => { setVenue(initialVenue ?? '') }, [initialVenue])
   useEffect(() => { setTime(initialTime ?? '') }, [initialTime])
+  useEffect(() => { setDuration(initialDuration ?? '') }, [initialDuration])
 
   async function handleConfirm() {
     if (!name.trim() || !date) { toast.error('Session name and date are required'); return }
     setSaving(true)
     const { error } = await supabase
       .from('sessions')
-      .update({ name: name.trim(), date, venue: venue || null, time: time || null })
+      .update({ name: name.trim(), date, venue: venue || null, time: time || null, duration: duration || null })
       .eq('id', sessionId)
     if (error) { toast.error(error.message); setSaving(false); return }
     onConfirm()
@@ -140,9 +143,15 @@ function SetupCard({
           <Label htmlFor="setup-venue">Venue</Label>
           <Input id="setup-venue" placeholder="e.g. Sports Hall A" value={venue} onChange={(e) => setVenue(e.target.value)} />
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="setup-time">Time</Label>
-          <Input id="setup-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        <div className="flex gap-2">
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="setup-time">Time</Label>
+            <Input id="setup-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+          <div className="flex-1 space-y-1">
+            <Label htmlFor="setup-duration">Duration</Label>
+            <Input id="setup-duration" placeholder="e.g. 2 hrs" value={duration} onChange={(e) => setDuration(e.target.value)} />
+          </div>
         </div>
         <Button onClick={handleConfirm} disabled={saving} className="w-full">
           {saving ? 'Saving…' : 'Confirm'}
@@ -237,6 +246,7 @@ export function SessionView() {
           initialDate={session.date}
           initialVenue={session.venue ?? null}
           initialTime={session.time ?? null}
+          initialDuration={session.duration ?? null}
           onConfirm={openRegistration}
         />
       )}

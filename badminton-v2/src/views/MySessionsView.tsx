@@ -81,6 +81,7 @@ export function MySessionsView() {
                   <div className="text-sm text-muted-foreground mt-0.5">
                     {formattedDate}
                     {formattedTime && <span> · {formattedTime}</span>}
+                    {s.duration && <span> · {s.duration}</span>}
                     {s.venue && <span> · {s.venue}</span>}
                   </div>
                 </div>

@@ -77,6 +77,7 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
           <p className="text-sm text-muted-foreground">
             {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
             {session.time && <span> · {session.time}</span>}
+            {session.duration && <span> · {session.duration}</span>}
           </p>
           {session.venue && (
             <p className="text-sm text-muted-foreground truncate">{session.venue}</p>

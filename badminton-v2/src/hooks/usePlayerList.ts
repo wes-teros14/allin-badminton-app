@@ -12,6 +12,7 @@ interface SessionInfo {
   date: string
   venue: string | null
   time: string | null
+  duration: string | null
 }
 
 interface UsePlayerListResult {
@@ -40,19 +41,19 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
         // Fetch session details for provided id
         const { data: sessionData } = await supabase
           .from('sessions')
-          .select('id, name, date, venue, time')
+          .select('id, name, date, venue, time, duration')
           .eq('id', sid)
           .maybeSingle()
         if (cancelled) return
         if (sessionData) {
-          const s = sessionData as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
-          setSession({ name: s.name, date: s.date, venue: s.venue, time: s.time })
+          const s = sessionData as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null }
+          setSession({ name: s.name, date: s.date, venue: s.venue, time: s.time, duration: s.duration })
         }
       } else {
         // Find latest active session
         const { data: sessionData } = await supabase
           .from('sessions')
-          .select('id, name, date, venue, time')
+          .select('id, name, date, venue, time, duration')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -67,9 +68,9 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
           setIsLoading(false)
           return
         }
-        const s = sessionData as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+        const s = sessionData as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null }
         sid = s.id
-        setSession({ name: s.name, date: s.date, venue: s.venue, time: s.time })
+        setSession({ name: s.name, date: s.date, venue: s.venue, time: s.time, duration: s.duration })
       }
       setHasSession(true)
 
