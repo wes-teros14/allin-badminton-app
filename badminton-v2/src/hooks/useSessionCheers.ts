@@ -107,12 +107,16 @@ export function useSessionCheers(sessionId: string | undefined): UseSessionCheer
           .select('id, nickname, name_slug')
           .in('id', playerIds)
         const profiles = (profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>
-        setParticipants(profiles.map(p => ({
-          playerId: p.id,
-          displayName: p.nickname ?? p.name_slug,
-          partnerCount: partnerMap.get(p.id) ?? 0,
-          opponentCount: opponentMap.get(p.id) ?? 0,
-        })))
+        setParticipants(
+          profiles
+            .map(p => ({
+              playerId: p.id,
+              displayName: p.nickname ?? p.name_slug,
+              partnerCount: partnerMap.get(p.id) ?? 0,
+              opponentCount: opponentMap.get(p.id) ?? 0,
+            }))
+            .filter(p => p.partnerCount + p.opponentCount > 0)
+        )
       } else {
         setParticipants([])
       }
