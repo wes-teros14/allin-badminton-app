@@ -54,7 +54,7 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   return ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>)
     .map((s) => {
       const winRate = s.games_played > 0 ? s.wins / s.games_played : 0
-      const score = winRate * Math.log(s.games_played + 1)
+      const score = winRate * Math.pow(s.games_played, 0.7)
       return {
         playerId: s.player_id,
         displayName: nameMap.get(s.player_id) ?? s.player_id,
