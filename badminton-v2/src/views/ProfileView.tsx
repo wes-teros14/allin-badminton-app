@@ -268,9 +268,9 @@ export function ProfileView() {
       </div>
 
       {/* Awards */}
-      {awards.length > 0 && (
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Awards</h2>
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Awards</h2>
+        {awards.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {awards.map(a => (
               <div key={a.label} className="flex items-center gap-1.5 bg-[#FEFE6A]/10 border border-[#FEFE6A]/30 rounded-full px-3 py-1.5">
@@ -279,13 +279,15 @@ export function ProfileView() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">No awards yet — keep playing!</p>
+        )}
+      </div>
 
       {/* Cheers */}
-      {cheerStats && (
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Cheers</h2>
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Cheers</h2>
+        {cheerStats ? (
           <div className="grid grid-cols-2 gap-3">
             <StatCard label="Received" value={String(cheerStats.cheers_received)} />
             <StatCard label="Given" value={String(cheerStats.cheers_given)} />
@@ -302,8 +304,10 @@ export function ProfileView() {
               ))
             }
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">No cheers yet — join a session!</p>
+        )}
+      </div>
 
     </div>
   )
