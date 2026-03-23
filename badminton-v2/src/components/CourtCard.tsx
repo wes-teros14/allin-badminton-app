@@ -20,7 +20,6 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
   const { current } = data
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [sessionComplete, setSessionComplete] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const matchStartRef = useRef<number>(Date.now())
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -75,14 +74,6 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
           .eq('id', (nextMatch as { id: string }).id)
       } else {
         // Check if other court still has a playing match
-        const { data: stillPlaying } = await supabase
-          .from('matches')
-          .select('id')
-          .eq('session_id', sessionId)
-          .eq('status', 'playing')
-          .limit(1)
-          .maybeSingle()
-
         // Auto-close disabled: admin closes the session manually
       }
 
