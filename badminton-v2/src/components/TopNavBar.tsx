@@ -1,51 +1,57 @@
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { useActiveSession } from '@/hooks/useActiveSession'
+import ppLogo from '@/assets/pp-logo.jpeg'
 
 export function TopNavBar() {
   const { user, role } = useAuth()
   const { pathname } = useLocation()
-  const { activeSession } = useActiveSession()
 
   if (!user) return null
 
   const tabs = [
     {
-      label: '🏸 Schedule',
-      href: '/match-schedule',
-      active: pathname.startsWith('/match-schedule'),
+      label: 'My Sessions',
+      href: '/sessions',
+      active: pathname.startsWith('/sessions'),
       show: true,
     },
     {
-      label: '🏆 Today',
-      href: '/today',
-      active: pathname === '/today',
-      show: !!activeSession,
+      label: 'All-time Idols',
+      href: '/leaderboard',
+      active: pathname.startsWith('/leaderboard'),
+      show: true,
     },
     {
-      label: '👤 My Profile',
+      label: 'My Profile',
       href: '/profile',
       active: pathname.startsWith('/profile'),
       show: true,
     },
     {
-      label: '⚙️ Admin',
+      label: 'Admin',
       href: '/admin',
-      active: pathname.startsWith('/admin') || pathname.startsWith('/session') || pathname.startsWith('/players'),
+      active: pathname.startsWith('/admin') || pathname.startsWith('/session'),
+      show: role === 'admin',
+    },
+    {
+      label: 'Players',
+      href: '/players',
+      active: pathname.startsWith('/players'),
       show: role === 'admin',
     },
   ]
 
   return (
-    <nav className="bg-primary text-primary-foreground px-4 py-2 flex items-center gap-6">
-      <div className="w-8 h-8 rounded-md bg-primary-foreground/20 flex items-center justify-center text-xs font-bold shrink-0">
-        PP
-      </div>
+    <nav className="bg-primary text-primary-foreground px-4 py-2 flex items-center gap-3">
+      <Link to="/" className="shrink-0">
+        <img src={ppLogo} alt="PP" className="w-8 h-8 rounded-full object-cover" />
+      </Link>
+      <div className="flex items-center gap-6 overflow-x-auto whitespace-nowrap">
       {tabs.filter((tab) => tab.show).map((tab) => (
         <Link
           key={tab.href}
           to={tab.href}
-          className={`text-sm font-medium transition-opacity ${
+          className={`text-sm font-medium transition-opacity shrink-0 ${
             tab.active
               ? 'border-b-2 border-white pb-0.5'
               : 'opacity-70 hover:opacity-100'
@@ -54,6 +60,7 @@ export function TopNavBar() {
           {tab.label}
         </Link>
       ))}
+      </div>
     </nav>
   )
 }

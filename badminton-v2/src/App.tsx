@@ -5,6 +5,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Toaster } from '@/components/ui/sonner'
 import { PlayerLayout } from '@/layouts/PlayerLayout'
+import { DevLoginPanel } from '@/components/DevLoginPanel'
 
 function AdminRoute() {
   const { user, role, isLoading } = useAuth()
@@ -28,20 +29,24 @@ function AdminRoute() {
   return <Outlet />
 }
 
-const HomeView     = lazy(() => import('@/views/HomeView'))
-const ProfileView  = lazy(() => import('@/views/ProfileView'))
-const LiveBoardView = lazy(() => import('@/views/LiveBoardView'))
-const PlayerView   = lazy(() => import('@/views/PlayerView'))
-const TodayView    = lazy(() => import('@/views/TodayView'))
-const AdminView    = lazy(() => import('@/views/AdminView'))
-const SessionView  = lazy(() => import('@/views/SessionView'))
-const PlayersView  = lazy(() => import('@/views/PlayersView'))
-const RegisterView = lazy(() => import('@/views/RegisterView'))
+const HomeView                 = lazy(() => import('@/views/HomeView'))
+const ProfileView              = lazy(() => import('@/views/ProfileView'))
+const LiveBoardView            = lazy(() => import('@/views/LiveBoardView'))
+const PlayerView               = lazy(() => import('@/views/PlayerView'))
+const TodayView                = lazy(() => import('@/views/TodayView'))
+const AdminView                = lazy(() => import('@/views/AdminView'))
+const SessionView              = lazy(() => import('@/views/SessionView'))
+const PlayersView              = lazy(() => import('@/views/PlayersView'))
+const RegisterView             = lazy(() => import('@/views/RegisterView'))
+const MySessionsView           = lazy(() => import('@/views/MySessionsView'))
+const SessionPlayerDetailView  = lazy(() => import('@/views/SessionPlayerDetailView'))
+const LeaderboardView          = lazy(() => import('@/views/LeaderboardView'))
 
 function App() {
   return (
     <AuthProvider>
     <Toaster />
+    <DevLoginPanel />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
         <Route element={<PlayerLayout />}>
@@ -53,6 +58,10 @@ function App() {
         {/* Player-facing routes — wrapped in PlayerLayout for top nav bar */}
         <Route element={<PlayerLayout />}>
           <Route path="/profile"                                             element={<ProfileView />} />
+          <Route path="/sessions"                                            element={<MySessionsView />} />
+          <Route path="/sessions/:sessionId"                                 element={<SessionPlayerDetailView />} />
+          <Route path="/leaderboard"                                         element={<LeaderboardView />} />
+          {/* Legacy routes — kept for internal links (AllMatchesView, etc.) */}
           <Route path="/today"                                               element={<TodayView />} />
           <Route path="/match-schedule"                                      element={<PlayerView />} />
           <Route path="/match-schedule/:nameSlug"                            element={<PlayerView />} />

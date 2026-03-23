@@ -1,58 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import { supabase } from '@/lib/supabase'
 
-function WelcomeHome({ userId }: { userId: string }) {
-  const [nickname, setNickname] = useState<string | null>(null)
-
-  useEffect(() => {
-    supabase.from('profiles').select('nickname, name_slug').eq('id', userId).maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          const p = data as { nickname: string | null; name_slug: string }
-          setNickname(p.nickname ?? p.name_slug)
-        }
-      })
-  }, [userId])
-
-  return (
-    <div className="h-screen flex flex-col items-center justify-center gap-4 text-center px-6">
-      <p className="text-5xl">🏸</p>
-      <h1 className="text-2xl font-bold">
-        {nickname ? `Hey, ${nickname}!` : 'Welcome!'}
-      </h1>
-      <p className="text-sm text-muted-foreground max-w-xs">
-        You're not registered in any upcoming sessions yet.
-      </p>
-      <p className="text-sm text-muted-foreground max-w-xs">
-        Ask your organizer for an invite link to join a session.
-      </p>
-    </div>
-  )
-}
-
 export function HomeView() {
-  const { user, role, isLoading: authLoading } = useAuth()
-  const { sessions, isLoading: sessionsLoading } = usePlayerSessions(user?.id ?? null)
+  const { user, role, isLoading } = useAuth()
   const navigate = useNavigate()
 
-  const isLoading = authLoading || (!!user && role !== 'admin' && sessionsLoading)
-
+  // Admin still auto-redirects to /admin
   useEffect(() => {
-    if (isLoading) return
-    if (!user) return
-    if (role === 'admin') {
-      navigate('/admin', { replace: true })
-      return
-    }
-    // Player with sessions → go to schedule
-    if (sessions.length > 0) {
-      navigate('/match-schedule', { replace: true })
-    }
-    // Player with no sessions → stay on homepage (WelcomeHome renders below)
-  }, [isLoading, user, role, sessions.length, navigate])
+    if (isLoading || !user) return
+    if (role === 'admin') navigate('/admin', { replace: true })
+  }, [isLoading, user, role, navigate])
 
   function signIn() {
     supabase.auth.signInWithOAuth({
@@ -61,7 +20,6 @@ export function HomeView() {
     })
   }
 
-  // Loading spinner
   if (isLoading || (user && role === 'admin')) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -88,8 +46,16 @@ export function HomeView() {
     )
   }
 
-  // Logged in player with no sessions
-  return <WelcomeHome userId={user.id} />
+  // Logged in → welcome home
+  return (
+    <div className="h-screen flex flex-col items-center justify-center gap-4 text-center px-6">
+      <img src="/pp-logo.jpeg" alt="PP" className="w-20 h-20 rounded-full object-cover" />
+      <h1 className="text-2xl font-bold">Welcome back!</h1>
+      <p className="text-sm text-muted-foreground max-w-xs">
+        Head to <span className="font-medium text-foreground">My Sessions</span> to see your schedule and leaderboard.
+      </p>
+    </div>
+  )
 }
 
 export default HomeView

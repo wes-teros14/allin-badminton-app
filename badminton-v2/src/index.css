@@ -12,7 +12,7 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: #8E24AA;
+    --primary: #6F3E87;
     --primary-foreground: #ffffff;
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
@@ -20,7 +20,7 @@
     --muted-foreground: oklch(0.556 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
+    --destructive: #DC595E;
     --border: #E4E4E7;
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
@@ -39,53 +39,53 @@
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
     /* New brand-only tokens */
-    --primary-hover: #AB2FC7;
-    --primary-pressed: #6A1B80;
-    --primary-subtle: #F3E5F5;
+    --primary-hover: #8E24AA;
+    --primary-pressed: #5A2E6E;
+    --primary-subtle: #EDE0F5;
     --success: #22C55E;
     --muted-surface: #F4F4F6;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: #8E24AA;
+    --background: #0F0A18;
+    --foreground: #FFFFFF;
+    --card: #1A1025;
+    --card-foreground: #FFFFFF;
+    --popover: #1A1025;
+    --popover-foreground: #FFFFFF;
+    --primary: #6F3E87;
     --primary-foreground: #ffffff;
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --secondary: #1E1230;
+    --secondary-foreground: #FFFFFF;
+    --muted: #1E1230;
+    --muted-foreground: #B39DBB;
+    --accent: #1E1230;
+    --accent-foreground: #FFFFFF;
+    --destructive: #DC595E;
+    --border: #2D1A40;
+    --input: #2D1A40;
+    --ring: #6F3E87;
     --chart-1: oklch(0.809 0.105 251.813);
     --chart-2: oklch(0.623 0.214 259.815);
     --chart-3: oklch(0.546 0.245 262.881);
     --chart-4: oklch(0.488 0.243 264.376);
     --chart-5: oklch(0.424 0.199 265.638);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --sidebar: #1A1025;
+    --sidebar-foreground: #FFFFFF;
+    --sidebar-primary: #6F3E87;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #1E1230;
+    --sidebar-accent-foreground: #FFFFFF;
+    --sidebar-border: #2D1A40;
+    --sidebar-ring: #6F3E87;
 }
 
 .live-board-dark {
-    --background: #0F0F17;
-    --surface: #1C1C28;
-    --border: #2E2E3E;
-    --foreground: #F4F4F6;
-    --primary: #FFB200;
+    --background: #0F0A18;
+    --surface: #1A1025;
+    --border: #2D1A40;
+    --foreground: #FFFFFF;
+    --primary: #FEFE6A;
 }
 
 @theme inline {
@@ -147,6 +147,19 @@
   html {
     @apply font-sans;
     }
+
+  /* Force native date/time picker icons to always render in light mode
+     so they're visible against the app's light input backgrounds,
+     regardless of OS dark mode setting. Also ensures they show on mobile. */
+  input[type="date"],
+  input[type="time"] {
+    color-scheme: light;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 1;
+  }
 }
 
 @utility game-hero {

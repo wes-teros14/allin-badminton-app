@@ -43,6 +43,7 @@ export type Database = {
           status: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
           created_by: string
           created_at: string
+          completed_at: string | null
         }
         Insert: {
           id?: string
@@ -51,6 +52,7 @@ export type Database = {
           status?: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
           created_by: string
           created_at?: string
+          completed_at?: string | null
         }
         Update: {
           id?: string
@@ -59,6 +61,7 @@ export type Database = {
           status?: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
           created_by?: string
           created_at?: string
+          completed_at?: string | null
         }
         Relationships: []
       }
@@ -161,6 +164,97 @@ export type Database = {
           match_id?: string
           winning_pair_index?: 1 | 2
           completed_at?: string
+        }
+        Relationships: []
+      }
+    }
+      cheer_types: {
+        Row: {
+          id: string
+          slug: string
+          name: string
+          emoji: string
+          is_active: boolean
+        }
+        Insert: {
+          id?: string
+          slug: string
+          name: string
+          emoji: string
+          is_active?: boolean
+        }
+        Update: {
+          id?: string
+          slug?: string
+          name?: string
+          emoji?: string
+          is_active?: boolean
+        }
+        Relationships: []
+      }
+      cheers: {
+        Row: {
+          id: string
+          session_id: string
+          giver_id: string
+          receiver_id: string
+          cheer_type_id: string
+          multiplier: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          session_id: string
+          giver_id: string
+          receiver_id: string
+          cheer_type_id: string
+          multiplier?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          session_id?: string
+          giver_id?: string
+          receiver_id?: string
+          cheer_type_id?: string
+          multiplier?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      player_cheer_stats: {
+        Row: {
+          player_id: string
+          cheers_received: number
+          cheers_given: number
+          offense_received: number
+          defense_received: number
+          technique_received: number
+          movement_received: number
+          good_sport_received: number
+          updated_at: string
+        }
+        Insert: {
+          player_id: string
+          cheers_received?: number
+          cheers_given?: number
+          offense_received?: number
+          defense_received?: number
+          technique_received?: number
+          movement_received?: number
+          good_sport_received?: number
+          updated_at?: string
+        }
+        Update: {
+          player_id?: string
+          cheers_received?: number
+          cheers_given?: number
+          offense_received?: number
+          defense_received?: number
+          technique_received?: number
+          movement_received?: number
+          good_sport_received?: number
+          updated_at?: string
         }
         Relationships: []
       }

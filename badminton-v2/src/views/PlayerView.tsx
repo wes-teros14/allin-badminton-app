@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
@@ -187,9 +187,14 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
   const [matches, setMatches] = useState<AllMatch[]>([])
   const [sessionName, setSessionName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [tick, setTick] = useState(0)
+
+  const refresh = useCallback(() => setTick((t) => t + 1), [])
+  const { status } = useRealtime(sessionId, refresh)
 
   useEffect(() => {
     let cancelled = false
+    setIsLoading(true)
     async function load() {
       // Fetch session info
       const { data: sess } = await supabase
@@ -225,10 +230,11 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
     }
     load()
     return () => { cancelled = true }
-  }, [sessionId])
+  }, [sessionId, tick])
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative">
+      <LiveIndicator status={status} onRefresh={refresh} />
       <div className="max-w-sm mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold">{sessionName || 'All Matches'}</h1>
@@ -236,7 +242,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
             to={`/match-schedule/session/${sessionId}`}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            ← My Schedule
+            ← My Matches
           </Link>
         </div>
         <div className="flex flex-col gap-3">
@@ -324,7 +330,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             ? '🏸 You\'re on court now!'
             : gamesAhead === 0
             ? '⏳ You\'re up next!'
-            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 15} mins wait time)`
+            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 10} mins wait time)`
           }
         </div>
       )}
