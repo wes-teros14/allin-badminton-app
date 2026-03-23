@@ -167,7 +167,6 @@ export type Database = {
         }
         Relationships: []
       }
-    }
       cheer_types: {
         Row: {
           id: string
