@@ -26,7 +26,14 @@ interface CheerLeaderboardEntry {
   good_sport_received: number
 }
 
-type Tab = 'wins' | 'cheers'
+type Tab = 'wins' | 'cheers' | 'awards'
+
+interface AwardEntry {
+  emoji: string
+  label: string
+  holder: string | null
+  value: number
+}
 
 const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
 
@@ -193,6 +200,99 @@ function CheersLeaderboard() {
   )
 }
 
+async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
+  const [cheerRes, statsRes, regsRes, profilesRes] = await Promise.all([
+    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received'),
+    supabase.from('player_stats').select('player_id, sessions_attended'),
+    supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
+    supabase.from('profiles').select('id, nickname, name_slug'),
+  ])
+
+  const nameMap = new Map(
+    ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
+      .map(p => [p.id, p.nickname ?? p.name_slug])
+  )
+
+  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number }>
+  const stats = (statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>
+  const regs = (regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>
+
+  function topHolder(arr: Array<{ player_id: string; value: number }>): { holder: string | null; value: number } {
+    if (arr.length === 0) return { holder: null, value: 0 }
+    const sorted = [...arr].filter(a => a.value > 0).sort((a, b) => b.value - a.value)
+    if (sorted.length === 0) return { holder: null, value: 0 }
+    if (sorted.length > 1 && sorted[0].value === sorted[1].value) return { holder: null, value: sorted[0].value }
+    return { holder: nameMap.get(sorted[0].player_id) ?? null, value: sorted[0].value }
+  }
+
+  // Early bird: count first registrations per session
+  const firstCount = new Map<string, number>()
+  const seen = new Set<string>()
+  for (const r of regs) {
+    if (!seen.has(r.session_id)) {
+      seen.add(r.session_id)
+      firstCount.set(r.player_id, (firstCount.get(r.player_id) ?? 0) + 1)
+    }
+  }
+  const earlyBirdEntries = Array.from(firstCount.entries()).map(([player_id, value]) => ({ player_id, value }))
+
+  const awards: AwardEntry[] = [
+    { emoji: '🌟', label: 'Most Cheers Received', ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_received }))) },
+    { emoji: '🙌', label: 'Most Cheers Given',    ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_given }))) },
+    { emoji: '⚔️', label: 'Top Offense',          ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received }))) },
+    { emoji: '🛡️', label: 'Top Defense',          ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.defense_received }))) },
+    { emoji: '🎯', label: 'Top Technique',        ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received }))) },
+    { emoji: '💨', label: 'Top Movement',         ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received }))) },
+    { emoji: '🤝', label: 'Top Good Sport',       ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received }))) },
+    { emoji: '📅', label: 'Most Sessions Joined', ...topHolder(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) },
+    { emoji: '🐦', label: 'Registration Early Bird', ...topHolder(earlyBirdEntries) },
+  ]
+
+  return awards
+}
+
+function AwardsLeaderboard() {
+  const [awards, setAwards] = useState<AwardEntry[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setIsLoading(true)
+    try { setAwards(await fetchAwardsLeaderboard()) }
+    finally { setIsLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {awards.map(a => (
+        <div key={a.label} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
+          <span className="text-xl shrink-0">{a.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">{a.label}</p>
+            <p className="font-semibold text-sm truncate">
+              {a.holder ?? <span className="text-muted-foreground italic">Vacant — tied or no data</span>}
+            </p>
+          </div>
+          {a.holder && a.value > 0 && (
+            <span className="text-sm font-bold text-primary shrink-0">{a.value}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Main view
 // ---------------------------------------------------------------------------
@@ -205,7 +305,7 @@ export function LeaderboardView() {
 
       {/* Tab switcher */}
       <div className="flex gap-1 mb-6">
-        {(['wins', 'cheers'] as Tab[]).map((t) => (
+        {(['wins', 'cheers', 'awards'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -215,13 +315,14 @@ export function LeaderboardView() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'wins' ? 'All-time Lodi' : 'Cheers'}
+            {t === 'wins' ? 'All-time Lodi' : t === 'cheers' ? 'Cheers' : 'Awards'}
           </button>
         ))}
       </div>
 
       {tab === 'wins' && <WinsLeaderboard />}
       {tab === 'cheers' && <CheersLeaderboard />}
+      {tab === 'awards' && <AwardsLeaderboard />}
     </div>
   )
 }
