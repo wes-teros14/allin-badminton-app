@@ -74,6 +74,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: 'cheer' | 'award'
+          title: string
+          body: string | null
+          related_id: string | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: 'cheer' | 'award'
+          title: string
+          body?: string | null
+          related_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: 'cheer' | 'award'
+          title?: string
+          body?: string | null
+          related_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       session_invitations: {
         Row: {
           id: string

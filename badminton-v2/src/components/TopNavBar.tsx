@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
+import { useNotifications } from '@/contexts/NotificationContext'
 import ppLogo from '@/assets/pp-logo.jpeg'
 
 export function TopNavBar() {
   const { user, role } = useAuth()
   const { pathname } = useLocation()
+  const { unreadCount } = useNotifications()
 
   if (!user) return null
 
@@ -14,30 +16,35 @@ export function TopNavBar() {
       href: '/sessions',
       active: pathname.startsWith('/sessions'),
       show: true,
+      badge: false,
     },
     {
       label: 'All-time Idols',
       href: '/leaderboard',
       active: pathname.startsWith('/leaderboard'),
       show: true,
+      badge: false,
     },
     {
       label: 'My Profile',
       href: '/profile',
       active: pathname.startsWith('/profile'),
       show: true,
+      badge: unreadCount > 0,
     },
     {
       label: 'Admin',
       href: '/admin',
       active: pathname.startsWith('/admin') || pathname.startsWith('/session'),
       show: role === 'admin',
+      badge: false,
     },
     {
       label: 'Players',
       href: '/players',
       active: pathname.startsWith('/players'),
       show: role === 'admin',
+      badge: false,
     },
   ]
 
@@ -51,13 +58,16 @@ export function TopNavBar() {
         <Link
           key={tab.href}
           to={tab.href}
-          className={`text-sm font-medium transition-opacity shrink-0 ${
+          className={`relative text-sm font-medium transition-opacity shrink-0 ${
             tab.active
               ? 'border-b-2 border-white pb-0.5'
               : 'opacity-70 hover:opacity-100'
           }`}
         >
           {tab.label}
+          {tab.badge && (
+            <span className="absolute -top-1 -right-2 w-2 h-2 bg-[#FEFE6A] rounded-full" />
+          )}
         </Link>
       ))}
       </div>
