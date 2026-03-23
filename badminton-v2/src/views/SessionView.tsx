@@ -149,8 +149,8 @@ function SetupCard({
             <Input id="setup-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
           <div className="flex-1 space-y-1">
-            <Label htmlFor="setup-duration">Duration</Label>
-            <Input id="setup-duration" placeholder="e.g. 2 hrs" value={duration} onChange={(e) => setDuration(e.target.value)} />
+            <Label htmlFor="setup-duration">Duration (hrs)</Label>
+            <Input id="setup-duration" type="number" min="1" placeholder="e.g. 2" value={duration} onChange={(e) => setDuration(e.target.value)} />
           </div>
         </div>
         <Button onClick={handleConfirm} disabled={saving} className="w-full">

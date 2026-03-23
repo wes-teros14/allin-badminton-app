@@ -23,7 +23,7 @@ export function PlayerScheduleHeader({ nameSlug, sessionName, sessionDate, sessi
       <p className="text-sm opacity-70 mt-0.5">
         {formattedDate}
         {sessionTime && <span> · {sessionTime}</span>}
-        {sessionDuration && <span> · {sessionDuration}</span>}
+        {sessionDuration && <span> · {sessionDuration} hrs</span>}
         {sessionVenue && <span> · {sessionVenue}</span>}
       </p>
     </div>
