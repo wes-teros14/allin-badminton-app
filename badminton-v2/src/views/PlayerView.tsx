@@ -81,7 +81,7 @@ function SessionPickerView() {
                   <div className="text-sm text-muted-foreground">
                     {formattedDate}
                     {formattedTime && <span> · {formattedTime}</span>}
-                    {s.duration && <span> · {s.duration}</span>}
+                    {s.duration && <span> · {s.duration} hrs</span>}
                     {s.venue && <span> · {s.venue}</span>}
                   </div>
                 </div>
@@ -155,7 +155,7 @@ function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
             <p className="text-sm text-muted-foreground mt-0.5">
               {formattedDate}
               {session.time && <span> · {session.time}</span>}
-              {session.duration && <span> · {session.duration}</span>}
+              {session.duration && <span> · {session.duration} hrs</span>}
               {session.venue && <span> · {session.venue}</span>}
             </p>
           </div>
