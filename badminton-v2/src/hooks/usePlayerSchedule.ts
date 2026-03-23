@@ -18,6 +18,7 @@ interface UsePlayerScheduleResult {
   sessionDate: string
   sessionVenue: string | null
   sessionTime: string | null
+  sessionDuration: string | null
   sessionId: string | null
   isLoading: boolean
   notFound: boolean
@@ -42,6 +43,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
   const [sessionDate, setSessionDate] = useState('')
   const [sessionVenue, setSessionVenue] = useState<string | null>(null)
   const [sessionTime, setSessionTime] = useState<string | null>(null)
+  const [sessionDuration, setSessionDuration] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -83,16 +85,16 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
       if (sessionIdOverride) {
         sid = sessionIdOverride
         const { data: session } = await supabase
-          .from('sessions').select('id, name, date, venue, time')
+          .from('sessions').select('id, name, date, venue, time, duration')
           .eq('id', sessionIdOverride).maybeSingle()
         if (cancelled || !session) { setIsLoading(false); return }
-        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null }
         setSessionId(s.id); setSessionName(s.name); setSessionDate(s.date)
-        setSessionVenue(s.venue); setSessionTime(s.time)
+        setSessionVenue(s.venue); setSessionTime(s.time); setSessionDuration(s.duration)
       } else {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, date, venue, time')
+          .select('id, name, date, venue, time, duration')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -107,12 +109,13 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
           return
         }
 
-        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null }
+        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null }
         setSessionId(s.id)
         setSessionName(s.name)
         setSessionDate(s.date)
         setSessionVenue(s.venue)
         setSessionTime(s.time)
+        setSessionDuration(s.duration)
         sid = s.id
       }
 
@@ -237,5 +240,5 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
     return () => { cancelled = true }
   }, [nameSlug, sessionIdOverride, refreshKey])
 
-  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, gamesAhead, refresh }
+  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, isLoading, notFound, gamesAhead, refresh }
 }

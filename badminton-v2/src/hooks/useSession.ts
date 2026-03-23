@@ -16,6 +16,7 @@ export interface Session {
   date: string
   venue: string | null
   time: string | null
+  duration: string | null
   status: SessionStatus
   created_by: string
   created_at: string

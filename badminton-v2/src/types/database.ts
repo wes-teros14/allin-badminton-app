@@ -40,6 +40,9 @@ export type Database = {
           id: string
           name: string
           date: string
+          venue: string | null
+          time: string | null
+          duration: string | null
           status: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
           created_by: string
           created_at: string
@@ -49,6 +52,9 @@ export type Database = {
           id?: string
           name: string
           date: string
+          venue?: string | null
+          time?: string | null
+          duration?: string | null
           status?: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
           created_by: string
           created_at?: string
@@ -58,6 +64,9 @@ export type Database = {
           id?: string
           name?: string
           date?: string
+          venue?: string | null
+          time?: string | null
+          duration?: string | null
           status?: 'setup' | 'registration_open' | 'registration_closed' | 'schedule_locked' | 'in_progress' | 'complete'
           created_by?: string
           created_at?: string

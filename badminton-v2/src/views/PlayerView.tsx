@@ -81,6 +81,7 @@ function SessionPickerView() {
                   <div className="text-sm text-muted-foreground">
                     {formattedDate}
                     {formattedTime && <span> · {formattedTime}</span>}
+                    {s.duration && <span> · {s.duration}</span>}
                     {s.venue && <span> · {s.venue}</span>}
                   </div>
                 </div>
@@ -154,6 +155,7 @@ function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
             <p className="text-sm text-muted-foreground mt-0.5">
               {formattedDate}
               {session.time && <span> · {session.time}</span>}
+              {session.duration && <span> · {session.duration}</span>}
               {session.venue && <span> · {session.venue}</span>}
             </p>
           </div>
@@ -272,7 +274,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 }
 
 function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: string; sessionId?: string }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionId, isLoading, notFound, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, isLoading, notFound, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
   const { status } = useRealtime(sessionId, refresh)
 
   if (!isLoading && notFound) {
@@ -304,6 +306,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
           sessionDate={sessionDate}
           sessionVenue={sessionVenue}
           sessionTime={sessionTime}
+          sessionDuration={sessionDuration}
           gameCount={matches.length}
           sessionId={sessionId}
         />
