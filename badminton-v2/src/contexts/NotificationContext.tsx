@@ -49,8 +49,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       if (!data || data.length === 0) return
 
-      const cheers = data.filter((n: { type: string }) => n.type === 'cheer')
-      const awards = data.filter((n: { type: string }) => n.type === 'award')
+      const rows = data as Array<{ type: string; body: string | null }>
+      const cheers = rows.filter(n => n.type === 'cheer')
+      const awards = rows.filter(n => n.type === 'award')
 
       let message = ''
       if (cheers.length > 0 && awards.length > 0) {
@@ -59,7 +60,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         message = `🏸 You received ${cheers.length} new cheer${cheers.length !== 1 ? 's' : ''}!`
       } else if (awards.length > 0) {
         message = awards.length === 1
-          ? `🏆 New award: ${(awards[0] as { body: string }).body}!`
+          ? `🏆 New award: ${awards[0].body}!`
           : `🏆 ${awards.length} new awards!`
       }
 
