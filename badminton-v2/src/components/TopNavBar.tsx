@@ -42,11 +42,11 @@ export function TopNavBar() {
   ]
 
   return (
-    <nav className="bg-primary text-primary-foreground px-4 py-2 flex items-center gap-3">
+    <nav className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
       <Link to="/" className="shrink-0">
         <img src={ppLogo} alt="PP" className="w-8 h-8 rounded-full object-cover" />
       </Link>
-      <div className="flex items-center gap-6 overflow-x-auto whitespace-nowrap">
+      <div className="flex items-center gap-6 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
       {tabs.filter((tab) => tab.show).map((tab) => (
         <Link
           key={tab.href}
