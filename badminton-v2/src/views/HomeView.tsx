@@ -1,17 +1,8 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 
 export function HomeView() {
-  const { user, role, isLoading } = useAuth()
-  const navigate = useNavigate()
-
-  // Admin still auto-redirects to /admin
-  useEffect(() => {
-    if (isLoading || !user) return
-    if (role === 'admin') navigate('/admin', { replace: true })
-  }, [isLoading, user, role, navigate])
+  const { user, isLoading } = useAuth()
 
   function signIn() {
     supabase.auth.signInWithOAuth({
@@ -20,7 +11,7 @@ export function HomeView() {
     })
   }
 
-  if (isLoading || (user && role === 'admin')) {
+  if (isLoading) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
