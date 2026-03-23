@@ -1,25 +1,11 @@
 import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
 import { useSessionList } from '@/hooks/useSessionList'
 import type { Session } from '@/hooks/useSession'
-
-const sessionSchema = z.object({
-  name: z.string().min(1, 'Session name is required'),
-  date: z.string().min(1, 'Date is required'),
-  venue: z.string().optional(),
-  time: z.string().optional(),
-})
-
-type SessionFormValues = z.infer<typeof sessionSchema>
 
 const STATUS_LABELS: Record<string, string> = {
   setup: 'Setup',
@@ -120,34 +106,25 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
 }
 
 export function AdminView() {
+  const navigate = useNavigate()
   const { sessions, isLoading, refresh } = useSessionList()
   const [showPast, setShowPast] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [creating, setCreating] = useState(false)
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<SessionFormValues>({
-    resolver: zodResolver(sessionSchema),
-    defaultValues: { name: 'Palo palo' },
-  })
-
-  async function onSubmit(values: SessionFormValues) {
+  async function handleCreateSession() {
+    setCreating(true)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { toast.error('Not authenticated'); return }
+    if (!user) { toast.error('Not authenticated'); setCreating(false); return }
 
-    const { error } = await supabase
+    const today = new Date().toISOString().slice(0, 10)
+    const { data, error } = await supabase
       .from('sessions')
-      .insert({ name: values.name, date: values.date, venue: values.venue || null, time: values.time || null, created_by: user.id })
+      .insert({ name: 'New Session', date: today, created_by: user.id })
+      .select('id')
+      .single()
 
-    if (error) { toast.error(error.message); return }
-
-    reset({ name: 'Palo palo', date: '' })
-    refresh()
+    if (error) { toast.error(error.message); setCreating(false); return }
+    navigate(`/session/${(data as { id: string }).id}`)
   }
 
   const activeSessions = sessions.filter((s) => s.status !== 'complete')
@@ -157,39 +134,10 @@ export function AdminView() {
     <div className="p-6 max-w-lg mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-primary">Admin</h1>
+        <Button onClick={handleCreateSession} disabled={creating} size="sm">
+          {creating ? 'Creating…' : 'Create Session'}
+        </Button>
       </div>
-
-      {/* Create new session */}
-      <Card>
-        <CardHeader>
-          <CardTitle>New Session</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="name">Session name</Label>
-              <Input id="name" {...register('name')} />
-              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="date">Date</Label>
-              <Input id="date" type="date" {...register('date')} />
-              {errors.date && <p className="text-sm text-destructive">{errors.date.message}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="venue">Venue</Label>
-              <Input id="venue" placeholder="e.g. Sports Hall A" {...register('venue')} />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="time">Time</Label>
-              <Input id="time" type="time" {...register('time')} />
-            </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full">
-              {isSubmitting ? 'Creating…' : 'Create Session'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
       {/* Active sessions */}
       <div className="space-y-3">

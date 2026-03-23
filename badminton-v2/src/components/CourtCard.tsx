@@ -83,14 +83,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
           .limit(1)
           .maybeSingle()
 
-        if (!stillPlaying) {
-          // All matches done — auto-close the session
-          await supabase
-            .from('sessions')
-            .update({ status: 'complete' })
-            .eq('id', sessionId)
-          setSessionComplete(true)
-        }
+        // Auto-close disabled: admin closes the session manually
       }
 
       refresh()

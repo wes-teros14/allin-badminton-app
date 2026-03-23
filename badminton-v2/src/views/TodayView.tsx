@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useActiveSession } from '@/hooks/useActiveSession'
+import { useActiveSessions } from '@/hooks/useActiveSession'
 
 interface LeaderboardEntry {
   playerId: string
@@ -92,9 +92,18 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
 const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
 
 export function TodayView() {
-  const { activeSession, isLoading: sessionLoading } = useActiveSession()
+  const { activeSessions, isLoading: sessionLoading } = useActiveSessions()
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+
+  // Clamp selectedIndex when sessions list changes
+  const safeIndex = Math.min(selectedIndex, Math.max(activeSessions.length - 1, 0))
+  const activeSession = activeSessions[safeIndex] ?? null
+
+  useEffect(() => {
+    if (selectedIndex !== safeIndex) setSelectedIndex(safeIndex)
+  }, [safeIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const load = useCallback(async () => {
     if (!activeSession) { setIsLoading(false); return }
@@ -147,6 +156,24 @@ export function TodayView() {
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-10 space-y-6">
+      {activeSessions.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {activeSessions.map((s, i) => (
+            <button
+              key={s.sessionId}
+              onClick={() => setSelectedIndex(i)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                i === safeIndex
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       <h1 className="text-xl font-bold text-primary">🏆 {activeSession.name}</h1>
 
       {entries.length === 0 ? (

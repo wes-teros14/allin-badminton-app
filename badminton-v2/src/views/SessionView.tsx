@@ -93,38 +93,60 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
   )
 }
 
-function SetupCard({ sessionId, initialDate, onOpenRegistration }: { sessionId: string; initialDate: string; onOpenRegistration: () => void }) {
+function SetupCard({
+  sessionId, initialName, initialDate, initialVenue, initialTime, onConfirm,
+}: {
+  sessionId: string
+  initialName: string
+  initialDate: string
+  initialVenue: string | null
+  initialTime: string | null
+  onConfirm: () => void
+}) {
+  const [name, setName] = useState(initialName)
   const [date, setDate] = useState(initialDate)
+  const [venue, setVenue] = useState(initialVenue ?? '')
+  const [time, setTime] = useState(initialTime ?? '')
   const [saving, setSaving] = useState(false)
 
-  async function handleSaveDate() {
-    if (!date) return
+  useEffect(() => { setName(initialName) }, [initialName])
+  useEffect(() => { setDate(initialDate) }, [initialDate])
+  useEffect(() => { setVenue(initialVenue ?? '') }, [initialVenue])
+  useEffect(() => { setTime(initialTime ?? '') }, [initialTime])
+
+  async function handleConfirm() {
+    if (!name.trim() || !date) { toast.error('Session name and date are required'); return }
     setSaving(true)
-    const { error } = await supabase.from('sessions').update({ date }).eq('id', sessionId)
-    if (error) toast.error(error.message)
-    else toast.success('Date updated')
-    setSaving(false)
+    const { error } = await supabase
+      .from('sessions')
+      .update({ name: name.trim(), date, venue: venue || null, time: time || null })
+      .eq('id', sessionId)
+    if (error) { toast.error(error.message); setSaving(false); return }
+    onConfirm()
   }
 
   return (
     <Card>
       <CardContent className="pt-4 space-y-3">
         <div className="space-y-1">
-          <Label htmlFor="setup-date">Date</Label>
-          <div className="flex gap-2">
-            <Input
-              id="setup-date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="flex-1"
-            />
-            <Button variant="outline" size="sm" disabled={saving || date === initialDate} onClick={handleSaveDate}>
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
+          <Label htmlFor="setup-name">Session name</Label>
+          <Input id="setup-name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
-        <Button onClick={onOpenRegistration} className="w-full">Open Registration</Button>
+        <div className="space-y-1">
+          <Label htmlFor="setup-date">Date</Label>
+          <Input id="setup-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="setup-venue">Venue</Label>
+          <Input id="setup-venue" placeholder="e.g. Sports Hall A" value={venue} onChange={(e) => setVenue(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="setup-time">Time</Label>
+          <Input id="setup-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+        </div>
+        <Button onClick={handleConfirm} disabled={saving} className="w-full">
+          {saving ? 'Saving…' : 'Confirm'}
+        </Button>
       </CardContent>
     </Card>
   )
@@ -172,7 +194,7 @@ export function SessionView() {
         <Card>
           <CardHeader><CardTitle>{session.name}</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
-            <p>Date: {session.date}</p>
+            <p>{new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}</p>
             <p className="text-muted-foreground">This session has been closed.</p>
           </CardContent>
         </Card>
@@ -193,19 +215,30 @@ export function SessionView() {
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-primary">{session.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
-          </p>
-        </div>
+        {session.status === 'setup' ? (
+          <div />
+        ) : (
+          <div>
+            <h1 className="text-lg font-semibold text-primary">{session.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
+            </p>
+          </div>
+        )}
         <BackToAdmin />
       </div>
 
       <SessionStepper status={session.status} />
 
       {session.status === 'setup' && (
-        <SetupCard sessionId={session.id} initialDate={session.date} onOpenRegistration={openRegistration} />
+        <SetupCard
+          sessionId={session.id}
+          initialName={session.name}
+          initialDate={session.date}
+          initialVenue={session.venue ?? null}
+          initialTime={session.time ?? null}
+          onConfirm={openRegistration}
+        />
       )}
 
       {session.status === 'registration_open' && invitation && (
@@ -235,7 +268,6 @@ export function SessionView() {
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
           <Button onClick={startSession} className="w-full">Start Session</Button>
           <Button variant="outline" onClick={() => window.open(`/live-board/${session.id}`, '_blank')} className="w-full">Open LiveBoard ↗</Button>
-          <Button variant="outline" onClick={() => window.open(`/match-schedule/session/${session.id}`, '_blank')} className="w-full">Share Match Schedule ↗</Button>
           <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>
         </div>
       )}

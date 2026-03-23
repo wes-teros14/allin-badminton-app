@@ -8,6 +8,8 @@ export interface SessionPickerItem {
   time: string | null
   venue: string | null
   status: string
+  completed_at: string | null
+  cheersAllGiven: boolean
 }
 
 interface UsePlayerSessionsResult {
@@ -48,17 +50,60 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
         return
       }
 
-      // 2. Fetch sessions with relevant statuses
+      // 2. Fetch all registered sessions, active first then by date desc
       const { data: sessionData } = await supabase
         .from('sessions')
-        .select('id, name, date, time, venue, status')
+        .select('id, name, date, time, venue, status, completed_at')
         .in('id', sessionIds)
-        .in('status', ['schedule_locked', 'in_progress'])
-        .order('created_at', { ascending: false })
+        .order('date', { ascending: false })
 
       if (cancelled) return
 
-      const items = ((sessionData ?? []) as unknown as Array<SessionPickerItem>)
+      const rawItems = (sessionData ?? []) as unknown as Array<Omit<SessionPickerItem, 'cheersAllGiven'>>
+
+      // For sessions with an open cheer window, check if player has given all cheers
+      const now = Date.now()
+      const openWindowIds = rawItems
+        .filter(s => s.status === 'complete' && s.completed_at &&
+          now < new Date(s.completed_at).getTime() + 24 * 60 * 60 * 1000)
+        .map(s => s.id)
+
+      const cheersAllGivenMap = new Map<string, boolean>()
+
+      if (openWindowIds.length > 0) {
+        const [cheersRes, regsRes] = await Promise.all([
+          supabase
+            .from('cheers')
+            .select('session_id')
+            .in('session_id', openWindowIds)
+            .eq('giver_id', playerId!),
+          supabase
+            .from('session_registrations')
+            .select('session_id')
+            .in('session_id', openWindowIds)
+            .neq('player_id', playerId!),
+        ])
+        if (!cancelled) {
+          const cheersCount = new Map<string, number>()
+          for (const c of (cheersRes.data ?? []) as Array<{ session_id: string }>) {
+            cheersCount.set(c.session_id, (cheersCount.get(c.session_id) ?? 0) + 1)
+          }
+          const participantCount = new Map<string, number>()
+          for (const r of (regsRes.data ?? []) as Array<{ session_id: string }>) {
+            participantCount.set(r.session_id, (participantCount.get(r.session_id) ?? 0) + 1)
+          }
+          for (const id of openWindowIds) {
+            const given = cheersCount.get(id) ?? 0
+            const total = participantCount.get(id) ?? 0
+            cheersAllGivenMap.set(id, total === 0 || given >= total)
+          }
+        }
+      }
+
+      const items: SessionPickerItem[] = rawItems.map(s => ({
+        ...s,
+        cheersAllGiven: cheersAllGivenMap.get(s.id) ?? false,
+      }))
 
       setSessions(items)
       setIsLoading(false)

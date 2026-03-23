@@ -150,7 +150,12 @@ export function useRegistration(token: string | null): RegistrationState {
       .insert({ session_id: sessionId, player_id: user.id })
 
     if (error) {
-      toast.error(error.message)
+      if (error.message.includes('session_full')) {
+        setIsFull(true)
+        toast.error('This session is full.')
+      } else {
+        toast.error(error.message)
+      }
       return
     }
 

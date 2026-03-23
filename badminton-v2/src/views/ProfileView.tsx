@@ -48,17 +48,96 @@ function RankListCard({ label, items, subLabel }: {
   )
 }
 
+interface CheerStats {
+  cheers_received: number
+  cheers_given: number
+  offense_received: number
+  defense_received: number
+  technique_received: number
+  movement_received: number
+  good_sport_received: number
+}
+
+interface Award {
+  emoji: string
+  label: string
+}
+
+async function fetchAwards(userId: string): Promise<Award[]> {
+  const [cheerRes, statsRes, regsRes] = await Promise.all([
+    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received'),
+    supabase.from('player_stats').select('player_id, sessions_attended'),
+    supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
+  ])
+
+  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number }>
+  const stats = (statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>
+  const regs = (regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>
+
+  // Count how many times each player was first to register (self-registered only)
+  const firstRegistrantCount = new Map<string, number>()
+  const seenSessions = new Set<string>()
+  for (const r of regs) {
+    if (!seenSessions.has(r.session_id)) {
+      seenSessions.add(r.session_id)
+      firstRegistrantCount.set(r.player_id, (firstRegistrantCount.get(r.player_id) ?? 0) + 1)
+    }
+  }
+
+  function top(arr: Array<{ player_id: string; value: number }>): string | null {
+    if (arr.length === 0) return null
+    const sorted = [...arr].sort((a, b) => b.value - a.value)
+    if (sorted[0].value === 0) return null
+    if (sorted.length > 1 && sorted[0].value === sorted[1].value) return null
+    return sorted[0].player_id
+  }
+
+  const earlyBirdEntries = Array.from(firstRegistrantCount.entries()).map(([player_id, value]) => ({ player_id, value }))
+
+  const awards: Award[] = []
+
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_received }))) === userId)
+    awards.push({ emoji: '🌟', label: 'Most Cheers Received' })
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_given }))) === userId)
+    awards.push({ emoji: '🙌', label: 'Most Cheers Given' })
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received }))) === userId)
+    awards.push({ emoji: '⚔️', label: 'Top Offense' })
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.defense_received }))) === userId)
+    awards.push({ emoji: '🛡️', label: 'Top Defense' })
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received }))) === userId)
+    awards.push({ emoji: '🎯', label: 'Top Technique' })
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received }))) === userId)
+    awards.push({ emoji: '💨', label: 'Top Movement' })
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received }))) === userId)
+    awards.push({ emoji: '🤝', label: 'Top Good Sport' })
+  if (top(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
+    awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
+  if (top(earlyBirdEntries) === userId)
+    awards.push({ emoji: '🐦', label: 'Registration Early Bird' })
+
+  return awards
+}
+
 export function ProfileView() {
   const { user, isLoading: authLoading } = useAuth()
   const { stats, isLoading: statsLoading, refresh } = useProfileStats(user?.id)
   const [nickname, setNickname] = useState('')
   const [editingNickname, setEditingNickname] = useState(false)
   const [savingNickname, setSavingNickname] = useState(false)
+  const [cheerStats, setCheerStats] = useState<CheerStats | null>(null)
+  const [awards, setAwards] = useState<Award[]>([])
 
   useEffect(() => {
     if (!user) return
     supabase.from('profiles').select('nickname').eq('id', user.id).maybeSingle()
       .then(({ data }) => { if (data) setNickname((data as any).nickname ?? '') })
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!user?.id) return
+    supabase.from('player_cheer_stats').select('*').eq('player_id', user.id).maybeSingle()
+      .then(({ data }) => { if (data) setCheerStats(data as CheerStats) })
+    fetchAwards(user.id).then(setAwards)
   }, [user?.id])
 
   useEffect(() => {
@@ -135,7 +214,7 @@ export function ProfileView() {
             title="Edit nickname"
           >
             <span>{nickname || <span className="text-muted-foreground">No nickname set</span>}</span>
-            <span className="text-muted-foreground text-xs">✏️</span>
+            <span className="text-muted-foreground text-xs">edit</span>
           </button>
         )}
       </div>
@@ -161,29 +240,6 @@ export function ProfileView() {
           </div>
         ) : stats ? (
           <div className="grid grid-cols-2 gap-3">
-            {/* Bond & Nemesis highlight cards */}
-            {(stats.bestPartners.length > 0 || stats.toughestOpponents.length > 0) && (
-              <>
-                {stats.bestPartners.length > 0 && (
-                  <Card>
-                    <CardContent className="pt-4 pb-3">
-                      <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Bond 🤝</p>
-                      <p className="text-sm font-bold text-primary truncate">{stats.bestPartners[0].nameSlug}</p>
-                      <p className="text-xs text-muted-foreground">{stats.bestPartners[0].wins} win{stats.bestPartners[0].wins !== 1 ? 's' : ''} together</p>
-                    </CardContent>
-                  </Card>
-                )}
-                {stats.toughestOpponents.length > 0 && (
-                  <Card>
-                    <CardContent className="pt-4 pb-3">
-                      <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">Nemesis 😤</p>
-                      <p className="text-sm font-bold text-primary truncate">{stats.toughestOpponents[0].nameSlug}</p>
-                      <p className="text-xs text-muted-foreground">Lost {stats.toughestOpponents[0].losses}x</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </>
-            )}
             <StatCard
               label="Sessions Attended"
               value={String(stats.sessionsAttended)}
@@ -210,6 +266,44 @@ export function ProfileView() {
           </div>
         ) : null}
       </div>
+
+      {/* Awards */}
+      {awards.length > 0 && (
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Awards</h2>
+          <div className="flex flex-wrap gap-2">
+            {awards.map(a => (
+              <div key={a.label} className="flex items-center gap-1.5 bg-[#FEFE6A]/10 border border-[#FEFE6A]/30 rounded-full px-3 py-1.5">
+                <span className="text-base">{a.emoji}</span>
+                <span className="text-xs font-semibold text-[#FEFE6A]">{a.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Cheers */}
+      {cheerStats && (
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Cheers</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard label="Received" value={String(cheerStats.cheers_received)} />
+            <StatCard label="Given" value={String(cheerStats.cheers_given)} />
+            {[
+              { label: '⚔️ Offense',    val: cheerStats.offense_received },
+              { label: '🛡️ Defense',    val: cheerStats.defense_received },
+              { label: '🎯 Technique',  val: cheerStats.technique_received },
+              { label: '💨 Movement',   val: cheerStats.movement_received },
+              { label: '🤝 Good Sport', val: cheerStats.good_sport_received },
+            ]
+              .filter(t => t.val > 0)
+              .map(t => (
+                <StatCard key={t.label} label={t.label} value={String(t.val)} />
+              ))
+            }
+          </div>
+        </div>
+      )}
 
     </div>
   )

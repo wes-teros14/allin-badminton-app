@@ -12,3 +12,23 @@ export type SessionStatus =
   | 'complete'
 
 export type MatchStatus = 'queued' | 'playing' | 'complete'
+
+export type CheerTypeSlug = 'offense' | 'defense' | 'technique' | 'movement' | 'good_sport'
+
+export interface CheerType {
+  id: string
+  slug: CheerTypeSlug
+  name: string
+  emoji: string
+}
+
+export interface CheerEntry {
+  id: string
+  giverId: string
+  receiverId: string
+  cheerTypeId: string
+  cheerTypeSlug: CheerTypeSlug
+  cheerTypeName: string
+  cheerTypeEmoji: string
+  createdAt: string
+}

@@ -101,7 +101,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
 
   async function addPlayer(playerId: string) {
     if (!sessionId) return
-    const { error } = await supabase.from('session_registrations').insert({ session_id: sessionId, player_id: playerId })
+    const { error } = await supabase.from('session_registrations').insert({ session_id: sessionId, player_id: playerId, source: 'admin' })
     if (error) { toast.error(error.message); return }
     fetchRoster()
   }
