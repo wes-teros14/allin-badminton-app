@@ -299,9 +299,6 @@ export function SessionPlayerDetailView() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Back + tab bar */}
       <div className="relative flex items-center px-4 py-3 border-b border-border">
-        <Link to="/sessions" className="text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0">
-          ← My Sessions
-        </Link>
         <div className="absolute left-1/2 -translate-x-1/2 flex gap-1">
           {(['schedule', 'cheers', 'leaderboard'] as Tab[]).map((t) => (
             <button
