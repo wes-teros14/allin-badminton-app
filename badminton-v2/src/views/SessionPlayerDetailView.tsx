@@ -266,7 +266,7 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
 type Tab = 'schedule' | 'leaderboard' | 'cheers'
 
 const TAB_LABELS: Record<Tab, string> = {
-  schedule: 'My Schedule',
+  schedule: 'Schedule',
   leaderboard: 'Leaderboard',
   cheers: 'Cheers',
 }
@@ -297,9 +297,9 @@ export function SessionPlayerDetailView() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Back + tab bar */}
-      <div className="relative flex items-center px-4 py-3 border-b border-border">
-        <div className="absolute left-1/2 -translate-x-1/2 flex gap-1">
+      {/* Tab bar */}
+      <div className="flex justify-center items-center gap-1 px-4 py-3 border-b border-border">
+        <div className="flex gap-1">
           {(['schedule', 'cheers', 'leaderboard'] as Tab[]).map((t) => (
             <button
               key={t}
