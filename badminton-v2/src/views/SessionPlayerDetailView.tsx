@@ -151,7 +151,7 @@ function ScheduleTab({ nameSlug, sessionId }: { nameSlug: string; sessionId: str
             ? "🏸 You're on court now!"
             : gamesAhead === 0
             ? "⏳ You're up next!"
-            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 10} mins wait time)`}
+            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 7} mins wait time)`}
         </div>
       )}
 
