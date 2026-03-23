@@ -159,9 +159,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
             key={current?.gameNumber ?? 'idle'}
             className="flex-1 flex flex-col items-center justify-center gap-6 animate-[court-fade-in_0.4s_ease-out]"
           >
-            {sessionComplete ? (
-              <p className="text-xl font-semibold text-muted-foreground">Session complete</p>
-            ) : current ? (
+            {current ? (
               <>
                 <p className="game-hero text-primary">{current.gameNumber}</p>
                 <div className="text-center space-y-3">
@@ -176,7 +174,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
           </div>
 
           {/* Finish button */}
-          {current && !sessionComplete && (
+          {current && (
             <button
               onClick={() => setConfirmingFinish(true)}
               disabled={isSaving}
