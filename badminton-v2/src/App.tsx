@@ -45,7 +45,7 @@ const LeaderboardView          = lazy(() => import('@/views/LeaderboardView'))
 function App() {
   return (
     <AuthProvider>
-    <Toaster />
+    <Toaster position="bottom-center" />
     <DevLoginPanel />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>

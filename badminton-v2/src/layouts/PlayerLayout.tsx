@@ -1,12 +1,15 @@
 import { Outlet } from 'react-router'
 import { TopNavBar } from '@/components/TopNavBar'
+import { NotificationProvider } from '@/contexts/NotificationContext'
 
 export function PlayerLayout() {
   return (
-    <div className="min-h-screen bg-background">
-      <TopNavBar />
-      <Outlet />
-    </div>
+    <NotificationProvider>
+      <div className="min-h-screen bg-background">
+        <TopNavBar />
+        <Outlet />
+      </div>
+    </NotificationProvider>
   )
 }
 

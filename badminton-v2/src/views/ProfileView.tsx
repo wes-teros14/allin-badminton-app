@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
+import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 
@@ -121,11 +122,15 @@ async function fetchAwards(userId: string): Promise<Award[]> {
 export function ProfileView() {
   const { user, isLoading: authLoading } = useAuth()
   const { stats, isLoading: statsLoading, refresh } = useProfileStats(user?.id)
+  const { markAllRead } = useNotifications()
   const [nickname, setNickname] = useState('')
   const [editingNickname, setEditingNickname] = useState(false)
   const [savingNickname, setSavingNickname] = useState(false)
   const [cheerStats, setCheerStats] = useState<CheerStats | null>(null)
   const [awards, setAwards] = useState<Award[]>([])
+
+  // Mark notifications as read when visiting profile
+  useEffect(() => { markAllRead() }, [markAllRead])
 
   useEffect(() => {
     if (!user) return
