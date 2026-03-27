@@ -30,7 +30,7 @@ export function GameCard({ gameNumber, partnerNameSlug, opp1NameSlug, opp2NameSl
     : status === 'playing'
     ? 'playing'
     : isNextUp
-    ? 'up-next'
+    ? 'next-game'
     : 'queued'
 
   const cardClass = status === 'playing'

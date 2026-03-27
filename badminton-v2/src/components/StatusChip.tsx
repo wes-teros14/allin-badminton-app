@@ -1,17 +1,17 @@
 interface Props {
-  status: 'playing' | 'up-next' | 'queued' | 'done'
+  status: 'playing' | 'next-game' | 'queued' | 'done'
 }
 
 const styles: Record<Props['status'], string> = {
   playing:  'bg-primary text-primary-foreground',
-  'up-next':'bg-muted-foreground/20 text-muted-foreground',
+  'next-game':'bg-muted-foreground/20 text-muted-foreground',
   queued:   'bg-muted/50 text-muted-foreground',
   done:     'bg-[var(--success)]/20 text-[var(--success)]',
 }
 
 const labels: Record<Props['status'], string> = {
   playing:  'Playing',
-  'up-next':'Up Next',
+  'next-game':'Next Game',
   queued:   'Queued',
   done:     'Done',
 }

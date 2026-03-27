@@ -218,6 +218,7 @@ export function ProfileView() {
             className="flex items-center gap-1.5 text-sm text-foreground hover:text-primary transition-colors"
             title="Edit nickname"
           >
+            <span className="text-muted-foreground">Nickname: </span>
             <span>{nickname || <span className="text-muted-foreground">No nickname set</span>}</span>
             <span className="text-muted-foreground text-xs">edit</span>
           </button>

@@ -517,20 +517,38 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                     {isEditing ? (
                       <div className="space-y-2 text-xs">
                         <p className="font-medium text-muted-foreground">Game {m.gameNumber} — Edit Players</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {(['t1p1', 't1p2', 't2p1', 't2p2'] as const).map((key, si) => (
-                            <select
-                              key={key}
-                              value={editForm[key]}
-                              onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                              className="h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
-                            >
-                              <option value="">— {['Team 1 P1','Team 1 P2','Team 2 P1','Team 2 P2'][si]} —</option>
-                              {players.map((p) => (
-                                <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
-                              ))}
-                            </select>
-                          ))}
+                        <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+                          <div className="space-y-1">
+                            {(['t1p1', 't1p2'] as const).map((key, si) => (
+                              <select
+                                key={key}
+                                value={editForm[key]}
+                                onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                                className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
+                              >
+                                <option value="">— {['Team 1 P1','Team 1 P2'][si]} —</option>
+                                {players.map((p) => (
+                                  <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+                                ))}
+                              </select>
+                            ))}
+                          </div>
+                          <span className="text-xs font-bold text-muted-foreground text-center">vs</span>
+                          <div className="space-y-1">
+                            {(['t2p1', 't2p2'] as const).map((key, si) => (
+                              <select
+                                key={key}
+                                value={editForm[key]}
+                                onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                                className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
+                              >
+                                <option value="">— {['Team 2 P1','Team 2 P2'][si]} —</option>
+                                {players.map((p) => (
+                                  <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+                                ))}
+                              </select>
+                            ))}
+                          </div>
                         </div>
                         <div className="flex gap-2">
                           <Button size="sm" className="h-7 text-xs" onClick={() => handleEditSave(m.gameNumber)}>Save</Button>
