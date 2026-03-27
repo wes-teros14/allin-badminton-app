@@ -112,3 +112,11 @@
 - **Visual verification is the test for CSS/theming stories**: No unit tests needed for pure CSS work. Run `npm run dev` and check the browser.
 
 - **`.kiosk-dark` is separate from shadcn's `.dark`**: Do not merge them. Kiosk dark mode is applied via explicit class on the KioskView root, not via `prefers-color-scheme`.
+
+---
+
+## Today Tab — Multiple Sessions Bug
+
+- **Symptom**: Live session's Today tab leaderboard broken when a second session (test seed) existed simultaneously.
+  **Root cause**: `useActiveSession()` used `LIMIT 1` with `ORDER BY date DESC` — when multiple active sessions exist, it picks whichever has the most recent date, which may be the wrong session. The leaderboard then showed data for the unintended session.
+  **Fix**: Renamed to `useActiveSessions()`, returns all active sessions as an array. TodayView shows a pill selector when multiple sessions exist so the user can switch between them. TopNavBar shows Today tab if any active session exists.
