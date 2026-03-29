@@ -9,9 +9,7 @@ interface LeaderboardEntry {
   displayName: string
   wins: number
   losses: number
-  gamesPlayed: number
-  winRate: number
-  score: number
+  points: number
 }
 
 interface CheerLeaderboardEntry {
@@ -53,19 +51,16 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
 
   return ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>)
     .map((s) => {
-      const winRate = s.games_played > 0 ? s.wins / s.games_played : 0
-      const score = winRate * Math.pow(s.games_played, 0.7)
+      const losses = s.games_played - s.wins
       return {
         playerId: s.player_id,
         displayName: nameMap.get(s.player_id) ?? s.player_id,
         wins: s.wins,
-        losses: s.games_played - s.wins,
-        gamesPlayed: s.games_played,
-        winRate: Math.round(winRate * 100),
-        score,
+        losses,
+        points: s.wins * 2 - losses,
       }
     })
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.points - a.points || b.wins - a.wins)
     .slice(0, 10)
 }
 
@@ -118,13 +113,13 @@ function WinsLeaderboard() {
           </span>
           <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
           <div className="text-right shrink-0">
-            <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
+            <p className="text-sm font-bold text-primary">{entry.points} pts</p>
             <p className="text-xs text-muted-foreground">{entry.wins}W {entry.losses}L</p>
           </div>
         </div>
       ))}
       <p className="text-xs text-muted-foreground text-center pt-2">
-        Ranked by win rate weighted by games played
+        +2 per win, −1 per loss
       </p>
     </div>
   )
