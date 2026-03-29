@@ -281,7 +281,7 @@ export function SessionPlayerDetailView() {
 
   const {
     cheerTypes, participants, cheersGiven, cheersReceived,
-    isWindowOpen, sessionStatus, isLoading: cheerLoading, submitCheer,
+    isWindowOpen, sessionStatus, isLoading: cheerLoading, submitCheer, refresh: refreshCheers,
   } = useSessionCheers(sessionId)
 
   const givenReceiverIds = new Set(cheersGiven.map(c => c.receiverId))
@@ -295,6 +295,20 @@ export function SessionPlayerDetailView() {
       setSlugLoading(false)
     })
   }, [user])
+
+  // Refresh cheers data when session transitions to complete
+  useEffect(() => {
+    if (!sessionId) return
+    const channel = supabase
+      .channel(`session-complete-cheers-${sessionId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` }, (payload) => {
+        if ((payload.new as { status?: string })?.status === 'complete') {
+          refreshCheers()
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [sessionId, refreshCheers])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
