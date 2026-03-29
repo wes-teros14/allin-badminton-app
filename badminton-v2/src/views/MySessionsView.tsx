@@ -27,7 +27,8 @@ function cheerTimeLeft(s: SessionPickerItem): string {
 function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress')                                    return { label: 'Live',                className: 'bg-[#DC595E]/20 text-[#DC595E]' }
   if (s.status === 'registration_open')                              return { label: 'Registration Open',   className: 'bg-yellow-100 text-yellow-700' }
-  if (s.status === 'registration_closed' || s.status === 'schedule_locked') return { label: 'Registration Closed', className: 'bg-orange-100 text-orange-700' }
+  if (s.status === 'registration_closed')                                    return { label: 'Registration Closed', className: 'bg-orange-100 text-orange-700' }
+  if (s.status === 'schedule_locked')                                        return { label: 'Schedule Ready',      className: 'bg-orange-100 text-orange-700' }
   if (hasPendingCheers(s))                                           return { label: `Give Cheers · ${cheerTimeLeft(s)}`, className: 'bg-yellow-100 text-yellow-700' }
   return                                                                    { label: 'Ended',               className: 'bg-muted text-muted-foreground' }
 }
