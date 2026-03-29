@@ -305,7 +305,7 @@ export function useSession(sessionId?: string): SessionState {
     if (!session) return
     const { data: updated, error } = await supabase
       .from('sessions')
-      .update({ status: 'complete' })
+      .update({ status: 'complete', completed_at: new Date().toISOString() })
       .eq('id', session.id)
       .select()
       .single()
