@@ -39,7 +39,7 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
     setClosing(true)
     const { error } = await supabase
       .from('sessions')
-      .update({ status: 'complete' })
+      .update({ status: 'complete', completed_at: new Date().toISOString() })
       .eq('id', session.id)
     if (error) toast.error(error.message)
     else onClose()
