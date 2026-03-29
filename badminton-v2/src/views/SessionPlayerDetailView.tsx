@@ -20,8 +20,6 @@ interface LeaderboardEntry {
   wins: number
   games: number
   winRate: number
-  careerWinRate?: number
-  improvement?: number
 }
 
 type MatchRow = {
@@ -45,18 +43,11 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
   const playerIds = ((regsRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id)
   if (playerIds.length === 0) return []
 
-  const [profilesRes, careerRes] = await Promise.all([
-    supabase.from('profiles').select('id, nickname, name_slug').in('id', playerIds),
-    supabase.from('player_stats').select('player_id, games_played, wins').in('player_id', playerIds),
-  ])
+  const profilesRes = await supabase.from('profiles').select('id, nickname, name_slug').in('id', playerIds)
 
   const nameMap = new Map(
     ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
       .map((p) => [p.id, p.nickname ?? p.name_slug])
-  )
-  const careerMap = new Map(
-    ((careerRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>)
-      .map((s) => [s.player_id, { games: s.games_played, wins: s.wins }])
   )
 
   const statsMap = new Map<string, { wins: number; games: number }>(
@@ -81,16 +72,12 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
   for (const [playerId, s] of statsMap) {
     if (s.games === 0) continue
     const winRate = Math.round((s.wins / s.games) * 100)
-    const career = careerMap.get(playerId)
-    const careerWinRate = career && career.games > 0 ? Math.round((career.wins / career.games) * 100) : undefined
     entries.push({
       playerId,
       displayName: nameMap.get(playerId) ?? playerId,
       wins: s.wins,
       games: s.games,
       winRate,
-      careerWinRate,
-      improvement: careerWinRate !== undefined ? winRate - careerWinRate : undefined,
     })
   }
 
@@ -203,11 +190,6 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
     return () => { supabase.removeChannel(channel) }
   }, [load, sessionId])
 
-  const mostImproved = entries
-    .filter((e) => e.improvement !== undefined && e.improvement > 0 && e.games >= 2)
-    .sort((a, b) => (b.improvement ?? 0) - (a.improvement ?? 0))
-    .slice(0, 3)
-
   if (isLoading) {
     return (
       <div className="max-w-sm mx-auto px-4 pt-6 space-y-3">
@@ -237,24 +219,6 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
             ))}
           </div>
 
-          {mostImproved.length > 0 && (
-            <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-                🔥 Most Improved Today
-              </h2>
-              <div className="space-y-2">
-                {mostImproved.map((entry) => (
-                  <div key={entry.playerId} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-                    <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-green-600">+{entry.improvement}%</p>
-                      <p className="text-xs text-muted-foreground">vs {entry.careerWinRate}% career</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>
