@@ -116,6 +116,9 @@ function SetupCard({
   const [price, setPrice] = useState(initialPrice != null ? String(initialPrice) : '')
   const [sessionNotes, setSessionNotes] = useState(initialSessionNotes ?? '')
   const [scheduleOpen, setScheduleOpen] = useState(initialRegistrationOpensAt != null)
+  const [scheduledDate, setScheduledDate] = useState<string>(
+    initialRegistrationOpensAt ? new Date(initialRegistrationOpensAt).toLocaleDateString('en-CA') : ''
+  )
   const [scheduledHour, setScheduledHour] = useState<string>(
     initialRegistrationOpensAt ? String(new Date(initialRegistrationOpensAt).getHours()) : ''
   )
@@ -130,16 +133,17 @@ function SetupCard({
   useEffect(() => { setSessionNotes(initialSessionNotes ?? '') }, [initialSessionNotes])
   useEffect(() => {
     setScheduleOpen(initialRegistrationOpensAt != null)
+    setScheduledDate(initialRegistrationOpensAt ? new Date(initialRegistrationOpensAt).toLocaleDateString('en-CA') : '')
     setScheduledHour(initialRegistrationOpensAt ? String(new Date(initialRegistrationOpensAt).getHours()) : '')
   }, [initialRegistrationOpensAt])
 
   async function handleConfirm() {
     if (!name.trim() || !date) { toast.error('Session name and date are required'); return }
-    if (scheduleOpen && scheduledHour === '') { toast.error('Select an hour for scheduled registration open'); return }
+    if (scheduleOpen && (!scheduledDate || scheduledHour === '')) { toast.error('Select a date and time for scheduled registration open'); return }
     setSaving(true)
 
-    const registrationOpensAt = scheduleOpen && scheduledHour !== '' && date
-      ? new Date(`${date}T${scheduledHour.padStart(2, '0')}:00:00`).toISOString()
+    const registrationOpensAt = scheduleOpen && scheduledDate && scheduledHour !== ''
+      ? new Date(`${scheduledDate}T${scheduledHour.padStart(2, '0')}:00:00`).toISOString()
       : null
 
     const { error } = await supabase
@@ -210,26 +214,34 @@ function SetupCard({
               type="checkbox"
               id="schedule-open"
               checked={scheduleOpen}
-              onChange={(e) => { setScheduleOpen(e.target.checked); if (!e.target.checked) setScheduledHour('') }}
+              onChange={(e) => { setScheduleOpen(e.target.checked); if (!e.target.checked) { setScheduledDate(''); setScheduledHour('') } }}
               className="h-4 w-4 rounded border-input accent-primary"
             />
             <Label htmlFor="schedule-open" className="cursor-pointer">Schedule registration open</Label>
           </div>
           {scheduleOpen && (
-            <select
-              value={scheduledHour}
-              onChange={(e) => setScheduledHour(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Select hour</option>
-              {HOURS.map(h => (
-                <option key={h.value} value={h.value}>{h.label}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <Input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="flex-1"
+              />
+              <select
+                value={scheduledHour}
+                onChange={(e) => setScheduledHour(e.target.value)}
+                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Hour</option>
+                {HOURS.map(h => (
+                  <option key={h.value} value={h.value}>{h.label}</option>
+                ))}
+              </select>
+            </div>
           )}
-          {scheduleOpen && scheduledHour !== '' && date && (
+          {scheduleOpen && scheduledDate && scheduledHour !== '' && (
             <p className="text-xs text-muted-foreground">
-              Registration will auto-open at {HOURS[Number(scheduledHour)]?.label} on {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              Registration will auto-open at {HOURS[Number(scheduledHour)]?.label} on {new Date(scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </p>
           )}
         </div>
