@@ -45,6 +45,7 @@ interface SessionState {
   invitation: Invitation | null
   playerCount: number
   isLoading: boolean
+  refresh: () => void
   createSession: (name: string, date: string) => Promise<Session | null>
   openRegistration: () => Promise<void>
   closeRegistration: () => Promise<void>
@@ -60,6 +61,9 @@ export function useSession(sessionId?: string): SessionState {
   const [invitation, setInvitation] = useState<Invitation | null>(null)
   const [playerCount, setPlayerCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const refresh = () => setRefreshKey(k => k + 1)
 
   useEffect(() => {
     async function fetchSession() {
@@ -99,7 +103,7 @@ export function useSession(sessionId?: string): SessionState {
     }
 
     fetchSession()
-  }, [sessionId])
+  }, [sessionId, refreshKey])
 
   async function createSession(name: string, date: string): Promise<Session | null> {
     const {
@@ -316,5 +320,5 @@ export function useSession(sessionId?: string): SessionState {
     setSession(updated as Session)
   }
 
-  return { session, invitation, playerCount, isLoading, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, closeSession }
+  return { session, invitation, playerCount, isLoading, refresh, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, closeSession }
 }
