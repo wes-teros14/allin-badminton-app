@@ -136,7 +136,7 @@ function CheerRankList({
   getValue: (e: CheerLeaderboardEntry) => number
   unit: string
 }) {
-  const sorted = [...entries].filter(e => getValue(e) > 0).sort((a, b) => getValue(b) - getValue(a)).slice(0, 10)
+  const sorted = [...entries].filter(e => getValue(e) > 0).sort((a, b) => getValue(b) - getValue(a)).slice(0, 5)
   if (sorted.length === 0) return null
   return (
     <div>
@@ -196,12 +196,13 @@ function CheersLeaderboard() {
 }
 
 async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
-  const [cheerRes, statsRes, regsRes, profilesRes, cheerTimestampsRes] = await Promise.all([
+  const [cheerRes, statsRes, regsRes, profilesRes, cheerTimestampsRes, sessionsRes] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
     supabase.from('profiles').select('id, nickname, name_slug'),
     supabase.from('cheers').select('receiver_id, giver_id, created_at').order('created_at', { ascending: false }),
+    supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: true }),
   ])
 
   const nameMap = new Map(
@@ -250,6 +251,27 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   }
   const earlyBirdEntries = Array.from(firstCount.entries()).map(([player_id, value]) => ({ player_id, value }))
 
+  // Consecutive sessions streak per player
+  const STREAK_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
+  const completedSessionIds = ((sessionsRes.data ?? []) as Array<{ id: string }>).map(s => s.id)
+  const allRegsRes = await supabase.from('session_registrations').select('session_id, player_id').in('session_id', completedSessionIds)
+  const playerSessions = new Map<string, Set<string>>()
+  for (const r of (allRegsRes.data ?? []) as Array<{ session_id: string; player_id: string }>) {
+    if (STREAK_EXCLUDED.has(r.player_id)) continue
+    if (!playerSessions.has(r.player_id)) playerSessions.set(r.player_id, new Set())
+    playerSessions.get(r.player_id)!.add(r.session_id)
+  }
+  const streakEntries: Array<{ player_id: string; value: number }> = []
+  for (const [playerId, attended] of playerSessions) {
+    let maxStreak = 0
+    let streak = 0
+    for (const sid of completedSessionIds) {
+      if (attended.has(sid)) { streak++; if (streak > maxStreak) maxStreak = streak }
+      else streak = 0
+    }
+    if (maxStreak >= 2) streakEntries.push({ player_id: playerId, value: maxStreak })
+  }
+
   const awards: AwardEntry[] = [
     { emoji: '🌟', label: 'Most Cheers Received', ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_received })), latestReceivedAt) },
     { emoji: '🙌', label: 'Most Cheers Given',    ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_given })), latestGivenAt) },
@@ -259,6 +281,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     { emoji: '💨', label: 'Top Movement',         ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received })), latestReceivedAt) },
     { emoji: '🤝', label: 'Top Good Sport',       ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received })), latestReceivedAt) },
     { emoji: '📅', label: 'Most Sessions Joined', ...topHolder(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended })), latestRegAt) },
+    { emoji: '🔥', label: 'Longest Streak', ...topHolder(streakEntries, latestRegAt) },
     { emoji: '🐦', label: 'Registration Early Bird', ...topHolder(earlyBirdEntries, latestRegAt) },
   ]
 
@@ -315,7 +338,7 @@ export function LeaderboardView() {
 
   return (
     <div className="max-w-sm mx-auto px-4 py-8">
-      <h1 className="text-xl font-bold mb-4">Leaderboard</h1>
+      <h1 className="text-xl font-bold mb-4">All-time Leaderboard</h1>
 
       {/* Tab switcher */}
       <div className="flex gap-1 mb-6">
@@ -329,7 +352,7 @@ export function LeaderboardView() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'wins' ? 'All-time Lodi' : t === 'cheers' ? 'Cheers' : 'Awards'}
+            {t === 'wins' ? 'Mga Lodi' : t === 'cheers' ? 'Cheers' : 'Awards'}
           </button>
         ))}
       </div>
