@@ -13,6 +13,7 @@ export interface SessionPickerItem {
   cheersAllGiven: boolean
   price: number | null
   session_notes: string | null
+  isRegistered: boolean
 }
 
 interface UsePlayerSessionsResult {
@@ -36,35 +37,41 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
     async function load() {
       setIsLoading(true)
 
-      // 1. Get session IDs the player is registered in
-      const { data: registrations } = await supabase
-        .from('session_registrations')
-        .select('session_id')
-        .eq('player_id', playerId!)
+      // 1. Fetch registered session IDs + all registration_open sessions in parallel
+      const [registrationsRes, openSessionsRes] = await Promise.all([
+        supabase.from('session_registrations').select('session_id').eq('player_id', playerId!),
+        supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, price, session_notes')
+          .eq('status', 'registration_open').order('date', { ascending: false }),
+      ])
 
       if (cancelled) return
 
-      const sessionIds = ((registrations ?? []) as Array<{ session_id: string }>)
-        .map((r) => r.session_id)
+      const registeredIds = new Set(
+        ((registrationsRes.data ?? []) as Array<{ session_id: string }>).map(r => r.session_id)
+      )
 
-      if (sessionIds.length === 0) {
-        setSessions([])
-        setIsLoading(false)
-        return
+      // 2. Fetch registered sessions (all statuses)
+      let registeredSessionData: Array<Omit<SessionPickerItem, 'cheersAllGiven' | 'isRegistered'>> = []
+      if (registeredIds.size > 0) {
+        const { data } = await supabase
+          .from('sessions')
+          .select('id, name, date, time, duration, venue, status, completed_at, price, session_notes')
+          .in('id', [...registeredIds])
+          .order('date', { ascending: false })
+        if (!cancelled) {
+          registeredSessionData = (data ?? []) as unknown as typeof registeredSessionData
+        }
       }
 
-      // 2. Fetch all registered sessions, active first then by date desc
-      const { data: sessionData } = await supabase
-        .from('sessions')
-        .select('id, name, date, time, duration, venue, status, completed_at, price, session_notes')
-        .in('id', sessionIds)
-        .order('date', { ascending: false })
-
       if (cancelled) return
 
-      const rawItems = (sessionData ?? []) as unknown as Array<Omit<SessionPickerItem, 'cheersAllGiven'>>
+      // 3. Merge: registered sessions + open sessions the player hasn't registered for
+      const openSessions = (openSessionsRes.data ?? []) as unknown as Array<Omit<SessionPickerItem, 'cheersAllGiven' | 'isRegistered'>>
+      const seen = new Set(registeredSessionData.map(s => s.id))
+      const unregisteredOpen = openSessions.filter(s => !seen.has(s.id))
+      const rawItems = [...registeredSessionData, ...unregisteredOpen]
 
-      // For sessions with an open cheer window, check if player has given all cheers
+      // 4. For sessions with an open cheer window, check if player has given all cheers
       const now = Date.now()
       const openWindowIds = rawItems
         .filter(s => s.status === 'complete' && s.completed_at &&
@@ -75,16 +82,8 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
 
       if (openWindowIds.length > 0) {
         const [cheersRes, regsRes] = await Promise.all([
-          supabase
-            .from('cheers')
-            .select('session_id')
-            .in('session_id', openWindowIds)
-            .eq('giver_id', playerId!),
-          supabase
-            .from('session_registrations')
-            .select('session_id')
-            .in('session_id', openWindowIds)
-            .neq('player_id', playerId!),
+          supabase.from('cheers').select('session_id').in('session_id', openWindowIds).eq('giver_id', playerId!),
+          supabase.from('session_registrations').select('session_id').in('session_id', openWindowIds).neq('player_id', playerId!),
         ])
         if (!cancelled) {
           const cheersCount = new Map<string, number>()
@@ -106,6 +105,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       const items: SessionPickerItem[] = rawItems.map(s => ({
         ...s,
         cheersAllGiven: cheersAllGivenMap.get(s.id) ?? false,
+        isRegistered: registeredIds.has(s.id),
       }))
 
       setSessions(items)
