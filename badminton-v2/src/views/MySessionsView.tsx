@@ -84,7 +84,11 @@ export function MySessionsView() {
                     {formattedTime && <span> · {formattedTime}</span>}
                     {s.duration && <span> · {s.duration} hrs</span>}
                     {s.venue && <span> · {s.venue}</span>}
+                    {s.price != null && <span> · ₱{s.price}</span>}
                   </div>
+                  {s.session_notes && (
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{s.session_notes}</div>
+                  )}
                 </div>
                 <span className={`ml-3 shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${badge.className}`}>
                   {badge.label}

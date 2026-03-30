@@ -82,6 +82,13 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
           {session.venue && (
             <p className="text-sm text-muted-foreground truncate">{session.venue}</p>
           )}
+          {(session.price != null || session.session_notes) && (
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              {session.price != null && <span>₱{session.price}</span>}
+              {session.price != null && session.session_notes && <span> · </span>}
+              {session.session_notes && <span>{session.session_notes}</span>}
+            </p>
+          )}
           <p className={`text-xs font-medium mt-0.5 ${STATUS_COLORS[session.status] ?? 'text-muted-foreground'}`}>
             {STATUS_LABELS[session.status] ?? session.status}
           </p>

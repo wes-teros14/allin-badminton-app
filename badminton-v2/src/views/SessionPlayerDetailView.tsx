@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
@@ -89,7 +90,25 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 // ---------------------------------------------------------------------------
 // Schedule tab
 // ---------------------------------------------------------------------------
-function ScheduleTab({ nameSlug, sessionId }: { nameSlug: string; sessionId: string }) {
+function ScheduleTab({
+  nameSlug,
+  sessionId,
+  sessionStatus,
+  isRegistered,
+  isRegistering,
+  sessionPrice,
+  sessionNotes,
+  onRegister,
+}: {
+  nameSlug: string
+  sessionId: string
+  sessionStatus: string | null
+  isRegistered: boolean
+  isRegistering: boolean
+  sessionPrice: number | null
+  sessionNotes: string | null
+  onRegister: () => void
+}) {
   const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionId)
   const { status } = useRealtime(resolvedId, refresh)
 
@@ -117,6 +136,33 @@ function ScheduleTab({ nameSlug, sessionId }: { nameSlug: string; sessionId: str
           gameCount={matches.length}
           sessionId={resolvedId}
         />
+      )}
+
+      {/* Registration banner */}
+      {sessionStatus === 'registration_open' && (
+        <div className="max-w-sm mx-auto px-4 mt-3">
+          {isRegistered ? (
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
+              ✅ You&apos;re registered!
+            </div>
+          ) : (
+            <div className="px-4 py-4 rounded-xl border border-border bg-card space-y-3">
+              {(sessionPrice != null || sessionNotes) && (
+                <div className="space-y-0.5">
+                  {sessionPrice != null && <p className="text-sm font-semibold">₱{sessionPrice}</p>}
+                  {sessionNotes && <p className="text-xs text-muted-foreground">{sessionNotes}</p>}
+                </div>
+              )}
+              <button
+                onClick={onRegister}
+                disabled={isRegistering}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-opacity disabled:opacity-50"
+              >
+                {isRegistering ? 'Registering…' : 'Register for this session'}
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {!isLoading && resolvedId && (
@@ -252,6 +298,11 @@ export function SessionPlayerDetailView() {
   const allCheered = participants.length > 0 && participants.every(p => givenReceiverIds.has(p.playerId))
   const hasPendingCheers = isWindowOpen && !allCheered
 
+  const [isRegistered, setIsRegistered] = useState(false)
+  const [isRegistering, setIsRegistering] = useState(false)
+  const [sessionPrice, setSessionPrice] = useState<number | null>(null)
+  const [sessionNotes, setSessionNotes] = useState<string | null>(null)
+
   useEffect(() => {
     if (!user) { setSlugLoading(false); return }
     supabase.from('profiles').select('name_slug').eq('id', user.id).maybeSingle().then(({ data }) => {
@@ -259,6 +310,34 @@ export function SessionPlayerDetailView() {
       setSlugLoading(false)
     })
   }, [user])
+
+  // Fetch registration status + session price/notes
+  useEffect(() => {
+    if (!sessionId || !user) return
+    Promise.all([
+      supabase.from('sessions').select('price, session_notes').eq('id', sessionId).maybeSingle(),
+      supabase.from('session_registrations').select('player_id').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
+    ]).then(([sessionRes, regRes]) => {
+      const s = sessionRes.data as { price: number | null; session_notes: string | null } | null
+      setSessionPrice(s?.price ?? null)
+      setSessionNotes(s?.session_notes ?? null)
+      setIsRegistered(regRes.data != null)
+    })
+  }, [sessionId, user])
+
+  async function handleRegister() {
+    if (!sessionId || !user || isRegistering) return
+    setIsRegistering(true)
+    const { error } = await supabase
+      .from('session_registrations')
+      .insert({ session_id: sessionId, player_id: user.id })
+    if (error) {
+      toast.error(error.message)
+    } else {
+      setIsRegistered(true)
+    }
+    setIsRegistering(false)
+  }
 
   // Refresh cheers data when session transitions to complete
   useEffect(() => {
@@ -311,7 +390,16 @@ export function SessionPlayerDetailView() {
             ))}
           </div>
         ) : nameSlug && sessionId ? (
-          <ScheduleTab nameSlug={nameSlug} sessionId={sessionId} />
+          <ScheduleTab
+            nameSlug={nameSlug}
+            sessionId={sessionId}
+            sessionStatus={sessionStatus}
+            isRegistered={isRegistered}
+            isRegistering={isRegistering}
+            sessionPrice={sessionPrice}
+            sessionNotes={sessionNotes}
+            onRegister={handleRegister}
+          />
         ) : (
           <div className="h-48 flex items-center justify-center">
             <p className="text-muted-foreground text-sm">No schedule found for your account.</p>
