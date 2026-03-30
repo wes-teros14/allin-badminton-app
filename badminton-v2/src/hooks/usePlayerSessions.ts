@@ -11,6 +11,8 @@ export interface SessionPickerItem {
   status: string
   completed_at: string | null
   cheersAllGiven: boolean
+  price: number | null
+  session_notes: string | null
 }
 
 interface UsePlayerSessionsResult {
@@ -54,7 +56,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       // 2. Fetch all registered sessions, active first then by date desc
       const { data: sessionData } = await supabase
         .from('sessions')
-        .select('id, name, date, time, duration, venue, status, completed_at')
+        .select('id, name, date, time, duration, venue, status, completed_at, price, session_notes')
         .in('id', sessionIds)
         .order('date', { ascending: false })
 

@@ -20,6 +20,9 @@ export interface Session {
   status: SessionStatus
   created_by: string
   created_at: string
+  price: number | null
+  session_notes: string | null
+  registration_opens_at: string | null
 }
 
 export interface Invitation {

@@ -94,7 +94,8 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
 }
 
 function SetupCard({
-  sessionId, initialName, initialDate, initialVenue, initialTime, initialDuration, onConfirm,
+  sessionId, initialName, initialDate, initialVenue, initialTime, initialDuration,
+  initialPrice, initialSessionNotes, initialRegistrationOpensAt, onConfirm,
 }: {
   sessionId: string
   initialName: string
@@ -102,6 +103,9 @@ function SetupCard({
   initialVenue: string | null
   initialTime: string | null
   initialDuration: string | null
+  initialPrice: number | null
+  initialSessionNotes: string | null
+  initialRegistrationOpensAt: string | null
   onConfirm: () => void
 }) {
   const [name, setName] = useState(initialName)
@@ -109,6 +113,12 @@ function SetupCard({
   const [venue, setVenue] = useState(initialVenue ?? '')
   const [time, setTime] = useState(initialTime ?? '')
   const [duration, setDuration] = useState(initialDuration ?? '')
+  const [price, setPrice] = useState(initialPrice != null ? String(initialPrice) : '')
+  const [sessionNotes, setSessionNotes] = useState(initialSessionNotes ?? '')
+  const [scheduleOpen, setScheduleOpen] = useState(initialRegistrationOpensAt != null)
+  const [scheduledHour, setScheduledHour] = useState<string>(
+    initialRegistrationOpensAt ? String(new Date(initialRegistrationOpensAt).getHours()) : ''
+  )
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { setName(initialName) }, [initialName])
@@ -116,17 +126,43 @@ function SetupCard({
   useEffect(() => { setVenue(initialVenue ?? '') }, [initialVenue])
   useEffect(() => { setTime(initialTime ?? '') }, [initialTime])
   useEffect(() => { setDuration(initialDuration ?? '') }, [initialDuration])
+  useEffect(() => { setPrice(initialPrice != null ? String(initialPrice) : '') }, [initialPrice])
+  useEffect(() => { setSessionNotes(initialSessionNotes ?? '') }, [initialSessionNotes])
+  useEffect(() => {
+    setScheduleOpen(initialRegistrationOpensAt != null)
+    setScheduledHour(initialRegistrationOpensAt ? String(new Date(initialRegistrationOpensAt).getHours()) : '')
+  }, [initialRegistrationOpensAt])
 
   async function handleConfirm() {
     if (!name.trim() || !date) { toast.error('Session name and date are required'); return }
+    if (scheduleOpen && scheduledHour === '') { toast.error('Select an hour for scheduled registration open'); return }
     setSaving(true)
+
+    const registrationOpensAt = scheduleOpen && scheduledHour !== '' && date
+      ? new Date(`${date}T${scheduledHour.padStart(2, '0')}:00:00`).toISOString()
+      : null
+
     const { error } = await supabase
       .from('sessions')
-      .update({ name: name.trim(), date, venue: venue || null, time: time || null, duration: duration || null })
+      .update({
+        name: name.trim(),
+        date,
+        venue: venue || null,
+        time: time || null,
+        duration: duration || null,
+        price: price !== '' ? Number(price) : null,
+        session_notes: sessionNotes || null,
+        registration_opens_at: registrationOpensAt,
+      })
       .eq('id', sessionId)
     if (error) { toast.error(error.message); setSaving(false); return }
     onConfirm()
   }
+
+  const HOURS = Array.from({ length: 24 }, (_, i) => ({
+    value: String(i),
+    label: new Date(2000, 0, 1, i).toLocaleTimeString('en-US', { hour: 'numeric', hour12: true }),
+  }))
 
   return (
     <Card>
@@ -152,6 +188,50 @@ function SetupCard({
             <Label htmlFor="setup-duration">Duration (hrs)</Label>
             <Input id="setup-duration" type="number" min="1" placeholder="e.g. 2" value={duration} onChange={(e) => setDuration(e.target.value)} />
           </div>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="setup-price">Price (₱)</Label>
+          <Input id="setup-price" type="number" min="0" placeholder="e.g. 150" value={price} onChange={(e) => setPrice(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="setup-notes">Notes</Label>
+          <textarea
+            id="setup-notes"
+            placeholder="e.g. Bring your own shuttle"
+            value={sessionNotes}
+            onChange={(e) => setSessionNotes(e.target.value)}
+            rows={2}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+          />
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="schedule-open"
+              checked={scheduleOpen}
+              onChange={(e) => { setScheduleOpen(e.target.checked); if (!e.target.checked) setScheduledHour('') }}
+              className="h-4 w-4 rounded border-input accent-primary"
+            />
+            <Label htmlFor="schedule-open" className="cursor-pointer">Schedule registration open</Label>
+          </div>
+          {scheduleOpen && (
+            <select
+              value={scheduledHour}
+              onChange={(e) => setScheduledHour(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select hour</option>
+              {HOURS.map(h => (
+                <option key={h.value} value={h.value}>{h.label}</option>
+              ))}
+            </select>
+          )}
+          {scheduleOpen && scheduledHour !== '' && date && (
+            <p className="text-xs text-muted-foreground">
+              Registration will auto-open at {HOURS[Number(scheduledHour)]?.label} on {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+          )}
         </div>
         <Button onClick={handleConfirm} disabled={saving} className="w-full">
           {saving ? 'Saving…' : 'Confirm'}
@@ -247,6 +327,9 @@ export function SessionView() {
           initialVenue={session.venue ?? null}
           initialTime={session.time ?? null}
           initialDuration={session.duration ?? null}
+          initialPrice={session.price ?? null}
+          initialSessionNotes={session.session_notes ?? null}
+          initialRegistrationOpensAt={session.registration_opens_at ?? null}
           onConfirm={openRegistration}
         />
       )}
