@@ -22,6 +22,7 @@ interface CheerLeaderboardEntry {
   technique_received: number
   movement_received: number
   good_sport_received: number
+  solid_effort_received: number
 }
 
 type Tab = 'wins' | 'cheers' | 'awards'
@@ -191,13 +192,14 @@ function CheersLeaderboard() {
       <CheerRankList label="🎯 Technique" entries={entries} getValue={e => e.technique_received} unit="received" />
       <CheerRankList label="💨 Movement" entries={entries} getValue={e => e.movement_received} unit="received" />
       <CheerRankList label="🤝 Good Sport" entries={entries} getValue={e => e.good_sport_received} unit="received" />
+      <CheerRankList label="💪 Solid Effort" entries={entries} getValue={e => e.solid_effort_received} unit="received" />
     </div>
   )
 }
 
 async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   const [cheerRes, statsRes, regsRes, profilesRes, cheerTimestampsRes, sessionsRes] = await Promise.all([
-    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received'),
+    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
     supabase.from('profiles').select('id, nickname, name_slug'),
@@ -210,7 +212,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       .map(p => [p.id, p.nickname ?? p.name_slug])
   )
 
-  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number }>
+  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>
   const stats = (statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>
   const regs = (regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>
   const cheerTimestamps = (cheerTimestampsRes.data ?? []) as Array<{ receiver_id: string; giver_id: string; created_at: string }>
@@ -285,6 +287,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     { emoji: '🎯', label: 'Top Technique',        ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received })), latestReceivedAt) },
     { emoji: '💨', label: 'Top Movement',         ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received })), latestReceivedAt) },
     { emoji: '🤝', label: 'Top Good Sport',       ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received })), latestReceivedAt) },
+    { emoji: '💪', label: 'Top Solid Effort',    ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.solid_effort_received })), latestReceivedAt) },
   ]
 
   return awards
