@@ -351,6 +351,8 @@ export function SessionPlayerDetailView() {
     if (error) {
       if (error.message.includes('session_full')) {
         toast.error('Session is full — no more slots available.')
+      } else if (error.code === '42501' || error.message.toLowerCase().includes('violates row-level security')) {
+        toast.error('Registration is not open yet.')
       } else {
         toast.error(error.message)
       }
