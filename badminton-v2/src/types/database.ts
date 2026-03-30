@@ -273,6 +273,7 @@ export type Database = {
           technique_received: number
           movement_received: number
           good_sport_received: number
+          solid_effort_received: number
           updated_at: string
         }
         Insert: {
@@ -284,6 +285,7 @@ export type Database = {
           technique_received?: number
           movement_received?: number
           good_sport_received?: number
+          solid_effort_received?: number
           updated_at?: string
         }
         Update: {
@@ -295,6 +297,7 @@ export type Database = {
           technique_received?: number
           movement_received?: number
           good_sport_received?: number
+          solid_effort_received?: number
           updated_at?: string
         }
         Relationships: []
