@@ -332,7 +332,11 @@ export function SessionPlayerDetailView() {
       .from('session_registrations')
       .insert({ session_id: sessionId, player_id: user.id })
     if (error) {
-      toast.error(error.message)
+      if (error.message.includes('session_full')) {
+        toast.error('Session is full — no more slots available.')
+      } else {
+        toast.error(error.message)
+      }
     } else {
       setIsRegistered(true)
     }
