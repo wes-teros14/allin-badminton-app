@@ -5,6 +5,27 @@
 export type Database = {
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          id: number
+          content: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          content?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          content?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           id: string
