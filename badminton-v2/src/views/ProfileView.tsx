@@ -57,6 +57,7 @@ interface CheerStats {
   technique_received: number
   movement_received: number
   good_sport_received: number
+  solid_effort_received: number
 }
 
 interface Award {
@@ -66,12 +67,12 @@ interface Award {
 
 async function fetchAwards(userId: string): Promise<Award[]> {
   const [cheerRes, statsRes, regsRes] = await Promise.all([
-    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received'),
+    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
   ])
 
-  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number }>
+  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>
   const stats = (statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>
   const regs = (regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>
 
@@ -111,6 +112,8 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     awards.push({ emoji: '💨', label: 'Top Movement' })
   if (top(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received }))) === userId)
     awards.push({ emoji: '🤝', label: 'Top Good Sport' })
+  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.solid_effort_received }))) === userId)
+    awards.push({ emoji: '💪', label: 'Top Solid Effort' })
   if (top(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
     awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
   if (top(earlyBirdEntries) === userId)
@@ -303,6 +306,7 @@ export function ProfileView() {
               { label: '🎯 Technique',  val: cheerStats.technique_received },
               { label: '💨 Movement',   val: cheerStats.movement_received },
               { label: '🤝 Good Sport', val: cheerStats.good_sport_received },
+              { label: '💪 Solid Effort', val: cheerStats.solid_effort_received },
             ]
               .filter(t => t.val > 0)
               .map(t => (

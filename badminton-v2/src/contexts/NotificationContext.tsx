@@ -20,6 +20,7 @@ const CHEER_EMOJI: Record<string, string> = {
   technique: '🎯',
   movement: '💨',
   good_sport: '🤝',
+  solid_effort: '💪',
 }
 
 function cheerLabel(slug: string): string {
