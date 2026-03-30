@@ -13,6 +13,7 @@ export interface SessionPickerItem {
   cheersAllGiven: boolean
   price: number | null
   session_notes: string | null
+  registration_opens_at: string | null
   isRegistered: boolean
 }
 
@@ -40,7 +41,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       // 1. Fetch registered session IDs + all registration_open sessions in parallel
       const [registrationsRes, openSessionsRes] = await Promise.all([
         supabase.from('session_registrations').select('session_id').eq('player_id', playerId!),
-        supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, price, session_notes')
+        supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, price, session_notes, registration_opens_at')
           .eq('status', 'registration_open').order('date', { ascending: false }),
       ])
 
@@ -55,7 +56,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       if (registeredIds.size > 0) {
         const { data } = await supabase
           .from('sessions')
-          .select('id, name, date, time, duration, venue, status, completed_at, price, session_notes')
+          .select('id, name, date, time, duration, venue, status, completed_at, price, session_notes, registration_opens_at')
           .in('id', [...registeredIds])
           .order('date', { ascending: false })
         if (!cancelled) {

@@ -26,8 +26,13 @@ function cheerTimeLeft(s: SessionPickerItem): string {
 
 function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress')        return { label: 'Live',                className: 'bg-[#DC595E]/20 text-[#DC595E]' }
-  if (s.status === 'registration_open' && !s.isRegistered)
-                                         return { label: 'Registration Open',    className: 'bg-yellow-100 text-yellow-700' }
+  if (s.status === 'registration_open' && !s.isRegistered) {
+    const opensLater = s.registration_opens_at && new Date(s.registration_opens_at) > new Date()
+    const label = opensLater
+      ? `Opens at ${new Date(s.registration_opens_at!).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`
+      : 'Registration Open'
+    return { label, className: 'bg-yellow-100 text-yellow-700' }
+  }
   if (s.status === 'registration_open' && s.isRegistered)
                                          return { label: 'Registered ✓',         className: 'bg-green-100 text-green-700' }
   if (s.status === 'registration_closed') return { label: 'Registration Closed', className: 'bg-orange-100 text-orange-700' }
