@@ -95,7 +95,7 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
 
 function SetupCard({
   sessionId, initialName, initialDate, initialVenue, initialTime, initialDuration,
-  initialPrice, initialSessionNotes, initialRegistrationOpensAt, onConfirm,
+  initialPrice, initialSessionNotes, initialRegistrationOpensAt, onConfirm, onSaved,
 }: {
   sessionId: string
   initialName: string
@@ -107,6 +107,7 @@ function SetupCard({
   initialSessionNotes: string | null
   initialRegistrationOpensAt: string | null
   onConfirm: () => void
+  onSaved: () => void
 }) {
   const [name, setName] = useState(initialName)
   const [date, setDate] = useState(initialDate)
@@ -160,7 +161,14 @@ function SetupCard({
       })
       .eq('id', sessionId)
     if (error) { toast.error(error.message); setSaving(false); return }
-    onConfirm()
+
+    const isFutureSchedule = registrationOpensAt && new Date(registrationOpensAt) > new Date()
+    if (isFutureSchedule) {
+      toast.success(`Saved! Registration will auto-open at ${HOURS[Number(scheduledHour)]?.label} on ${new Date(scheduledDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`)
+      onSaved()
+    } else {
+      onConfirm()
+    }
   }
 
   const HOURS = Array.from({ length: 24 }, (_, i) => ({
@@ -256,7 +264,7 @@ function SetupCard({
 export function SessionView() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const {
-    session, invitation, playerCount, isLoading,
+    session, invitation, playerCount, isLoading, refresh,
     openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession,
   } = useSession(sessionId)
 
@@ -343,6 +351,7 @@ export function SessionView() {
           initialSessionNotes={session.session_notes ?? null}
           initialRegistrationOpensAt={session.registration_opens_at ?? null}
           onConfirm={openRegistration}
+          onSaved={refresh}
         />
       )}
 
