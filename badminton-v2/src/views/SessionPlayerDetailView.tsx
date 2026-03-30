@@ -98,6 +98,7 @@ function ScheduleTab({
   isRegistering,
   sessionPrice,
   sessionNotes,
+  registrationOpensAt,
   onRegister,
 }: {
   nameSlug: string
@@ -107,6 +108,7 @@ function ScheduleTab({
   isRegistering: boolean
   sessionPrice: number | null
   sessionNotes: string | null
+  registrationOpensAt: string | null
   onRegister: () => void
 }) {
   const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionId)
@@ -145,23 +147,36 @@ function ScheduleTab({
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
               ✅ You&apos;re registered!
             </div>
-          ) : (
-            <div className="px-4 py-4 rounded-xl border border-border bg-card space-y-3">
-              {(sessionPrice != null || sessionNotes) && (
-                <div className="space-y-0.5">
-                  {sessionPrice != null && <p className="text-sm font-semibold">₱{sessionPrice}</p>}
-                  {sessionNotes && <p className="text-xs text-muted-foreground">{sessionNotes}</p>}
-                </div>
-              )}
-              <button
-                onClick={onRegister}
-                disabled={isRegistering}
-                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-opacity disabled:opacity-50"
-              >
-                {isRegistering ? 'Registering…' : 'Register for this session'}
-              </button>
-            </div>
-          )}
+          ) : (() => {
+            const opensLater = registrationOpensAt && new Date(registrationOpensAt) > new Date()
+            const opensLabel = opensLater
+              ? new Date(registrationOpensAt!).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) +
+                ' · ' + new Date(registrationOpensAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : null
+            return (
+              <div className="px-4 py-4 rounded-xl border border-border bg-card space-y-3">
+                {(sessionPrice != null || sessionNotes) && (
+                  <div className="space-y-0.5">
+                    {sessionPrice != null && <p className="text-sm font-semibold">₱{sessionPrice}</p>}
+                    {sessionNotes && <p className="text-xs text-muted-foreground">{sessionNotes}</p>}
+                  </div>
+                )}
+                {opensLater ? (
+                  <div className="w-full py-2.5 rounded-lg bg-muted text-muted-foreground text-sm font-semibold text-center">
+                    Opens at {opensLabel}
+                  </div>
+                ) : (
+                  <button
+                    onClick={onRegister}
+                    disabled={isRegistering}
+                    className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold transition-opacity disabled:opacity-50"
+                  >
+                    {isRegistering ? 'Registering…' : 'Register for this session'}
+                  </button>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -302,6 +317,7 @@ export function SessionPlayerDetailView() {
   const [isRegistering, setIsRegistering] = useState(false)
   const [sessionPrice, setSessionPrice] = useState<number | null>(null)
   const [sessionNotes, setSessionNotes] = useState<string | null>(null)
+  const [registrationOpensAt, setRegistrationOpensAt] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) { setSlugLoading(false); return }
@@ -315,12 +331,13 @@ export function SessionPlayerDetailView() {
   useEffect(() => {
     if (!sessionId || !user) return
     Promise.all([
-      supabase.from('sessions').select('price, session_notes').eq('id', sessionId).maybeSingle(),
+      supabase.from('sessions').select('price, session_notes, registration_opens_at').eq('id', sessionId).maybeSingle(),
       supabase.from('session_registrations').select('player_id').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
     ]).then(([sessionRes, regRes]) => {
-      const s = sessionRes.data as { price: number | null; session_notes: string | null } | null
+      const s = sessionRes.data as { price: number | null; session_notes: string | null; registration_opens_at: string | null } | null
       setSessionPrice(s?.price ?? null)
       setSessionNotes(s?.session_notes ?? null)
+      setRegistrationOpensAt(s?.registration_opens_at ?? null)
       setIsRegistered(regRes.data != null)
     })
   }, [sessionId, user])
@@ -402,6 +419,7 @@ export function SessionPlayerDetailView() {
             isRegistering={isRegistering}
             sessionPrice={sessionPrice}
             sessionNotes={sessionNotes}
+            registrationOpensAt={registrationOpensAt}
             onRegister={handleRegister}
           />
         ) : (
