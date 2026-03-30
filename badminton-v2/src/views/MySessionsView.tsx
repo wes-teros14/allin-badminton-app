@@ -25,12 +25,15 @@ function cheerTimeLeft(s: SessionPickerItem): string {
 }
 
 function statusBadge(s: SessionPickerItem) {
-  if (s.status === 'in_progress')                                    return { label: 'Live',                className: 'bg-[#DC595E]/20 text-[#DC595E]' }
-  if (s.status === 'registration_open')                              return { label: 'Registration Open',   className: 'bg-yellow-100 text-yellow-700' }
-  if (s.status === 'registration_closed')                                    return { label: 'Registration Closed', className: 'bg-orange-100 text-orange-700' }
-  if (s.status === 'schedule_locked')                                        return { label: 'Schedule Ready',      className: 'bg-orange-100 text-orange-700' }
-  if (hasPendingCheers(s))                                           return { label: `Give Cheers · ${cheerTimeLeft(s)}`, className: 'bg-yellow-100 text-yellow-700' }
-  return                                                                    { label: 'Ended',               className: 'bg-muted text-muted-foreground' }
+  if (s.status === 'in_progress')        return { label: 'Live',                className: 'bg-[#DC595E]/20 text-[#DC595E]' }
+  if (s.status === 'registration_open' && !s.isRegistered)
+                                         return { label: 'Open · Register',      className: 'bg-primary/10 text-primary' }
+  if (s.status === 'registration_open' && s.isRegistered)
+                                         return { label: 'Registered ✓',         className: 'bg-green-100 text-green-700' }
+  if (s.status === 'registration_closed') return { label: 'Registration Closed', className: 'bg-orange-100 text-orange-700' }
+  if (s.status === 'schedule_locked')    return { label: 'Schedule Ready',       className: 'bg-orange-100 text-orange-700' }
+  if (hasPendingCheers(s))              return { label: `Give Cheers · ${cheerTimeLeft(s)}`, className: 'bg-yellow-100 text-yellow-700' }
+  return                                       { label: 'Ended',                 className: 'bg-muted text-muted-foreground' }
 }
 
 export function MySessionsView() {
@@ -50,7 +53,7 @@ export function MySessionsView() {
 
   return (
     <div className="max-w-sm mx-auto px-4 py-8">
-      <h1 className="text-xl font-bold mb-6">My Sessions</h1>
+      <h1 className="text-xl font-bold mb-6">Sessions</h1>
 
       {loading ? (
         <div className="flex flex-col gap-3">

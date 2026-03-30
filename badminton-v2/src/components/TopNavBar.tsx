@@ -12,7 +12,7 @@ export function TopNavBar() {
 
   const tabs = [
     {
-      label: 'My Sessions',
+      label: 'Sessions',
       href: '/sessions',
       active: pathname.startsWith('/sessions'),
       show: true,
