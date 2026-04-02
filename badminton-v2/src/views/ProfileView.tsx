@@ -301,10 +301,10 @@ export function ProfileView() {
             <StatCard label="Received" value={String(cheerStats.cheers_received)} />
             <StatCard label="Given" value={String(cheerStats.cheers_given)} />
             {[
-              { label: '⚔️ Offense',    val: cheerStats.offense_received },
-              { label: '🛡️ Defense',    val: cheerStats.defense_received },
-              { label: '🎯 Technique',  val: cheerStats.technique_received },
-              { label: '💨 Movement',   val: cheerStats.movement_received },
+              { label: '⚔️ Fierce Offense',   val: cheerStats.offense_received },
+              { label: '🛡️ Iron Defense',     val: cheerStats.defense_received },
+              { label: '🎯 Smooth Technique', val: cheerStats.technique_received },
+              { label: '💨 Swift Movement',   val: cheerStats.movement_received },
               { label: '🤝 Good Sport', val: cheerStats.good_sport_received },
               { label: '💪 Solid Effort', val: cheerStats.solid_effort_received },
             ]

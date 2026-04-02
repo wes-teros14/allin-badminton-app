@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -74,6 +75,19 @@ function DevLoginPanelInner() {
           {user ? (
             <div className="space-y-2">
               <p className="text-xs text-foreground truncate">Logged in as:<br /><span className="font-medium">{user.email}</span></p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground pt-1">Test Toasts</p>
+              <button
+                onClick={() => toast('⚔️ Fierce Offense from Alex!', { duration: 10000, closeButton: true })}
+                className="w-full py-1.5 px-3 rounded-lg border border-border text-xs text-foreground hover:bg-muted transition-colors text-left"
+              >
+                Test Cheer Toast
+              </button>
+              <button
+                onClick={() => toast('🏆 New award: Top Offense!', { duration: 10000, closeButton: true, className: 'toast-award', action: { label: 'View', onClick: () => window.location.assign('/leaderboard?tab=awards') } })}
+                className="w-full py-1.5 px-3 rounded-lg border border-border text-xs text-foreground hover:bg-muted transition-colors text-left"
+              >
+                Test Award Toast
+              </button>
               <button
                 onClick={signOut}
                 disabled={loading === 'signout'}

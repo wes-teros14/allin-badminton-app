@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
 
 // ---------------------------------------------------------------------------
@@ -187,10 +188,10 @@ function CheersLeaderboard() {
     <div className="space-y-6">
       <CheerRankList label="Most Cheers Received" entries={entries} getValue={e => e.cheers_received} unit="received" />
       <CheerRankList label="Most Cheers Given" entries={entries} getValue={e => e.cheers_given} unit="given" />
-      <CheerRankList label="⚔️ Offense" entries={entries} getValue={e => e.offense_received} unit="received" />
-      <CheerRankList label="🛡️ Defense" entries={entries} getValue={e => e.defense_received} unit="received" />
-      <CheerRankList label="🎯 Technique" entries={entries} getValue={e => e.technique_received} unit="received" />
-      <CheerRankList label="💨 Movement" entries={entries} getValue={e => e.movement_received} unit="received" />
+      <CheerRankList label="⚔️ Fierce Offense" entries={entries} getValue={e => e.offense_received} unit="received" />
+      <CheerRankList label="🛡️ Iron Defense" entries={entries} getValue={e => e.defense_received} unit="received" />
+      <CheerRankList label="🎯 Smooth Technique" entries={entries} getValue={e => e.technique_received} unit="received" />
+      <CheerRankList label="💨 Swift Movement" entries={entries} getValue={e => e.movement_received} unit="received" />
       <CheerRankList label="🤝 Good Sport" entries={entries} getValue={e => e.good_sport_received} unit="received" />
       <CheerRankList label="💪 Solid Effort" entries={entries} getValue={e => e.solid_effort_received} unit="received" />
     </div>
@@ -282,10 +283,10 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     // Cheer-based awards
     { emoji: '🌟', label: 'Most Cheers Received', ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_received })), latestReceivedAt) },
     { emoji: '🙌', label: 'Most Cheers Given',    ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_given })), latestGivenAt) },
-    { emoji: '⚔️', label: 'Top Offense',          ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received })), latestReceivedAt) },
-    { emoji: '🛡️', label: 'Top Defense',          ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.defense_received })), latestReceivedAt) },
-    { emoji: '🎯', label: 'Top Technique',        ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received })), latestReceivedAt) },
-    { emoji: '💨', label: 'Top Movement',         ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received })), latestReceivedAt) },
+    { emoji: '⚔️', label: 'Top Fierce Offense',   ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received })), latestReceivedAt) },
+    { emoji: '🛡️', label: 'Top Iron Defense',     ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.defense_received })), latestReceivedAt) },
+    { emoji: '🎯', label: 'Top Smooth Technique', ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received })), latestReceivedAt) },
+    { emoji: '💨', label: 'Top Swift Movement',   ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received })), latestReceivedAt) },
     { emoji: '🤝', label: 'Top Good Sport',       ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received })), latestReceivedAt) },
     { emoji: '💪', label: 'Top Solid Effort',    ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.solid_effort_received })), latestReceivedAt) },
   ]
@@ -339,7 +340,9 @@ function AwardsLeaderboard() {
 // Main view
 // ---------------------------------------------------------------------------
 export function LeaderboardView() {
-  const [tab, setTab] = useState<Tab>('wins')
+  const [searchParams] = useSearchParams()
+  const initialTab = (searchParams.get('tab') as Tab | null) ?? 'wins'
+  const [tab, setTab] = useState<Tab>(initialTab)
 
   return (
     <div className="max-w-sm mx-auto px-4 py-8">

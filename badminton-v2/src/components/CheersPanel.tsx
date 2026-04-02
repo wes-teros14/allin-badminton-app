@@ -1,46 +1,39 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import type { CheerType, CheerEntry } from '@/types/app'
-import type { SessionParticipant } from '@/hooks/useSessionCheers'
+import type { CheerType } from '@/types/app'
+import type { PendingMatchCheer } from '@/hooks/useMatchCheers'
 
 interface CheersPanelProps {
   cheerTypes: CheerType[]
-  participants: SessionParticipant[]
-  cheersGiven: CheerEntry[]
-  cheersReceived: CheerEntry[]
-  isWindowOpen: boolean
-  sessionStatus: string | null
+  pendingMatch: PendingMatchCheer
   isLoading: boolean
-  submitCheer: (receiverId: string, cheerTypeId: string) => Promise<void>
+  remainingCount: number
+  submitCheer: (matchId: string, receiverId: string, cheerTypeId: string) => Promise<void>
 }
 
 export function CheersPanel({
   cheerTypes,
-  participants,
-  cheersGiven,
-  cheersReceived,
-  isWindowOpen,
-  sessionStatus,
+  pendingMatch,
   isLoading,
+  remainingCount,
   submitCheer,
 }: CheersPanelProps) {
   const [submitting, setSubmitting] = useState(false)
   const [skippedIds, setSkippedIds] = useState<Set<string>>(new Set())
 
-  const givenMap = new Map(cheersGiven.map(c => [c.receiverId, c]))
-  const participantMap = new Map(participants.map(p => [p.playerId, p.displayName]))
-
-  const pending = participants.filter(p => !givenMap.has(p.playerId) && !skippedIds.has(p.playerId))
+  const pending = pendingMatch.players.filter(
+    p => !pendingMatch.cheersGivenTo.includes(p.playerId) && !skippedIds.has(p.playerId)
+  )
   const current = pending[0] ?? null
-  const isDone = participants.length > 0 && pending.length === 0
-
-  const completedCount = participants.length - pending.length
+  const totalPlayers = pendingMatch.players.length
+  const cheeredCount = pendingMatch.players.length - pending.length
 
   async function handleCheer(cheerTypeId: string) {
     if (!current || submitting) return
     setSubmitting(true)
     try {
-      await submitCheer(current.playerId, cheerTypeId)
+      await submitCheer(pendingMatch.matchId, current.playerId, cheerTypeId)
+      setSkippedIds(new Set()) // reset skips on successful cheer (data reloads)
     } catch {
       toast.error('Could not send cheer. Try again.')
     } finally {
@@ -63,101 +56,36 @@ export function CheersPanel({
     )
   }
 
-  if (sessionStatus !== 'complete') {
+  if (!current) {
+    // All players skipped — show a nudge
     return (
-      <div className="max-w-sm mx-auto px-4 pt-10 text-center text-muted-foreground text-sm">
-        Cheers open after the session ends.
+      <div className="max-w-sm mx-auto px-4 pt-10 text-center space-y-3">
+        <p className="text-muted-foreground text-sm">You skipped all players for this game.</p>
+        <button
+          onClick={() => setSkippedIds(new Set())}
+          className="text-sm text-primary font-medium hover:underline"
+        >
+          Go back and give cheers
+        </button>
       </div>
     )
   }
-
-  if (participants.length === 0) {
-    return (
-      <div className="max-w-sm mx-auto px-4 pt-10 text-center text-muted-foreground text-sm">
-        No other players in this session.
-      </div>
-    )
-  }
-
-  // Summary screen
-  if (isDone || !isWindowOpen) {
-    return (
-      <div className="max-w-sm mx-auto px-4 pt-6 pb-10 space-y-6">
-        <div className="bg-card border border-border rounded-xl px-4 py-5 text-center space-y-1">
-          {isDone ? (
-            <>
-              <p className="text-2xl">✅</p>
-              <p className="font-semibold text-sm">All done!</p>
-              <p className="text-xs text-muted-foreground">
-                You gave {cheersGiven.length} cheer{cheersGiven.length !== 1 ? 's' : ''} this session.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-2xl">⏰</p>
-              <p className="font-semibold text-sm">Cheer window closed</p>
-              <p className="text-xs text-muted-foreground">
-                You gave {cheersGiven.length} of {participants.length} cheers.
-              </p>
-            </>
-          )}
-        </div>
-
-        {cheersGiven.length > 0 && (
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-              Cheers You Gave
-            </h2>
-            <div className="space-y-2">
-              {cheersGiven.map(c => (
-                <div key={c.id} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-                  <span className="text-xl">{c.cheerTypeEmoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{c.cheerTypeName}</p>
-                    <p className="text-xs text-muted-foreground">to {participantMap.get(c.receiverId) ?? 'A teammate'}</p>
-                  </div>
-                  {(c as any).multiplier > 1 && (
-                    <span className="text-xs text-yellow-600 font-semibold shrink-0">×{(c as any).multiplier}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {cheersReceived.length > 0 && (
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-              Cheers You Received
-            </h2>
-            <div className="space-y-2">
-              {cheersReceived.map(c => (
-                <div key={c.id} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-                  <span className="text-xl">{c.cheerTypeEmoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm">{c.cheerTypeName}</p>
-                    <p className="text-xs text-muted-foreground">from {participantMap.get(c.giverId) ?? 'A teammate'}</p>
-                  </div>
-                  {(c as any).multiplier > 1 && (
-                    <span className="text-xs text-yellow-600 font-semibold shrink-0">×{(c as any).multiplier}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // 1-at-a-time cheer flow
-  const multiplier = Math.max(current.partnerCount + current.opponentCount, 1)
 
   return (
     <div className="max-w-sm mx-auto px-4 pt-6 pb-10 space-y-4">
+      {/* Header */}
+      <div className="text-center space-y-0.5">
+        <p className="text-sm font-semibold">🎉 Game {pendingMatch.gameNumber} complete!</p>
+        {remainingCount > 1 && (
+          <p className="text-xs text-muted-foreground">
+            {remainingCount} game{remainingCount !== 1 ? 's' : ''} to cheer
+          </p>
+        )}
+      </div>
+
       {/* Progress */}
       <p className="text-xs text-muted-foreground text-center">
-        {completedCount} of {participants.length}
+        {cheeredCount + 1} of {totalPlayers}
       </p>
 
       {/* Player card */}
@@ -165,18 +93,6 @@ export function CheersPanel({
         <div className="text-center">
           <p className="text-xs text-muted-foreground mb-0.5">Give a cheer to</p>
           <p className="font-semibold text-base">{current.displayName}</p>
-          {(current.partnerCount > 0 || current.opponentCount > 0) && (
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {current.partnerCount > 0 && `🤝 Partner ${current.partnerCount}x`}
-              {current.partnerCount > 0 && current.opponentCount > 0 && '  ·  '}
-              {current.opponentCount > 0 && `⚔️ Opponent ${current.opponentCount}x`}
-            </p>
-          )}
-          {multiplier > 1 && (
-            <p className="text-xs text-yellow-600 font-medium mt-0.5">
-              Your cheer counts ×{multiplier}
-            </p>
-          )}
         </div>
 
         <div className="grid grid-cols-1 gap-2">

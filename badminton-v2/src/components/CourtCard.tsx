@@ -45,8 +45,8 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
     setIsSaving(true)
 
     try {
-      // 1. Mark current match complete
-      await supabase.from('matches').update({ status: 'complete' }).eq('id', current.id)
+      // 1. Mark current match complete with duration
+      await supabase.from('matches').update({ status: 'complete', duration_seconds: elapsed } as never).eq('id', current.id)
 
       // 2. Record result (skip if not recording)
       if (winningPairIndex !== null) {
@@ -157,32 +157,34 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
           {/* Current game — key triggers fade-in on change */}
           <div
             key={current?.gameNumber ?? 'idle'}
-            className="flex-1 flex flex-col items-center justify-center gap-6 animate-[court-fade-in_0.4s_ease-out]"
+            className="flex-1 flex flex-col items-center animate-[court-fade-in_0.4s_ease-out]"
           >
             {current ? (
               <>
+                {/* Game number — large, anchored to top of content area */}
                 <p className="game-hero text-primary">{current.gameNumber}</p>
-                <div className="text-center space-y-3">
-                  <p className="text-2xl font-medium">{current.t1p1} &amp; {current.t1p2}</p>
-                  <p className="text-sm uppercase tracking-widest text-muted-foreground">vs</p>
-                  <p className="text-2xl font-medium">{current.t2p1} &amp; {current.t2p2}</p>
+
+                {/* Names + finish button — tight group just below the number */}
+                <div className="flex flex-col items-center gap-4 w-full mt-2">
+                  <div className="text-center space-y-3">
+                    <p className="text-2xl font-medium">{current.t1p1} &amp; {current.t1p2}</p>
+                    <p className="text-sm uppercase tracking-widest text-muted-foreground">vs</p>
+                    <p className="text-2xl font-medium">{current.t2p1} &amp; {current.t2p2}</p>
+                  </div>
+
+                  <button
+                    onClick={() => setConfirmingFinish(true)}
+                    disabled={isSaving}
+                    className="w-full py-5 rounded-lg bg-primary text-primary-foreground text-xl font-bold tracking-wide hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    Finish
+                  </button>
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground text-lg">Waiting for next game</p>
+              <p className="text-muted-foreground text-lg mt-auto mb-auto">Waiting for next game</p>
             )}
           </div>
-
-          {/* Finish button */}
-          {current && (
-            <button
-              onClick={() => setConfirmingFinish(true)}
-              disabled={isSaving}
-              className="w-full py-5 rounded-lg bg-primary text-primary-foreground text-xl font-bold tracking-wide hover:bg-primary/90 disabled:opacity-50 transition-colors"
-            >
-              Finish
-            </button>
-          )}
         </>
       )}
     </div>

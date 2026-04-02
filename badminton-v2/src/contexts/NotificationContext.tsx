@@ -23,13 +23,24 @@ const CHEER_EMOJI: Record<string, string> = {
   solid_effort: '💪',
 }
 
+const CHEER_LABEL: Record<string, string> = {
+  offense: 'Fierce Offense',
+  defense: 'Iron Defense',
+  technique: 'Smooth Technique',
+  movement: 'Swift Movement',
+  good_sport: 'Good Sport',
+  solid_effort: 'Solid Effort',
+}
+
 function cheerLabel(slug: string): string {
-  return slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  return CHEER_LABEL[slug] ?? slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const navigateRef = useRef(navigate)
+  navigateRef.current = navigate
   const [unreadCount, setUnreadCount] = useState(0)
   const didInit = useRef(false)
 
@@ -50,36 +61,48 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       if (!data || data.length === 0) return
 
-      const rows = data as Array<{ type: string; body: string | null }>
+      const rows = data as Array<{ type: string; title: string; body: string | null }>
       const cheers = rows.filter(n => n.type === 'cheer')
       const awards = rows.filter(n => n.type === 'award')
 
-      let message = ''
-      if (cheers.length > 0 && awards.length > 0) {
-        message = `🎉 ${cheers.length} new cheer${cheers.length !== 1 ? 's' : ''} + ${awards.length} new award${awards.length !== 1 ? 's' : ''}!`
-      } else if (cheers.length > 0) {
-        message = `🏸 You received ${cheers.length} new cheer${cheers.length !== 1 ? 's' : ''}!`
-      } else if (awards.length > 0) {
-        message = awards.length === 1
-          ? `🏆 New award: ${awards[0].body}!`
-          : `🏆 ${awards.length} new awards!`
-      }
+      // Mark all as read immediately so they don't reappear on refresh
+      await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('user_id', user!.id)
+        .is('read_at', null)
+      setUnreadCount(0)
 
-      if (message) {
-        setTimeout(() => {
-          toast(message, {
-            duration: 5000,
-            action: {
-              label: 'View',
-              onClick: () => navigate('/profile'),
-            },
+      setTimeout(() => {
+        // Show each cheer individually with full detail
+        cheers.forEach((n, i) => {
+          const emoji = CHEER_EMOJI[n.title] ?? '🏸'
+          setTimeout(() => {
+            toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 10000, closeButton: true })
+          }, i * 200)
+        })
+
+        // Batch awards
+        if (awards.length === 1) {
+          toast(`🏆 New award: ${awards[0].body}!`, {
+            duration: 10000,
+            closeButton: true,
+            className: 'toast-award',
+            action: { label: 'View', onClick: () => navigateRef.current('/leaderboard?tab=awards') },
           })
-        }, 500)
-      }
+        } else if (awards.length > 1) {
+          toast(`🏆 ${awards.length} new awards!`, {
+            duration: 10000,
+            closeButton: true,
+            className: 'toast-award',
+            action: { label: 'View', onClick: () => navigateRef.current('/leaderboard?tab=awards') },
+          })
+        }
+      }, 500)
     }
 
     init()
-  }, [user, navigate])
+  }, [user])
 
   // Real-time subscription for new notifications
   useEffect(() => {
@@ -98,19 +121,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
         if (n.type === 'cheer') {
           const emoji = CHEER_EMOJI[n.title] ?? '🏸'
-          toast(`${emoji} ${cheerLabel(n.title)} cheer from ${n.body}!`, {
-            duration: 5000,
-            action: {
-              label: 'View',
-              onClick: () => navigate('/profile'),
-            },
-          })
+          toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 10000, closeButton: true })
         } else if (n.type === 'award') {
           toast(`🏆 New award: ${n.body}!`, {
-            duration: 5000,
+            duration: 10000,
+            closeButton: true,
+            className: 'toast-award',
             action: {
               label: 'View',
-              onClick: () => navigate('/profile'),
+              onClick: () => navigateRef.current('/leaderboard?tab=awards'),
             },
           })
         }
@@ -118,7 +137,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [user, navigate])
+  }, [user])
 
   // Mark all as read
   const markAllRead = useCallback(async () => {

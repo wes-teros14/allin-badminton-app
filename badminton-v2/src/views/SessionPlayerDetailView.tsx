@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { useRealtime } from '@/hooks/useRealtime'
-import { useSessionCheers } from '@/hooks/useSessionCheers'
+import { useMatchCheers } from '@/hooks/useMatchCheers'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
@@ -289,12 +289,11 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
 // ---------------------------------------------------------------------------
 // Main view
 // ---------------------------------------------------------------------------
-type Tab = 'schedule' | 'leaderboard' | 'cheers'
+type Tab = 'schedule' | 'leaderboard'
 
 const TAB_LABELS: Record<Tab, string> = {
   schedule: 'Schedule',
   leaderboard: 'Leaderboard',
-  cheers: 'Cheers',
 }
 
 export function SessionPlayerDetailView() {
@@ -305,16 +304,13 @@ export function SessionPlayerDetailView() {
   const [slugLoading, setSlugLoading] = useState(true)
 
   const {
-    cheerTypes, participants, cheersGiven, cheersReceived,
-    isWindowOpen, sessionStatus, isLoading: cheerLoading, submitCheer, refresh: refreshCheers,
-  } = useSessionCheers(sessionId)
-
-  const givenReceiverIds = new Set(cheersGiven.map(c => c.receiverId))
-  const allCheered = participants.length > 0 && participants.every(p => givenReceiverIds.has(p.playerId))
-  const hasPendingCheers = isWindowOpen && !allCheered
+    cheerTypes, pendingMatches, hasPendingCheers,
+    isLoading: cheerLoading, submitCheer,
+  } = useMatchCheers(sessionId)
 
   const [isRegistered, setIsRegistered] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
+  const [sessionStatus, setSessionStatus] = useState<string | null>(null)
   const [sessionPrice, setSessionPrice] = useState<number | null>(null)
   const [sessionNotes, setSessionNotes] = useState<string | null>(null)
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string | null>(null)
@@ -327,14 +323,15 @@ export function SessionPlayerDetailView() {
     })
   }, [user])
 
-  // Fetch registration status + session price/notes
+  // Fetch registration status + session info
   useEffect(() => {
     if (!sessionId || !user) return
     Promise.all([
-      supabase.from('sessions').select('price, session_notes, registration_opens_at').eq('id', sessionId).maybeSingle(),
+      supabase.from('sessions').select('status, price, session_notes, registration_opens_at').eq('id', sessionId).maybeSingle(),
       supabase.from('session_registrations').select('player_id').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
     ]).then(([sessionRes, regRes]) => {
-      const s = sessionRes.data as { price: number | null; session_notes: string | null; registration_opens_at: string | null } | null
+      const s = sessionRes.data as { status: string; price: number | null; session_notes: string | null; registration_opens_at: string | null } | null
+      setSessionStatus(s?.status ?? null)
       setSessionPrice(s?.price ?? null)
       setSessionNotes(s?.session_notes ?? null)
       setRegistrationOpensAt(s?.registration_opens_at ?? null)
@@ -362,43 +359,22 @@ export function SessionPlayerDetailView() {
     setIsRegistering(false)
   }
 
-  // Refresh cheers data when session transitions to complete
-  useEffect(() => {
-    if (!sessionId) return
-    const channel = supabase
-      .channel(`session-complete-cheers-${sessionId}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${sessionId}` }, (payload) => {
-        if ((payload.new as { status?: string })?.status === 'complete') {
-          refreshCheers()
-        }
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [sessionId, refreshCheers])
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Tab bar */}
       <div className="flex justify-center items-center gap-1 px-4 py-3 border-b border-border">
         <div className="flex gap-1">
-          {(['schedule', 'cheers', 'leaderboard'] as Tab[]).map((t) => (
+          {(['schedule', 'leaderboard'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={`relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 tab === t
-                  ? t === 'cheers' && hasPendingCheers
-                    ? 'bg-yellow-400 text-white'
-                    : 'bg-primary text-primary-foreground'
-                  : t === 'cheers' && hasPendingCheers
-                    ? 'text-yellow-600 hover:text-yellow-700'
-                    : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {TAB_LABELS[t]}
-              {t === 'cheers' && hasPendingCheers && tab !== 'cheers' && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-yellow-400 rounded-full" />
-              )}
             </button>
           ))}
         </div>
@@ -406,7 +382,15 @@ export function SessionPlayerDetailView() {
 
       {/* Tab content */}
       {tab === 'schedule' && (
-        slugLoading ? (
+        hasPendingCheers ? (
+          <CheersPanel
+            cheerTypes={cheerTypes}
+            pendingMatch={pendingMatches[0]}
+            isLoading={cheerLoading}
+            remainingCount={pendingMatches.length}
+            submitCheer={submitCheer}
+          />
+        ) : slugLoading ? (
           <div className="max-w-sm mx-auto px-4 pt-6 space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
@@ -433,19 +417,6 @@ export function SessionPlayerDetailView() {
 
       {tab === 'leaderboard' && sessionId && (
         <LeaderboardTab sessionId={sessionId} />
-      )}
-
-      {tab === 'cheers' && sessionId && (
-        <CheersPanel
-          cheerTypes={cheerTypes}
-          participants={participants}
-          cheersGiven={cheersGiven}
-          cheersReceived={cheersReceived}
-          isWindowOpen={isWindowOpen}
-          sessionStatus={sessionStatus}
-          isLoading={cheerLoading}
-          submitCheer={submitCheer}
-        />
       )}
     </div>
   )

@@ -11,7 +11,10 @@ ALTER TABLE public.sessions
   ADD COLUMN session_notes TEXT,
   ADD COLUMN registration_opens_at TIMESTAMPTZ;
 
--- 2. pg_cron: auto-open registration at the top of every hour
+-- 2. Enable pg_cron extension (requires superuser / Supabase dashboard may be needed)
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- 3. pg_cron: auto-open registration at the top of every hour
 --    Flips status from 'setup' → 'registration_open' when the
 --    scheduled time has passed.
 SELECT cron.schedule(

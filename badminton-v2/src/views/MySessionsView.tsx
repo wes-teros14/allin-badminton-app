@@ -5,25 +5,6 @@ import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
 
 const ACTIVE_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_open', 'registration_closed'])
 
-function isCheerWindowOpen(s: SessionPickerItem): boolean {
-  if (s.status !== 'complete' || !s.completed_at) return false
-  return Date.now() < new Date(s.completed_at).getTime() + 24 * 60 * 60 * 1000
-}
-
-function hasPendingCheers(s: SessionPickerItem): boolean {
-  return isCheerWindowOpen(s) && !s.cheersAllGiven
-}
-
-function cheerTimeLeft(s: SessionPickerItem): string {
-  if (!s.completed_at) return ''
-  const msLeft = new Date(s.completed_at).getTime() + 24 * 60 * 60 * 1000 - Date.now()
-  const h = Math.floor(msLeft / (60 * 60 * 1000))
-  const m = Math.floor((msLeft % (60 * 60 * 1000)) / 60000)
-  if (h > 0) return `${h}h left`
-  if (m > 0) return `${m}m left`
-  return '<1m left'
-}
-
 function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress')        return { label: 'Live',                className: 'bg-[#DC595E]/20 text-[#DC595E]' }
   if (s.status === 'registration_open' && !s.isRegistered) {
@@ -43,7 +24,6 @@ function statusBadge(s: SessionPickerItem) {
                                          return { label: 'Registered ✓',         className: 'bg-green-100 text-green-700' }
   if (s.status === 'registration_closed') return { label: 'Registration Closed', className: 'bg-orange-100 text-orange-700' }
   if (s.status === 'schedule_locked')    return { label: 'Schedule Ready',       className: 'bg-orange-100 text-orange-700' }
-  if (hasPendingCheers(s))              return { label: `Give Cheers · ${cheerTimeLeft(s)}`, className: 'bg-yellow-100 text-yellow-700' }
   return                                       { label: 'Ended',                 className: 'bg-muted text-muted-foreground' }
 }
 
@@ -54,9 +34,7 @@ export function MySessionsView() {
   const loading = authLoading || isLoading
 
   const sorted = [...sessions].sort((a, b) => {
-    // Priority: active > give-cheers > completed
-    const priority = (s: SessionPickerItem) =>
-      ACTIVE_STATUSES.has(s.status) ? 2 : hasPendingCheers(s) ? 1 : 0
+    const priority = (s: SessionPickerItem) => ACTIVE_STATUSES.has(s.status) ? 1 : 0
     const diff = priority(b) - priority(a)
     if (diff !== 0) return diff
     return b.date.localeCompare(a.date)
