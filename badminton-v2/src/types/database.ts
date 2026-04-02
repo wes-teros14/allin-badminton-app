@@ -410,6 +410,7 @@ export type Database = {
           gender: string | null
           id: string
           level: number | null
+          paid: boolean
           player_id: string
           registered_at: string
           session_id: string
@@ -419,6 +420,7 @@ export type Database = {
           gender?: string | null
           id?: string
           level?: number | null
+          paid?: boolean
           player_id: string
           registered_at?: string
           session_id: string
@@ -428,6 +430,7 @@ export type Database = {
           gender?: string | null
           id?: string
           level?: number | null
+          paid?: boolean
           player_id?: string
           registered_at?: string
           session_id?: string
