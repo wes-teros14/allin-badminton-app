@@ -86,15 +86,19 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  async function markDone(matchId: string, courtNumber: 1 | 2, sessionId: string) {
+  async function markDone(matchId: string, courtNumber: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, durationSeconds?: number) {
     setIsSaving(true)
     try {
       const { error: e1 } = await supabase
         .from('matches')
-        .update({ status: 'complete' })
+        .update({ status: 'complete', ...(durationSeconds != null ? { duration_seconds: durationSeconds } : {}) } as never)
         .eq('id', matchId)
 
       if (e1) { toast.error(e1.message); return }
+
+      if (winningPairIndex) {
+        await supabase.from('match_results').insert({ match_id: matchId, winning_pair_index: winningPairIndex })
+      }
 
       const { data: nextMatch, error: e2 } = await supabase
         .from('matches')

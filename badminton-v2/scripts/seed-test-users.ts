@@ -28,20 +28,25 @@ import { fileURLToPath } from 'url'
 // Load .env manually (no dotenv dependency needed)
 // ---------------------------------------------------------------------------
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const envPath = resolve(__dirname, '../.env')
-try {
-  const raw = readFileSync(envPath, 'utf-8')
-  for (const line of raw.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed || trimmed.startsWith('#')) continue
-    const idx = trimmed.indexOf('=')
-    if (idx === -1) continue
-    const key = trimmed.slice(0, idx).trim()
-    const val = trimmed.slice(idx + 1).trim()
-    if (!process.env[key]) process.env[key] = val
+const envRoot = resolve(__dirname, '..')
+
+// Try env files in priority order: .env.development first (dev is the
+// typical seed target), then .env as fallback.
+for (const envFile of ['.env.development', '.env']) {
+  try {
+    const raw = readFileSync(resolve(envRoot, envFile), 'utf-8')
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.startsWith('#')) continue
+      const idx = trimmed.indexOf('=')
+      if (idx === -1) continue
+      const key = trimmed.slice(0, idx).trim()
+      const val = trimmed.slice(idx + 1).trim()
+      if (!process.env[key]) process.env[key] = val
+    }
+  } catch {
+    // file not found — try next
   }
-} catch {
-  // .env not found — rely on actual environment variables
 }
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL

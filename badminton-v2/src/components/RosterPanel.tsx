@@ -11,7 +11,7 @@ interface Props {
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export function RosterPanel({ sessionId, editable = false }: Props) {
-  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride } =
+  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, updatePaid } =
     useRoster(sessionId)
   const [open, setOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -68,6 +68,23 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
                         <option key={l} value={l}>{l}</option>
                       ))}
                     </select>
+
+                    {/* Paid toggle */}
+                    <div className="flex rounded overflow-hidden border text-xs">
+                      {([true, false] as const).map((p) => (
+                        <button
+                          key={String(p)}
+                          onClick={() => updatePaid(player.registrationId, p)}
+                          className={`px-2 py-1 transition-colors ${
+                            player.paid === p
+                              ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
+                              : 'bg-background text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {p ? 'Paid' : 'Unpaid'}
+                        </button>
+                      ))}
+                    </div>
                   </>
                 )}
 

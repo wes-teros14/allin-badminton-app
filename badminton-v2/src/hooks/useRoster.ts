@@ -9,6 +9,7 @@ export interface RosterPlayer {
   nickname: string | null
   gender: 'M' | 'F' | null
   level: number | null
+  paid: boolean
 }
 
 export interface UnregisteredPlayer {
@@ -24,6 +25,7 @@ interface RosterState {
   addPlayer: (playerId: string) => Promise<void>
   removePlayer: (registrationId: string) => Promise<void>
   updateSessionOverride: (registrationId: string, gender: 'M' | 'F' | null, level: number | null) => Promise<void>
+  updatePaid: (registrationId: string, paid: boolean) => Promise<void>
 }
 
 export function useRoster(sessionId: string | undefined): RosterState {
@@ -37,7 +39,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
     // Fetch registrations including session-specific gender/level overrides
     const { data: regs, error: regsError } = await supabase
       .from('session_registrations')
-      .select('id, player_id')
+      .select('id, player_id, gender, level, paid')
       .eq('session_id', sessionId)
 
     if (regsError) { toast.error(regsError.message); return }
@@ -72,6 +74,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
         nickname: p?.nickname ?? null,
         gender: (r.gender ?? p?.gender ?? null) as 'M' | 'F' | null,
         level: r.level ?? p?.level ?? null,
+        paid: r.paid ?? false,
       }
     })
 
@@ -122,5 +125,14 @@ export function useRoster(sessionId: string | undefined): RosterState {
     setPlayers((prev) => prev.map((p) => p.registrationId === registrationId ? { ...p, gender, level } : p))
   }
 
-  return { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride }
+  async function updatePaid(registrationId: string, paid: boolean) {
+    const { error } = await supabase
+      .from('session_registrations')
+      .update({ paid } as never)
+      .eq('id', registrationId)
+    if (error) { toast.error(error.message); return }
+    setPlayers((prev) => prev.map((p) => p.registrationId === registrationId ? { ...p, paid } : p))
+  }
+
+  return { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, updatePaid }
 }

@@ -44,6 +44,7 @@
     --primary-subtle: #EDE0F5;
     --success: #22C55E;
     --muted-surface: #F4F4F6;
+    --gold: #FFB200;
 }
 
 .dark {
@@ -78,6 +79,7 @@
     --sidebar-accent-foreground: #FFFFFF;
     --sidebar-border: #2D1A40;
     --sidebar-ring: #6F3E87;
+    --gold: #FFB200;
 }
 
 .live-board-dark {
@@ -163,9 +165,25 @@
 }
 
 @utility game-hero {
-    font-size: 12rem;
+    font-size: 18rem;
     font-weight: 700;
+    line-height: 1;
 }
 @keyframes loading-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
 
 @keyframes court-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Sonner toast — override built-in theme with app palette */
+[data-sonner-toast] {
+  background: var(--card) !important;
+  border: 1px solid var(--primary) !important;
+  color: var(--foreground) !important;
+}
+[data-sonner-toast] [data-close-button] {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+[data-sonner-toast].toast-award {
+  border-color: var(--gold) !important;
+}

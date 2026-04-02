@@ -28,25 +28,33 @@ function CourtCard({
   current: AdminMatchDisplay | null
   sessionId: string | null
   isSaving: boolean
-  onMarkDone: (matchId: string, court: 1 | 2, sessionId: string) => void
+  onMarkDone: (matchId: string, court: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, durationSeconds?: number) => void
 }) {
   const [elapsed, setElapsed] = useState(0)
+  const [confirmingFinish, setConfirmingFinish] = useState(false)
   const matchStartRef = useRef<number>(Date.now())
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     matchStartRef.current = Date.now()
     setElapsed(0)
+    setConfirmingFinish(false)
   }, [current?.id])
 
   useEffect(() => {
-    if (current) {
+    if (current && !confirmingFinish) {
       intervalRef.current = setInterval(() => {
         setElapsed(Math.floor((Date.now() - matchStartRef.current) / 1000))
       }, 1000)
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [current?.id])
+  }, [current?.id, confirmingFinish])
+
+  function handleFinish(winningPairIndex: 1 | 2) {
+    if (!current || !sessionId) return
+    onMarkDone(current.id, courtNumber, sessionId, winningPairIndex, elapsed)
+    setConfirmingFinish(false)
+  }
 
   return (
     <div>
@@ -54,27 +62,67 @@ function CourtCard({
         Court {courtNumber}
       </p>
       {current ? (
-        <div className="rounded-xl border border-primary/30 bg-[var(--primary-subtle)] p-4">
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold text-primary">{current.gameNumber}</span>
-              <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 tracking-widest">
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                LIVE
-              </span>
-              <span className="text-xs font-mono font-semibold text-[#FFB200]">{formatElapsed(elapsed)}</span>
-            </div>
-            <button
-              onClick={() => sessionId && onMarkDone(current.id, courtNumber, sessionId)}
-              disabled={isSaving || !sessionId}
-              className="text-xs px-2 py-1 rounded border border-destructive text-destructive hover:bg-destructive/10 disabled:opacity-40 transition-colors"
-            >
-              Mark Done
-            </button>
+        <div className="rounded-xl border border-primary/30 bg-[var(--primary-subtle)] p-4 space-y-3">
+          {/* Header row */}
+          <div className="flex items-center gap-3">
+            <span className="text-3xl font-bold text-primary">{current.gameNumber}</span>
+            <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 tracking-widest">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              LIVE
+            </span>
+            <span className="text-xs font-mono font-semibold text-[#FFB200] ml-auto">{formatElapsed(elapsed)}</span>
           </div>
-          <p className="text-sm font-medium text-primary">{current.t1p1} &amp; {current.t1p2}</p>
-          <p className="text-xs text-muted-foreground my-0.5">vs</p>
-          <p className="text-sm font-medium text-primary">{current.t2p1} &amp; {current.t2p2}</p>
+
+          {confirmingFinish ? (
+            /* Who won? */
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-[#FFB200] text-center">Who won?</p>
+              <button
+                onClick={() => handleFinish(1)}
+                disabled={isSaving}
+                className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+              >
+                {current.t1p1} &amp; {current.t1p2}
+              </button>
+              <button
+                onClick={() => handleFinish(2)}
+                disabled={isSaving}
+                className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+              >
+                {current.t2p1} &amp; {current.t2p2}
+              </button>
+              <button
+                onClick={() => { if (current && sessionId) { onMarkDone(current.id, courtNumber, sessionId, undefined, elapsed); setConfirmingFinish(false) } }}
+                disabled={isSaving}
+                className="w-full py-3 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:bg-muted/50 disabled:opacity-50 transition-colors"
+              >
+                Draw / No Winner
+              </button>
+              <button
+                onClick={() => setConfirmingFinish(false)}
+                disabled={isSaving}
+                className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            /* Normal view */
+            <>
+              <div>
+                <p className="text-sm font-medium text-primary">{current.t1p1} &amp; {current.t1p2}</p>
+                <p className="text-xs text-muted-foreground my-0.5">vs</p>
+                <p className="text-sm font-medium text-primary">{current.t2p1} &amp; {current.t2p2}</p>
+              </div>
+              <button
+                onClick={() => setConfirmingFinish(true)}
+                disabled={isSaving || !sessionId}
+                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                Finish
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <p className="text-muted-foreground text-sm">No match playing</p>
