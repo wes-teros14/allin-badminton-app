@@ -18,7 +18,7 @@ function makeMatch(
     team1Player2: p2,
     team2Player1: p3,
     team2Player2: p4,
-    type: 'Doubles',
+    type: "Men's Doubles",
     team1Level: t1Level,
     team2Level: t2Level,
   }
@@ -27,7 +27,7 @@ function makeMatch(
 const levelMap = new Map<string, number>([
   ['a', 5], ['b', 5], ['c', 5], ['d', 5],
   ['e', 5], ['f', 5], ['g', 5], ['h', 5],
-  ['hi', 9], ['lo', 1],  // wide spread helpers
+  ['hi', 5], ['lo', 1],  // spread helpers (max real-world range)
 ])
 
 // ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ describe('Scoring: evaluateSessionScore', () => {
     // Same 4 players, 2 consecutive games using different splits → no repeat partners
     // Game 1: a+b vs c+d (pairs: a|b, c|d)
     // Game 2: a+c vs b+d (pairs: a|c, b|d) — all new pairs, no repeat partner penalty
-    // streakLimit=1: game 2 streak=2 for each of a,b,c,d → 4 violations
+    // maxConsecutiveGames=1: game 2 streak=2 for each of a,b,c,d → 4 violations
     const matches = [
       makeMatch(1, 'a', 'b', 'c', 'd'),
       makeMatch(2, 'a', 'c', 'b', 'd'),

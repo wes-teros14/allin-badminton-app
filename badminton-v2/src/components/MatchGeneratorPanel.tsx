@@ -9,9 +9,11 @@ import { supabase } from '@/lib/supabase'
 import {
   generateSchedule,
   generateScheduleOptimized,
+  adjustNumMatches,
   DEFAULT_WEIGHTS,
   type GeneratedMatch,
   type AuditData,
+  type MatchDecision,
   type GenerateOptions,
 } from '@/lib/matchGenerator'
 
@@ -24,31 +26,28 @@ interface Props {
 interface Settings {
   // Match Rules
   numMatches: number
-  streakLimit: number
+  maxConsecutiveGames: number
   maxSpreadLimit: number
-  avoidRepeatPartners: boolean
   disableGenderRules: boolean
-  prioritizeGenderDoubles: boolean
   // Optimizer
   isIterative: boolean
   numTrials: number
   wishlistStr: string
-  // Scoring Weights (iterative only)
+  // Scoring Weights (shared by generation and optimizer)
   streakWeight: number
   imbalancePenalty: number
   wishlistReward: number
   repeatPartnerPenalty: number
   fairnessWeight: number
   spreadPenalty: number
+  mixedDoublesPenalty: number
 }
 
 const DEFAULTS: Settings = {
   numMatches: 20,
-  streakLimit: 1,
+  maxConsecutiveGames: 1,
   maxSpreadLimit: 3,
-  avoidRepeatPartners: true,
   disableGenderRules: false,
-  prioritizeGenderDoubles: true,
   isIterative: true,
   numTrials: 50,
   wishlistStr: '',
@@ -58,6 +57,7 @@ const DEFAULTS: Settings = {
   repeatPartnerPenalty: DEFAULT_WEIGHTS.repeatPartnerPenalty,
   fairnessWeight: DEFAULT_WEIGHTS.fairnessWeight,
   spreadPenalty: DEFAULT_WEIGHTS.spreadPenalty,
+  mixedDoublesPenalty: DEFAULT_WEIGHTS.mixedDoublesPenalty,
 }
 
 export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props) {
@@ -66,6 +66,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [matches, setMatches] = useState<GeneratedMatch[]>([])
   const [audit, setAudit] = useState<AuditData | null>(null)
+  const [decisions, setDecisions] = useState<MatchDecision[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULTS)
   const [confirmingLock, setConfirmingLock] = useState(false)
@@ -134,6 +135,13 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
 
   const effectiveNumMatches =
     settings.numMatches > 0 ? settings.numMatches : Math.ceil((players.length * 8) / 4)
+  const adjustedMatches = players.length >= 4
+    ? adjustNumMatches(effectiveNumMatches, players.length)
+    : effectiveNumMatches
+  const targetGames = players.length >= 4
+    ? (adjustedMatches * 4) / players.length
+    : null
+  const wasAdjusted = adjustedMatches !== effectiveNumMatches
 
   function set<K extends keyof Settings>(key: K, value: Settings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }))
@@ -176,34 +184,38 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
         }
       }
 
+      const scoreWeights = {
+        streakWeight: settings.streakWeight,
+        imbalancePenalty: settings.imbalancePenalty,
+        wishlistReward: settings.wishlistReward,
+        repeatPartnerPenalty: settings.repeatPartnerPenalty,
+        fairnessWeight: settings.fairnessWeight,
+        spreadPenalty: settings.spreadPenalty,
+        mixedDoublesPenalty: settings.mixedDoublesPenalty,
+      }
+
       const genOptions: GenerateOptions = {
-        numMatches: effectiveNumMatches,
-        streakLimit: settings.streakLimit,
+        numMatches: adjustedMatches,
+        maxConsecutiveGames: settings.maxConsecutiveGames,
         maxSpreadLimit: settings.maxSpreadLimit,
-        avoidRepeatPartners: settings.avoidRepeatPartners,
         disableGenderRules: settings.disableGenderRules,
-        prioritizeGenderDoubles: settings.prioritizeGenderDoubles,
+        wishlistPairs,
+        weights: scoreWeights,
       }
 
       if (settings.isIterative) {
         const result = generateScheduleOptimized(players, {
           ...genOptions,
           numTrials: settings.numTrials,
-          wishlistPairs,
-          weights: {
-            streakWeight: settings.streakWeight,
-            imbalancePenalty: settings.imbalancePenalty,
-            wishlistReward: settings.wishlistReward,
-            repeatPartnerPenalty: settings.repeatPartnerPenalty,
-            fairnessWeight: settings.fairnessWeight,
-            spreadPenalty: settings.spreadPenalty,
-          },
         })
         setMatches(result.matches)
         setAudit(result.audit)
+        setDecisions(result.decisions)
       } else {
-        setMatches(generateSchedule(players, genOptions))
+        const log: MatchDecision[] = []
+        setMatches(generateSchedule(players, genOptions, log))
         setAudit(null)
+        setDecisions(log)
       }
 
       setStage('preview')
@@ -290,11 +302,16 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                 min={1} max={50}
                 onChange={(v) => set('numMatches', v)}
               />
+              {targetGames !== null && (
+                <p className={`text-xs -mt-1 ${wasAdjusted ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                  {wasAdjusted ? `Adjusted to ${adjustedMatches} · ` : ''}{targetGames} games each
+                </p>
+              )}
               <SliderField
-                label="Streak Limit (max consecutive games)"
-                value={settings.streakLimit}
+                label="Max Consecutive Games"
+                value={settings.maxConsecutiveGames}
                 min={1} max={5}
-                onChange={(v) => set('streakLimit', v)}
+                onChange={(v) => set('maxConsecutiveGames', v)}
               />
               <SliderField
                 label="Max Skill Gap per Match"
@@ -304,20 +321,9 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               />
 
               <CheckField
-                label="No Repeat Partners"
-                checked={settings.avoidRepeatPartners}
-                onChange={(v) => set('avoidRepeatPartners', v)}
-              />
-              <CheckField
                 label="Disable Gender Rules"
                 checked={settings.disableGenderRules}
                 onChange={(v) => set('disableGenderRules', v)}
-              />
-              <CheckField
-                label="Prioritize MD/WD (no mixed)"
-                checked={settings.prioritizeGenderDoubles}
-                disabled={settings.disableGenderRules}
-                onChange={(v) => set('prioritizeGenderDoubles', v)}
               />
             </div>
 
@@ -358,41 +364,41 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               </div>
             </div>
 
-            {/* Scoring Weights — always visible, greyed out when iterative OFF */}
+            {/* Scoring Weights — controls both generation and optimizer */}
             <hr />
             <details>
               <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground select-none">
                 Scoring Weights ▼
               </summary>
-              <div className="mt-2 space-y-2">
-                {!settings.isIterative && (
-                  <p className="text-xs text-muted-foreground">
-                    ⚠️ Weights only used in Iterative mode.
-                  </p>
-                )}
-                <div className={`grid grid-cols-2 gap-x-3 gap-y-2 ${!settings.isIterative ? 'opacity-50' : ''}`}>
-                  {(
-                    [
-                      { key: 'streakWeight',         label: 'Fatigue Penalty',       help: 'Per game over streak limit' },
-                      { key: 'imbalancePenalty',     label: 'Level Imbalance',        help: 'Per level diff between teams' },
-                      { key: 'wishlistReward',       label: 'Wishlist Reward',        help: 'Per wishlist pair granted' },
-                      { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty', help: 'Per repeat partnership' },
-                      { key: 'fairnessWeight',       label: 'Fairness Penalty',       help: 'Per game count gap (highest priority)' },
-                      { key: 'spreadPenalty',        label: 'Level Gap Penalty',      help: 'Per match over skill gap limit' },
-                    ] as const
-                  ).map(({ key, label, help }) => (
-                    <div key={key} className="space-y-1">
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Controls how the engine scores matches. Used by both generation and optimizer.
+              </p>
+              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
+                {(
+                  [
+                    { key: 'streakWeight',         label: 'Fatigue Penalty',       help: 'Per game over max consecutive' },
+                    { key: 'imbalancePenalty',     label: 'Level Imbalance',        help: 'Per level diff between teams' },
+                    { key: 'wishlistReward',       label: 'Wishlist Reward',        help: 'Per wishlist pair granted' },
+                    { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty', help: 'Per repeat partnership' },
+                    { key: 'fairnessWeight',       label: 'Fairness Penalty',       help: 'Per game count gap (highest priority)' },
+                    { key: 'spreadPenalty',        label: 'Level Gap Penalty',      help: 'Per match over skill gap limit' },
+                    { key: 'mixedDoublesPenalty', label: 'Mixed Doubles Penalty', help: 'Per mixed match (prefer MD/WD)' },
+                  ] as const
+                ).map(({ key, label, help }) => {
+                  const disabled = key === 'mixedDoublesPenalty' && settings.disableGenderRules
+                  return (
+                    <div key={key} className={`space-y-1 ${disabled ? 'opacity-40' : ''}`}>
                       <Label className="text-xs" title={help}>{label}</Label>
                       <Input
                         type="number"
                         value={settings[key]}
-                        disabled={!settings.isIterative}
                         onChange={(e) => set(key, +e.target.value)}
                         className="h-7 text-xs"
+                        disabled={disabled}
                       />
                     </div>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
             </details>
           </div>
@@ -430,6 +436,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                   <AuditMetric label="Partners Repeated"     value={audit.repeatPartners} />
                   <AuditMetric label="Wishes Granted"        value={audit.wishesGranted} />
                   <AuditMetric label="Skill Gap Violations"  value={audit.wideGaps} delta={audit.wideGaps === 0 ? { text: 'Consistent', good: true } : { text: 'Poor Quality', good: false }} />
+                  <AuditMetric label="Mixed Doubles"          value={audit.mixedDoubles} />
                 </div>
 
                 <details className="rounded-md border p-2 text-xs">
@@ -441,6 +448,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                     <ScoringRow label={`Fatigue (${audit.streakViolations} × ${settings.streakWeight})`}             value={-(audit.streakViolations * settings.streakWeight)} />
                     <ScoringRow label={`Repeat Partners (${audit.repeatPartners} × ${settings.repeatPartnerPenalty})`} value={-(audit.repeatPartners * settings.repeatPartnerPenalty)} />
                     <ScoringRow label={`Skill Gap Violations (${audit.wideGaps} × ${settings.spreadPenalty})`}       value={-(audit.wideGaps * settings.spreadPenalty)} />
+                    <ScoringRow label={`Mixed Doubles (${audit.mixedDoubles} × ${settings.mixedDoublesPenalty})`}       value={-(audit.mixedDoubles * settings.mixedDoublesPenalty)} />
                     <ScoringRow label={`Wishes Granted (${audit.wishesGranted} × ${settings.wishlistReward})`}       value={audit.wishesGranted * settings.wishlistReward} />
                     <div className="border-t pt-1 flex justify-between font-bold text-foreground">
                       <span>Final Score</span><span>{audit.score.toLocaleString()}</span>
@@ -466,6 +474,35 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                   <ConsecutiveAudit matches={matches} nameMap={nameMap} />
                 </div>
               </div>
+            )}
+
+            {/* Decision Log */}
+            {decisions.length > 0 && (
+              <details className="rounded-md border p-2 text-xs">
+                <summary className="cursor-pointer font-semibold select-none">Decision Log ▼</summary>
+                <div className="mt-2 max-h-48 overflow-y-auto">
+                  <table className="w-full text-[11px]">
+                    <thead>
+                      <tr className="border-b text-muted-foreground text-left">
+                        <th className="py-1 pr-2">Game</th>
+                        <th className="py-1 pr-2">Candidates Evaluated</th>
+                        <th className="py-1 pr-2">Best Score</th>
+                        <th className="py-1">Selected Players</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {decisions.map((d) => (
+                        <tr key={d.gameIndex} className="border-b last:border-0">
+                          <td className="py-1 pr-2 font-medium">{d.gameIndex}</td>
+                          <td className="py-1 pr-2">{d.candidatesEvaluated}</td>
+                          <td className="py-1 pr-2">{d.bestScore.toFixed(0)}</td>
+                          <td className="py-1 text-muted-foreground">{d.selectedGroup.map((id) => name(id)).join(', ')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             )}
 
             {/* Match list */}

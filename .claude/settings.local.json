@@ -26,7 +26,72 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Read(//c/Program Files/**)",
+      "Read(//c/Users/MarkWesleyAncog/AppData/Roaming/**)",
+      "Bash(cmd.exe /c \"node --version\")",
+      "Bash(cmd.exe /c \"npm --version\")",
+      "Bash(cmd.exe /c \"where node & where npm\" 2>&1)",
+      "Bash(bash -x /c/1Wes/all-in-badminton-app/agent-os/scripts/project-install.sh)",
+      "Bash(bash /c/1Wes/all-in-badminton-app/agent-os/scripts/project-install.sh)",
+      "Bash(curl:*)",
+      "Bash(npm list:*)",
+      "Bash(npx playwright-cli:*)",
+      "Bash(git checkout:*)",
+      "Bash(npx vercel:*)",
+      "Bash(pkill -f \"vite\")",
+      "Bash(npx vitest:*)",
+      "Bash(git merge:*)",
+      "Bash(npx supabase:*)",
+      "Bash(where supabase:*)",
+      "Bash(supabase --version)",
+      "Bash(export PATH=\"$PATH:/c/Users/MarkWesleyAncog/scoop/shims\")",
+      "Bash(supabase db:*)",
+      "Bash(supabase inspect:*)",
+      "Bash(supabase status:*)",
+      "Bash(supabase projects:*)",
+      "Bash(SERVICE_ROLE_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuc2RmaXRwZXlyZXVuaWhrcWtoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mzg1MjQxNCwiZXhwIjoyMDg5NDI4NDE0fQ.XBVnbDZ2OIr7zAI7amDd9-KwE1Xrb1BY4IPl-pFwjqI\")",
+      "Bash(SUPABASE_URL=\"https://ensdfitpeyreunihkqkh.supabase.co\")",
+      "Bash(__NEW_LINE_c80a3c3d062a235f__ curl:*)",
+      "Bash(node -e \":*)",
+      "Bash(find /c/Users/MarkWesleyAncog/AppData -name *.json -path *supabase*)",
+      "Bash(supabase gen:*)",
+      "Skill(update-config)",
+      "Bash(npx playwright:*)",
+      "Bash(git fetch:*)",
+      "Bash(./node_modules/.bin/supabase db:*)",
+      "Bash(npx tsx:*)"
     ]
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "source ~/.bashrc 2>/dev/null; TNAME=${CLAUDE_TERMINAL:-terminal}; powershell.exe -NonInteractive -Command \"Invoke-RestMethod -Uri 'https://hooks.slack.com/services/REPLACE_WITH_YOUR_WEBHOOK' -Method Post -ContentType 'application/json' -Body (ConvertTo-Json @{text=\\\"Claude is done! [$TNAME] - Check your terminal.\\\"})\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat); TOOL=$(echo \"$INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('tool_name','unknown'))\" 2>/dev/null || echo 'unknown'); powershell.exe -NonInteractive -Command \"Invoke-RestMethod -Uri 'https://hooks.slack.com/services/REPLACE_WITH_YOUR_WEBHOOK' -Method Post -ContentType 'application/json' -Body (ConvertTo-Json @{text=\\\"Claude needs permission: $TOOL\\\"})\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "claude-mem@thedotmack": false
   }
 }
