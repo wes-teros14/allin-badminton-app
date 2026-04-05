@@ -76,8 +76,8 @@ describe('Group 1: Output Structure', () => {
     }
   })
 
-  it('1.6 — type is one of 4 valid strings', () => {
-    const valid = new Set(['Mixed Doubles', "Men's Doubles", "Women's Doubles", 'Doubles'])
+  it('1.6 — type is one of 5 valid strings', () => {
+    const valid = new Set(['Mixed Doubles', "Men's Doubles", "Women's Doubles", 'Doubles', 'Uneven Doubles'])
     const matches = generateSchedule(FIXTURE_B)
     for (const m of matches) {
       expect(valid.has(m.type)).toBe(true)

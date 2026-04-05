@@ -7,14 +7,12 @@ import { toast } from 'sonner'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { supabase } from '@/lib/supabase'
 import {
-  generateSchedule,
   generateScheduleOptimized,
   adjustNumMatches,
   DEFAULT_WEIGHTS,
   type GeneratedMatch,
   type AuditData,
   type MatchDecision,
-  type GenerateOptions,
 } from '@/lib/matchGenerator'
 
 interface Props {
@@ -30,10 +28,10 @@ interface Settings {
   maxSpreadLimit: number
   disableGenderRules: boolean
   // Optimizer
-  isIterative: boolean
   numTrials: number
+  numStarts: number
   wishlistStr: string
-  // Scoring Weights (shared by generation and optimizer)
+  // Scoring Weights
   streakWeight: number
   imbalancePenalty: number
   wishlistReward: number
@@ -41,6 +39,9 @@ interface Settings {
   fairnessWeight: number
   spreadPenalty: number
   mixedDoublesPenalty: number
+  genderSplitPenalty: number
+  unevenGenderPenalty: number
+  disabledWeights: string[]
 }
 
 const DEFAULTS: Settings = {
@@ -48,8 +49,8 @@ const DEFAULTS: Settings = {
   maxConsecutiveGames: 1,
   maxSpreadLimit: 3,
   disableGenderRules: false,
-  isIterative: true,
   numTrials: 50,
+  numStarts: 15,
   wishlistStr: '',
   streakWeight: DEFAULT_WEIGHTS.streakWeight,
   imbalancePenalty: DEFAULT_WEIGHTS.imbalancePenalty,
@@ -58,6 +59,9 @@ const DEFAULTS: Settings = {
   fairnessWeight: DEFAULT_WEIGHTS.fairnessWeight,
   spreadPenalty: DEFAULT_WEIGHTS.spreadPenalty,
   mixedDoublesPenalty: DEFAULT_WEIGHTS.mixedDoublesPenalty,
+  genderSplitPenalty: DEFAULT_WEIGHTS.genderSplitPenalty,
+  unevenGenderPenalty: DEFAULT_WEIGHTS.unevenGenderPenalty,
+  disabledWeights: [],
 }
 
 export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props) {
@@ -184,39 +188,33 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
         }
       }
 
+      const w = (key: string, value: number) =>
+        settings.disabledWeights.includes(key) ? 0 : value
       const scoreWeights = {
-        streakWeight: settings.streakWeight,
-        imbalancePenalty: settings.imbalancePenalty,
-        wishlistReward: settings.wishlistReward,
-        repeatPartnerPenalty: settings.repeatPartnerPenalty,
-        fairnessWeight: settings.fairnessWeight,
-        spreadPenalty: settings.spreadPenalty,
-        mixedDoublesPenalty: settings.mixedDoublesPenalty,
+        streakWeight: w('streakWeight', settings.streakWeight),
+        imbalancePenalty: w('imbalancePenalty', settings.imbalancePenalty),
+        wishlistReward: w('wishlistReward', settings.wishlistReward),
+        repeatPartnerPenalty: w('repeatPartnerPenalty', settings.repeatPartnerPenalty),
+        fairnessWeight: w('fairnessWeight', settings.fairnessWeight),
+        spreadPenalty: w('spreadPenalty', settings.spreadPenalty),
+        mixedDoublesPenalty: w('mixedDoublesPenalty', settings.mixedDoublesPenalty),
+        genderSplitPenalty: w('genderSplitPenalty', settings.genderSplitPenalty),
+        unevenGenderPenalty: w('unevenGenderPenalty', settings.unevenGenderPenalty),
       }
 
-      const genOptions: GenerateOptions = {
+      const result = generateScheduleOptimized(players, {
         numMatches: adjustedMatches,
         maxConsecutiveGames: settings.maxConsecutiveGames,
         maxSpreadLimit: settings.maxSpreadLimit,
         disableGenderRules: settings.disableGenderRules,
         wishlistPairs,
         weights: scoreWeights,
-      }
-
-      if (settings.isIterative) {
-        const result = generateScheduleOptimized(players, {
-          ...genOptions,
-          numTrials: settings.numTrials,
-        })
-        setMatches(result.matches)
-        setAudit(result.audit)
-        setDecisions(result.decisions)
-      } else {
-        const log: MatchDecision[] = []
-        setMatches(generateSchedule(players, genOptions, log))
-        setAudit(null)
-        setDecisions(log)
-      }
+        numTrials: settings.numTrials,
+        numStarts: settings.numStarts,
+      })
+      setMatches(result.matches)
+      setAudit(result.audit)
+      setDecisions(result.decisions)
 
       setStage('preview')
       setIsRegenerating(false)
@@ -335,21 +333,21 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                 Optimizer
               </p>
 
-              <CheckField
-                label="Enable Iterative Optimizer"
-                checked={settings.isIterative}
-                onChange={(v) => set('isIterative', v)}
+              <SliderField
+                label="Optimizer Restarts"
+                value={settings.numStarts}
+                min={1} max={30} step={1}
+                onChange={(v) => set('numStarts', v)}
               />
 
               <SliderField
-                label="Optimization Trials"
+                label="Trials per Restart"
                 value={settings.numTrials}
                 min={10} max={1000} step={10}
-                disabled={!settings.isIterative}
                 onChange={(v) => set('numTrials', v)}
               />
 
-              <div className={`space-y-1 ${!settings.isIterative ? 'opacity-50' : ''}`}>
+              <div className="space-y-1">
                 <Label className="text-xs">
                   Partner Wishlist
                   <span className="ml-1 text-muted-foreground font-normal">(slug1-slug2, slug3-slug4)</span>
@@ -357,7 +355,6 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                 <Input
                   placeholder="e.g. wes-yelli, aj-czarina"
                   value={settings.wishlistStr}
-                  disabled={!settings.isIterative}
                   onChange={(e) => set('wishlistStr', e.target.value)}
                   className="h-8 text-xs"
                 />
@@ -376,19 +373,40 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
                 {(
                   [
-                    { key: 'streakWeight',         label: 'Fatigue Penalty',       help: 'Per game over max consecutive' },
-                    { key: 'imbalancePenalty',     label: 'Level Imbalance',        help: 'Per level diff between teams' },
-                    { key: 'wishlistReward',       label: 'Wishlist Reward',        help: 'Per wishlist pair granted' },
-                    { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty', help: 'Per repeat partnership' },
-                    { key: 'fairnessWeight',       label: 'Fairness Penalty',       help: 'Per game count gap (highest priority)' },
-                    { key: 'spreadPenalty',        label: 'Level Gap Penalty',      help: 'Per match over skill gap limit' },
-                    { key: 'mixedDoublesPenalty', label: 'Mixed Doubles Penalty', help: 'Per mixed match (prefer MD/WD)' },
+                    { key: 'streakWeight',         label: 'Fatigue Penalty',        help: 'Per game over max consecutive' },
+                    { key: 'imbalancePenalty',     label: 'Level Imbalance',         help: 'Per level diff between teams' },
+                    { key: 'wishlistReward',       label: 'Wishlist Reward',         help: 'Per wishlist pair granted' },
+                    { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty',  help: 'Per repeat partnership' },
+                    { key: 'fairnessWeight',       label: 'Fairness Penalty',        help: 'Per game count gap (highest priority)' },
+                    { key: 'spreadPenalty',        label: 'Level Gap Penalty',       help: 'Per match over skill gap limit' },
+                    { key: 'mixedDoublesPenalty',  label: 'Mixed Doubles',           help: 'Per MF vs MF match' },
+                    { key: 'genderSplitPenalty',   label: 'Boys vs Girls',           help: 'Per MM vs FF match (gender-separated teams)' },
+                    { key: 'unevenGenderPenalty',  label: 'Uneven Gender (3+1)',     help: 'Per 3M+1F or 3F+1M match' },
                   ] as const
                 ).map(({ key, label, help }) => {
-                  const disabled = key === 'mixedDoublesPenalty' && settings.disableGenderRules
+                  const genderKey = key === 'mixedDoublesPenalty' || key === 'genderSplitPenalty' || key === 'unevenGenderPenalty'
+                  const autoDisabled = genderKey && settings.disableGenderRules
+                  const manuallyDisabled = settings.disabledWeights.includes(key)
+                  const disabled = autoDisabled || manuallyDisabled
                   return (
                     <div key={key} className={`space-y-1 ${disabled ? 'opacity-40' : ''}`}>
-                      <Label className="text-xs" title={help}>{label}</Label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="checkbox"
+                          checked={!manuallyDisabled}
+                          disabled={autoDisabled}
+                          onChange={() => {
+                            setSettings((prev) => ({
+                              ...prev,
+                              disabledWeights: manuallyDisabled
+                                ? prev.disabledWeights.filter((k) => k !== key)
+                                : [...prev.disabledWeights, key],
+                            }))
+                          }}
+                          className="h-3 w-3 rounded accent-primary"
+                        />
+                        <Label className="text-xs" title={help}>{label}</Label>
+                      </div>
                       <Input
                         type="number"
                         value={settings[key]}
@@ -407,12 +425,12 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
         {/* ── Generate Buttons ───────────────────────────────── */}
         {stage === 'idle' ? (
           <Button onClick={handleGenerate} disabled={players.length < 4} className="w-full">
-            {settings.isIterative ? `Generate Schedule (${settings.numTrials} trials)` : 'Generate Schedule'}
+            {`Generate Schedule (${settings.numStarts}×${settings.numTrials})`}
           </Button>
         ) : stage === 'generating' ? (
           <div className="space-y-2">
             <div className="text-xs text-center text-muted-foreground animate-pulse">
-              {settings.isIterative ? `Running ${settings.numTrials} trials…` : 'Generating schedule…'}
+              {`Running ${settings.numStarts}×${settings.numTrials} trials…`}
             </div>
             <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full animate-[loading-bar_1.2s_ease-in-out_infinite]" style={{ width: '40%' }} />
@@ -423,10 +441,10 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
             <Button variant="outline" onClick={handleGenerate} disabled={isRegenerating} className="w-full">
               {isRegenerating
                 ? <span className="flex items-center gap-2"><span className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />Generating…</span>
-                : settings.isIterative ? `Generate Again (${settings.numTrials} trials)` : 'Generate Again'}
+                : `Generate Again (${settings.numStarts}×${settings.numTrials})`}
             </Button>
 
-            {/* Engine Audit Report (iterative mode only) */}
+            {/* Engine Audit Report */}
             {audit && (
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">
@@ -437,6 +455,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                   <AuditMetric label="Wishes Granted"        value={audit.wishesGranted} />
                   <AuditMetric label="Skill Gap Violations"  value={audit.wideGaps} delta={audit.wideGaps === 0 ? { text: 'Consistent', good: true } : { text: 'Poor Quality', good: false }} />
                   <AuditMetric label="Mixed Doubles"          value={audit.mixedDoubles} />
+                  <AuditMetric label="Boys vs Girls"           value={audit.genderSplitMatches} />
+                  <AuditMetric label="Uneven Gender (3+1)"     value={audit.unevenGenderMatches} />
                 </div>
 
                 <details className="rounded-md border p-2 text-xs">

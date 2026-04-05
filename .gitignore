@@ -2,7 +2,10 @@
 badminton-v2/node_modules
 badminton-v2/dist
 badminton-v2/dist-ssr
-badminton-v2/.env.local
+# Environment files (NEVER commit secrets)
+badminton-v2/.env
+badminton-v2/.env.*
+!badminton-v2/.env.example
 
 # Logs
 *.log
