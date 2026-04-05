@@ -374,9 +374,7 @@ function assignmentToMatches(
  */
 function mutateCrossSwap(
   assignment: string[][],
-  genderMap: Map<string, string>,
   levelMap: Map<string, number>,
-  disableGenderRules: boolean,
   maxSpreadLimit: number,
 ): boolean {
   if (assignment.length < 2) return false
@@ -452,7 +450,7 @@ function optimizeAssignment(
     const candidate = current.map((g) => [...g])
 
     const applied = Math.random() < 0.80
-      ? mutateCrossSwap(candidate, genderMap, levelMap, disableGenderRules, maxSpreadLimit)
+      ? mutateCrossSwap(candidate, levelMap, maxSpreadLimit)
       : mutateRowSwap(candidate)
 
     if (!applied) { temperature *= coolingRate; continue }
