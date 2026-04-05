@@ -819,8 +819,8 @@ function MatchTypeChart({ matches }: { matches: GeneratedMatch[] }) {
     "Men's Doubles":   'bg-red-500',
     "Women's Doubles": 'bg-pink-500',
     'Mixed Doubles':   'bg-green-500',
-    '2Mvs2F Doubles':  'bg-red-500',
-    '3-1 Doubles':     'bg-orange-500',
+    '2Mvs2F Doubles':  'bg-blue-900',
+    '3-1 Doubles':     'bg-blue-400',
   }
   return (
     <div className="space-y-1">
