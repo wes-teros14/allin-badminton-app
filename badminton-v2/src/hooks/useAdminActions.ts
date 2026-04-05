@@ -125,5 +125,20 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  return { isSaving, editMatch, moveUp, moveDown, markDone }
+  async function swapCourts(match1Id: string, match2Id: string) {
+    setIsSaving(true)
+    try {
+      const { error: e1 } = await supabase.from('matches').update({ court_number: -1 }).eq('id', match1Id)
+      if (e1) { toast.error(e1.message); return }
+      const { error: e2 } = await supabase.from('matches').update({ court_number: 1 }).eq('id', match2Id)
+      if (e2) { toast.error(e2.message); return }
+      const { error: e3 } = await supabase.from('matches').update({ court_number: 2 }).eq('id', match1Id)
+      if (e3) { toast.error(e3.message); return }
+      onDone()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts }
 }

@@ -53,6 +53,7 @@ interface SessionState {
   lockSchedule: (matches: MatchInput[]) => Promise<boolean>
   unlockSchedule: () => Promise<void>
   startSession: () => Promise<void>
+  unstartSession: () => Promise<void>
   closeSession: () => Promise<void>
 }
 
@@ -308,6 +309,23 @@ export function useSession(sessionId?: string): SessionState {
     setSession(updated as Session)
   }
 
+  async function unstartSession(): Promise<void> {
+    if (!session) return
+    // Revert all playing/queued matches back to queued, clear court numbers
+    await supabase.from('matches')
+      .update({ status: 'queued', court_number: null })
+      .eq('session_id', session.id)
+      .in('status', ['playing', 'queued'])
+    const { data: updated, error } = await supabase
+      .from('sessions')
+      .update({ status: 'schedule_locked' })
+      .eq('id', session.id)
+      .select()
+      .single()
+    if (error) { toast.error(error.message); return }
+    setSession(updated as Session)
+  }
+
   async function closeSession(): Promise<void> {
     if (!session) return
     const { data: updated, error } = await supabase
@@ -320,5 +338,5 @@ export function useSession(sessionId?: string): SessionState {
     setSession(updated as Session)
   }
 
-  return { session, invitation, playerCount, isLoading, refresh, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, closeSession }
+  return { session, invitation, playerCount, isLoading, refresh, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, unstartSession, closeSession }
 }

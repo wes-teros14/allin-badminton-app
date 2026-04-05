@@ -262,8 +262,9 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
                     {m.status === 'playing' && <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Playing</span>}
                     {m.status === 'complete' && <span className="text-[var(--success)] text-lg">✓</span>}
                   </div>
-                  <p className="text-sm text-foreground/80 font-medium">{m.team1}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">vs {m.team2}</p>
+                  <p className="text-sm text-foreground font-medium">{m.team1}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-0.5">vs</p>
+                  <p className="text-sm text-foreground font-medium">{m.team2}</p>
                 </div>
               ))
           }
@@ -333,7 +334,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             ? '🏸 You\'re on court now!'
             : gamesAhead === 0
             ? '⏳ You\'re up next!'
-            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 10} mins wait time)`
+            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 6} mins)`
           }
         </div>
       )}

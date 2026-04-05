@@ -12,7 +12,6 @@ import {
   DEFAULT_WEIGHTS,
   type GeneratedMatch,
   type AuditData,
-  type MatchDecision,
 } from '@/lib/matchGenerator'
 
 interface Props {
@@ -31,6 +30,8 @@ interface Settings {
   numTrials: number
   numStarts: number
   wishlistStr: string
+  idealRestGames: number
+  earlyRestWindow: number
   // Scoring Weights
   streakWeight: number
   imbalancePenalty: number
@@ -41,16 +42,20 @@ interface Settings {
   mixedDoublesPenalty: number
   genderSplitPenalty: number
   unevenGenderPenalty: number
+  restSpacingPenalty: number
+  earlyRestReward: number
   disabledWeights: string[]
 }
 
 const DEFAULTS: Settings = {
   numMatches: 20,
   maxConsecutiveGames: 1,
-  maxSpreadLimit: 3,
+  maxSpreadLimit: 2,
   disableGenderRules: false,
-  numTrials: 50,
-  numStarts: 15,
+  idealRestGames: 2,
+  earlyRestWindow: 4,
+  numTrials: 2000,
+  numStarts: 30,
   wishlistStr: '',
   streakWeight: DEFAULT_WEIGHTS.streakWeight,
   imbalancePenalty: DEFAULT_WEIGHTS.imbalancePenalty,
@@ -61,6 +66,8 @@ const DEFAULTS: Settings = {
   mixedDoublesPenalty: DEFAULT_WEIGHTS.mixedDoublesPenalty,
   genderSplitPenalty: DEFAULT_WEIGHTS.genderSplitPenalty,
   unevenGenderPenalty: DEFAULT_WEIGHTS.unevenGenderPenalty,
+  restSpacingPenalty: DEFAULT_WEIGHTS.restSpacingPenalty,
+  earlyRestReward: DEFAULT_WEIGHTS.earlyRestReward,
   disabledWeights: [],
 }
 
@@ -70,7 +77,6 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [matches, setMatches] = useState<GeneratedMatch[]>([])
   const [audit, setAudit] = useState<AuditData | null>(null)
-  const [decisions, setDecisions] = useState<MatchDecision[]>([])
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULTS)
   const [confirmingLock, setConfirmingLock] = useState(false)
@@ -200,6 +206,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
         mixedDoublesPenalty: w('mixedDoublesPenalty', settings.mixedDoublesPenalty),
         genderSplitPenalty: w('genderSplitPenalty', settings.genderSplitPenalty),
         unevenGenderPenalty: w('unevenGenderPenalty', settings.unevenGenderPenalty),
+        restSpacingPenalty: w('restSpacingPenalty', settings.restSpacingPenalty),
+        earlyRestReward: w('earlyRestReward', settings.earlyRestReward),
       }
 
       const result = generateScheduleOptimized(players, {
@@ -211,11 +219,11 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
         weights: scoreWeights,
         numTrials: settings.numTrials,
         numStarts: settings.numStarts,
+        idealRestGames: settings.idealRestGames,
+        earlyRestWindow: settings.earlyRestWindow,
       })
       setMatches(result.matches)
       setAudit(result.audit)
-      setDecisions(result.decisions)
-
       setStage('preview')
       setIsRegenerating(false)
     }, 50)
@@ -312,6 +320,18 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                 onChange={(v) => set('maxConsecutiveGames', v)}
               />
               <SliderField
+                label="Ideal Rest Between Games"
+                value={settings.idealRestGames}
+                min={0} max={5}
+                onChange={(v) => set('idealRestGames', v)}
+              />
+              <SliderField
+                label="Clean Start Window (games)"
+                value={settings.earlyRestWindow}
+                min={1} max={10}
+                onChange={(v) => set('earlyRestWindow', v)}
+              />
+              <SliderField
                 label="Max Skill Gap per Match"
                 value={settings.maxSpreadLimit}
                 min={0} max={9}
@@ -343,7 +363,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               <SliderField
                 label="Trials per Restart"
                 value={settings.numTrials}
-                min={10} max={1000} step={10}
+                min={10} max={5000} step={10}
                 onChange={(v) => set('numTrials', v)}
               />
 
@@ -373,15 +393,17 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
                 {(
                   [
-                    { key: 'streakWeight',         label: 'Fatigue Penalty',        help: 'Per game over max consecutive' },
-                    { key: 'imbalancePenalty',     label: 'Level Imbalance',         help: 'Per level diff between teams' },
-                    { key: 'wishlistReward',       label: 'Wishlist Reward',         help: 'Per wishlist pair granted' },
-                    { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty',  help: 'Per repeat partnership' },
                     { key: 'fairnessWeight',       label: 'Fairness Penalty',        help: 'Per game count gap (highest priority)' },
-                    { key: 'spreadPenalty',        label: 'Level Gap Penalty',       help: 'Per match over skill gap limit' },
-                    { key: 'mixedDoublesPenalty',  label: 'Mixed Doubles',           help: 'Per MF vs MF match' },
-                    { key: 'genderSplitPenalty',   label: 'Boys vs Girls',           help: 'Per MM vs FF match (gender-separated teams)' },
-                    { key: 'unevenGenderPenalty',  label: 'Uneven Gender (3+1)',     help: 'Per 3M+1F or 3F+1M match' },
+                    { key: 'streakWeight',         label: 'Fatigue Penalty',         help: 'Per game over max consecutive' },
+                    { key: 'spreadPenalty',        label: 'Level Gap Penalty',       help: 'Per match where the skill spread across all 4 players exceeds Max Skill Gap (e.g. levels 3,4,9,10 → spread=7). Fires once per violation.' },
+                    { key: 'unevenGenderPenalty',  label: 'Uneven Gender Penalty',   help: 'Per 3M+1F or 3F+1M match' },
+                    { key: 'genderSplitPenalty',   label: '2M vs 2F Penalty',        help: 'Per MM vs FF match (gender-separated teams)' },
+                    { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty',  help: 'Per repeat partnership' },
+                    { key: 'mixedDoublesPenalty',  label: 'Mixed Doubles Penalty',   help: 'Per MF vs MF match' },
+                    { key: 'imbalancePenalty',     label: 'Level Imbalance Penalty', help: 'Per level diff between the two teams (e.g. team1=7 vs team2=11 → diff=4). Measures how competitive the match is.' },
+                    { key: 'restSpacingPenalty',   label: 'Rest Spacing Penalty',    help: 'Per deviation from ideal rest games between matches' },
+                    { key: 'wishlistReward',       label: 'Wishlist Reward',         help: 'Per wishlist pair granted' },
+                    { key: 'earlyRestReward',      label: 'Clean Start Reward',       help: 'Bonus per player appearance in the first N games (Early Rest Window) where rest gap ≥ ideal' },
                   ] as const
                 ).map(({ key, label, help }) => {
                   const genderKey = key === 'mixedDoublesPenalty' || key === 'genderSplitPenalty' || key === 'unevenGenderPenalty'
@@ -455,20 +477,24 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                   <AuditMetric label="Wishes Granted"        value={audit.wishesGranted} />
                   <AuditMetric label="Skill Gap Violations"  value={audit.wideGaps} delta={audit.wideGaps === 0 ? { text: 'Consistent', good: true } : { text: 'Poor Quality', good: false }} />
                   <AuditMetric label="Mixed Doubles"          value={audit.mixedDoubles} />
-                  <AuditMetric label="Boys vs Girls"           value={audit.genderSplitMatches} />
+                  <AuditMetric label="2M vs 2F"                value={audit.genderSplitMatches} />
                   <AuditMetric label="Uneven Gender (3+1)"     value={audit.unevenGenderMatches} />
+                  <AuditMetric label="Rest Spacing Deviations" value={audit.restSpacingDeviations} />
+                  <AuditMetric label="Clean Start Reward" value={audit.earlyRestClean} delta={audit.earlyRestClean > 0 ? { text: '+bonus', good: true } : undefined} />
                 </div>
 
                 <details className="rounded-md border p-2 text-xs">
                   <summary className="cursor-pointer font-semibold select-none">Scoring Math ▼</summary>
                   <div className="mt-2 space-y-1 font-mono">
-                    <ScoringRow label="Base score" value={10000} />
+                    <ScoringRow label={`Base score (${matches.length} × 500)`} value={matches.length * 500} />
                     <ScoringRow label={`Level Imbalance (${audit.levelGaps} × ${settings.imbalancePenalty})`}       value={-(audit.levelGaps * settings.imbalancePenalty)} />
                     <ScoringRow label={`Participation Gap (${audit.participationGap} × ${settings.fairnessWeight})`} value={-(audit.participationGap * settings.fairnessWeight)} />
                     <ScoringRow label={`Fatigue (${audit.streakViolations} × ${settings.streakWeight})`}             value={-(audit.streakViolations * settings.streakWeight)} />
                     <ScoringRow label={`Repeat Partners (${audit.repeatPartners} × ${settings.repeatPartnerPenalty})`} value={-(audit.repeatPartners * settings.repeatPartnerPenalty)} />
                     <ScoringRow label={`Skill Gap Violations (${audit.wideGaps} × ${settings.spreadPenalty})`}       value={-(audit.wideGaps * settings.spreadPenalty)} />
                     <ScoringRow label={`Mixed Doubles (${audit.mixedDoubles} × ${settings.mixedDoublesPenalty})`}       value={-(audit.mixedDoubles * settings.mixedDoublesPenalty)} />
+                    <ScoringRow label={`Rest Spacing (${audit.restSpacingDeviations} × ${settings.restSpacingPenalty})`} value={-(audit.restSpacingDeviations * settings.restSpacingPenalty)} />
+                    <ScoringRow label={`Clean Start Reward (${audit.earlyRestClean} × ${settings.earlyRestReward})`} value={audit.earlyRestClean * settings.earlyRestReward} />
                     <ScoringRow label={`Wishes Granted (${audit.wishesGranted} × ${settings.wishlistReward})`}       value={audit.wishesGranted * settings.wishlistReward} />
                     <div className="border-t pt-1 flex justify-between font-bold text-foreground">
                       <span>Final Score</span><span>{audit.score.toLocaleString()}</span>
@@ -493,32 +519,46 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                   <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Consecutive Game Audit</p>
                   <ConsecutiveAudit matches={matches} nameMap={nameMap} />
                 </div>
+                <div>
+                  <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    Rest Spacing Grid
+                    <span className="ml-1 font-normal normal-case text-muted-foreground">(ideal rest: {settings.idealRestGames})</span>
+                  </p>
+                  <RestSpacingChart matches={matches} nameMap={nameMap} idealRestGames={settings.idealRestGames} />
+                </div>
               </div>
             )}
 
-            {/* Decision Log */}
-            {decisions.length > 0 && (
+            {/* Match Breakdown */}
+            {matches.length > 0 && (
               <details className="rounded-md border p-2 text-xs">
-                <summary className="cursor-pointer font-semibold select-none">Decision Log ▼</summary>
+                <summary className="cursor-pointer font-semibold select-none">Match Breakdown ▼</summary>
                 <div className="mt-2 max-h-48 overflow-y-auto">
                   <table className="w-full text-[11px]">
                     <thead>
                       <tr className="border-b text-muted-foreground text-left">
-                        <th className="py-1 pr-2">Game</th>
-                        <th className="py-1 pr-2">Candidates Evaluated</th>
-                        <th className="py-1 pr-2">Best Score</th>
-                        <th className="py-1">Selected Players</th>
+                        <th className="py-1 pr-2">#</th>
+                        <th className="py-1 pr-2">Type</th>
+                        <th className="py-1 pr-2">Lvl</th>
+                        <th className="py-1 pr-2">Gap</th>
+                        <th className="py-1">Teams</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {decisions.map((d) => (
-                        <tr key={d.gameIndex} className="border-b last:border-0">
-                          <td className="py-1 pr-2 font-medium">{d.gameIndex}</td>
-                          <td className="py-1 pr-2">{d.candidatesEvaluated}</td>
-                          <td className="py-1 pr-2">{d.bestScore.toFixed(0)}</td>
-                          <td className="py-1 text-muted-foreground">{d.selectedGroup.map((id) => name(id)).join(', ')}</td>
-                        </tr>
-                      ))}
+                      {matches.map((m) => {
+                        const gap = Math.abs(m.team1Level - m.team2Level)
+                        return (
+                          <tr key={m.gameNumber} className="border-b last:border-0">
+                            <td className="py-1 pr-2 font-medium">{m.gameNumber}</td>
+                            <td className="py-1 pr-2">{m.type}</td>
+                            <td className="py-1 pr-2">{m.team1Level}v{m.team2Level}</td>
+                            <td className={`py-1 pr-2 ${gap > 2 ? 'text-red-500' : gap > 0 ? 'text-amber-500' : 'text-green-500'}`}>{gap}</td>
+                            <td className="py-1 text-muted-foreground">
+                              {name(m.team1Player1)}&nbsp;+&nbsp;{name(m.team1Player2)} vs {name(m.team2Player1)}&nbsp;+&nbsp;{name(m.team2Player2)}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -530,7 +570,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               {matches.map((m) => (
                 <li key={m.gameNumber} className="text-sm py-1 border-b last:border-0">
                   <span className="font-medium text-muted-foreground mr-2">{m.gameNumber}.</span>
-                  <span className="text-xs text-muted-foreground mr-2">[{m.type}]</span>
+                  <span className={`text-xs mr-2 ${m.type === '2Mvs2F Doubles' ? 'text-red-500 font-semibold' : m.type === '3-1 Doubles' ? 'text-orange-300 font-semibold' : 'text-muted-foreground'}`}>[{m.type}]</span>
                   {name(m.team1Player1)} &amp; {name(m.team1Player2)}
                   <span className="text-muted-foreground mx-1">(L:{m.team1Level})</span>
                   <span className="text-muted-foreground mx-2">vs</span>
@@ -779,7 +819,8 @@ function MatchTypeChart({ matches }: { matches: GeneratedMatch[] }) {
     "Men's Doubles":   'bg-red-500',
     "Women's Doubles": 'bg-pink-500',
     'Mixed Doubles':   'bg-green-500',
-    'Doubles':         'bg-slate-400',
+    '2Mvs2F Doubles':  'bg-red-500',
+    '3-1 Doubles':     'bg-orange-500',
   }
   return (
     <div className="space-y-1">
@@ -836,5 +877,90 @@ function ConsecutiveAudit({
         ))}
       </tbody>
     </table>
+  )
+}
+
+function RestSpacingChart({
+  matches, nameMap, idealRestGames,
+}: {
+  matches: GeneratedMatch[]
+  nameMap: Map<string, string>
+  idealRestGames: number
+}) {
+  const numGames = matches.length
+  const idealGap = idealRestGames + 1
+
+  // Build per-player game index sets
+  const playerGames = new Map<string, Set<number>>()
+  for (const m of matches) {
+    for (const id of [m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2]) {
+      if (!playerGames.has(id)) playerGames.set(id, new Set())
+      playerGames.get(id)!.add(m.gameNumber)
+    }
+  }
+
+  // Sort players by first game appearance
+  const players = [...playerGames.entries()].sort((a, b) => {
+    const aFirst = Math.min(...a[1])
+    const bFirst = Math.min(...b[1])
+    return aFirst - bFirst
+  })
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-max">
+        {/* Header row: game numbers */}
+        <div className="flex items-center gap-0 mb-1">
+          <span className="w-20 shrink-0" />
+          {Array.from({ length: numGames }, (_, i) => (
+            <span key={i} className="w-5 text-center text-[9px] text-muted-foreground">{i + 1}</span>
+          ))}
+        </div>
+        {/* Player rows */}
+        {players.map(([id, gameSet]) => {
+          const sortedGames = [...gameSet].sort((a, b) => a - b)
+          return (
+            <div key={id} className="flex items-center gap-0 mb-0.5">
+              <span className="w-20 truncate text-right text-[10px] text-muted-foreground shrink-0 pr-1">
+                {nameMap.get(id) ?? id}
+              </span>
+              {Array.from({ length: numGames }, (_, i) => {
+                const g = i + 1
+                const plays = gameSet.has(g)
+                let dotColor = ''
+                if (plays) {
+                  // Find previous game to compute gap
+                  const prev = sortedGames.filter(x => x < g).at(-1)
+                  if (prev === undefined) {
+                    dotColor = 'bg-primary' // first game, no gap to judge
+                  } else {
+                    const gap = g - prev
+                    const under = idealGap - gap  // positive = rested less than ideal
+                    if (under <= 0) dotColor = 'bg-green-500'        // rested enough or more
+                    else if (under === 1) dotColor = 'bg-amber-400'  // 1 less than ideal
+                    else dotColor = 'bg-red-500'                      // 2+ less than ideal
+                  }
+                }
+                return (
+                  <div key={g} className="w-5 flex items-center justify-center">
+                    {plays
+                      ? <div className={`w-3 h-3 rounded-full ${dotColor}`} title={`Game ${g}`} />
+                      : <div className="w-1 h-1 rounded-full bg-muted" />
+                    }
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+        {/* Legend */}
+        <div className="flex items-center gap-3 mt-2 pl-20 text-[10px] text-muted-foreground">
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> Ideal or more rest</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" /> 1 game short</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> 2+ games short</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-primary inline-block" /> First game</span>
+        </div>
+      </div>
+    </div>
   )
 }

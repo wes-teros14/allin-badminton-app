@@ -5,12 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { useRealtime } from '@/hooks/useRealtime'
-import { useMatchCheers } from '@/hooks/useMatchCheers'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { SessionRecapBanner } from '@/components/SessionRecapBanner'
-import { CheersPanel } from '@/components/CheersPanel'
 
 // ---------------------------------------------------------------------------
 // Leaderboard helpers (mirrors TodayView logic, scoped to a single session)
@@ -199,7 +197,7 @@ function ScheduleTab({
             ? "🏸 You're on court now!"
             : gamesAhead === 0
             ? "⏳ You're up next!"
-            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 7} mins wait time)`}
+            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 6} mins)`}
         </div>
       )}
 
@@ -303,11 +301,6 @@ export function SessionPlayerDetailView() {
   const [nameSlug, setNameSlug] = useState<string | null>(null)
   const [slugLoading, setSlugLoading] = useState(true)
 
-  const {
-    cheerTypes, pendingMatches, hasPendingCheers,
-    isLoading: cheerLoading, submitCheer,
-  } = useMatchCheers(sessionId)
-
   const [isRegistered, setIsRegistered] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [sessionStatus, setSessionStatus] = useState<string | null>(null)
@@ -382,15 +375,7 @@ export function SessionPlayerDetailView() {
 
       {/* Tab content */}
       {tab === 'schedule' && (
-        hasPendingCheers ? (
-          <CheersPanel
-            cheerTypes={cheerTypes}
-            pendingMatch={pendingMatches[0]}
-            isLoading={cheerLoading}
-            remainingCount={pendingMatches.length}
-            submitCheer={submitCheer}
-          />
-        ) : slugLoading ? (
+        slugLoading ? (
           <div className="max-w-sm mx-auto px-4 pt-6 space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />

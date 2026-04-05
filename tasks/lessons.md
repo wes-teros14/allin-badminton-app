@@ -115,6 +115,17 @@
 
 ---
 
+## Vercel Environment Variables — Dev vs Prod Supabase
+
+- **Symptom**: Google OAuth login works on dev/preview deployment but returns 401 on production. Both deployments use the same code (same commit). Direct `fetch()` to the prod Supabase URL with the anon key also returns 401.
+  **Root cause**: Two issues compounded:
+  1. Dev and prod use **separate Supabase projects**, but Vercel had a **single shared** `VITE_SUPABASE_ANON_KEY` and `VITE_SUPABASE_URL` across all environments. The shared key only matched the dev Supabase project, so prod auth always failed.
+  2. Two Vercel projects existed (`all-in-badminton-app` and `allin-badminton-app`) — the wrong one was being used for production.
+  **Fix**: In Vercel → Settings → Environment Variables, set **separate values per environment**: Production gets the prod Supabase URL + anon key, Preview/Development gets the dev Supabase URL + anon key. Also ensured the correct Vercel project is used for each deployment.
+  **Rule**: When dev and prod Supabase projects are separated, **always** set environment-specific variables in Vercel — never share a single value across all environments.
+
+---
+
 ## Today Tab — Multiple Sessions Bug
 
 - **Symptom**: Live session's Today tab leaderboard broken when a second session (test seed) existed simultaneously.
