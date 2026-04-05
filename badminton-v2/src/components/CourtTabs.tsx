@@ -23,12 +23,22 @@ function CourtCard({
   sessionId,
   isSaving,
   onMarkDone,
+  onEdit,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
 }: {
   courtNumber: 1 | 2
   current: AdminMatchDisplay | null
   sessionId: string | null
   isSaving: boolean
   onMarkDone: (matchId: string, court: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, durationSeconds?: number) => void
+  onEdit: (m: AdminMatchDisplay) => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  canMoveUp: boolean
+  canMoveDown: boolean
 }) {
   const [elapsed, setElapsed] = useState(0)
   const [confirmingFinish, setConfirmingFinish] = useState(false)
@@ -71,6 +81,10 @@ function CourtCard({
               LIVE
             </span>
             <span className="text-xs font-mono font-semibold text-[#FFB200] ml-auto">{formatElapsed(elapsed)}</span>
+            <div className="flex flex-col gap-0.5">
+              <button onClick={onMoveUp} disabled={isSaving || !canMoveUp} className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">↑</button>
+              <button onClick={onMoveDown} disabled={isSaving || !canMoveDown} className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">↓</button>
+            </div>
           </div>
 
           {confirmingFinish ? (
@@ -114,13 +128,22 @@ function CourtCard({
                 <p className="text-xs text-muted-foreground my-0.5">vs</p>
                 <p className="text-sm font-medium text-primary">{current.t2p1} &amp; {current.t2p2}</p>
               </div>
-              <button
-                onClick={() => setConfirmingFinish(true)}
-                disabled={isSaving || !sessionId}
-                className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                Finish
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmingFinish(true)}
+                  disabled={isSaving || !sessionId}
+                  className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  Finish
+                </button>
+                <button
+                  onClick={() => onEdit(current)}
+                  disabled={isSaving}
+                  className="px-3 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                >
+                  Edit
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -139,7 +162,7 @@ interface EditForm {
 }
 
 export function CourtTabs({ court1Current, court2Current, queued, isLoading, sessionId, onDone }: Props) {
-  const { isSaving, editMatch, moveUp, moveDown, markDone } = useAdminActions(onDone)
+  const { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts } = useAdminActions(onDone)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditForm>({ t1p1: '', t1p2: '', t2p1: '', t2p2: '' })
 
@@ -151,6 +174,26 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
   async function handleSave(matchId: string) {
     await editMatch(matchId, editForm)
     setEditingId(null)
+  }
+
+  function EditFormInline({ matchId }: { matchId: string }) {
+    return (
+      <div className="space-y-2 mt-3">
+        <div className="flex gap-2">
+          <input value={editForm.t1p1} onChange={(e) => setEditForm((f) => ({ ...f, t1p1: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 1" />
+          <input value={editForm.t1p2} onChange={(e) => setEditForm((f) => ({ ...f, t1p2: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 2" />
+        </div>
+        <p className="text-xs text-muted-foreground text-center">vs</p>
+        <div className="flex gap-2">
+          <input value={editForm.t2p1} onChange={(e) => setEditForm((f) => ({ ...f, t2p1: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 3" />
+          <input value={editForm.t2p2} onChange={(e) => setEditForm((f) => ({ ...f, t2p2: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 4" />
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => handleSave(matchId)} disabled={isSaving} className="flex-1 py-1.5 rounded bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save</button>
+          <button onClick={() => setEditingId(null)} disabled={isSaving} className="flex-1 py-1.5 rounded border border-border text-sm text-muted-foreground disabled:opacity-50">Cancel</button>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
@@ -173,8 +216,24 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
     <div className="space-y-6">
       {/* Both courts side by side */}
       <div className="grid grid-cols-2 gap-4">
-        <CourtCard courtNumber={1} current={court1Current} sessionId={sessionId} isSaving={isSaving} onMarkDone={markDone} />
-        <CourtCard courtNumber={2} current={court2Current} sessionId={sessionId} isSaving={isSaving} onMarkDone={markDone} />
+        <div>
+          <CourtCard
+            courtNumber={1} current={court1Current} sessionId={sessionId} isSaving={isSaving}
+            onMarkDone={markDone} onEdit={startEdit}
+            canMoveUp={false} canMoveDown={!!court2Current}
+            onMoveUp={() => {}} onMoveDown={() => court1Current && court2Current && swapCourts(court1Current.id, court2Current.id)}
+          />
+          {editingId === court1Current?.id && <EditFormInline matchId={court1Current.id} />}
+        </div>
+        <div>
+          <CourtCard
+            courtNumber={2} current={court2Current} sessionId={sessionId} isSaving={isSaving}
+            onMarkDone={markDone} onEdit={startEdit}
+            canMoveUp={!!court1Current} canMoveDown={false}
+            onMoveUp={() => court1Current && court2Current && swapCourts(court1Current.id, court2Current.id)} onMoveDown={() => {}}
+          />
+          {editingId === court2Current?.id && <EditFormInline matchId={court2Current.id} />}
+        </div>
       </div>
 
       {/* Global queue */}
@@ -241,20 +300,21 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
                     <span className="text-lg font-bold text-muted-foreground w-8 shrink-0">{m.gameNumber}</span>
                     <div className="text-sm flex-1 min-w-0">
                       <p className="font-medium">{m.t1p1} &amp; {m.t1p2}</p>
-                      <p className="text-muted-foreground text-xs mt-0.5">vs {m.t2p1} &amp; {m.t2p2}</p>
+                      <p className="text-muted-foreground text-xs mt-0.5 mb-0.5">vs</p>
+                      <p className="font-medium">{m.t2p1} &amp; {m.t2p2}</p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => moveUp(m.id, m.gameNumber, queued)}
                         disabled={isSaving || idx === 0}
-                        className="px-1.5 py-1 text-xs rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         ↑
                       </button>
                       <button
                         onClick={() => moveDown(m.id, m.gameNumber, queued)}
                         disabled={isSaving || idx === queued.length - 1}
-                        className="px-1.5 py-1 text-xs rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         ↓
                       </button>

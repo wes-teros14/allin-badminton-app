@@ -257,7 +257,7 @@ export function SessionView() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const {
     session, invitation, playerCount, isLoading,
-    openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession,
+    openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, unstartSession,
   } = useSession(sessionId)
 
   const [confirmingClose, setConfirmingClose] = useState(false)
@@ -308,6 +308,9 @@ export function SessionView() {
       <div className="p-4 max-w-lg mx-auto space-y-4">
         <SessionStepper status={session.status} />
         <LiveSessionView sessionId={session.id} />
+        <Button variant="outline" onClick={unstartSession} className="w-full text-muted-foreground">
+          ← Back to Schedule
+        </Button>
       </div>
     )
   }

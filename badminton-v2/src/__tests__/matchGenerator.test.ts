@@ -77,7 +77,7 @@ describe('Group 1: Output Structure', () => {
   })
 
   it('1.6 — type is one of 5 valid strings', () => {
-    const valid = new Set(['Mixed Doubles', "Men's Doubles", "Women's Doubles", 'Doubles', 'Uneven Doubles'])
+    const valid = new Set(['Mixed Doubles', "Men's Doubles", "Women's Doubles", '2Mvs2F Doubles', '3-1 Doubles'])
     const matches = generateSchedule(FIXTURE_B)
     for (const m of matches) {
       expect(valid.has(m.type)).toBe(true)
@@ -292,7 +292,7 @@ describe('Group 5: Gender Composition', () => {
       let expectedType: string
       if (t1Cat === 'Mixed' && t2Cat === 'Mixed') expectedType = 'Mixed Doubles'
       else if (t1Cat === t2Cat) expectedType = `${t1Cat} Doubles`
-      else expectedType = 'Doubles'
+      else expectedType = '2Mvs2F Doubles'
 
       expect(m.type).toBe(expectedType)
     }

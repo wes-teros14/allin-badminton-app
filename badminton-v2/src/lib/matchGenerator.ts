@@ -28,7 +28,7 @@ export interface GeneratedMatch {
   team1Player2: string
   team2Player1: string
   team2Player2: string
-  type: string        // "Men's Doubles" | "Women's Doubles" | 'Mixed Doubles' | 'Doubles' | 'Uneven Doubles'
+  type: string        // "Men's Doubles" | "Women's Doubles" | 'Mixed Doubles' | '2Mvs2F Doubles' | '3-1 Doubles'
   team1Level: number  // sum of team 1 levels
   team2Level: number  // sum of team 2 levels
 }
@@ -40,6 +40,8 @@ export interface GenerateOptions {
   maxSpreadLimit?: number       // default: 3 (max integer level diff in one match)
   wishlistPairs?: [string, string][]
   weights?: ScoreWeights
+  idealRestGames?: number       // default: 2 (ideal games between a player's matches)
+  earlyRestWindow?: number      // default: 4 (reward clean rest in first N matches)
 }
 
 export interface ScoreWeights {
@@ -52,6 +54,8 @@ export interface ScoreWeights {
   mixedDoublesPenalty: number   // default: 300  — per MF vs MF match
   genderSplitPenalty: number   // default: 300  — per MM vs FF match (boys vs girls)
   unevenGenderPenalty: number  // default: 500  — per 3M+1F or 3F+1M match
+  restSpacingPenalty: number   // default: 30   — per game short of ideal rest
+  earlyRestReward: number      // default: 100  — bonus per clean gap in early window
 }
 
 export interface AuditData {
@@ -65,6 +69,8 @@ export interface AuditData {
   mixedDoubles: number         // MF vs MF matches
   genderSplitMatches: number   // MM vs FF matches
   unevenGenderMatches: number  // 3M+1F or 3F+1M matches
+  restSpacingDeviations: number // total deviation from ideal rest spacing
+  earlyRestClean: number        // clean gaps rewarded in early window
 }
 
 export interface MatchDecision {
@@ -85,14 +91,16 @@ export interface OptimizeOptions extends GenerateOptions {
 
 export const DEFAULT_WEIGHTS: ScoreWeights = {
   streakWeight: 1000,
-  imbalancePenalty: 100,
-  wishlistReward: 500,
-  repeatPartnerPenalty: 200,
+  imbalancePenalty: 30,
+  wishlistReward: 200,
+  repeatPartnerPenalty: 150,
   fairnessWeight: 5000,
-  spreadPenalty: 2000,
-  mixedDoublesPenalty: 300,
-  genderSplitPenalty: 300,
-  unevenGenderPenalty: 500,
+  spreadPenalty: 500,
+  mixedDoublesPenalty: 100,
+  genderSplitPenalty: 200,
+  unevenGenderPenalty: 250,
+  restSpacingPenalty: 30,
+  earlyRestReward: 300,
 }
 
 // ---------------------------------------------------------------------------
@@ -116,11 +124,11 @@ function computeMatchType(
     const t2g1 = genderMap.get(t2p1), t2g2 = genderMap.get(t2p2)
     const t2Mixed = (t2g1 === 'M' && t2g2 === 'F') || (t2g1 === 'F' && t2g2 === 'M')
     if (t1Mixed && t2Mixed) return 'Mixed Doubles'
-    return 'Doubles'  // MM vs FF
+    return '2Mvs2F Doubles'  // MM vs FF
   }
 
   // 3M+1F or 3F+1M
-  return 'Uneven Doubles'
+  return '3-1 Doubles'
 }
 
 // ---------------------------------------------------------------------------
@@ -429,11 +437,13 @@ function optimizeAssignment(
   wishlistPairs: [string, string][],
   maxConsecutiveGames: number,
   weights: ScoreWeights,
+  idealRestGames = 2,
+  earlyRestWindow = 4,
 ): { assignment: string[][]; audit: AuditData } {
   const scoreAssignment = (a: string[][]) => {
     const matches = assignmentToMatches(a, levelMap, genderMap, disableGenderRules)
     return evaluateSessionScore(matches, levelMap, wishlistPairs, maxConsecutiveGames,
-      weights, maxSpreadLimit, playerIds, disableGenderRules)
+      weights, maxSpreadLimit, playerIds, disableGenderRules, idealRestGames, earlyRestWindow)
   }
 
   let current = assignment.map((g) => [...g])
@@ -486,8 +496,10 @@ export function evaluateSessionScore(
   maxSpreadLimit: number,
   allPlayerIds?: string[],
   disableGenderRules?: boolean,
+  idealRestGames = 2,
+  earlyRestWindow = 4,
 ): AuditData {
-  let score = 10000
+  let score = matches.length * 500
   const audit: Omit<AuditData, 'score'> = {
     streakViolations: 0,
     repeatPartners: 0,
@@ -498,6 +510,8 @@ export function evaluateSessionScore(
     mixedDoubles: 0,
     genderSplitMatches: 0,
     unevenGenderMatches: 0,
+    restSpacingDeviations: 0,
+    earlyRestClean: 0,
   }
 
   const partnerCounts        = new Map<string, number>()
@@ -573,12 +587,59 @@ export function evaluateSessionScore(
       if (m.type === 'Mixed Doubles') {
         score -= weights.mixedDoublesPenalty
         audit.mixedDoubles++
-      } else if (m.type === 'Doubles') {
+      } else if (m.type === '2Mvs2F Doubles') {
         score -= weights.genderSplitPenalty
         audit.genderSplitMatches++
-      } else if (m.type === 'Uneven Doubles') {
+      } else if (m.type === '3-1 Doubles') {
         score -= weights.unevenGenderPenalty
         audit.unevenGenderMatches++
+      }
+    }
+  }
+
+  // Rest spacing penalty: penalize deviation from ideal gap between a player's matches
+  if (weights.restSpacingPenalty > 0) {
+    const playerMatchIndices = new Map<string, number[]>()
+    for (let mi = 0; mi < matches.length; mi++) {
+      const m = matches[mi]
+      for (const p of [m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2]) {
+        let indices = playerMatchIndices.get(p)
+        if (!indices) { indices = []; playerMatchIndices.set(p, indices) }
+        indices.push(mi)
+      }
+    }
+    const idealGap = idealRestGames + 1 // gap=3 means 2 rest games in between
+    for (const indices of playerMatchIndices.values()) {
+      for (let k = 1; k < indices.length; k++) {
+        const gap = indices[k] - indices[k - 1]
+        const under = idealGap - gap  // positive = rested less than ideal
+        if (under > 0) {
+          score -= weights.restSpacingPenalty * under
+          audit.restSpacingDeviations += under
+        }
+      }
+    }
+  }
+
+  // Early rest reward: bonus for each player appearance in the early window with clean spacing
+  if (weights.earlyRestReward > 0 && earlyRestWindow > 0) {
+    const idealGap = idealRestGames + 1
+    const lastGameInWindow = Math.min(earlyRestWindow, matches.length)
+    // Track each player's last game index seen so far (0-based)
+    const lastSeen = new Map<string, number>()
+    for (let mi = 0; mi < matches.length; mi++) {
+      const m = matches[mi]
+      const gameNum = mi + 1
+      for (const p of [m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2]) {
+        const prev = lastSeen.get(p)
+        if (prev !== undefined && gameNum <= lastGameInWindow) {
+          const gap = mi - prev
+          if (gap >= idealGap) {
+            score += weights.earlyRestReward
+            audit.earlyRestClean++
+          }
+        }
+        lastSeen.set(p, mi)
       }
     }
   }
@@ -617,6 +678,8 @@ export function generateSchedule(
     maxSpreadLimit = 3,
     wishlistPairs = [],
     weights = DEFAULT_WEIGHTS,
+    idealRestGames = 2,
+    earlyRestWindow = 4,
   } = options
 
   const disableGenderRules =
@@ -630,7 +693,7 @@ export function generateSchedule(
 
   const scoreMatches = (m: GeneratedMatch[]) =>
     evaluateSessionScore(m, levelMap, wishlistPairs, maxConsecutiveGames,
-      weights, maxSpreadLimit, playerIds, disableGenderRules)
+      weights, maxSpreadLimit, playerIds, disableGenderRules, idealRestGames, earlyRestWindow)
 
   // Try multiple random assignments, keep the best
   const NUM_TRIALS = 30
@@ -682,6 +745,8 @@ export function generateScheduleOptimized(
     weights = DEFAULT_WEIGHTS,
     maxConsecutiveGames = 1,
     maxSpreadLimit = 3,
+    idealRestGames = 2,
+    earlyRestWindow = 4,
   } = options
 
   const disableGenderRules =
@@ -701,6 +766,7 @@ export function generateScheduleOptimized(
     score: -Infinity, streakViolations: 0, repeatPartners: 0,
     wishesGranted: 0, levelGaps: 0, participationGap: 0, wideGaps: 0,
     mixedDoubles: 0, genderSplitMatches: 0, unevenGenderMatches: 0,
+    restSpacingDeviations: 0, earlyRestClean: 0,
   }
   const decisions: MatchDecision[] = []
 
@@ -715,6 +781,7 @@ export function generateScheduleOptimized(
     const { assignment: optimized, audit } = optimizeAssignment(
       assignment, playerIds, levelMap, genderMap, disableGenderRules,
       maxSpreadLimit, trialsPerStart, wishlistPairs, maxConsecutiveGames, weights,
+      idealRestGames, earlyRestWindow,
     )
 
     if (audit.score > bestAudit.score) {
