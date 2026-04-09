@@ -374,6 +374,7 @@ export function SessionView() {
 
       {session.status === 'schedule_locked' && (
         <div className="space-y-4">
+          <RosterPanel sessionId={session.id} paymentOnly />
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
           <Button onClick={startSession} className="w-full">Start Session</Button>
           <Button variant="outline" onClick={() => window.open(`/live-board/${session.id}`, '_blank')} className="w-full">Open LiveBoard ↗</Button>
