@@ -6,17 +6,60 @@ import { useRoster } from '@/hooks/useRoster'
 interface Props {
   sessionId: string
   editable?: boolean
+  paymentOnly?: boolean
 }
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-export function RosterPanel({ sessionId, editable = false }: Props) {
+export function RosterPanel({ sessionId, editable = false, paymentOnly = false }: Props) {
   const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, updatePaid } =
     useRoster(sessionId)
   const [open, setOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading roster…</div>
+
+  if (paymentOnly) {
+    const paidCount = players.filter((p) => p.paid).length
+    const unpaidCount = players.filter((p) => !p.paid).length
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">
+            Payment Status — {paidCount} paid · {unpaidCount} unpaid
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {players.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No players registered.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {players.map((player) => (
+                <li key={player.registrationId} className="flex items-center gap-2 text-sm">
+                  <span className="flex-1 truncate">{player.nickname ?? player.nameSlug}</span>
+                  <div className="flex rounded overflow-hidden border text-xs shrink-0">
+                    {([true, false] as const).map((p) => (
+                      <button
+                        key={String(p)}
+                        onClick={() => updatePaid(player.registrationId, p)}
+                        className={`px-2 py-1 transition-colors ${
+                          player.paid === p
+                            ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
+                            : 'bg-background text-muted-foreground hover:bg-muted'
+                        }`}
+                      >
+                        {p ? 'Paid' : 'Unpaid'}
+                      </button>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
 
   const maleCount = players.filter((p) => p.gender === 'M').length
   const femaleCount = players.filter((p) => p.gender === 'F').length
