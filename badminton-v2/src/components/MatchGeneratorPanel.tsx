@@ -98,13 +98,12 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
   useEffect(() => {
     if (sessionStatus !== 'schedule_locked') return
     async function loadLocked() {
-      const { data, error } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('session_id', sessionId)
-        .order('queue_position')
-      if (!error && data) {
-        const rows = data as Array<{
+      const [matchesRes, sessionRes] = await Promise.all([
+        supabase.from('matches').select('*').eq('session_id', sessionId).order('queue_position'),
+        supabase.from('sessions').select('generator_settings').eq('id', sessionId).single(),
+      ])
+      if (!matchesRes.error && matchesRes.data) {
+        const rows = matchesRes.data as Array<{
           id: string
           queue_position: number
           team1_player1_id: string
@@ -126,6 +125,9 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
         setLockedMatchMeta(rows.map((m) => ({ id: m.id, status: m.status })))
         setStage('locked')
       }
+      if (!sessionRes.error && sessionRes.data?.generator_settings) {
+        setSettings((prev) => ({ ...prev, ...(sessionRes.data.generator_settings as Partial<Settings>) }))
+      }
     }
     loadLocked()
   }, [sessionId, sessionStatus])
@@ -145,6 +147,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
       setStage('locking')
       const success = onLock ? await onLock(matches) : false
       if (success) {
+        await supabase.from('sessions').update({ generator_settings: settings as unknown as Record<string, unknown> }).eq('id', sessionId)
         setStage('locked')
       } else {
         setStage('preview')
@@ -614,6 +617,39 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               <span>🔒</span>
               <span className="font-semibold">Schedule locked — {matches.length} matches queued</span>
             </div>
+
+            {/* Audit panels — live, recomputed from current matches + players */}
+            {matches.length > 0 && players.length > 0 && (() => {
+              const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
+              const enrichedMatches = matches.map((m) => ({
+                ...m,
+                type: computeMatchType(m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2, genderMap),
+              }))
+              return (
+                <div className="grid grid-cols-1 gap-4 text-xs">
+                  <div>
+                    <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Player Participation</p>
+                    <ParticipationChart matches={enrichedMatches} nameMap={nameMap} />
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Match Type Summary</p>
+                    <MatchTypeChart matches={enrichedMatches} />
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Consecutive Game Audit</p>
+                    <ConsecutiveAudit matches={enrichedMatches} nameMap={nameMap} />
+                  </div>
+                  <div>
+                    <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      Rest Spacing Grid
+                      <span className="ml-1 font-normal normal-case text-muted-foreground">(ideal rest: {settings.idealRestGames})</span>
+                    </p>
+                    <RestSpacingChart matches={enrichedMatches} nameMap={nameMap} idealRestGames={settings.idealRestGames} />
+                  </div>
+                </div>
+              )
+            })()}
+
             {(() => {
               const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
               return (
@@ -629,7 +665,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                           <div className="space-y-2 text-xs">
                             <p className="font-medium text-muted-foreground">Game {m.gameNumber} — Edit Players</p>
                             <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
-                              <div className="space-y-1">
+                              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2 space-y-1">
+                                <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wide mb-1">Team 1</p>
                                 {(['t1p1', 't1p2'] as const).map((key, si) => (
                                   <select
                                     key={key}
@@ -637,7 +674,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                                     onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
                                     className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
                                   >
-                                    <option value="">— {['Team 1 P1','Team 1 P2'][si]} —</option>
+                                    <option value="">— P{si + 1} —</option>
                                     {players.map((p) => (
                                       <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
                                     ))}
@@ -645,7 +682,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                                 ))}
                               </div>
                               <span className="text-xs font-bold text-muted-foreground text-center">vs</span>
-                              <div className="space-y-1">
+                              <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2 space-y-1">
+                                <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wide mb-1">Team 2</p>
                                 {(['t2p1', 't2p2'] as const).map((key, si) => (
                                   <select
                                     key={key}
@@ -653,7 +691,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                                     onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
                                     className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
                                   >
-                                    <option value="">— {['Team 2 P1','Team 2 P2'][si]} —</option>
+                                    <option value="">— P{si + 1} —</option>
                                     {players.map((p) => (
                                       <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
                                     ))}
