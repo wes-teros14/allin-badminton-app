@@ -453,6 +453,7 @@ export type Database = {
           created_by: string
           date: string
           duration: string | null
+          generator_settings: Record<string, unknown> | null
           id: string
           name: string
           price: number | null
@@ -468,6 +469,7 @@ export type Database = {
           created_by: string
           date: string
           duration?: string | null
+          generator_settings?: Record<string, unknown> | null
           id?: string
           name: string
           price?: number | null
@@ -483,6 +485,7 @@ export type Database = {
           created_by?: string
           date?: string
           duration?: string | null
+          generator_settings?: Record<string, unknown> | null
           id?: string
           name?: string
           price?: number | null
