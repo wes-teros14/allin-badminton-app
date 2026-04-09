@@ -106,7 +106,7 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
 // ---------------------------------------------------------------------------
 // Utility: match type from player genders
 // ---------------------------------------------------------------------------
-function computeMatchType(
+export function computeMatchType(
   t1p1: string, t1p2: string, t2p1: string, t2p2: string,
   genderMap: Map<string, string>,
 ): string {

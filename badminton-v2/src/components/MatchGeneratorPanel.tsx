@@ -10,9 +10,18 @@ import {
   generateScheduleOptimized,
   adjustNumMatches,
   DEFAULT_WEIGHTS,
+  computeMatchType,
   type GeneratedMatch,
   type AuditData,
 } from '@/lib/matchGenerator'
+
+const MATCH_TYPE_COLOR: Record<string, string> = {
+  "Men's Doubles":   'text-red-500',
+  "Women's Doubles": 'text-pink-500',
+  'Mixed Doubles':   'text-green-500',
+  '2Mvs2F Doubles':  'text-blue-400',
+  '3-1 Doubles':     'text-orange-400',
+}
 
 interface Props {
   sessionId: string
@@ -53,7 +62,7 @@ const DEFAULTS: Settings = {
   maxSpreadLimit: 2,
   disableGenderRules: false,
   idealRestGames: 2,
-  earlyRestWindow: 4,
+  earlyRestWindow: 20,
   numTrials: 2000,
   numStarts: 30,
   wishlistStr: '',
@@ -342,6 +351,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                 label="Disable Gender Rules"
                 checked={settings.disableGenderRules}
                 onChange={(v) => set('disableGenderRules', v)}
+                help="When checked, gender is ignored when forming matches — any 4 players can be grouped together. Gender-based penalties (Mixed Doubles, 2Mvs2F, 3-1 uneven) are not applied. Auto-enabled if any player has no gender assigned."
               />
             </div>
 
@@ -570,7 +580,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               {matches.map((m) => (
                 <li key={m.gameNumber} className="text-sm py-1 border-b last:border-0">
                   <span className="font-medium text-muted-foreground mr-2">{m.gameNumber}.</span>
-                  <span className={`text-xs mr-2 ${m.type === '2Mvs2F Doubles' ? 'text-red-500 font-semibold' : m.type === '3-1 Doubles' ? 'text-orange-300 font-semibold' : 'text-muted-foreground'}`}>[{m.type}]</span>
+                  <span className={`text-xs font-semibold mr-2 ${MATCH_TYPE_COLOR[m.type] ?? 'text-muted-foreground'}`}>[{m.type}]</span>
                   {name(m.team1Player1)} &amp; {name(m.team1Player2)}
                   <span className="text-muted-foreground mx-1">(L:{m.team1Level})</span>
                   <span className="text-muted-foreground mx-2">vs</span>
@@ -604,77 +614,84 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               <span>🔒</span>
               <span className="font-semibold">Schedule locked — {matches.length} matches queued</span>
             </div>
-            <ul className="space-y-1 max-h-[500px] overflow-y-auto">
-              {matches.map((m, idx) => {
-                const meta = lockedMatchMeta[idx]
-                const isQueued = !meta || meta.status === 'queued'
-                const isEditing = editingGameNumber === m.gameNumber
-                return (
-                  <li key={m.gameNumber} className="py-1.5 border-b last:border-0">
-                    {isEditing ? (
-                      <div className="space-y-2 text-xs">
-                        <p className="font-medium text-muted-foreground">Game {m.gameNumber} — Edit Players</p>
-                        <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
-                          <div className="space-y-1">
-                            {(['t1p1', 't1p2'] as const).map((key, si) => (
-                              <select
-                                key={key}
-                                value={editForm[key]}
-                                onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                                className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
-                              >
-                                <option value="">— {['Team 1 P1','Team 1 P2'][si]} —</option>
-                                {players.map((p) => (
-                                  <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+            {(() => {
+              const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
+              return (
+                <ul className="space-y-1 max-h-[500px] overflow-y-auto">
+                  {matches.map((m, idx) => {
+                    const meta = lockedMatchMeta[idx]
+                    const isQueued = !meta || meta.status === 'queued'
+                    const isEditing = editingGameNumber === m.gameNumber
+                    const matchType = computeMatchType(m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2, genderMap)
+                    return (
+                      <li key={m.gameNumber} className="py-1.5 border-b last:border-0">
+                        {isEditing ? (
+                          <div className="space-y-2 text-xs">
+                            <p className="font-medium text-muted-foreground">Game {m.gameNumber} — Edit Players</p>
+                            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+                              <div className="space-y-1">
+                                {(['t1p1', 't1p2'] as const).map((key, si) => (
+                                  <select
+                                    key={key}
+                                    value={editForm[key]}
+                                    onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                                    className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
+                                  >
+                                    <option value="">— {['Team 1 P1','Team 1 P2'][si]} —</option>
+                                    {players.map((p) => (
+                                      <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+                                    ))}
+                                  </select>
                                 ))}
-                              </select>
-                            ))}
-                          </div>
-                          <span className="text-xs font-bold text-muted-foreground text-center">vs</span>
-                          <div className="space-y-1">
-                            {(['t2p1', 't2p2'] as const).map((key, si) => (
-                              <select
-                                key={key}
-                                value={editForm[key]}
-                                onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                                className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
-                              >
-                                <option value="">— {['Team 2 P1','Team 2 P2'][si]} —</option>
-                                {players.map((p) => (
-                                  <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+                              </div>
+                              <span className="text-xs font-bold text-muted-foreground text-center">vs</span>
+                              <div className="space-y-1">
+                                {(['t2p1', 't2p2'] as const).map((key, si) => (
+                                  <select
+                                    key={key}
+                                    value={editForm[key]}
+                                    onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                                    className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
+                                  >
+                                    <option value="">— {['Team 2 P1','Team 2 P2'][si]} —</option>
+                                    {players.map((p) => (
+                                      <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+                                    ))}
+                                  </select>
                                 ))}
-                              </select>
-                            ))}
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" className="h-7 text-xs" onClick={() => handleEditSave(m.gameNumber)}>Save</Button>
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleEditCancel}>Cancel</Button>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" className="h-7 text-xs" onClick={() => handleEditSave(m.gameNumber)}>Save</Button>
-                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleEditCancel}>Cancel</Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between gap-2 text-sm">
-                        <span>
-                          <span className="font-medium text-muted-foreground mr-2">{m.gameNumber}.</span>
-                          {name(m.team1Player1)} &amp; {name(m.team1Player2)}
-                          <span className="text-muted-foreground mx-2">vs</span>
-                          {name(m.team2Player1)} &amp; {name(m.team2Player2)}
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-xs shrink-0"
-                          disabled={!isQueued}
-                          onClick={() => handleEditStart(m)}
-                        >
-                          Edit
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
+                        ) : (
+                          <div className="flex items-center justify-between gap-2 text-sm">
+                            <span>
+                              <span className="font-medium text-muted-foreground mr-2">{m.gameNumber}.</span>
+                              <span className={`text-xs font-semibold mr-2 ${MATCH_TYPE_COLOR[matchType] ?? 'text-muted-foreground'}`}>[{matchType}]</span>
+                              {name(m.team1Player1)} &amp; {name(m.team1Player2)}
+                              <span className="text-muted-foreground mx-2">vs</span>
+                              {name(m.team2Player1)} &amp; {name(m.team2Player2)}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-xs shrink-0"
+                              disabled={!isQueued}
+                              onClick={() => handleEditStart(m)}
+                            >
+                              Edit
+                            </Button>
+                          </div>
+                        )}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )
+            })()}
           </>
         ) : null}
       </CardContent>
@@ -716,15 +733,16 @@ function SliderField({
 }
 
 function CheckField({
-  label, checked, disabled = false, onChange,
+  label, checked, disabled = false, help, onChange,
 }: {
   label: string
   checked: boolean
   disabled?: boolean
+  help?: string
   onChange: (v: boolean) => void
 }) {
   return (
-    <label className={`flex items-center gap-2 text-xs ${disabled ? 'opacity-50' : 'cursor-pointer'}`}>
+    <label className={`flex items-center gap-2 text-xs ${disabled ? 'opacity-50' : 'cursor-pointer'}`} title={help}>
       <input
         type="checkbox"
         checked={checked}
