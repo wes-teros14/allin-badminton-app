@@ -35,11 +35,31 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
         ) : (
           <ul className="space-y-2">
             {players.map((player) => (
-              <li key={player.registrationId} className="flex items-center gap-2 text-sm">
-                <span className="flex-1 truncate">{player.nickname ?? player.nameSlug}</span>
+              <li key={player.registrationId} className="text-sm">
+                {/* Row 1: name + remove */}
+                <div className="flex items-center gap-2">
+                  <span className="flex-1 truncate">{player.nickname ?? player.nameSlug}</span>
 
+                  {!editable && player.gender && (
+                    <span className="text-xs text-muted-foreground">{player.gender}</span>
+                  )}
+                  {!editable && player.level && (
+                    <span className="text-xs text-muted-foreground">L{player.level}</span>
+                  )}
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removePlayer(player.registrationId)}
+                    className="text-destructive hover:text-destructive shrink-0"
+                  >
+                    Remove
+                  </Button>
+                </div>
+
+                {/* Row 2: controls (editable only) */}
                 {editable && (
-                  <>
+                  <div className="flex items-center gap-2 mt-1">
                     {/* Gender toggle */}
                     <div className="flex rounded overflow-hidden border text-xs">
                       {(['M', 'F'] as const).map((g) => (
@@ -85,24 +105,8 @@ export function RosterPanel({ sessionId, editable = false }: Props) {
                         </button>
                       ))}
                     </div>
-                  </>
+                  </div>
                 )}
-
-                {!editable && player.gender && (
-                  <span className="text-xs text-muted-foreground">{player.gender}</span>
-                )}
-                {!editable && player.level && (
-                  <span className="text-xs text-muted-foreground">L{player.level}</span>
-                )}
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removePlayer(player.registrationId)}
-                  className="text-destructive hover:text-destructive shrink-0"
-                >
-                  Remove
-                </Button>
               </li>
             ))}
           </ul>
