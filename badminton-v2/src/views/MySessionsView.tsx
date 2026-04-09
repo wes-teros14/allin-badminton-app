@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
@@ -27,18 +28,54 @@ function statusBadge(s: SessionPickerItem) {
   return                                       { label: 'Ended',                 className: 'bg-muted text-muted-foreground' }
 }
 
+function SessionRow({ s }: { s: SessionPickerItem }) {
+  const badge = statusBadge(s)
+  const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+  })
+  const formattedTime = s.time
+    ? new Date(`1970-01-01T${s.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    : null
+
+  return (
+    <Link
+      to={`/sessions/${s.id}`}
+      className="flex items-center justify-between px-4 py-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+    >
+      <div className="min-w-0">
+        <div className="font-semibold truncate">{s.name}</div>
+        <div className="text-sm text-muted-foreground mt-0.5">
+          {formattedDate}
+          {formattedTime && <span> · {formattedTime}</span>}
+          {s.duration && <span> · {s.duration} hrs</span>}
+          {s.venue && <span> · {s.venue}</span>}
+          {s.price != null && <span> · ₱{s.price}</span>}
+        </div>
+        {s.session_notes && (
+          <div className="text-xs text-muted-foreground mt-0.5 truncate">{s.session_notes}</div>
+        )}
+      </div>
+      <span className={`ml-3 shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${badge.className}`}>
+        {badge.label}
+      </span>
+    </Link>
+  )
+}
+
 export function MySessionsView() {
   const { user, isLoading: authLoading } = useAuth()
   const { sessions, isLoading } = usePlayerSessions(user?.id ?? null)
+  const [showPast, setShowPast] = useState(false)
 
   const loading = authLoading || isLoading
 
-  const sorted = [...sessions].sort((a, b) => {
-    const priority = (s: SessionPickerItem) => ACTIVE_STATUSES.has(s.status) ? 1 : 0
-    const diff = priority(b) - priority(a)
-    if (diff !== 0) return diff
-    return b.date.localeCompare(a.date)
-  })
+  const activeSessions = sessions
+    .filter((s) => ACTIVE_STATUSES.has(s.status))
+    .sort((a, b) => b.date.localeCompare(a.date))
+
+  const pastSessions = sessions
+    .filter((s) => !ACTIVE_STATUSES.has(s.status))
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <div className="max-w-sm mx-auto px-4 py-8">
@@ -50,44 +87,23 @@ export function MySessionsView() {
             <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : sorted.length === 0 ? (
+      ) : sessions.length === 0 ? (
         <p className="text-muted-foreground text-sm">You're not registered in any sessions yet.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {sorted.map((s) => {
-            const badge = statusBadge(s)
-            const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', {
-              weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-            })
-            const formattedTime = s.time
-              ? new Date(`1970-01-01T${s.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-              : null
+          {activeSessions.map((s) => <SessionRow key={s.id} s={s} />)}
 
-            return (
-              <Link
-                key={s.id}
-                to={`/sessions/${s.id}`}
-                className="flex items-center justify-between px-4 py-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+          {pastSessions.length > 0 && (
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowPast((p) => !p)}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <div className="min-w-0">
-                  <div className="font-semibold truncate">{s.name}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">
-                    {formattedDate}
-                    {formattedTime && <span> · {formattedTime}</span>}
-                    {s.duration && <span> · {s.duration} hrs</span>}
-                    {s.venue && <span> · {s.venue}</span>}
-                    {s.price != null && <span> · ₱{s.price}</span>}
-                  </div>
-                  {s.session_notes && (
-                    <div className="text-xs text-muted-foreground mt-0.5 truncate">{s.session_notes}</div>
-                  )}
-                </div>
-                <span className={`ml-3 shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${badge.className}`}>
-                  {badge.label}
-                </span>
-              </Link>
-            )
-          })}
+                {showPast ? '▾' : '▸'} Past Sessions ({pastSessions.length})
+              </button>
+              {showPast && pastSessions.map((s) => <SessionRow key={s.id} s={s} />)}
+            </div>
+          )}
         </div>
       )}
     </div>
