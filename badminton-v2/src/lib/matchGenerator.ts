@@ -804,6 +804,7 @@ export function generateScheduleOptimized(
   const finalAudit = evaluateSessionScore(
     bestMatches, levelMap, wishlistPairs, maxConsecutiveGames,
     weights, maxSpreadLimit, playerIds, disableGenderRules,
+    idealRestGames, earlyRestWindow,
   )
 
   return { matches: bestMatches, audit: finalAudit, decisions }
