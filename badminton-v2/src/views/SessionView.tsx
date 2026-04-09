@@ -366,6 +366,7 @@ export function SessionView() {
       {session.status === 'registration_closed' && (
         <div className="space-y-4">
           <RosterPanel sessionId={session.id} editable />
+          <RosterPanel sessionId={session.id} paymentOnly />
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} />
           <Button variant="outline" onClick={reopenRegistration} className="w-full">Reopen Registration</Button>
         </div>
