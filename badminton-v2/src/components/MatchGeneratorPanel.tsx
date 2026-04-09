@@ -328,7 +328,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               <SliderField
                 label="Clean Start Window (games)"
                 value={settings.earlyRestWindow}
-                min={1} max={10}
+                min={1} max={50}
                 onChange={(v) => set('earlyRestWindow', v)}
               />
               <SliderField
