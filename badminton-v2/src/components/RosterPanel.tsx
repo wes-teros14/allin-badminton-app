@@ -24,39 +24,42 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false }
     const unpaidCount = players.filter((p) => !p.paid).length
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold">
-            Payment Status — {paidCount} paid · {unpaidCount} unpaid
+        <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
+          <CardTitle className="flex items-center justify-between text-sm font-semibold">
+            <span>Payment Status — {paidCount} paid · {unpaidCount} unpaid</span>
+            <span className="text-muted-foreground">{open ? '▲' : '▼'}</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {players.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No players registered.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {players.map((player) => (
-                <li key={player.registrationId} className="flex items-center gap-2 text-sm">
-                  <span className="flex-1 truncate">{player.nickname ?? player.nameSlug}</span>
-                  <div className="flex rounded overflow-hidden border text-xs shrink-0">
-                    {([true, false] as const).map((p) => (
-                      <button
-                        key={String(p)}
-                        onClick={() => updatePaid(player.registrationId, p)}
-                        className={`px-2 py-1 transition-colors ${
-                          player.paid === p
-                            ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
-                            : 'bg-background text-muted-foreground hover:bg-muted'
-                        }`}
-                      >
-                        {p ? 'Paid' : 'Unpaid'}
-                      </button>
-                    ))}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
+        {open && (
+          <CardContent>
+            {players.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No players registered.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {players.map((player) => (
+                  <li key={player.registrationId} className="flex items-center gap-2 text-sm">
+                    <span className="flex-1 truncate">{player.nickname ?? player.nameSlug}</span>
+                    <div className="flex rounded overflow-hidden border text-xs shrink-0">
+                      {([true, false] as const).map((p) => (
+                        <button
+                          key={String(p)}
+                          onClick={() => updatePaid(player.registrationId, p)}
+                          className={`px-2 py-1 transition-colors ${
+                            player.paid === p
+                              ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
+                              : 'bg-background text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {p ? 'Paid' : 'Unpaid'}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        )}
       </Card>
     )
   }
