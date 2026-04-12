@@ -40,24 +40,24 @@ function SessionRow({ s }: { s: SessionPickerItem }) {
   return (
     <Link
       to={`/sessions/${s.id}`}
-      className="flex items-center justify-between px-4 py-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+      className="flex flex-col px-4 py-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
     >
-      <div className="min-w-0">
-        <div className="font-semibold truncate">{s.name}</div>
-        <div className="text-sm text-muted-foreground mt-0.5">
-          {formattedDate}
-          {formattedTime && <span> · {formattedTime}</span>}
-          {s.duration && <span> · {s.duration} hrs</span>}
-          {s.venue && <span> · {s.venue}</span>}
-          {s.price != null && <span> · ₱{s.price}</span>}
-        </div>
-        {s.session_notes && (
-          <div className="text-xs text-muted-foreground mt-0.5 truncate">{s.session_notes}</div>
-        )}
+      <div className="font-semibold truncate">{s.name}</div>
+      <div className="text-sm text-muted-foreground mt-0.5">
+        {formattedDate}
+        {formattedTime && <span> · {formattedTime}</span>}
+        {s.duration && <span> · {s.duration} hrs</span>}
+        {s.venue && <span> · {s.venue}</span>}
+        {s.price != null && <span> · ₱{s.price}</span>}
       </div>
-      <span className={`ml-3 shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${badge.className}`}>
-        {badge.label}
-      </span>
+      {s.session_notes && (
+        <div className="text-xs text-muted-foreground mt-0.5 truncate">{s.session_notes}</div>
+      )}
+      <div className="mt-2">
+        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${badge.className}`}>
+          {badge.label}
+        </span>
+      </div>
     </Link>
   )
 }
