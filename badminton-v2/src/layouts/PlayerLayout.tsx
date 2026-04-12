@@ -1,13 +1,11 @@
 import { Outlet } from 'react-router'
 import { TopNavBar } from '@/components/TopNavBar'
 import { NotificationProvider } from '@/contexts/NotificationContext'
-import { useAuth } from '@/contexts/AuthContext'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 import { useMatchCheers } from '@/hooks/useMatchCheers'
 import { CheersPanel } from '@/components/CheersPanel'
 
 export function PlayerLayout() {
-  const { role } = useAuth()
   const { activeSessions } = useActiveSessions()
   const activeSessionId = activeSessions[0]?.sessionId
 
