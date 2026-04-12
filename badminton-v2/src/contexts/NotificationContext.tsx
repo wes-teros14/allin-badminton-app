@@ -78,21 +78,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         cheers.forEach((n, i) => {
           const emoji = CHEER_EMOJI[n.title] ?? '🏸'
           setTimeout(() => {
-            toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 10000, closeButton: true })
+            toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 20000, closeButton: true })
           }, i * 200)
         })
 
         // Batch awards
         if (awards.length === 1) {
           toast(`🏆 New award: ${awards[0].body}!`, {
-            duration: 10000,
+            duration: 20000,
             closeButton: true,
             className: 'toast-award',
             action: { label: 'View', onClick: () => navigateRef.current('/leaderboard?tab=awards') },
           })
         } else if (awards.length > 1) {
           toast(`🏆 ${awards.length} new awards!`, {
-            duration: 10000,
+            duration: 20000,
             closeButton: true,
             className: 'toast-award',
             action: { label: 'View', onClick: () => navigateRef.current('/leaderboard?tab=awards') },
@@ -121,10 +121,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
         if (n.type === 'cheer') {
           const emoji = CHEER_EMOJI[n.title] ?? '🏸'
-          toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 10000, closeButton: true })
+          toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 20000, closeButton: true })
         } else if (n.type === 'award') {
           toast(`🏆 New award: ${n.body}!`, {
-            duration: 10000,
+            duration: 20000,
             closeButton: true,
             className: 'toast-award',
             action: {
