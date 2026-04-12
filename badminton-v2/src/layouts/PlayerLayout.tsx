@@ -13,7 +13,7 @@ export function PlayerLayout() {
 
   const { cheerTypes, pendingMatches, hasPendingCheers, isLoading: cheerLoading, submitCheer } = useMatchCheers(activeSessionId)
 
-  const showGate = role === 'player' && !cheerLoading && hasPendingCheers
+  const showGate = !cheerLoading && hasPendingCheers
 
   return (
     <NotificationProvider>
