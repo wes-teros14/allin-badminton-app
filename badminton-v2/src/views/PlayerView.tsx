@@ -17,6 +17,7 @@ interface AllMatch {
   status: 'queued' | 'playing' | 'complete'
   team1: string
   team2: string
+  players: string[]
 }
 
 export function PlayerView() {
@@ -186,7 +187,10 @@ function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
 }
 
 function AllMatchesView({ sessionId }: { sessionId: string }) {
+  const { role } = useAuth()
   const [matches, setMatches] = useState<AllMatch[]>([])
+  const [playerNames, setPlayerNames] = useState<string[]>([])
+  const [selectedPlayer, setSelectedPlayer] = useState('')
   const [sessionName, setSessionName] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [tick, setTick] = useState(0)
@@ -221,13 +225,23 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
       const nameMap = new Map(((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>).map(p => [p.id, p.nickname ?? p.name_slug]))
       const name = (id: string) => nameMap.get(id) ?? '?'
 
-      setMatches(matchRows.map(m => ({
-        id: m.id,
-        gameNumber: m.queue_position,
-        status: m.status as 'queued' | 'playing' | 'complete',
-        team1: `${name(m.team1_player1_id)} & ${name(m.team1_player2_id)}`,
-        team2: `${name(m.team2_player1_id)} & ${name(m.team2_player2_id)}`,
-      })))
+      const sortedNames = [...nameMap.values()].sort((a, b) => a.localeCompare(b))
+      setPlayerNames(sortedNames)
+
+      setMatches(matchRows.map(m => {
+        const p1 = name(m.team1_player1_id)
+        const p2 = name(m.team1_player2_id)
+        const p3 = name(m.team2_player1_id)
+        const p4 = name(m.team2_player2_id)
+        return {
+          id: m.id,
+          gameNumber: m.queue_position,
+          status: m.status as 'queued' | 'playing' | 'complete',
+          team1: `${p1} & ${p2}`,
+          team2: `${p3} & ${p4}`,
+          players: [p1, p2, p3, p4],
+        }
+      }))
       setIsLoading(false)
     }
     load()
@@ -238,7 +252,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
     <div className="min-h-screen bg-background text-foreground relative">
       <LiveIndicator status={status} onRefresh={refresh} />
       <div className="max-w-sm mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold">{sessionName || 'All Matches'}</h1>
           <Link
             to={`/match-schedule/session/${sessionId}`}
@@ -247,12 +261,24 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
             ← My Matches
           </Link>
         </div>
+        {role === 'admin' && !isLoading && playerNames.length > 0 && (
+          <select
+            value={selectedPlayer}
+            onChange={(e) => setSelectedPlayer(e.target.value)}
+            className="mb-4 w-full h-9 rounded-lg border border-input bg-background text-foreground px-3 text-sm"
+          >
+            <option value="">All Players</option>
+            {playerNames.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        )}
         <div className="flex flex-col gap-3">
           {isLoading
             ? Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
               ))
-            : matches.map(m => (
+            : matches.filter(m => !selectedPlayer || m.players.includes(selectedPlayer)).map(m => (
                 <div
                   key={m.id}
                   className={`rounded-xl border border-border p-4 ${m.status === 'complete' ? 'opacity-50' : ''} ${m.status === 'playing' ? 'border-primary/30 bg-[var(--primary-subtle)]' : ''}`}
