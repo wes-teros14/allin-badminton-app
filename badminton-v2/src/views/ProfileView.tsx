@@ -236,6 +236,23 @@ export function ProfileView() {
         Sign out
       </button>
 
+      {/* Awards */}
+      <div>
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Awards</h2>
+        {awards.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {awards.map(a => (
+              <div key={a.label} className="flex items-center gap-1.5 bg-[#FEFE6A]/10 border border-[#FEFE6A]/30 rounded-full px-3 py-1.5">
+                <span className="text-base">{a.emoji}</span>
+                <span className="text-xs font-semibold text-[#FEFE6A]">{a.label}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">No awards yet — keep playing!</p>
+        )}
+      </div>
+
       {/* Stats */}
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Stats</h2>
@@ -274,23 +291,6 @@ export function ProfileView() {
             />
           </div>
         ) : null}
-      </div>
-
-      {/* Awards */}
-      <div>
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Awards</h2>
-        {awards.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {awards.map(a => (
-              <div key={a.label} className="flex items-center gap-1.5 bg-[#FEFE6A]/10 border border-[#FEFE6A]/30 rounded-full px-3 py-1.5">
-                <span className="text-base">{a.emoji}</span>
-                <span className="text-xs font-semibold text-[#FEFE6A]">{a.label}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No awards yet — keep playing!</p>
-        )}
       </div>
 
       {/* Cheers */}

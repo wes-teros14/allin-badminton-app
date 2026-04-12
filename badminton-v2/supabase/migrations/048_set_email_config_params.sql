@@ -1,0 +1,11 @@
+-- Migration: 048_set_email_config_params
+-- SUPERSEDED by migration 045 which creates the app_config table.
+-- Config values are now stored in public.app_config and updated via SQL Editor:
+--
+--   UPDATE public.app_config SET value = 'https://<ref>.supabase.co/functions/v1/send-email'
+--     WHERE key = 'email_function_url';
+--
+--   UPDATE public.app_config SET value = '<your-random-secret>'
+--     WHERE key = 'function_auth_secret';
+--
+-- This migration is intentionally empty.

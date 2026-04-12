@@ -8,7 +8,6 @@ import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { supabase } from '@/lib/supabase'
 import {
   generateScheduleOptimized,
-  adjustNumMatches,
   DEFAULT_WEIGHTS,
   computeMatchType,
   type GeneratedMatch,
@@ -157,13 +156,9 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
 
   const effectiveNumMatches =
     settings.numMatches > 0 ? settings.numMatches : Math.ceil((players.length * 8) / 4)
-  const adjustedMatches = players.length >= 4
-    ? adjustNumMatches(effectiveNumMatches, players.length)
-    : effectiveNumMatches
   const targetGames = players.length >= 4
-    ? (adjustedMatches * 4) / players.length
+    ? (effectiveNumMatches * 4) / players.length
     : null
-  const wasAdjusted = adjustedMatches !== effectiveNumMatches
 
   function set<K extends keyof Settings>(key: K, value: Settings[K]) {
     setSettings((prev) => ({ ...prev, [key]: value }))
@@ -223,7 +218,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
       }
 
       const result = generateScheduleOptimized(players, {
-        numMatches: adjustedMatches,
+        numMatches: effectiveNumMatches,
         maxConsecutiveGames: settings.maxConsecutiveGames,
         maxSpreadLimit: settings.maxSpreadLimit,
         disableGenderRules: settings.disableGenderRules,
@@ -321,8 +316,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                 onChange={(v) => set('numMatches', v)}
               />
               {targetGames !== null && (
-                <p className={`text-xs -mt-1 ${wasAdjusted ? 'text-amber-500' : 'text-muted-foreground'}`}>
-                  {wasAdjusted ? `Adjusted to ${adjustedMatches} · ` : ''}{targetGames} games each
+                <p className="text-xs -mt-1 text-muted-foreground">
+                  ~{Number.isInteger(targetGames) ? targetGames : targetGames.toFixed(1)} games each
                 </p>
               )}
               <SliderField

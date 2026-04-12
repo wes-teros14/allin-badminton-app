@@ -689,7 +689,7 @@ export function generateSchedule(
   const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
   const levelMap  = new Map(players.map((p) => [p.id, p.level ?? 5]))
 
-  const adjustedNumMatches = adjustNumMatches(numMatches, n)
+  const adjustedNumMatches = numMatches
 
   const scoreMatches = (m: GeneratedMatch[]) =>
     evaluateSessionScore(m, levelMap, wishlistPairs, maxConsecutiveGames,
@@ -756,7 +756,7 @@ export function generateScheduleOptimized(
   const levelMap  = new Map(players.map((p) => [p.id, p.level ?? 5]))
   const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
 
-  const adjustedNumMatches = adjustNumMatches(numMatches, players.length)
+  const adjustedNumMatches = numMatches
 
   const NUM_STARTS = numStarts
   const trialsPerStart = numTrials
