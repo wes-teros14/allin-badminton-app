@@ -96,11 +96,14 @@ async function fetchAwards(userId: string): Promise<Award[]> {
 
   const earlyBirdEntries = Array.from(firstRegistrantCount.entries()).map(([player_id, value]) => ({ player_id, value }))
 
+  const STREAK_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
+  const cheerFiltered = cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id))
+
   const awards: Award[] = []
 
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_received }))) === userId)
+  if (top(cheerFiltered.map(c => ({ player_id: c.player_id, value: c.cheers_received }))) === userId)
     awards.push({ emoji: '🌟', label: 'Most Cheers Received' })
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_given }))) === userId)
+  if (top(cheerFiltered.map(c => ({ player_id: c.player_id, value: c.cheers_given }))) === userId)
     awards.push({ emoji: '🙌', label: 'Most Cheers Given' })
   if (top(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received }))) === userId)
     awards.push({ emoji: '⚔️', label: 'Top Offense' })
