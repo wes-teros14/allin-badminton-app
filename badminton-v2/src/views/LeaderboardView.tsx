@@ -77,10 +77,14 @@ async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
       .map(p => [p.id, p.nickname ?? p.name_slug])
   )
 
-  return ((statsRes.data ?? []) as any[]).map(s => ({
-    ...s,
-    displayName: nameMap.get(s.player_id) ?? s.player_id,
-  }))
+  const CHEER_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
+
+  return ((statsRes.data ?? []) as any[])
+    .filter(s => !CHEER_EXCLUDED.has(s.player_id))
+    .map(s => ({
+      ...s,
+      displayName: nameMap.get(s.player_id) ?? s.player_id,
+    }))
 }
 
 // ---------------------------------------------------------------------------
