@@ -281,8 +281,8 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     { emoji: '🔥', label: 'Attendance Streak', ...topHolder(streakEntries, latestRegAt) },
     { emoji: '🐦', label: 'Registration Early Bird', ...topHolder(earlyBirdEntries, latestRegAt) },
     // Cheer-based awards
-    { emoji: '🌟', label: 'Most Cheers Received', ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_received })), latestReceivedAt) },
-    { emoji: '🙌', label: 'Most Cheers Given',    ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.cheers_given })), latestGivenAt) },
+    { emoji: '🌟', label: 'Most Cheers Received', ...topHolder(cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id)).map(c => ({ player_id: c.player_id, value: c.cheers_received })), latestReceivedAt) },
+    { emoji: '🙌', label: 'Most Cheers Given',    ...topHolder(cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id)).map(c => ({ player_id: c.player_id, value: c.cheers_given })), latestGivenAt) },
     { emoji: '⚔️', label: 'Top Fierce Offense',   ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received })), latestReceivedAt) },
     { emoji: '🛡️', label: 'Top Iron Defense',     ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.defense_received })), latestReceivedAt) },
     { emoji: '🎯', label: 'Top Smooth Technique', ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received })), latestReceivedAt) },
