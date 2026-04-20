@@ -178,7 +178,7 @@ function ScheduleTab({
         </div>
       )}
 
-      {!isLoading && resolvedId && (
+      {!isLoading && resolvedId && sessionStatus !== 'registration_open' && (
         <div className="flex justify-end px-4 mt-2">
           <Link
             to={`/match-schedule/session/${resolvedId}?show=all`}
