@@ -19,6 +19,7 @@ interface UsePlayerScheduleResult {
   sessionVenue: string | null
   sessionTime: string | null
   sessionDuration: string | null
+  sessionStage: string | null
   sessionId: string | null
   isLoading: boolean
   notFound: boolean
