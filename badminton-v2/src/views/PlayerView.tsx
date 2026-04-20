@@ -301,7 +301,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 }
 
 function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: string; sessionId?: string }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, isLoading, notFound, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionStage, sessionId, isLoading, notFound, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
   const { status } = useRealtime(sessionId, refresh)
 
   if (!isLoading && notFound) {
@@ -339,7 +339,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
         />
       )}
 
-      {!isLoading && sessionId && (
+      {!isLoading && sessionId && sessionStage !== 'registration_open' && (
         <div className="flex justify-end px-4 mt-2">
           <Link
             to={`/match-schedule/session/${sessionId}?show=all`}
