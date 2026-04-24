@@ -10,6 +10,7 @@ export interface Player {
   gender: 'M' | 'F' | null
   level: number | null
   role: string
+  isActive: boolean
 }
 
 export function usePlayers() {
@@ -19,7 +20,7 @@ export function usePlayers() {
   async function fetchPlayers() {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name_slug, email, nickname, gender, level, role')
+      .select('id, name_slug, email, nickname, gender, level, role, is_active')
       .order('name_slug')
     if (error) { toast.error(error.message); return }
     setPlayers(
@@ -31,6 +32,7 @@ export function usePlayers() {
         gender: p.gender ?? null,
         level: p.level ?? null,
         role: p.role,
+        isActive: p.is_active ?? true,
       }))
     )
     setIsLoading(false)
@@ -44,5 +46,11 @@ export function usePlayers() {
     setPlayers((prev) => prev.map((p) => p.id === id ? { ...p, ...updates } : p))
   }
 
-  return { players, isLoading, updatePlayer }
+  async function setActive(id: string, isActive: boolean) {
+    const { error } = await supabase.from('profiles').update({ is_active: isActive } as Record<string, unknown>).eq('id', id)
+    if (error) { toast.error(error.message); return }
+    setPlayers((prev) => prev.map((p) => p.id === id ? { ...p, isActive } : p))
+  }
+
+  return { players, isLoading, updatePlayer, setActive }
 }
