@@ -241,8 +241,10 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
         if (yourGame <= highestPlaying) {
           setWaitMinutes(0)
+        } else if (yourGame <= highestPlaying + 2) {
+          setWaitMinutes(11)
         } else {
-          setWaitMinutes(11 + 6 * Math.ceil(gap / 2))
+          setWaitMinutes(11 + 6 * Math.ceil((yourGame - highestPlaying - 2) / 2))
         }
       } else {
         setGamesAhead(null)
