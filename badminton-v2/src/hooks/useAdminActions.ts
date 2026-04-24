@@ -3,49 +3,32 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import type { AdminMatchDisplay } from './useAdminSession'
 
-interface EditSlugs {
-  t1p1: string
-  t1p2: string
-  t2p1: string
-  t2p2: string
+interface EditIds {
+  t1p1Id: string
+  t1p2Id: string
+  t2p1Id: string
+  t2p2Id: string
 }
 
 export function useAdminActions(onDone: () => void) {
   const [isSaving, setIsSaving] = useState(false)
 
-  async function editMatch(matchId: string, slugs: EditSlugs) {
+  async function editMatch(matchId: string, ids: EditIds) {
     setIsSaving(true)
     try {
-      const slugList = [slugs.t1p1, slugs.t1p2, slugs.t2p1, slugs.t2p2]
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, name_slug')
-        .in('name_slug', slugList)
-
-      if (profilesError) { toast.error(profilesError.message); return }
-
-      const nameMap = new Map(
-        ((profiles ?? []) as Array<{ id: string; name_slug: string }>)
-          .map((p) => [p.name_slug, p.id])
-      )
-
-      const missing = slugList.find((s) => !nameMap.has(s))
-      if (missing) { toast.error(`Player not found: ${missing}`); return }
-
       const { error } = await supabase
         .from('matches')
         .update({
-          team1_player1_id: nameMap.get(slugs.t1p1)!,
-          team1_player2_id: nameMap.get(slugs.t1p2)!,
-          team2_player1_id: nameMap.get(slugs.t2p1)!,
-          team2_player2_id: nameMap.get(slugs.t2p2)!,
+          team1_player1_id: ids.t1p1Id,
+          team1_player2_id: ids.t1p2Id,
+          team2_player1_id: ids.t2p1Id,
+          team2_player2_id: ids.t2p2Id,
         })
         .eq('id', matchId)
 
       if (error) { toast.error(error.message); return }
 
       toast.success('Match updated')
-      onDone()
     } finally {
       setIsSaving(false)
     }
@@ -125,10 +108,51 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
+  async function promoteTocourt(matchId: string, courtNumber: 1 | 2) {
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .update({ status: 'playing', court_number: courtNumber })
+        .eq('id', matchId)
+
+      if (error) { toast.error(error.message); return }
+      onDone()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function demoteToQueue(matchId: string, sessionId: string) {
+    setIsSaving(true)
+    try {
+      const { data: queued } = await supabase
+        .from('matches')
+        .select('queue_position')
+        .eq('session_id', sessionId)
+        .eq('status', 'queued')
+        .order('queue_position', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const maxPos = queued ? (queued as { queue_position: number }).queue_position : 0
+
+      const { error } = await supabase
+        .from('matches')
+        .update({ status: 'queued', court_number: null, queue_position: maxPos + 1 })
+        .eq('id', matchId)
+
+      if (error) { toast.error(error.message); return }
+      onDone()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function swapCourts(match1Id: string, match2Id: string) {
     setIsSaving(true)
     try {
-      const { error: e1 } = await supabase.from('matches').update({ court_number: -1 }).eq('id', match1Id)
+      const { error: e1 } = await supabase.from('matches').update({ court_number: null }).eq('id', match1Id)
       if (e1) { toast.error(e1.message); return }
       const { error: e2 } = await supabase.from('matches').update({ court_number: 1 }).eq('id', match2Id)
       if (e2) { toast.error(e2.message); return }
@@ -140,5 +164,5 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts }
+  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt }
 }
