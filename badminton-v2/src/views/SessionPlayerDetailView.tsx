@@ -108,7 +108,7 @@ function ScheduleTab({
   registrationOpensAt: string | null
   onRegister: () => void
 }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, gamesAhead, refresh } = usePlayerSchedule(nameSlug, sessionId)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, gamesAhead, waitMinutes, refresh } = usePlayerSchedule(nameSlug, sessionId)
   const { status } = useRealtime(resolvedId, refresh)
 
   const firstQueuedIndex = matches.findIndex((m) => m.status === 'queued')
@@ -196,8 +196,8 @@ function ScheduleTab({
             : gamesAhead === 0
             ? "⏳ You're up next!"
             : nextUpMatch && nextUpMatch.gameNumber <= 2
-            ? "🏃 You're in an opening match — arrive at the venue early so you don't miss your games!"
-            : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 6} mins)`}
+            ? "🏃 You're in an opening match — please arrive early so you get all your games in!"
+            : `⏳ ~${waitMinutes ?? '?'} min wait until your next game`}
         </div>
       )}
 
