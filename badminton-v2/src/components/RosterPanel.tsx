@@ -89,93 +89,77 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false }
           <span className="text-sm text-muted-foreground">{open ? '▲' : '▼'}</span>
         </CardTitle>
       </CardHeader>
-      {open && <CardContent className="space-y-4">
+      {open && <CardContent className="pt-2 pb-3 px-3">
         {players.length === 0 ? (
           <p className="text-sm text-muted-foreground">No players registered yet.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul>
             {players.map((player) => (
-              <li key={player.registrationId} className="text-sm rounded-md border px-3 py-2 space-y-2">
-                {/* Row 1: name + remove */}
-                <div className="flex items-center gap-2">
-                  <span className="flex-1 truncate font-medium">{player.nickname ?? player.nameSlug}</span>
+              <li key={player.registrationId} className="flex items-center gap-2 text-xs border-b last:border-0 py-1">
+                <span className="flex-1 truncate font-medium min-w-0">{player.nickname ?? player.nameSlug}</span>
 
-                  {!editable && player.gender && (
-                    <span className="text-xs text-muted-foreground">{player.gender}</span>
-                  )}
-                  {!editable && player.level && (
-                    <span className="text-xs text-muted-foreground">L{player.level}</span>
-                  )}
-
-                  <Button
-                    variant={pendingRemove === player.registrationId ? 'destructive' : 'ghost'}
-                    size="sm"
-                    onClick={() => handleRemoveClick(player.registrationId)}
-                    className={pendingRemove === player.registrationId ? 'shrink-0' : 'text-destructive hover:text-destructive shrink-0'}
-                  >
-                    {pendingRemove === player.registrationId ? 'Confirm?' : 'Remove'}
-                  </Button>
-                </div>
-
-                {/* Row 2: labelled controls (editable only) */}
-                {editable && (
-                  <div className="grid grid-cols-3 gap-2 text-xs pt-1 border-t">
-                    {/* Gender */}
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground">Gender</span>
-                      <div className="flex rounded overflow-hidden border self-start">
-                        {(['M', 'F'] as const).map((g) => (
-                          <button
-                            key={g}
-                            onClick={() => updateSessionOverride(player.registrationId, g, player.level)}
-                            className={`px-2.5 py-1 transition-colors ${
-                              player.gender === g
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-background text-muted-foreground hover:bg-muted'
-                            }`}
-                          >
-                            {g}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Level */}
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground">Level</span>
-                      <select
-                        value={player.level ?? ''}
-                        onChange={(e) => updateSessionOverride(player.registrationId, player.gender, e.target.value ? +e.target.value : null)}
-                        className="h-7 rounded border border-input bg-background text-foreground px-1 text-xs w-16 self-start"
-                      >
-                        <option value="">—</option>
-                        {LEVELS.map((l) => (
-                          <option key={l} value={l}>{l}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Paid */}
-                    <div className="flex flex-col gap-1">
-                      <span className="text-muted-foreground">Paid</span>
-                      <div className="flex rounded overflow-hidden border self-start">
-                        {([true, false] as const).map((p) => (
-                          <button
-                            key={String(p)}
-                            onClick={() => updatePaid(player.registrationId, p)}
-                            className={`px-2.5 py-1 transition-colors ${
-                              player.paid === p
-                                ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
-                                : 'bg-background text-muted-foreground hover:bg-muted'
-                            }`}
-                          >
-                            {p ? 'Yes' : 'No'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                {!editable && player.gender && (
+                  <span className="text-muted-foreground shrink-0">{player.gender}</span>
                 )}
+                {!editable && player.level && (
+                  <span className="text-muted-foreground shrink-0">L{player.level}</span>
+                )}
+
+                {editable && (
+                  <>
+                    <div className="flex rounded overflow-hidden border shrink-0">
+                      {(['M', 'F'] as const).map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => updateSessionOverride(player.registrationId, g, player.level)}
+                          className={`px-1.5 py-0.5 transition-colors ${
+                            player.gender === g
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-background text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+
+                    <select
+                      value={player.level ?? ''}
+                      onChange={(e) => updateSessionOverride(player.registrationId, player.gender, e.target.value ? +e.target.value : null)}
+                      className="h-6 rounded border border-input bg-background text-foreground px-1 w-11 shrink-0"
+                    >
+                      <option value="">—</option>
+                      {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+
+                    <div className="flex rounded overflow-hidden border shrink-0">
+                      {([true, false] as const).map((p) => (
+                        <button
+                          key={String(p)}
+                          onClick={() => updatePaid(player.registrationId, p)}
+                          className={`px-1.5 py-0.5 transition-colors ${
+                            player.paid === p
+                              ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
+                              : 'bg-background text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {p ? 'Pd' : 'Unpd'}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <button
+                  onClick={() => handleRemoveClick(player.registrationId)}
+                  className={`shrink-0 px-1.5 py-0.5 rounded text-xs transition-colors ${
+                    pendingRemove === player.registrationId
+                      ? 'bg-destructive text-white'
+                      : 'text-destructive hover:bg-destructive/10'
+                  }`}
+                >
+                  {pendingRemove === player.registrationId ? 'Sure?' : '✕'}
+                </button>
               </li>
             ))}
           </ul>
