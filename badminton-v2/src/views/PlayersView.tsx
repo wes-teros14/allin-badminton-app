@@ -25,7 +25,7 @@ function NicknameCell({ id, initial, onSave }: { id: string; initial: string | n
       onBlur={handleBlur}
       placeholder="—"
       disabled={saving}
-      className="h-7 w-28 rounded border border-transparent bg-transparent px-1 text-xs text-foreground placeholder:text-muted-foreground hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 transition-colors"
+      className="h-6 w-24 rounded border border-transparent bg-transparent px-1 text-xs text-foreground placeholder:text-muted-foreground hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50 transition-colors"
     />
   )
 }
@@ -39,8 +39,19 @@ export function PlayersView() {
 
   const activeCount = players.filter((p) => p.isActive).length
 
+  const sortedPlayers = [...players].sort((a, b) => {
+    // 1. Active before inactive
+    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+    // 2. Has nickname before no nickname
+    const aNick = a.nickname !== null
+    const bNick = b.nickname !== null
+    if (aNick !== bNick) return aNick ? -1 : 1
+    // 3. Alphabetical by nickname then nameSlug
+    return (a.nickname ?? a.nameSlug).localeCompare(b.nickname ?? b.nameSlug)
+  })
+
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-4 max-w-4xl mx-auto space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-primary">
           Players ({activeCount} active{players.length !== activeCount ? `, ${players.length - activeCount} inactive` : ''})
@@ -49,46 +60,43 @@ export function PlayersView() {
       </div>
 
       <Card>
-        <CardContent className="pt-4 px-3">
+        <CardContent className="pt-2 px-2 pb-2">
           {isLoading ? (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-10 bg-muted rounded animate-pulse" />
+                <div key={i} className="h-7 bg-muted rounded animate-pulse" />
               ))}
             </div>
           ) : players.length === 0 ? (
             <p className="text-sm text-muted-foreground">No players yet.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b text-xs text-muted-foreground uppercase tracking-wide">
-                    <th className="text-left py-2 pr-3 font-medium">Name</th>
-                    <th className="text-left py-2 pr-3 font-medium">Email</th>
-                    <th className="text-left py-2 pr-3 font-medium">Nickname</th>
-                    <th className="text-left py-2 pr-3 font-medium">Gender</th>
-                    <th className="text-left py-2 pr-3 font-medium">
-                      Level
-                      <span className="block text-[10px] font-normal text-muted-foreground normal-case tracking-normal">1=Newbie · 10=Pro</span>
-                    </th>
-                    <th className="text-left py-2 font-medium">Active</th>
+                  <tr className="border-b text-[10px] text-muted-foreground uppercase tracking-wide">
+                    <th className="text-left py-1 pr-2 font-medium">Name</th>
+                    <th className="text-left py-1 pr-2 font-medium">Email</th>
+                    <th className="text-left py-1 pr-2 font-medium">Nickname</th>
+                    <th className="text-left py-1 pr-2 font-medium">G</th>
+                    <th className="text-left py-1 pr-2 font-medium">Lvl</th>
+                    <th className="text-left py-1 font-medium">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {players.map((player) => (
+                  {sortedPlayers.map((player) => (
                     <tr key={player.id} className={`border-b last:border-0 transition-colors ${player.isActive ? 'hover:bg-muted/30' : 'opacity-40'}`}>
-                      <td className="py-2 pr-3 font-medium max-w-[150px] truncate">{player.nameSlug}</td>
-                      <td className="py-2 pr-3 text-muted-foreground text-xs max-w-[180px] truncate">{player.email ?? '—'}</td>
-                      <td className="py-2 pr-3">
+                      <td className="py-1 pr-2 font-medium max-w-[120px] truncate">{player.nameSlug}</td>
+                      <td className="py-1 pr-2 text-muted-foreground max-w-[160px] truncate">{player.email ?? '—'}</td>
+                      <td className="py-1 pr-2">
                         <NicknameCell id={player.id} initial={player.nickname} onSave={saveNickname} />
                       </td>
-                      <td className="py-2 pr-3">
-                        <div className="flex rounded overflow-hidden border text-xs w-fit">
+                      <td className="py-1 pr-2">
+                        <div className="flex rounded overflow-hidden border w-fit">
                           {(['M', 'F'] as const).map((g) => (
                             <button
                               key={g}
                               onClick={() => updatePlayer(player.id, { gender: player.gender === g ? null : g })}
-                              className={`px-2 py-1 transition-colors ${
+                              className={`px-1.5 py-0.5 transition-colors ${
                                 player.gender === g
                                   ? 'bg-primary text-primary-foreground'
                                   : 'bg-background text-muted-foreground hover:bg-muted'
@@ -99,20 +107,20 @@ export function PlayersView() {
                           ))}
                         </div>
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="py-1 pr-2">
                         <select
                           value={player.level ?? ''}
                           onChange={(e) => updatePlayer(player.id, { level: e.target.value ? +e.target.value : null })}
-                          className="h-7 rounded border border-input bg-background text-foreground px-1 text-xs w-14"
+                          className="h-6 rounded border border-input bg-background text-foreground px-1 w-12"
                         >
                           <option value="">—</option>
                           {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
                         </select>
                       </td>
-                      <td className="py-2">
+                      <td className="py-1">
                         <button
                           onClick={() => setActive(player.id, !player.isActive)}
-                          className={`px-2 py-1 rounded text-xs transition-colors ${
+                          className={`px-1.5 py-0.5 rounded transition-colors ${
                             player.isActive
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted text-muted-foreground hover:bg-muted/70'
