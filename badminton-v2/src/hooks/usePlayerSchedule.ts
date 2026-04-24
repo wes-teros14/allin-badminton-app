@@ -235,7 +235,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
         if (cancelled) return
 
-        const highestPlaying = (playingRows?.[0] as { queue_position: number } | undefined)?.queue_position ?? 0
+        const highestPlaying = (playingRows?.[0] as { queue_position: number } | undefined)?.queue_position ?? 2
         const gap = Math.max(0, yourGame - highestPlaying - 1)
         setGamesAhead(gap)
 
