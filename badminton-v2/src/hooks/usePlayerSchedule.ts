@@ -237,10 +237,10 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         const queuedAhead = count ?? 0
         setGamesAhead(queuedAhead)
 
-        if (queuedAhead === 0) {
+        if (queuedAhead <= 2) {
           setWaitMinutes(0)
         } else {
-          setWaitMinutes(11 + 6 * (queuedAhead - 1))
+          setWaitMinutes(11 + 6 * Math.floor((queuedAhead - 3) / 2))
         }
       } else {
         setGamesAhead(null)
