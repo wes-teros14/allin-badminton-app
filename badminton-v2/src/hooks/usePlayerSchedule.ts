@@ -220,27 +220,29 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       setMatches(result)
 
-      // Wait time driven by actual queued matches ahead in the session
+      // Wait time anchored to highest currently-playing game in the session
       const firstQueuedMatch = result.find(m => m.status === 'queued')
       if (firstQueuedMatch) {
-        const N = firstQueuedMatch.gameNumber
+        const yourGame = firstQueuedMatch.gameNumber
 
-        const { count } = await supabase
+        const { data: playingRows } = await supabase
           .from('matches')
-          .select('id', { count: 'exact', head: true })
+          .select('queue_position')
           .eq('session_id', sid)
-          .eq('status', 'queued')
-          .lt('queue_position', N)
+          .eq('status', 'playing')
+          .order('queue_position', { ascending: false })
+          .limit(1)
 
         if (cancelled) return
 
-        const queuedAhead = count ?? 0
-        setGamesAhead(queuedAhead)
+        const highestPlaying = (playingRows?.[0] as { queue_position: number } | undefined)?.queue_position ?? 0
+        const gap = Math.max(0, yourGame - highestPlaying - 1)
+        setGamesAhead(gap)
 
-        if (queuedAhead <= 2) {
+        if (yourGame <= highestPlaying) {
           setWaitMinutes(0)
         } else {
-          setWaitMinutes(11 + 6 * Math.floor((queuedAhead - 3) / 2))
+          setWaitMinutes(11 + 6 * Math.ceil(gap / 2))
         }
       } else {
         setGamesAhead(null)
