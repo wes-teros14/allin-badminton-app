@@ -23,6 +23,7 @@ interface UsePlayerScheduleResult {
   isLoading: boolean
   notFound: boolean
   gamesAhead: number | null
+  waitMinutes: number | null
   refresh: () => void
 }
 
@@ -48,6 +49,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [gamesAhead, setGamesAhead] = useState<number | null>(null)
+  const [waitMinutes, setWaitMinutes] = useState<number | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const isFirstLoad = useRef(true)
 
@@ -217,19 +219,49 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       setMatches(result)
 
-      // Compute gamesAhead for queue ETA
+      // Compute wait time
       const firstQueuedMatch = result.find(m => m.status === 'queued')
       if (firstQueuedMatch) {
-        const firstQueuedPos = firstQueuedMatch.gameNumber
-        const { count } = await supabase
-          .from('matches')
-          .select('id', { count: 'exact', head: true })
-          .eq('session_id', sid)
-          .in('status', ['queued', 'playing'])
-          .lt('queue_position', firstQueuedPos)
-        if (!cancelled) setGamesAhead(count ?? 0)
+        const N = firstQueuedMatch.gameNumber
+
+        // Count queued/playing matches before this player's next match
+        const [{ count }, { data: playingRows }] = await Promise.all([
+          supabase
+            .from('matches')
+            .select('id', { count: 'exact', head: true })
+            .eq('session_id', sid)
+            .in('status', ['queued', 'playing'])
+            .lt('queue_position', N),
+          supabase
+            .from('matches')
+            .select('queue_position')
+            .eq('session_id', sid)
+            .eq('status', 'playing'),
+        ])
+
+        if (cancelled) return
+
+        const ahead = count ?? 0
+        setGamesAhead(ahead)
+
+        const playingPositions = ((playingRows ?? []) as Array<{ queue_position: number }>)
+          .map(m => m.queue_position)
+        const B = playingPositions.length > 0 ? Math.max(...playingPositions) : 0
+
+        if (ahead === 0) {
+          setWaitMinutes(0)
+        } else if (B > 0) {
+          const c = 2, mu = 12, sigma = 2, INV_SQRT_PI = 0.5642
+          const rotationsAhead = Math.floor((N - B - 1) / c)
+          const wait = ((rotationsAhead + 1) * mu) - ((rotationsAhead - 1) * sigma * INV_SQRT_PI)
+          setWaitMinutes(Math.max(1, Math.round(wait)))
+        } else {
+          // No active matches yet — simple estimate
+          setWaitMinutes(Math.round((ahead / 2) * 12))
+        }
       } else {
         setGamesAhead(null)
+        setWaitMinutes(null)
       }
 
       isFirstLoad.current = false
@@ -240,5 +272,5 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
     return () => { cancelled = true }
   }, [nameSlug, sessionIdOverride, refreshKey])
 
-  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, isLoading, notFound, gamesAhead, refresh }
+  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, isLoading, notFound, gamesAhead, waitMinutes, refresh }
 }
