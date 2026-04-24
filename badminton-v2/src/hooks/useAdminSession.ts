@@ -8,6 +8,10 @@ export interface AdminMatchDisplay {
   t1p2: string
   t2p1: string
   t2p2: string
+  t1p1Id: string
+  t1p2Id: string
+  t2p1Id: string
+  t2p2Id: string
 }
 
 interface UseAdminSessionResult {
@@ -157,6 +161,10 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
         t1p2: name(m.team1_player2_id),
         t2p1: name(m.team2_player1_id),
         t2p2: name(m.team2_player2_id),
+        t1p1Id: m.team1_player1_id,
+        t1p2Id: m.team1_player2_id,
+        t2p1Id: m.team2_player1_id,
+        t2p2Id: m.team2_player2_id,
       })
 
       // 4. Derive state

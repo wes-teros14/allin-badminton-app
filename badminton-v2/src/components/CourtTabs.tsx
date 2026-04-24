@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { AdminMatchDisplay } from '@/hooks/useAdminSession'
 import { useAdminActions } from '@/hooks/useAdminActions'
+import { usePlayerList } from '@/hooks/usePlayerList'
 
 function formatElapsed(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -37,8 +38,8 @@ function CourtCard({
   onEdit: (m: AdminMatchDisplay) => void
   onMoveUp: () => void
   onMoveDown: () => void
-  canMoveUp: boolean
-  canMoveDown: boolean
+  canMoveUp: boolean | null
+  canMoveDown: boolean | null
 }) {
   const [elapsed, setElapsed] = useState(0)
   const [confirmingFinish, setConfirmingFinish] = useState(false)
@@ -82,8 +83,8 @@ function CourtCard({
             </span>
             <span className="text-xs font-mono font-semibold text-[#FFB200] ml-auto">{formatElapsed(elapsed)}</span>
             <div className="flex flex-col gap-0.5">
-              <button onClick={onMoveUp} disabled={isSaving || !canMoveUp} className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">↑</button>
-              <button onClick={onMoveDown} disabled={isSaving || !canMoveDown} className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">↓</button>
+              {canMoveUp !== null && <button onClick={onMoveUp} disabled={isSaving || !canMoveUp} className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">↑</button>}
+              {canMoveDown !== null && <button onClick={onMoveDown} disabled={isSaving || !canMoveDown} className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed">↓</button>}
             </div>
           </div>
 
@@ -155,41 +156,74 @@ function CourtCard({
 }
 
 interface EditForm {
-  t1p1: string
-  t1p2: string
-  t2p1: string
-  t2p2: string
+  t1p1Id: string
+  t1p2Id: string
+  t2p1Id: string
+  t2p2Id: string
+}
+
+function PlayerSelect({
+  value,
+  onChange,
+  players,
+  disabled,
+  placeholder,
+}: {
+  value: string
+  onChange: (id: string) => void
+  players: Array<{ id: string; displayName: string }>
+  disabled?: boolean
+  placeholder: string
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      className="border border-border rounded px-2 py-1 text-sm w-full bg-background text-foreground"
+    >
+      <option value="">{placeholder}</option>
+      {players.map((p) => (
+        <option key={p.id} value={p.id}>{p.displayName}</option>
+      ))}
+    </select>
+  )
 }
 
 export function CourtTabs({ court1Current, court2Current, queued, isLoading, sessionId, onDone }: Props) {
-  const { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts } = useAdminActions(onDone)
+  const { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt } = useAdminActions(onDone)
+  const { players } = usePlayerList(sessionId ?? undefined)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<EditForm>({ t1p1: '', t1p2: '', t2p1: '', t2p2: '' })
+  const [editForm, setEditForm] = useState<EditForm>({ t1p1Id: '', t1p2Id: '', t2p1Id: '', t2p2Id: '' })
 
   function startEdit(m: AdminMatchDisplay) {
     setEditingId(m.id)
-    setEditForm({ t1p1: m.t1p1, t1p2: m.t1p2, t2p1: m.t2p1, t2p2: m.t2p2 })
+    setEditForm({ t1p1Id: m.t1p1Id, t1p2Id: m.t1p2Id, t2p1Id: m.t2p1Id, t2p2Id: m.t2p2Id })
   }
 
   async function handleSave(matchId: string) {
+    if (!editForm.t1p1Id || !editForm.t1p2Id || !editForm.t2p1Id || !editForm.t2p2Id) {
+      return
+    }
     await editMatch(matchId, editForm)
     setEditingId(null)
+    onDone()
   }
 
   function EditFormInline({ matchId }: { matchId: string }) {
     return (
       <div className="space-y-2 mt-3">
         <div className="flex gap-2">
-          <input value={editForm.t1p1} onChange={(e) => setEditForm((f) => ({ ...f, t1p1: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 1" />
-          <input value={editForm.t1p2} onChange={(e) => setEditForm((f) => ({ ...f, t1p2: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 2" />
+          <PlayerSelect value={editForm.t1p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 1" />
+          <PlayerSelect value={editForm.t1p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 2" />
         </div>
         <p className="text-xs text-muted-foreground text-center">vs</p>
         <div className="flex gap-2">
-          <input value={editForm.t2p1} onChange={(e) => setEditForm((f) => ({ ...f, t2p1: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 3" />
-          <input value={editForm.t2p2} onChange={(e) => setEditForm((f) => ({ ...f, t2p2: e.target.value }))} className="border border-border rounded px-2 py-1 text-sm w-full bg-background" placeholder="Player 4" />
+          <PlayerSelect value={editForm.t2p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 3" />
+          <PlayerSelect value={editForm.t2p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 4" />
         </div>
         <div className="flex gap-2">
-          <button onClick={() => handleSave(matchId)} disabled={isSaving} className="flex-1 py-1.5 rounded bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save</button>
+          <button onClick={() => handleSave(matchId)} disabled={isSaving || !editForm.t1p1Id || !editForm.t1p2Id || !editForm.t2p1Id || !editForm.t2p2Id} className="flex-1 py-1.5 rounded bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save</button>
           <button onClick={() => setEditingId(null)} disabled={isSaving} className="flex-1 py-1.5 rounded border border-border text-sm text-muted-foreground disabled:opacity-50">Cancel</button>
         </div>
       </div>
@@ -220,8 +254,9 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
           <CourtCard
             courtNumber={1} current={court1Current} sessionId={sessionId} isSaving={isSaving}
             onMarkDone={markDone} onEdit={startEdit}
-            canMoveUp={false} canMoveDown={!!court2Current}
-            onMoveUp={() => {}} onMoveDown={() => court1Current && court2Current && swapCourts(court1Current.id, court2Current.id)}
+            canMoveUp={!!court1Current} canMoveDown={!!court2Current}
+            onMoveUp={() => court1Current && sessionId && demoteToQueue(court1Current.id, sessionId)}
+            onMoveDown={() => court1Current && court2Current && swapCourts(court1Current.id, court2Current.id)}
           />
           {editingId === court1Current?.id && <EditFormInline matchId={court1Current.id} />}
         </div>
@@ -229,8 +264,9 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
           <CourtCard
             courtNumber={2} current={court2Current} sessionId={sessionId} isSaving={isSaving}
             onMarkDone={markDone} onEdit={startEdit}
-            canMoveUp={!!court1Current} canMoveDown={false}
-            onMoveUp={() => court1Current && court2Current && swapCourts(court1Current.id, court2Current.id)} onMoveDown={() => {}}
+            canMoveUp={!!court1Current} canMoveDown={!!court2Current}
+            onMoveUp={() => court1Current && court2Current && swapCourts(court1Current.id, court2Current.id)}
+            onMoveDown={() => court2Current && sessionId && demoteToQueue(court2Current.id, sessionId)}
           />
           {editingId === court2Current?.id && <EditFormInline matchId={court2Current.id} />}
         </div>
@@ -250,38 +286,18 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
                 {editingId === m.id ? (
                   <div className="space-y-2">
                     <div className="flex gap-2">
-                      <input
-                        value={editForm.t1p1}
-                        onChange={(e) => setEditForm((f) => ({ ...f, t1p1: e.target.value }))}
-                        className="border border-border rounded px-2 py-1 text-sm w-full bg-background"
-                        placeholder="Player 1"
-                      />
-                      <input
-                        value={editForm.t1p2}
-                        onChange={(e) => setEditForm((f) => ({ ...f, t1p2: e.target.value }))}
-                        className="border border-border rounded px-2 py-1 text-sm w-full bg-background"
-                        placeholder="Player 2"
-                      />
+                      <PlayerSelect value={editForm.t1p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 1" />
+                      <PlayerSelect value={editForm.t1p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 2" />
                     </div>
                     <p className="text-xs text-muted-foreground text-center">vs</p>
                     <div className="flex gap-2">
-                      <input
-                        value={editForm.t2p1}
-                        onChange={(e) => setEditForm((f) => ({ ...f, t2p1: e.target.value }))}
-                        className="border border-border rounded px-2 py-1 text-sm w-full bg-background"
-                        placeholder="Player 3"
-                      />
-                      <input
-                        value={editForm.t2p2}
-                        onChange={(e) => setEditForm((f) => ({ ...f, t2p2: e.target.value }))}
-                        className="border border-border rounded px-2 py-1 text-sm w-full bg-background"
-                        placeholder="Player 4"
-                      />
+                      <PlayerSelect value={editForm.t2p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 3" />
+                      <PlayerSelect value={editForm.t2p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 4" />
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleSave(m.id)}
-                        disabled={isSaving}
+                        disabled={isSaving || !editForm.t1p1Id || !editForm.t1p2Id || !editForm.t2p1Id || !editForm.t2p2Id}
                         className="flex-1 py-1.5 rounded bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
                       >
                         Save
@@ -305,8 +321,15 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <button
-                        onClick={() => moveUp(m.id, m.gameNumber, queued)}
-                        disabled={isSaving || idx === 0}
+                        onClick={() => {
+                          if (idx === 0) {
+                            const availableCourt = !court1Current ? 1 : !court2Current ? 2 : null
+                            if (availableCourt) promoteTocourt(m.id, availableCourt)
+                          } else {
+                            moveUp(m.id, m.gameNumber, queued)
+                          }
+                        }}
+                        disabled={isSaving || (idx === 0 && !!court1Current && !!court2Current)}
                         className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         ↑
