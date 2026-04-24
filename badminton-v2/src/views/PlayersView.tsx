@@ -112,9 +112,13 @@ export function PlayersView() {
                       <td className="py-2">
                         <button
                           onClick={() => setActive(player.id, !player.isActive)}
-                          className={`h-6 w-10 rounded-full transition-colors relative ${player.isActive ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                          className={`px-2 py-1 rounded text-xs transition-colors ${
+                            player.isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/70'
+                          }`}
                         >
-                          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${player.isActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                          {player.isActive ? 'Active' : 'Inactive'}
                         </button>
                       </td>
                     </tr>
