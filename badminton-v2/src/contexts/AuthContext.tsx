@@ -13,14 +13,17 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
 
-async function fetchRole(userId: string): Promise<Role> {
+async function fetchProfile(userId: string): Promise<{ role: Role; isActive: boolean }> {
   const { data } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, is_active')
     .eq('id', userId)
     .single()
-  // Cast needed until `supabase gen types --linked` regenerates database.ts
-  return ((data as { role?: string } | null)?.role as Role) ?? null
+  const row = data as { role?: string; is_active?: boolean } | null
+  return {
+    role: (row?.role as Role) ?? null,
+    isActive: row?.is_active ?? true,
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -53,9 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //    This ensures the Supabase client has the JWT stored before querying.
   useEffect(() => {
     if (user) {
-      fetchRole(user.id)
-        .then(setRole)
-        .finally(() => setIsLoading(false))
+      fetchProfile(user.id).then(({ role: r, isActive }) => {
+        if (!isActive) {
+          supabase.auth.signOut()
+          return
+        }
+        setRole(r)
+      }).finally(() => setIsLoading(false))
     }
   }, [user])
 
