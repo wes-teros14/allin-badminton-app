@@ -31,16 +31,20 @@ function NicknameCell({ id, initial, onSave }: { id: string; initial: string | n
 }
 
 export function PlayersView() {
-  const { players, isLoading, updatePlayer } = usePlayers()
+  const { players, isLoading, updatePlayer, setActive } = usePlayers()
 
   async function saveNickname(id: string, nickname: string | null) {
     await updatePlayer(id, { nickname })
   }
 
+  const activeCount = players.filter((p) => p.isActive).length
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-primary">Players ({players.length})</h1>
+        <h1 className="text-lg font-semibold text-primary">
+          Players ({activeCount} active{players.length !== activeCount ? `, ${players.length - activeCount} inactive` : ''})
+        </h1>
         <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">← Admin</Link>
       </div>
 
@@ -63,15 +67,16 @@ export function PlayersView() {
                     <th className="text-left py-2 pr-3 font-medium">Email</th>
                     <th className="text-left py-2 pr-3 font-medium">Nickname</th>
                     <th className="text-left py-2 pr-3 font-medium">Gender</th>
-                    <th className="text-left py-2 font-medium">
+                    <th className="text-left py-2 pr-3 font-medium">
                       Level
                       <span className="block text-[10px] font-normal text-muted-foreground normal-case tracking-normal">1=Newbie · 10=Pro</span>
                     </th>
+                    <th className="text-left py-2 font-medium">Active</th>
                   </tr>
                 </thead>
                 <tbody>
                   {players.map((player) => (
-                    <tr key={player.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr key={player.id} className={`border-b last:border-0 transition-colors ${player.isActive ? 'hover:bg-muted/30' : 'opacity-40'}`}>
                       <td className="py-2 pr-3 font-medium max-w-[150px] truncate">{player.nameSlug}</td>
                       <td className="py-2 pr-3 text-muted-foreground text-xs max-w-[180px] truncate">{player.email ?? '—'}</td>
                       <td className="py-2 pr-3">
@@ -94,7 +99,7 @@ export function PlayersView() {
                           ))}
                         </div>
                       </td>
-                      <td className="py-2">
+                      <td className="py-2 pr-3">
                         <select
                           value={player.level ?? ''}
                           onChange={(e) => updatePlayer(player.id, { level: e.target.value ? +e.target.value : null })}
@@ -103,6 +108,14 @@ export function PlayersView() {
                           <option value="">—</option>
                           {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
                         </select>
+                      </td>
+                      <td className="py-2">
+                        <button
+                          onClick={() => setActive(player.id, !player.isActive)}
+                          className={`h-6 w-10 rounded-full transition-colors relative ${player.isActive ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                        >
+                          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${player.isActive ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </button>
                       </td>
                     </tr>
                   ))}

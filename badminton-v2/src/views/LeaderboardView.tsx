@@ -43,7 +43,7 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const [statsRes, profilesRes] = await Promise.all([
     supabase.from('player_stats').select('player_id, games_played, wins').gt('games_played', 0),
-    supabase.from('profiles').select('id, nickname, name_slug'),
+    supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
   ])
 
   const nameMap = new Map(
@@ -69,7 +69,7 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
 async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
   const [statsRes, profilesRes] = await Promise.all([
     supabase.from('player_cheer_stats').select('*').gt('cheers_received', 0),
-    supabase.from('profiles').select('id, nickname, name_slug'),
+    supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
   ])
 
   const nameMap = new Map(
@@ -207,7 +207,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
-    supabase.from('profiles').select('id, nickname, name_slug'),
+    supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
     supabase.from('cheers').select('receiver_id, giver_id, created_at').order('created_at', { ascending: false }),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: true }),
   ])

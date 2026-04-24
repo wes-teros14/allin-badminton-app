@@ -91,11 +91,12 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
         return
       }
 
-      // 3. Fetch profiles
+      // 3. Fetch profiles (exclude inactive players)
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, name_slug, nickname')
         .in('id', playerIds)
+        .eq('is_active', true)
 
       if (cancelled) return
 
