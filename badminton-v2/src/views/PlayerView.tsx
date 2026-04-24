@@ -358,7 +358,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             : gamesAhead === 0
             ? '⏳ You\'re up next!'
             : nextUpMatch && nextUpMatch.gameNumber <= 2
-            ? '🏃 You\'re in an opening match — please arrive early so you get all your games in!'
+            ? '🏃 Your match is one of the first — late arrivals may result in fewer games played.'
             : `⏳ ~${waitMinutes ?? '?'} min wait until your next game`
           }
         </div>
