@@ -8,7 +8,6 @@ import { useRealtime } from '@/hooks/useRealtime'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
-import { SessionRecapBanner } from '@/components/SessionRecapBanner'
 
 // ---------------------------------------------------------------------------
 // Leaderboard helpers (mirrors TodayView logic, scoped to a single session)
@@ -119,7 +118,6 @@ function ScheduleTab({
   return (
     <div className="relative">
       <LiveIndicator status={status} onRefresh={refresh} />
-      <SessionRecapBanner />
       {isLoading ? (
         <div className="bg-primary px-4 py-5 animate-pulse">
           <div className="h-7 w-32 bg-primary-foreground/30 rounded mb-1" />
@@ -197,6 +195,8 @@ function ScheduleTab({
             ? "🏸 You're on court now!"
             : gamesAhead === 0
             ? "⏳ You're up next!"
+            : nextUpMatch && nextUpMatch.gameNumber <= 2
+            ? "🏃 You're in an opening match — arrive at the venue early so you don't miss your games!"
             : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 6} mins)`}
         </div>
       )}
