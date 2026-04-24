@@ -84,8 +84,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       // 2. Find active session (or use override)
       let sid: string
-      let localDate: string | null = null
-      let localTime: string | null = null
 
       if (sessionIdOverride) {
         sid = sessionIdOverride
@@ -96,7 +94,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null }
         setSessionId(s.id); setSessionName(s.name); setSessionDate(s.date)
         setSessionVenue(s.venue); setSessionTime(s.time); setSessionDuration(s.duration)
-        localDate = s.date; localTime = s.time
       } else {
         const { data: session } = await supabase
           .from('sessions')
@@ -123,7 +120,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         setSessionTime(s.time)
         setSessionDuration(s.duration)
         sid = s.id
-        localDate = s.date; localTime = s.time
       }
 
       // 3. Fetch this player's matches
@@ -224,31 +220,27 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       setMatches(result)
 
-      // Compute wait time — pure formula, no extra DB queries
+      // Wait time driven by actual queued matches ahead in the session
       const firstQueuedMatch = result.find(m => m.status === 'queued')
-      if (firstQueuedMatch && localDate && localTime) {
+      if (firstQueuedMatch) {
         const N = firstQueuedMatch.gameNumber
-        const c = 2, mu = 12, sigma = 2
-        const k = 1 / Math.sqrt(Math.PI)           // 0.5642
-        const eMin = mu - sigma * k                 // ~10.87 min per rotation
 
-        const sessionStartMs = new Date(`${localDate}T${localTime}`).getTime()
-        const elapsed = (Date.now() - sessionStartMs) / 60000
-        const currentRotation = Math.floor(elapsed / eMin)
-        const B = (currentRotation * c) + c
-        const timeElapsedInRotation = elapsed - (currentRotation * eMin)
+        const { count } = await supabase
+          .from('matches')
+          .select('id', { count: 'exact', head: true })
+          .eq('session_id', sid)
+          .eq('status', 'queued')
+          .lt('queue_position', N)
 
-        const gamesAheadCount = Math.max(0, N - B - 1)
-        setGamesAhead(gamesAheadCount)
+        if (cancelled) return
 
-        if (gamesAheadCount === 0) {
+        const queuedAhead = count ?? 0
+        setGamesAhead(queuedAhead)
+
+        if (queuedAhead === 0) {
           setWaitMinutes(0)
         } else {
-          const rotationsAhead = Math.floor((N - B - 1) / c)
-          const wait = ((rotationsAhead + 1) * mu)
-                     - ((rotationsAhead - 1) * sigma * k)
-                     - timeElapsedInRotation
-          setWaitMinutes(Math.max(0, Math.round(wait)))
+          setWaitMinutes(11 + 6 * (queuedAhead - 1))
         }
       } else {
         setGamesAhead(null)
