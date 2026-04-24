@@ -8,7 +8,6 @@ import { useRealtime } from '@/hooks/useRealtime'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
-import { SessionRecapBanner } from '@/components/SessionRecapBanner'
 import { supabase } from '@/lib/supabase'
 
 interface AllMatch {
@@ -60,7 +59,6 @@ function SessionPickerView() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <SessionRecapBanner />
       <div className="max-w-sm mx-auto px-4 py-8">
         <p className="text-sm text-muted-foreground mb-3">Select Session</p>
         <div className="flex flex-col gap-2">
@@ -320,7 +318,6 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
   return (
     <div className="min-h-screen bg-background text-foreground relative">
       <LiveIndicator status={status} onRefresh={refresh} />
-      <SessionRecapBanner />
       {isLoading ? (
         <div className="bg-primary px-4 py-5 animate-pulse">
           <div className="h-7 w-32 bg-primary-foreground/30 rounded mb-1" />
@@ -360,6 +357,8 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             ? '🏸 You\'re on court now!'
             : gamesAhead === 0
             ? '⏳ You\'re up next!'
+            : nextUpMatch && nextUpMatch.gameNumber <= 2
+            ? '🏃 You\'re in an opening match — arrive at the venue early so you don\'t miss your games!'
             : `⏳ ${gamesAhead} game${gamesAhead !== 1 ? 's' : ''} until your next game (~${(gamesAhead ?? 0) * 6} mins)`
           }
         </div>
