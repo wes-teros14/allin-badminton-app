@@ -18,8 +18,8 @@ const MATCH_TYPE_COLOR: Record<string, string> = {
   "Men's Doubles":   'text-red-500',
   "Women's Doubles": 'text-pink-500',
   'Mixed Doubles':   'text-green-500',
-  '2Mvs2F Doubles':  'text-blue-400',
-  '3-1 Doubles':     'text-orange-400',
+  '2Mvs2F Doubles':  'text-blue-900',
+  '3-1 Doubles':     'text-blue-400',
 }
 
 interface Props {
