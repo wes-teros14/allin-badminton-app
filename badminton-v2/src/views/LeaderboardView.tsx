@@ -52,11 +52,12 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   )
 
   return ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>)
+    .filter((s) => nameMap.has(s.player_id))
     .map((s) => {
       const losses = s.games_played - s.wins
       return {
         playerId: s.player_id,
-        displayName: nameMap.get(s.player_id) ?? s.player_id,
+        displayName: nameMap.get(s.player_id)!,
         wins: s.wins,
         losses,
         points: s.wins * 2 - losses,
@@ -80,10 +81,10 @@ async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
   const CHEER_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
 
   return ((statsRes.data ?? []) as any[])
-    .filter(s => !CHEER_EXCLUDED.has(s.player_id))
+    .filter(s => !CHEER_EXCLUDED.has(s.player_id) && nameMap.has(s.player_id))
     .map(s => ({
       ...s,
-      displayName: nameMap.get(s.player_id) ?? s.player_id,
+      displayName: nameMap.get(s.player_id)!,
     }))
 }
 
@@ -217,9 +218,12 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       .map(p => [p.id, p.nickname ?? p.name_slug])
   )
 
-  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>
-  const stats = (statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>
-  const regs = (regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>
+  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
+    .filter(s => nameMap.has(s.player_id))
+  const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
+    .filter(s => nameMap.has(s.player_id))
+  const regs = ((regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>)
+    .filter(r => nameMap.has(r.player_id))
   const cheerTimestamps = (cheerTimestampsRes.data ?? []) as Array<{ receiver_id: string; giver_id: string; created_at: string }>
 
   // Tiebreaker maps: latest activity timestamp per player
