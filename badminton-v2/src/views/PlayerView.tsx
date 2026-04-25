@@ -299,7 +299,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 }
 
 function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: string; sessionId?: string }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, isLoading, notFound, gamesAhead, waitSeconds, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, gamesAhead, waitSeconds, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
   const { status } = useRealtime(sessionId, refresh)
 
   if (!isLoading && notFound) {
@@ -347,14 +347,14 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
         </div>
       )}
 
-      {!isLoading && (playingMatch || nextUpMatch) && (
+      {!isLoading && (playingMatch || (nextUpMatch && nextUpMatch.gameNumber <= 2) || (nextUpMatch && sessionStatus === 'in_progress')) && (
         <div className={`mx-4 mt-3 mb-1 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 ${
           playingMatch
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-foreground'
         }`}>
           {playingMatch
-            ? '🏸 You\'re on court now!'
+            ? '🏸 It\'s your turn! Please head to the court now.'
             : nextUpMatch && nextUpMatch.gameNumber <= 2
             ? '🏃 Your match is one of the first — late arrivals may result in fewer games played.'
             : waitSeconds === 0
