@@ -143,7 +143,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false }
                               : 'bg-background text-muted-foreground hover:bg-muted'
                           }`}
                         >
-                          {p ? 'Pd' : 'Unpd'}
+                          {p ? 'Paid' : 'Unpaid'}
                         </button>
                       ))}
                     </div>

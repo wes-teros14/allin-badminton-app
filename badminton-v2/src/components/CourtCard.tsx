@@ -70,7 +70,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
         // 4. Assign to this court
         await supabase
           .from('matches')
-          .update({ status: 'playing', court_number: courtNumber })
+          .update({ status: 'playing', court_number: courtNumber, started_at: new Date().toISOString() })
           .eq('id', (nextMatch as { id: string }).id)
       } else {
         // Check if other court still has a playing match

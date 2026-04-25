@@ -108,7 +108,7 @@ function ScheduleTab({
   registrationOpensAt: string | null
   onRegister: () => void
 }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, gamesAhead, waitMinutes, refresh } = usePlayerSchedule(nameSlug, sessionId)
+  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, gamesAhead, waitSeconds, refresh } = usePlayerSchedule(nameSlug, sessionId)
   const { status } = useRealtime(resolvedId, refresh)
 
   const firstQueuedIndex = matches.findIndex((m) => m.status === 'queued')
@@ -193,11 +193,13 @@ function ScheduleTab({
         }`}>
           {playingMatch
             ? "🏸 You're on court now!"
-            : gamesAhead === 0
-            ? "⏳ You're up next!"
             : nextUpMatch && nextUpMatch.gameNumber <= 2
             ? "🏃 Your match is one of the first — late arrivals may result in fewer games played."
-            : `⏳ ~${waitMinutes ?? '?'} min wait until your next game`}
+            : waitSeconds === 0
+            ? <span className="animate-blink text-[#FFB200] font-semibold">A game is ending any moment — be ready to play!</span>
+            : gamesAhead === 0
+            ? `⏳ ~${waitSeconds == null ? '?' : waitSeconds < 60 ? `${waitSeconds}s` : `${Math.floor(waitSeconds / 60)}m${waitSeconds % 60 > 0 ? ` ${waitSeconds % 60}s` : ''}`} estimated wait until your next game`
+            : `⏳ ~${waitSeconds == null ? '?' : Math.ceil(waitSeconds / 60)} min estimated wait until your next game`}
         </div>
       )}
 

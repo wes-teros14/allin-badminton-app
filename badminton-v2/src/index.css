@@ -88,6 +88,7 @@
     --border: #2D1A40;
     --foreground: #FFFFFF;
     --primary: #FEFE6A;
+    --primary-foreground: #0F0A18;
 }
 
 @theme inline {
@@ -172,6 +173,8 @@
 @keyframes loading-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
 
 @keyframes court-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.1; } }
+@utility animate-blink { animation: blink 0.65s ease-in-out infinite; }
 
 /* Sonner toast — override built-in theme with app palette */
 [data-sonner-toast] {

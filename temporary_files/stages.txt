@@ -1,0 +1,8 @@
+Session Stages (in order):
+
+1. setup
+2. registration_open
+3. registration_closed
+4. schedule_locked
+5. in_progress
+6. complete

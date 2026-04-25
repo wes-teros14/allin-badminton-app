@@ -60,7 +60,9 @@
       "Bash(npx playwright:*)",
       "Bash(git fetch:*)",
       "Bash(./node_modules/.bin/supabase db:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(node *)"
     ]
   },
   "enabledMcpjsonServers": [
@@ -92,6 +94,6 @@
     ]
   },
   "enabledPlugins": {
-    "claude-mem@thedotmack": false
+    "claude-mem@thedotmack": true
   }
 }
