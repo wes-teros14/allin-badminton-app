@@ -239,7 +239,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         if (cancelled) return
 
         type PlayingRow = { queue_position: number; started_at: string | null }
-        const rows = (playingRows ?? []) as PlayingRow[]
+        const rows = (playingRows ?? []) as unknown as PlayingRow[]
 
         const highestPlaying = rows.length > 0
           ? Math.max(...rows.map(r => r.queue_position))
