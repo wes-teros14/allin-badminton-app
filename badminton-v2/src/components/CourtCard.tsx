@@ -45,8 +45,14 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
     setIsSaving(true)
 
     try {
-      // 1. Mark current match complete with duration
-      await supabase.from('matches').update({ status: 'complete', duration_seconds: elapsed } as never).eq('id', current.id)
+      // 1. Mark current match complete — only if still 'playing' (atomic guard against concurrent double-finish)
+      const { data: completed, error: e1 } = await supabase
+        .from('matches')
+        .update({ status: 'complete', duration_seconds: elapsed } as never)
+        .eq('id', current.id)
+        .eq('status', 'playing')
+        .select('id')
+      if (e1 || !completed || completed.length === 0) return
 
       // 2. Record result (skip if not recording)
       if (winningPairIndex !== null) {
