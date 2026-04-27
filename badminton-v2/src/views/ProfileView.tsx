@@ -66,25 +66,26 @@ interface Award {
 }
 
 async function fetchAwards(userId: string): Promise<Award[]> {
-  const [cheerRes, statsRes, regsRes] = await Promise.all([
+  const latestSessionRes = await supabase
+    .from('sessions')
+    .select('id')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
+
+  const [cheerRes, statsRes, earlyBirdRes] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
-    supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
+    latestSessionId
+      ? supabase.from('session_registrations').select('player_id').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
 
   const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>
   const stats = (statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>
-  const regs = (regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>
-
-  // Count how many times each player was first to register (self-registered only)
-  const firstRegistrantCount = new Map<string, number>()
-  const seenSessions = new Set<string>()
-  for (const r of regs) {
-    if (!seenSessions.has(r.session_id)) {
-      seenSessions.add(r.session_id)
-      firstRegistrantCount.set(r.player_id, (firstRegistrantCount.get(r.player_id) ?? 0) + 1)
-    }
-  }
+  const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
 
   function top(arr: Array<{ player_id: string; value: number }>): string | null {
     if (arr.length === 0) return null
@@ -93,8 +94,6 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     if (sorted.length > 1 && sorted[0].value === sorted[1].value) return null
     return sorted[0].player_id
   }
-
-  const earlyBirdEntries = Array.from(firstRegistrantCount.entries()).map(([player_id, value]) => ({ player_id, value }))
 
   const STREAK_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
   const cheerFiltered = cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id))
@@ -119,7 +118,7 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     awards.push({ emoji: '💪', label: 'Top Solid Effort' })
   if (top(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
     awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
-  if (top(earlyBirdEntries) === userId)
+  if (earlyBirdPlayerId === userId)
     awards.push({ emoji: '🐦', label: 'Registration Early Bird' })
 
   return awards
