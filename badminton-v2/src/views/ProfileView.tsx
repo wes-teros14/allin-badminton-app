@@ -69,7 +69,8 @@ async function fetchAwards(userId: string): Promise<Award[]> {
   const latestSessionRes = await supabase
     .from('sessions')
     .select('id')
-    .order('created_at', { ascending: false })
+    .neq('status', 'setup')
+    .order('date', { ascending: false })
     .limit(1)
     .maybeSingle()
 
