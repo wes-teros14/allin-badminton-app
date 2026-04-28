@@ -212,7 +212,6 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     .limit(1)
     .maybeSingle()
   const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
-  console.log('[EarlyBird] latestSessionRes:', latestSessionRes.data, 'error:', latestSessionRes.error)
 
   const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirdRes] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
@@ -235,7 +234,6 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => nameMap.has(s.player_id))
   const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
-  console.log('[EarlyBird] earlyBirdRes:', earlyBirdRes.data, 'error:', (earlyBirdRes as { error?: unknown }).error)
   let earlyBirdName: string | null = earlyBirdPlayerId ? (nameMap.get(earlyBirdPlayerId) ?? null) : null
   if (earlyBirdPlayerId && !earlyBirdName) {
     const pRes = await supabase.from('profiles').select('nickname, name_slug').eq('id', earlyBirdPlayerId).maybeSingle()
