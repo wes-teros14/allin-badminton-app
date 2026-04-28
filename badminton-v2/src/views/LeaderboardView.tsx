@@ -220,7 +220,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     supabase.from('cheers').select('receiver_id, giver_id, created_at').order('created_at', { ascending: false }),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: true }),
     latestSessionId
-      ? supabase.from('session_registrations').select('player_id').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
+      ? supabase.from('session_registrations').select('player_id, profiles(nickname, name_slug)').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
       : Promise.resolve({ data: null }),
   ])
 
@@ -233,8 +233,10 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     .filter(s => nameMap.has(s.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => nameMap.has(s.player_id))
-  const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
-  const earlyBirdName = earlyBirdPlayerId ? (nameMap.get(earlyBirdPlayerId) ?? null) : null
+  const earlyBirdRow = earlyBirdRes.data as { player_id: string; profiles: { nickname: string | null; name_slug: string } | null } | null
+  const earlyBirdName = earlyBirdRow
+    ? (earlyBirdRow.profiles?.nickname ?? earlyBirdRow.profiles?.name_slug ?? nameMap.get(earlyBirdRow.player_id) ?? null)
+    : null
   const cheerTimestamps = (cheerTimestampsRes.data ?? []) as Array<{ receiver_id: string; giver_id: string; created_at: string }>
 
   // Tiebreaker maps: latest activity timestamp per player
