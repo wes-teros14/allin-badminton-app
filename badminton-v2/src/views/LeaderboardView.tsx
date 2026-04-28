@@ -204,13 +204,24 @@ function CheersLeaderboard() {
 }
 
 async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
-  const [cheerRes, statsRes, regsRes, profilesRes, cheerTimestampsRes, sessionsRes] = await Promise.all([
+  const latestSessionRes = await supabase
+    .from('sessions')
+    .select('id')
+    .neq('status', 'setup')
+    .order('date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
+
+  const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirdRes] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
-    supabase.from('session_registrations').select('session_id, player_id, registered_at').eq('source', 'self').order('registered_at', { ascending: true }),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
     supabase.from('cheers').select('receiver_id, giver_id, created_at').order('created_at', { ascending: false }),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: true }),
+    latestSessionId
+      ? supabase.from('session_registrations').select('player_id').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
+      : Promise.resolve({ data: null }),
   ])
 
   const nameMap = new Map(
@@ -222,8 +233,8 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     .filter(s => nameMap.has(s.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => nameMap.has(s.player_id))
-  const regs = ((regsRes.data ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>)
-    .filter(r => nameMap.has(r.player_id))
+  const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
+  const earlyBirdName = earlyBirdPlayerId ? (nameMap.get(earlyBirdPlayerId) ?? null) : null
   const cheerTimestamps = (cheerTimestampsRes.data ?? []) as Array<{ receiver_id: string; giver_id: string; created_at: string }>
 
   // Tiebreaker maps: latest activity timestamp per player
@@ -232,11 +243,6 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   for (const c of cheerTimestamps) {
     if (!latestReceivedAt.has(c.receiver_id)) latestReceivedAt.set(c.receiver_id, c.created_at)
     if (!latestGivenAt.has(c.giver_id)) latestGivenAt.set(c.giver_id, c.created_at)
-  }
-  const latestRegAt = new Map<string, string>()
-  for (const r of regs) {
-    const existing = latestRegAt.get(r.player_id)
-    if (!existing || r.registered_at > existing) latestRegAt.set(r.player_id, r.registered_at)
   }
 
   function topHolder(arr: Array<{ player_id: string; value: number }>, tiebreaker?: Map<string, string>): { holder: string | null; value: number } {
@@ -250,17 +256,6 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     if (sorted.length === 0) return { holder: null, value: 0 }
     return { holder: nameMap.get(sorted[0].player_id) ?? null, value: sorted[0].value }
   }
-
-  // Early bird: count first registrations per session
-  const firstCount = new Map<string, number>()
-  const seen = new Set<string>()
-  for (const r of regs) {
-    if (!seen.has(r.session_id)) {
-      seen.add(r.session_id)
-      firstCount.set(r.player_id, (firstCount.get(r.player_id) ?? 0) + 1)
-    }
-  }
-  const earlyBirdEntries = Array.from(firstCount.entries()).map(([player_id, value]) => ({ player_id, value }))
 
   // Consecutive sessions streak per player
   const STREAK_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
@@ -285,9 +280,9 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
 
   const awards: AwardEntry[] = [
     // System-generated awards first
-    { emoji: '📅', label: 'Most Sessions Joined', ...topHolder(stats.filter(s => !STREAK_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended })), latestRegAt) },
-    { emoji: '🔥', label: 'Attendance Streak', ...topHolder(streakEntries, latestRegAt) },
-    { emoji: '🐦', label: 'Registration Early Bird', ...topHolder(earlyBirdEntries, latestRegAt) },
+    { emoji: '📅', label: 'Most Sessions Joined', ...topHolder(stats.filter(s => !STREAK_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) },
+    { emoji: '🔥', label: 'Attendance Streak', ...topHolder(streakEntries) },
+    { emoji: '🐦', label: 'Registration Early Bird', holder: earlyBirdName, value: earlyBirdName ? 1 : 0 },
     // Cheer-based awards
     { emoji: '🌟', label: 'Most Cheers Received', ...topHolder(cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id)).map(c => ({ player_id: c.player_id, value: c.cheers_received })), latestReceivedAt) },
     { emoji: '🙌', label: 'Most Cheers Given',    ...topHolder(cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id)).map(c => ({ player_id: c.player_id, value: c.cheers_given })), latestGivenAt) },
