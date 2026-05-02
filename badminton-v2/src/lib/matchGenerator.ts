@@ -138,6 +138,14 @@ function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b)
 }
 
+function fisherYatesShuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
 export function adjustNumMatches(numMatches: number, n: number): number {
   if (n < 4) return numMatches
   const step = n / gcd(n, 4)
@@ -184,7 +192,7 @@ function buildAssignment(
   // Target games: some players get base+1 to fill the remainder
   const base = Math.floor(totalSlots / n)
   const remainder = totalSlots % n
-  const shuffled = [...playerIds].sort(() => Math.random() - 0.5)
+  const shuffled = fisherYatesShuffle([...playerIds])
   const remaining = new Map<string, number>()
   shuffled.forEach((id, i) => {
     remaining.set(id, i < remainder ? base + 1 : base)
@@ -196,7 +204,7 @@ function buildAssignment(
   for (let m = 0; m < numMatches; m++) {
     // Sort candidates: most remaining games first, then deprioritize players
     // who just played (streak avoidance), then random tiebreak
-    const candidates = [...remaining.entries()]
+    const candidates = fisherYatesShuffle([...remaining.entries()])
       .filter(([, r]) => r > 0)
       .sort((a, b) => {
         const remDiff = b[1] - a[1]
@@ -204,8 +212,8 @@ function buildAssignment(
         // Deprioritize players who played in the previous match
         const aJust = prevMatchPlayers.has(a[0]) ? 1 : 0
         const bJust = prevMatchPlayers.has(b[0]) ? 1 : 0
-        if (aJust !== bJust) return aJust - bJust
-        return Math.random() - 0.5
+        return aJust - bJust
+        // No random tiebreak — pre-shuffle ensures uniform order among equals
       })
       .map(([id]) => id)
 

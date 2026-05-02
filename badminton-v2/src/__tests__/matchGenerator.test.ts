@@ -21,7 +21,12 @@ import {
 // Randomness helpers
 // ---------------------------------------------------------------------------
 function mockRandom() {
-  vi.spyOn(Math, 'random').mockReturnValue(0.5)
+  // Seeded LCG — deterministic but varied; constant 0.5 breaks Fisher-Yates shuffles
+  let seed = 42
+  vi.spyOn(Math, 'random').mockImplementation(() => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff
+    return seed / 0x7fffffff
+  })
 }
 function restoreRandom() {
   vi.restoreAllMocks()

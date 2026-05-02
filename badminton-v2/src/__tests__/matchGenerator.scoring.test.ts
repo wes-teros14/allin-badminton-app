@@ -34,7 +34,7 @@ const levelMap = new Map<string, number>([
 // Tests
 // ---------------------------------------------------------------------------
 describe('Scoring: evaluateSessionScore', () => {
-  it('S1 — perfect match (no violations) → score=10000', () => {
+  it('S1 — perfect match (no violations) → score=matches.length*500', () => {
     // Two matches, 8 distinct players, no repeats, no streak, no imbalance, no spread
     const matches = [
       makeMatch(1, 'a', 'b', 'c', 'd'),
@@ -42,14 +42,14 @@ describe('Scoring: evaluateSessionScore', () => {
     ]
     const lm = new Map([...levelMap])
     const result = evaluateSessionScore(matches, lm, [], 1, W, 3)
-    expect(result.score).toBe(10000)
+    expect(result.score).toBe(matches.length * 500)
     expect(result.streakViolations).toBe(0)
     expect(result.repeatPartners).toBe(0)
     expect(result.wideGaps).toBe(0)
     expect(result.participationGap).toBe(0)
   })
 
-  it('S2 — streak violation → 10000 - violations * streakWeight', () => {
+  it('S2 — streak violation → base - violations * streakWeight', () => {
     // Same 4 players, 2 consecutive games using different splits → no repeat partners
     // Game 1: a+b vs c+d (pairs: a|b, c|d)
     // Game 2: a+c vs b+d (pairs: a|c, b|d) — all new pairs, no repeat partner penalty
@@ -61,7 +61,8 @@ describe('Scoring: evaluateSessionScore', () => {
     const result = evaluateSessionScore(matches, levelMap, [], 1, W, 3)
     expect(result.streakViolations).toBe(4)
     expect(result.repeatPartners).toBe(0)
-    expect(result.score).toBe(10000 - 4 * W.streakWeight)
+    // Also penalizes rest spacing: 4 players each gap=1 vs idealGap=3, under=2 each → 8*restSpacingPenalty
+    expect(result.score).toBe(2 * 500 - 4 * W.streakWeight - 8 * W.restSpacingPenalty)
   })
 
   it('S3 — repeat partner → exactly 1 repeat', () => {
@@ -76,7 +77,7 @@ describe('Scoring: evaluateSessionScore', () => {
     expect(result.score).toBeLessThan(10000)
   })
 
-  it('S4 — wide skill gap → 10000 - wideGaps * spreadPenalty', () => {
+  it('S4 — wide skill gap → base - wideGaps * spreadPenalty', () => {
     // hi=9, lo=1 → spread=8, limit=3 → 1 wide gap
     const lm = new Map([['hi', 9], ['lo', 1], ['a', 5], ['b', 5]])
     const matches = [
@@ -84,10 +85,10 @@ describe('Scoring: evaluateSessionScore', () => {
     ]
     const result = evaluateSessionScore(matches, lm, [], 1, W, 3)
     expect(result.wideGaps).toBe(1)
-    expect(result.score).toBe(10000 - W.spreadPenalty - Math.abs(14 - 6) * W.imbalancePenalty)
+    expect(result.score).toBe(1 * 500 - W.spreadPenalty - Math.abs(14 - 6) * W.imbalancePenalty)
   })
 
-  it('S5 — level imbalance penalty → 10000 - diffSum * imbalancePenalty', () => {
+  it('S5 — level imbalance penalty → base - diffSum * imbalancePenalty', () => {
     // team1Level=12, team2Level=8 → diff=4
     const lm = new Map([['a', 7], ['b', 5], ['c', 4], ['d', 4]])
     const matches = [
@@ -95,7 +96,7 @@ describe('Scoring: evaluateSessionScore', () => {
     ]
     const result = evaluateSessionScore(matches, lm, [], 1, W, 3)
     expect(result.levelGaps).toBe(4)
-    expect(result.score).toBe(10000 - 4 * W.imbalancePenalty)
+    expect(result.score).toBe(1 * 500 - 4 * W.imbalancePenalty)
   })
 
   it('S6 — participation gap → 10000 - gap * fairnessWeight', () => {
@@ -111,14 +112,14 @@ describe('Scoring: evaluateSessionScore', () => {
     expect(result.score).toBeLessThan(10000 - 1 * W.fairnessWeight)
   })
 
-  it('S7 — wishlist reward → 10000 + wishes * wishlistReward', () => {
+  it('S7 — wishlist reward → base + wishes * wishlistReward', () => {
     const matches = [
       makeMatch(1, 'a', 'b', 'c', 'd'),
       makeMatch(2, 'e', 'f', 'g', 'h'),
     ]
     const result = evaluateSessionScore(matches, levelMap, [['a', 'b']], 1, W, 3)
     expect(result.wishesGranted).toBe(1)
-    expect(result.score).toBe(10000 + W.wishlistReward)
+    expect(result.score).toBe(2 * 500 + W.wishlistReward)
   })
 
   it('S8 — combined stacking: score arithmetic is additive', () => {
@@ -130,7 +131,7 @@ describe('Scoring: evaluateSessionScore', () => {
     ]
     const result = evaluateSessionScore(matches, lm, [['hi', 'a']], 1, W, 3)
     const expected =
-      10000
+      1 * 500                  // base: 1 match
       - W.spreadPenalty        // 1 wide gap
       - 8 * W.imbalancePenalty // team diff = 8
       + W.wishlistReward       // 1 wish granted
