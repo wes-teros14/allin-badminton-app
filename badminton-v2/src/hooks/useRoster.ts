@@ -59,6 +59,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
     const { data: allProfiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, name_slug, nickname')
+      .eq('is_active', true)
 
     if (profilesError) { toast.error(profilesError.message); return }
 

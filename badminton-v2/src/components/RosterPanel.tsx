@@ -3,6 +3,18 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRoster } from '@/hooks/useRoster'
 
+function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <input
+      type="text"
+      placeholder="Search players…"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full text-xs rounded border border-input bg-background px-2 py-1 mb-2 focus:outline-none focus:ring-1 focus:ring-ring"
+    />
+  )
+}
+
 interface Props {
   sessionId: string
   editable?: boolean
@@ -17,6 +29,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false }
   const [open, setOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [addSearch, setAddSearch] = useState('')
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleRemoveClick(registrationId: string) {
@@ -167,23 +180,31 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false }
 
         {/* Add Player section */}
         {unregisteredPlayers.length > 0 && (
-          <div className="border-t pt-3">
+          <div className="mt-4 border-t border-border pt-3">
             <button
-              className="flex items-center justify-between w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center justify-between w-full text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setAddOpen((v) => !v)}
             >
               <span>Add player ({unregisteredPlayers.length})</span>
               <span>{addOpen ? '▲' : '▼'}</span>
             </button>
             {addOpen && (
-              <ul className="space-y-1 mt-2">
-                {unregisteredPlayers.map((player) => (
-                  <li key={player.id} className="flex items-center justify-between text-sm">
-                    <span>{player.nickname ?? player.nameSlug}</span>
-                    <Button variant="ghost" size="sm" onClick={() => addPlayer(player.id)}>Add</Button>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <div className="mt-3">
+                  <SearchInput value={addSearch} onChange={setAddSearch} />
+                </div>
+                <ul className="space-y-1 mt-1 max-h-48 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+                  {unregisteredPlayers.filter((p) => {
+                    const name = (p.nickname ?? p.nameSlug).toLowerCase()
+                    return name.includes(addSearch.toLowerCase())
+                  }).map((player) => (
+                    <li key={player.id} className="flex items-center justify-between text-sm">
+                      <span>{player.nickname ?? player.nameSlug}</span>
+                      <Button variant="ghost" size="sm" onClick={() => addPlayer(player.id)}>Add</Button>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         )}
