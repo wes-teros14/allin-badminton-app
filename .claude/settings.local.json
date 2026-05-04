@@ -62,7 +62,10 @@
       "Bash(./node_modules/.bin/supabase db:*)",
       "Bash(npx tsx:*)",
       "Bash(python3 -m json.tool)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(rm -f \"C:/1Wes/all-in-badminton-app/.claude/cache/gsd-update-check.json\")",
+      "Bash(rm -f __TRACKED_VAR__/.claude/cache/gsd-update-check.json)",
+      "Bash(rm -f \"C:/1Wes/all-in-badminton-app/gsd-custom-files.json\")"
     ]
   },
   "enabledMcpjsonServers": [
