@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -11,31 +11,6 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.4"
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
   }
   public: {
     Tables: {
@@ -92,7 +67,7 @@ export type Database = {
           id: string
           match_id: string | null
           receiver_id: string
-          session_id: string
+          session_id: string | null
         }
         Insert: {
           cheer_type_id: string
@@ -101,7 +76,7 @@ export type Database = {
           id?: string
           match_id?: string | null
           receiver_id: string
-          session_id: string
+          session_id?: string | null
         }
         Update: {
           cheer_type_id?: string
@@ -110,7 +85,7 @@ export type Database = {
           id?: string
           match_id?: string | null
           receiver_id?: string
-          session_id?: string
+          session_id?: string | null
         }
         Relationships: [
           {
@@ -169,9 +144,11 @@ export type Database = {
         Row: {
           court_number: number | null
           created_at: string
+          duration_seconds: number | null
           id: string
           queue_position: number
           session_id: string
+          started_at: string | null
           status: Database["public"]["Enums"]["match_status"]
           team1_player1_id: string
           team1_player2_id: string
@@ -181,9 +158,11 @@ export type Database = {
         Insert: {
           court_number?: number | null
           created_at?: string
+          duration_seconds?: number | null
           id?: string
           queue_position: number
           session_id: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["match_status"]
           team1_player1_id: string
           team1_player2_id: string
@@ -193,9 +172,11 @@ export type Database = {
         Update: {
           court_number?: number | null
           created_at?: string
+          duration_seconds?: number | null
           id?: string
           queue_position?: number
           session_id?: string
+          started_at?: string | null
           status?: Database["public"]["Enums"]["match_status"]
           team1_player1_id?: string
           team1_player2_id?: string
@@ -346,6 +327,7 @@ export type Database = {
           email: string | null
           gender: string | null
           id: string
+          is_active: boolean
           level: number | null
           name_slug: string
           nickname: string | null
@@ -356,6 +338,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           id: string
+          is_active?: boolean
           level?: number | null
           name_slug: string
           nickname?: string | null
@@ -366,6 +349,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           id?: string
+          is_active?: boolean
           level?: number | null
           name_slug?: string
           nickname?: string | null
@@ -449,11 +433,12 @@ export type Database = {
       sessions: {
         Row: {
           completed_at: string | null
+          court_cost: number | null
           created_at: string
           created_by: string
           date: string
           duration: string | null
-          generator_settings: Record<string, unknown> | null
+          generator_settings: Json | null
           id: string
           name: string
           price: number | null
@@ -465,11 +450,12 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          court_cost?: number | null
           created_at?: string
           created_by: string
           date: string
           duration?: string | null
-          generator_settings?: Record<string, unknown> | null
+          generator_settings?: Json | null
           id?: string
           name: string
           price?: number | null
@@ -481,11 +467,12 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          court_cost?: number | null
           created_at?: string
           created_by?: string
           date?: string
           duration?: string | null
-          generator_settings?: Record<string, unknown> | null
+          generator_settings?: Json | null
           id?: string
           name?: string
           price?: number | null
@@ -496,6 +483,81 @@ export type Database = {
           venue?: string | null
         }
         Relationships: []
+      }
+      shuttle_batches: {
+        Row: {
+          brand: string
+          cost_per_tube: number
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          purchased_at: string
+          tube_count: number
+        }
+        Insert: {
+          brand: string
+          cost_per_tube: number
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          purchased_at?: string
+          tube_count: number
+        }
+        Update: {
+          brand?: string
+          cost_per_tube?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          purchased_at?: string
+          tube_count?: number
+        }
+        Relationships: []
+      }
+      shuttle_usage: {
+        Row: {
+          batch_id: string
+          id: string
+          recorded_at: string
+          recorded_by: string
+          session_id: string
+          tubes_used: number
+        }
+        Insert: {
+          batch_id: string
+          id?: string
+          recorded_at?: string
+          recorded_by: string
+          session_id: string
+          tubes_used: number
+        }
+        Update: {
+          batch_id?: string
+          id?: string
+          recorded_at?: string
+          recorded_by?: string
+          session_id?: string
+          tubes_used?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shuttle_usage_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "shuttle_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shuttle_usage_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -638,9 +700,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       match_status: ["queued", "playing", "complete"],
@@ -655,3 +714,4 @@ export const Constants = {
     },
   },
 } as const
+

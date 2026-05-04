@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { supabase } from '@/lib/supabase'
+import type { Json } from '@/types/database'
 import {
   generateScheduleOptimized,
   DEFAULT_WEIGHTS,
@@ -146,7 +147,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
       setStage('locking')
       const success = onLock ? await onLock(matches) : false
       if (success) {
-        await supabase.from('sessions').update({ generator_settings: settings as unknown as Record<string, unknown> }).eq('id', sessionId)
+        await supabase.from('sessions').update({ generator_settings: settings as unknown as Json }).eq('id', sessionId)
         setStage('locked')
       } else {
         setStage('preview')
