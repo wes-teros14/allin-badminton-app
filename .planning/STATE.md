@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.1
+milestone_name: Finance & Inventory Tab
+status: executing
+stopped_at: Roadmap written, Ready to execute (1 plan, 1 wave) Phase 8
+last_updated: "2026-05-04T21:24:11.941Z"
+last_activity: 2026-05-04 â€” Roadmap created for milestone v1.1 (4 phases, 12 requirements)
+progress:
+  total_phases: 4
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 3
+  percent: 75
+---
+
 ﻿# Project State
 
 ## Project Reference
@@ -9,16 +25,17 @@ See: .planning/PROJECT.md (updated 2026-05-03)
 
 ## Current Position
 
-Phase: 8 of 11 (DB Foundation)
-Plan: â€”
-Status: Ready to execute (1 plan, 1 wave)
-Last activity: 2026-05-04 â€” Roadmap created for milestone v1.1 (4 phases, 12 requirements)
+Phase: 9 of 11 (Inventory Management)
+Plan: 2 of 3 complete
+Status: Executing — plan 09-02 complete, Wave 3 (09-03) remaining
+Last activity: 2026-05-05 — 09-02 InventoryView component built (shadcn table/badge/dialog + InventoryView.tsx)
 
-Progress: [â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘] 0%
+Progress: [##########] 67% (2 of 3 plans in phase 9)
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0 (v1.1 milestone)
 - Average duration: â€”
 - Total execution time: â€”
@@ -30,6 +47,7 @@ Progress: [â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: â€”
 - Trend: â€”
 
@@ -41,10 +59,13 @@ Progress: [â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–
 
 Recent decisions affecting current work:
 
-- All monetary arithmetic (P&L, COGS, stock remaining) stays in Postgres â€” never computed in React
+- All monetary arithmetic (P&L, COGS, stock remaining) stays in Postgres — never computed in React
 - Finance page is a top-level admin-only page (not nested inside SessionView as originally noted in research)
 - Payment controls move to Finance page; removed from Admin tab entirely
-- No new npm packages â€” reuse React Hook Form, Zod, shadcn/ui
+- No new npm packages — reuse React Hook Form, Zod, shadcn/ui
+- shadcn Table already provides overflow-x-auto container natively — no extra wrapper div needed in InventoryView
+- Add Batch button onClick is no-op stub in Wave 2 — Wave 3 (09-03) wires dialog open handler
+- dialog.tsx pre-installed in Wave 2 so Wave 3 can import without separate install step
 
 ### Pending Todos
 
@@ -68,8 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-04 09:40
-Stopped at: Roadmap written, Ready to execute (1 plan, 1 wave) Phase 8
+Last session: 2026-05-05 05:24
+Stopped at: Completed 09-02-PLAN.md (InventoryView component). Next: 09-03 (route wiring + Add Batch dialog).
 Resume file: None
-
-

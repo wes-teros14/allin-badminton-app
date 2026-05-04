@@ -49,8 +49,8 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
   4. Each tube shows its remaining shuttlecock count (e.g., "T-1001: 4 / 12") computed from usage records in Postgres
   5. The Finance page header shows the total shuttles currently in stock across all tubes
 **Plans**: 3 plans
-- [ ] 09-01-PLAN.md — Create useShuttleBatches hook (data layer: fetch, compute tube IDs and stock remaining, addBatch mutation)
-- [ ] 09-02-PLAN.md — Build InventoryView component (table, loading skeleton, empty state, stock summary)
+- [x] 09-01-PLAN.md — Create useShuttleBatches hook (data layer: fetch, compute tube IDs and stock remaining, addBatch mutation)
+- [x] 09-02-PLAN.md — Build InventoryView component (table, loading skeleton, empty state, stock summary)
 - [ ] 09-03-PLAN.md — Add Batch dialog + form wiring, /inventory route, TopNavBar Inventory tab
 **UI hint**: yes
 
@@ -83,7 +83,7 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 8. DB Foundation | v1.1 | 0/TBD | Not started | - |
-| 9. Inventory Management | v1.1 | 0/3 | In progress | - |
+| 8. DB Foundation | v1.1 | 1/1 | Complete | 2026-05-04 |
+| 9. Inventory Management | v1.1 | 2/3 | In progress | - |
 | 10. Session Finance | v1.1 | 0/TBD | Not started | - |
 | 11. Payment Migration | v1.1 | 0/TBD | Not started | - |
