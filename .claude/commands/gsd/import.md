@@ -25,6 +25,7 @@ Future: `--prd` mode for PRD extraction is planned for a follow-up PR.
 @C:/1Wes/all-in-badminton-app/.claude/get-shit-done/workflows/import.md
 @C:/1Wes/all-in-badminton-app/.claude/get-shit-done/references/ui-brand.md
 @C:/1Wes/all-in-badminton-app/.claude/get-shit-done/references/gate-prompts.md
+@C:/1Wes/all-in-badminton-app/.claude/get-shit-done/references/doc-conflict-engine.md
 </execution_context>
 
 <context>
