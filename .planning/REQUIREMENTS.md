@@ -59,24 +59,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INV-01 | — | Pending |
-| INV-02 | — | Pending |
-| INV-03 | — | Pending |
-| INV-04 | — | Pending |
-| INV-05 | — | Pending |
-| FIN-01 | — | Pending |
-| FIN-02 | — | Pending |
-| FIN-03 | — | Pending |
-| FIN-04 | — | Pending |
-| PAY-01 | — | Pending |
-| PAY-02 | — | Pending |
-| PAY-03 | — | Pending |
+| INV-01 | Phase 9 | Pending |
+| INV-02 | Phase 9 | Pending |
+| INV-03 | Phase 9 | Pending |
+| INV-04 | Phase 9 | Pending |
+| INV-05 | Phase 9 | Pending |
+| FIN-01 | Phase 10 | Pending |
+| FIN-02 | Phase 10 | Pending |
+| FIN-03 | Phase 10 | Pending |
+| FIN-04 | Phase 10 | Pending |
+| PAY-01 | Phase 11 | Pending |
+| PAY-02 | Phase 11 | Pending |
+| PAY-03 | Phase 11 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 12 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 12 ⚠️
+- Mapped to phases: 12 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 — initial definition for v1.1*
+*Last updated: 2026-05-04 — traceability mapped via roadmap creation*
