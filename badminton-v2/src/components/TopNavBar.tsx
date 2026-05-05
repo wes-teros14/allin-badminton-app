@@ -46,6 +46,13 @@ export function TopNavBar() {
       show: role === 'admin',
       badge: false,
     },
+    {
+      label: 'Inventory',
+      href: '/inventory',
+      active: pathname.startsWith('/inventory'),
+      show: role === 'admin',
+      badge: false,
+    },
   ]
 
   return (
