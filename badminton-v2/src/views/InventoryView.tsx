@@ -147,9 +147,10 @@ export default function InventoryView() {
                         : 'hover:bg-muted/20'
                     }
                   >
-                    {/* Tube ID range: T-1001 – T-1012 */}
                     <TableCell className="text-sm font-mono">
-                      T-{batch.tubeStart} &ndash; T-{batch.tubeEnd}
+                      {batch.tubeStart === batch.tubeEnd
+                        ? `T-${batch.tubeStart}`
+                        : `T-${batch.tubeStart} – T-${batch.tubeEnd}`}
                     </TableCell>
                     <TableCell className="text-sm">{batch.brand}</TableCell>
                     <TableCell className="text-right text-sm">
