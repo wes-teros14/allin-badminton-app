@@ -26,13 +26,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Package, Plus } from 'lucide-react'
-
-const formatPeso = (value: number) =>
-  new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
-    minimumFractionDigits: 2,
-  }).format(value)
+import { formatPeso } from '@/utils/formatPeso'
 
 const addBatchSchema = z.object({
   brand: z.string().min(1, 'Brand is required.'),
