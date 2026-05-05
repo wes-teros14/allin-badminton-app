@@ -37,27 +37,31 @@ const formatPeso = (value: number) =>
 const addBatchSchema = z.object({
   brand: z.string().min(1, 'Brand is required.'),
   tubeCount: z.coerce
-    .number({ invalid_type_error: 'Enter number of tubes bought.' })
+    .number({ error: 'Enter number of tubes bought.' })
     .int()
     .min(1, 'Must be at least 1 tube.'),
   costPerTube: z.coerce
-    .number({ invalid_type_error: 'Enter cost per tube.' })
+    .number({ error: 'Enter cost per tube.' })
     .positive('Cost must be greater than 0.'),
   notes: z.string().optional(),
 })
-type AddBatchForm = z.infer<typeof addBatchSchema>
+// z.input uses the pre-coerce types (string | number for coerce fields) which
+// matches what react-hook-form sees from HTML inputs. z.output gives the
+// validated/coerced types used inside handleSubmit.
+type AddBatchFormInput = z.input<typeof addBatchSchema>
+type AddBatchFormOutput = z.output<typeof addBatchSchema>
 
 export default function InventoryView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { batches, isLoading, totalStockRemaining, addBatch } = useShuttleBatches()
 
-  const form = useForm<AddBatchForm>({
+  const form = useForm<AddBatchFormInput, unknown, AddBatchFormOutput>({
     resolver: zodResolver(addBatchSchema),
     defaultValues: { brand: '', tubeCount: 1, costPerTube: 0, notes: '' },
   })
 
-  async function handleSubmit(data: AddBatchForm) {
+  async function handleSubmit(data: AddBatchFormOutput) {
     setIsSubmitting(true)
     const result = await addBatch({
       brand: data.brand,
