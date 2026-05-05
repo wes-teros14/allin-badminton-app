@@ -25,6 +25,7 @@ export interface AddBatchInput {
 interface ShuttleBatchState {
   batches: ShuttleBatch[]
   isLoading: boolean
+  fetchError: string | null
   totalStockRemaining: number
   addBatch: (input: AddBatchInput) => Promise<{ error: string | null }>
 }
@@ -33,9 +34,11 @@ export function useShuttleBatches(): ShuttleBatchState {
   const { user } = useAuth()
   const [batches, setBatches] = useState<ShuttleBatch[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const fetchBatches = useCallback(async () => {
     setIsLoading(true)
+    setFetchError(null)
 
     // 1. Fetch batches ordered cheapest first (D-04: cost_per_tube ASC)
     const { data: batchRows, error } = await supabase
@@ -45,14 +48,21 @@ export function useShuttleBatches(): ShuttleBatchState {
       .order('created_at', { ascending: true })
 
     if (error) {
+      setFetchError(error.message)
       setIsLoading(false)
       return
     }
 
     // 2. Fetch all usage rows to compute remaining tubes per batch (INV-04)
-    const { data: usageRows } = await supabase
+    const { data: usageRows, error: usageError } = await supabase
       .from('shuttle_usage')
       .select('batch_id, tubes_used')
+
+    if (usageError) {
+      setFetchError(usageError.message)
+      setIsLoading(false)
+      return
+    }
 
     // 3. Build usage map: batch_id → total tubes used
     const usageMap = new Map<string, number>()
@@ -60,16 +70,15 @@ export function useShuttleBatches(): ShuttleBatchState {
       usageMap.set(u.batch_id, (usageMap.get(u.batch_id) ?? 0) + u.tubes_used)
     }
 
-    // 4. Fetch batches ordered by creation date to assign sequential tube IDs (INV-03)
-    //    First batch ever created = T-1001 through T-1012, next batch continues from there, etc.
-    const { data: orderedByCreation } = await supabase
-      .from('shuttle_batches')
-      .select('id, tube_count')
-      .order('created_at', { ascending: true })
-
+    // 4. Assign sequential tube IDs from the same batchRows sorted by created_at ASC.
+    //    Using batchRows directly avoids a second DB round-trip and eliminates the
+    //    TOCTOU race where a concurrent insert between two selects would misalign IDs.
+    const creationOrdered = [...(batchRows ?? [])].sort((a, b) =>
+      a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0
+    )
     const tubeStartMap = new Map<string, number>()
     let cursor = 1001
-    for (const b of (orderedByCreation ?? [])) {
+    for (const b of creationOrdered) {
       tubeStartMap.set(b.id, cursor)
       cursor += b.tube_count
     }
@@ -77,7 +86,7 @@ export function useShuttleBatches(): ShuttleBatchState {
     // 5. Map to ShuttleBatch[], preserving cheapest-first order from step 1
     const mapped: ShuttleBatch[] = (batchRows ?? []).map((b) => {
       const tubesUsed = usageMap.get(b.id) ?? 0
-      const tubeStart = tubeStartMap.get(b.id) ?? 1001
+      const tubeStart = tubeStartMap.get(b.id)!
       return {
         id: b.id,
         brand: b.brand,
@@ -101,7 +110,7 @@ export function useShuttleBatches(): ShuttleBatchState {
   }, [fetchBatches])
 
   // 6. addBatch mutation — inserts a new shuttle batch with auth user as created_by
-  async function addBatch(input: AddBatchInput): Promise<{ error: string | null }> {
+  const addBatch = useCallback(async (input: AddBatchInput): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Not authenticated' }
     const { error } = await supabase.from('shuttle_batches').insert({
       brand: input.brand,
@@ -113,10 +122,10 @@ export function useShuttleBatches(): ShuttleBatchState {
     if (error) return { error: error.message }
     await fetchBatches()
     return { error: null }
-  }
+  }, [user, fetchBatches])
 
   // 7. Derive total stock remaining across all batches (INV-05)
   const totalStockRemaining = batches.reduce((sum, b) => sum + b.tubesRemaining, 0)
 
-  return { batches, isLoading, totalStockRemaining, addBatch }
+  return { batches, isLoading, fetchError, totalStockRemaining, addBatch }
 }
