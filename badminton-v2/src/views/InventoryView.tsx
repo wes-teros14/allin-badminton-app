@@ -131,8 +131,8 @@ export default function InventoryView() {
                 <TableRow>
                   <TableHead>Tube ID</TableHead>
                   <TableHead>Brand</TableHead>
-                  <TableHead className="text-right">Tubes Bought</TableHead>
-                  <TableHead className="text-right">Stock Remaining</TableHead>
+                  <TableHead className="text-center whitespace-normal w-16">Tubes Bought</TableHead>
+                  <TableHead className="text-center whitespace-normal w-20">Stock Remaining</TableHead>
                   <TableHead className="text-right">Cost/Tube</TableHead>
                   <TableHead>Notes</TableHead>
                 </TableRow>
@@ -153,11 +153,10 @@ export default function InventoryView() {
                         : `T-${batch.tubeStart} – T-${batch.tubeEnd}`}
                     </TableCell>
                     <TableCell className="text-sm">{batch.brand}</TableCell>
-                    <TableCell className="text-right text-sm">
+                    <TableCell className="text-center text-sm">
                       {batch.tubeCount}
                     </TableCell>
-                    {/* Stock Remaining: Badge for depleted, number otherwise */}
-                    <TableCell className="text-right text-sm">
+                    <TableCell className="text-center text-sm">
                       {batch.tubesRemaining === 0 ? (
                         <Badge
                           variant="secondary"
