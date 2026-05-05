@@ -30,8 +30,8 @@ import { formatPeso } from '@/utils/formatPeso'
 
 const addBatchSchema = z.object({
   brand: z.string().min(1, 'Brand is required.'),
-  tubeCount: z.coerce
-    .number({ error: 'Enter number of tubes bought.' })
+  quantity: z.coerce
+    .number({ error: 'Enter number of tubes.' })
     .int()
     .min(1, 'Must be at least 1 tube.'),
   costPerTube: z.coerce
@@ -52,23 +52,23 @@ export default function InventoryView() {
 
   const form = useForm<AddBatchFormInput, unknown, AddBatchFormOutput>({
     resolver: zodResolver(addBatchSchema),
-    defaultValues: { brand: '', tubeCount: '' as unknown as number, costPerTube: '' as unknown as number, notes: '' },
+    defaultValues: { brand: '', quantity: '' as unknown as number, costPerTube: '' as unknown as number, notes: '' },
   })
 
   async function handleSubmit(data: AddBatchFormOutput) {
     setIsSubmitting(true)
     const result = await addBatch({
       brand: data.brand,
-      tubeCount: data.tubeCount,
+      quantity: data.quantity,
       costPerTube: data.costPerTube,
       notes: data.notes || null,
     })
     setIsSubmitting(false)
     if (result.error) {
-      toast.error('Failed to add batch. Try again.')
+      toast.error('Failed to add tubes. Try again.')
       return
     }
-    toast.success('Batch added.')
+    toast.success(`${data.quantity} tube${data.quantity !== 1 ? 's' : ''} added.`)
     form.reset()
     setDialogOpen(false)
   }
@@ -80,19 +80,18 @@ export default function InventoryView() {
         <h1 className="text-lg font-semibold text-primary">Inventory</h1>
         <Button
           size="sm"
-          aria-label="Add shuttle batch"
+          aria-label="Add shuttle tubes"
           onClick={() => setDialogOpen(true)}
         >
           <Plus className="size-4" />
-          Add Batch
+          Add Tubes
         </Button>
       </div>
 
       {/* Stock summary — only shown when data is loaded and batches exist */}
       {!isLoading && batches.length > 0 && (
         <p className="text-sm text-muted-foreground">
-          {totalStockRemaining} tubes in stock across {batches.length}{' '}
-          batch{batches.length !== 1 ? 'es' : ''}
+          {batches.length} tube{batches.length !== 1 ? 's' : ''} &middot; {totalStockRemaining} shuttles remaining
         </p>
       )}
 
@@ -125,8 +124,7 @@ export default function InventoryView() {
                 <TableRow>
                   <TableHead>Tube ID</TableHead>
                   <TableHead>Brand</TableHead>
-                  <TableHead className="text-center whitespace-normal w-16">Tubes Bought</TableHead>
-                  <TableHead className="text-center whitespace-normal w-20">Stock Remaining</TableHead>
+                  <TableHead className="text-center whitespace-normal w-20">Shuttles Left</TableHead>
                   <TableHead className="text-right">Cost/Tube</TableHead>
                   <TableHead>Notes</TableHead>
                 </TableRow>
@@ -136,30 +134,25 @@ export default function InventoryView() {
                   <TableRow
                     key={batch.id}
                     className={
-                      batch.tubesRemaining === 0
+                      batch.shuttlesRemaining === 0
                         ? 'bg-muted/30 hover:bg-muted/40'
                         : 'hover:bg-muted/20'
                     }
                   >
                     <TableCell className="text-sm font-mono">
-                      {batch.tubeStart === batch.tubeEnd
-                        ? `T-${batch.tubeStart}`
-                        : `T-${batch.tubeStart} – T-${batch.tubeEnd}`}
+                      T-{batch.tubeStart}
                     </TableCell>
                     <TableCell className="text-sm">{batch.brand}</TableCell>
                     <TableCell className="text-center text-sm">
-                      {batch.tubeCount}
-                    </TableCell>
-                    <TableCell className="text-center text-sm">
-                      {batch.tubesRemaining === 0 ? (
+                      {batch.shuttlesRemaining === 0 ? (
                         <Badge
                           variant="secondary"
-                          aria-label="Depleted batch"
+                          aria-label="Depleted tube"
                         >
                           Depleted
                         </Badge>
                       ) : (
-                        batch.tubesRemaining
+                        batch.shuttlesRemaining
                       )}
                     </TableCell>
                     <TableCell className="text-right text-sm">
@@ -186,9 +179,9 @@ export default function InventoryView() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Shuttle Batch</DialogTitle>
+            <DialogTitle>Add Tubes</DialogTitle>
             <DialogDescription>
-              Record a new shuttle purchase. Tube IDs are assigned automatically.
+              Record a tube purchase. Each tube holds 12 shuttles. IDs are assigned automatically.
             </DialogDescription>
           </DialogHeader>
 
@@ -211,18 +204,18 @@ export default function InventoryView() {
 
             {/* Tubes Bought */}
             <div className="space-y-1">
-              <Label htmlFor="tubeCount">Tubes Bought</Label>
+              <Label htmlFor="quantity">Quantity (tubes)</Label>
               <Input
-                id="tubeCount"
+                id="quantity"
                 type="number"
-                placeholder="e.g. 12"
+                placeholder="e.g. 5"
                 min={1}
-                aria-invalid={!!form.formState.errors.tubeCount}
-                {...form.register('tubeCount')}
+                aria-invalid={!!form.formState.errors.quantity}
+                {...form.register('quantity')}
               />
-              {form.formState.errors.tubeCount && (
+              {form.formState.errors.quantity && (
                 <p className="text-xs text-destructive mt-1">
-                  {form.formState.errors.tubeCount.message}
+                  {form.formState.errors.quantity.message}
                 </p>
               )}
             </div>
@@ -262,7 +255,7 @@ export default function InventoryView() {
                 className="w-full"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Adding…' : 'Add Batch'}
+                {isSubmitting ? 'Adding…' : 'Add Tubes'}
               </Button>
             </DialogFooter>
           </form>

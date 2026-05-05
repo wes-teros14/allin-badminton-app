@@ -2,22 +2,24 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
+const SHUTTLES_PER_TUBE = 12
+
 export interface ShuttleBatch {
   id: string
   brand: string
-  tubeCount: number
+  tubeCount: number        // always 1 — each row is one physical tube
   costPerTube: number
   notes: string | null
   purchasedAt: string
   createdAt: string
-  tubesRemaining: number
+  shuttlesRemaining: number  // 0–12: SHUTTLES_PER_TUBE minus shuttles used from this tube
   tubeStart: number
   tubeEnd: number
 }
 
 export interface AddBatchInput {
   brand: string
-  tubeCount: number
+  quantity: number          // number of tubes to add; creates `quantity` rows each with tube_count=1
   costPerTube: number
   notes?: string | null
 }
@@ -26,7 +28,7 @@ interface ShuttleBatchState {
   batches: ShuttleBatch[]
   isLoading: boolean
   fetchError: string | null
-  totalStockRemaining: number
+  totalStockRemaining: number  // total shuttles remaining across all tubes
   addBatch: (input: AddBatchInput) => Promise<{ error: string | null }>
 }
 
@@ -40,7 +42,7 @@ export function useShuttleBatches(): ShuttleBatchState {
     setIsLoading(true)
     setFetchError(null)
 
-    // 1. Fetch batches ordered cheapest first (D-04: cost_per_tube ASC)
+    // 1. Fetch batches cheapest-first (D-04)
     const { data: batchRows, error } = await supabase
       .from('shuttle_batches')
       .select('id, brand, tube_count, cost_per_tube, notes, purchased_at, created_at')
@@ -53,10 +55,10 @@ export function useShuttleBatches(): ShuttleBatchState {
       return
     }
 
-    // 2. Fetch all usage rows to compute remaining tubes per batch (INV-04)
+    // 2. Fetch all usage to compute shuttles used per batch
     const { data: usageRows, error: usageError } = await supabase
       .from('shuttle_usage')
-      .select('batch_id, tubes_used')
+      .select('batch_id, shuttles_used')
 
     if (usageError) {
       setFetchError(usageError.message)
@@ -64,15 +66,13 @@ export function useShuttleBatches(): ShuttleBatchState {
       return
     }
 
-    // 3. Build usage map: batch_id → total tubes used
+    // 3. Build usage map: batch_id → total shuttles used
     const usageMap = new Map<string, number>()
     for (const u of (usageRows ?? [])) {
-      usageMap.set(u.batch_id, (usageMap.get(u.batch_id) ?? 0) + u.tubes_used)
+      usageMap.set(u.batch_id, (usageMap.get(u.batch_id) ?? 0) + u.shuttles_used)
     }
 
-    // 4. Assign sequential tube IDs from the same batchRows sorted by created_at ASC.
-    //    Using batchRows directly avoids a second DB round-trip and eliminates the
-    //    TOCTOU race where a concurrent insert between two selects would misalign IDs.
+    // 4. Assign sequential tube IDs (creation order)
     const creationOrdered = [...(batchRows ?? [])].sort((a, b) =>
       a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0
     )
@@ -83,10 +83,11 @@ export function useShuttleBatches(): ShuttleBatchState {
       cursor += b.tube_count
     }
 
-    // 5. Map to ShuttleBatch[], preserving cheapest-first order from step 1
+    // 5. Map to ShuttleBatch[], preserving cheapest-first order
     const mapped: ShuttleBatch[] = (batchRows ?? []).map((b) => {
-      const tubesUsed = usageMap.get(b.id) ?? 0
+      const shuttlesUsed = usageMap.get(b.id) ?? 0
       const tubeStart = tubeStartMap.get(b.id)!
+      const maxShuttles = b.tube_count * SHUTTLES_PER_TUBE
       return {
         id: b.id,
         brand: b.brand,
@@ -95,7 +96,7 @@ export function useShuttleBatches(): ShuttleBatchState {
         notes: b.notes,
         purchasedAt: b.purchased_at,
         createdAt: b.created_at,
-        tubesRemaining: Math.max(0, b.tube_count - tubesUsed),
+        shuttlesRemaining: Math.max(0, maxShuttles - shuttlesUsed),
         tubeStart,
         tubeEnd: tubeStart + b.tube_count - 1,
       }
@@ -109,23 +110,24 @@ export function useShuttleBatches(): ShuttleBatchState {
     fetchBatches()
   }, [fetchBatches])
 
-  // 6. addBatch mutation — inserts a new shuttle batch with auth user as created_by
+  // addBatch: insert `quantity` rows, each representing 1 physical tube with 12 shuttles
   const addBatch = useCallback(async (input: AddBatchInput): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Not authenticated' }
-    const { error } = await supabase.from('shuttle_batches').insert({
+    const rows = Array.from({ length: input.quantity }, () => ({
       brand: input.brand,
-      tube_count: input.tubeCount,
+      tube_count: 1,
       cost_per_tube: input.costPerTube,
       notes: input.notes ?? null,
       created_by: user.id,
-    })
+    }))
+    const { error } = await supabase.from('shuttle_batches').insert(rows)
     if (error) return { error: error.message }
     await fetchBatches()
     return { error: null }
   }, [user, fetchBatches])
 
-  // 7. Derive total stock remaining across all batches (INV-05)
-  const totalStockRemaining = batches.reduce((sum, b) => sum + b.tubesRemaining, 0)
+  // Total shuttles remaining across all tubes
+  const totalStockRemaining = batches.reduce((sum, b) => sum + b.shuttlesRemaining, 0)
 
   return { batches, isLoading, fetchError, totalStockRemaining, addBatch }
 }

@@ -15,10 +15,10 @@ import {
 } from '@/components/ui/table'
 
 const usageSchema = z.object({
-  totalTubes: z.coerce
-    .number({ error: 'Enter total tubes used.' })
+  totalShuttles: z.coerce
+    .number({ error: 'Enter total shuttles used.' })
     .int({ message: 'Enter a whole number.' })
-    .min(1, 'Must be at least 1 tube.'),
+    .min(1, 'Must be at least 1 shuttle.'),
 })
 type UsageForm = z.infer<typeof usageSchema>
 
@@ -47,13 +47,13 @@ export default function FinanceDetailView() {
     : ''
 
   const onSaveUsage = async (values: UsageForm) => {
-    if (values.totalTubes > finance.totalStockAvailable) {
-      usageForm.setError('totalTubes', {
-        message: `Not enough stock for ${values.totalTubes} tubes. Only ${finance.totalStockAvailable} available.`,
+    if (values.totalShuttles > finance.totalStockAvailable) {
+      usageForm.setError('totalShuttles', {
+        message: `Not enough stock for ${values.totalShuttles} shuttles. Only ${finance.totalStockAvailable} available.`,
       })
       return
     }
-    const { error } = await finance.logUsage(values.totalTubes)
+    const { error } = await finance.logUsage(values.totalShuttles)
     if (error) {
       toast.error('Failed to save usage. Try again.')
     } else {
@@ -107,22 +107,22 @@ export default function FinanceDetailView() {
             <>
               {hasUsage && (
                 <p className="text-sm text-muted-foreground">
-                  {finance.totalTubesLogged} tubes logged
+                  {finance.totalShuttlesLogged} shuttles logged
                 </p>
               )}
               <form onSubmit={usageForm.handleSubmit(onSaveUsage)} className="space-y-3">
                 <div className="space-y-1">
-                  <Label htmlFor="totalTubes">Total Tubes Used</Label>
+                  <Label htmlFor="totalShuttles">Total Shuttles Used</Label>
                   <Input
-                    id="totalTubes"
+                    id="totalShuttles"
                     type="number"
-                    placeholder="e.g. 6"
-                    aria-invalid={!!usageForm.formState.errors.totalTubes}
-                    {...usageForm.register('totalTubes')}
+                    placeholder="e.g. 20"
+                    aria-invalid={!!usageForm.formState.errors.totalShuttles}
+                    {...usageForm.register('totalShuttles')}
                   />
-                  {usageForm.formState.errors.totalTubes && (
+                  {usageForm.formState.errors.totalShuttles && (
                     <p className="text-xs text-destructive mt-1">
-                      {usageForm.formState.errors.totalTubes.message}
+                      {usageForm.formState.errors.totalShuttles.message}
                     </p>
                   )}
                 </div>
@@ -137,7 +137,7 @@ export default function FinanceDetailView() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Brand</TableHead>
-                        <TableHead className="text-right">Tubes</TableHead>
+                        <TableHead className="text-right">Shuttles</TableHead>
                         <TableHead className="text-right">Cost</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -145,9 +145,9 @@ export default function FinanceDetailView() {
                       {finance.usageAllocations.map((a) => (
                         <TableRow key={a.batchId}>
                           <TableCell className="text-sm">{a.brand}</TableCell>
-                          <TableCell className="text-sm text-right">{a.tubesUsed}</TableCell>
+                          <TableCell className="text-sm text-right">{a.shuttlesUsed}</TableCell>
                           <TableCell className="text-sm text-right">
-                            {formatPeso(a.tubesUsed * a.costPerTube)}
+                            {formatPeso(a.shuttlesUsed * (a.costPerTube / 12))}
                           </TableCell>
                         </TableRow>
                       ))}
