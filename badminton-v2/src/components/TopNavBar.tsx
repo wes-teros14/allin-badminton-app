@@ -53,6 +53,13 @@ export function TopNavBar() {
       show: role === 'admin',
       badge: false,
     },
+    {
+      label: 'Finance',
+      href: '/finance',
+      active: pathname.startsWith('/finance'),
+      show: role === 'admin',
+      badge: false,
+    },
   ]
 
   return (

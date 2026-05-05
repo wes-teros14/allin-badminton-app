@@ -38,6 +38,8 @@ const AdminView                = lazy(() => import('@/views/AdminView'))
 const SessionView              = lazy(() => import('@/views/SessionView'))
 const PlayersView              = lazy(() => import('@/views/PlayersView'))
 const InventoryView            = lazy(() => import('@/views/InventoryView'))
+const FinanceView              = lazy(() => import('@/views/FinanceView'))
+const FinanceDetailView        = lazy(() => import('@/views/FinanceDetailView'))
 const RegisterView             = lazy(() => import('@/views/RegisterView'))
 const MySessionsView           = lazy(() => import('@/views/MySessionsView'))
 const SessionPlayerDetailView  = lazy(() => import('@/views/SessionPlayerDetailView'))
@@ -75,6 +77,8 @@ function App() {
             <Route path="/session/:sessionId" element={<SessionView />} />
             <Route path="/players"            element={<PlayersView />} />
             <Route path="/inventory"          element={<InventoryView />} />
+            <Route path="/finance"            element={<FinanceView />} />
+            <Route path="/finance/:sessionId" element={<FinanceDetailView />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
