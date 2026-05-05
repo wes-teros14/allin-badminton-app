@@ -524,7 +524,7 @@ export type Database = {
           recorded_at: string
           recorded_by: string
           session_id: string
-          tubes_used: number
+          shuttles_used: number
         }
         Insert: {
           batch_id: string
@@ -532,7 +532,7 @@ export type Database = {
           recorded_at?: string
           recorded_by: string
           session_id: string
-          tubes_used: number
+          shuttles_used: number
         }
         Update: {
           batch_id?: string
@@ -540,7 +540,7 @@ export type Database = {
           recorded_at?: string
           recorded_by?: string
           session_id?: string
-          tubes_used?: number
+          shuttles_used?: number
         }
         Relationships: [
           {

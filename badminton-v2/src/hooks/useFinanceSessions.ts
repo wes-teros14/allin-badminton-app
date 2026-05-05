@@ -41,7 +41,7 @@ export function useFinanceSessions(): FinanceSessionsState {
         .select('id, session_id, paid'),
       supabase
         .from('shuttle_usage')
-        .select('session_id, batch_id, tubes_used'),
+        .select('session_id, batch_id, shuttles_used'),
       supabase
         .from('shuttle_batches')
         .select('id, cost_per_tube'),
@@ -76,7 +76,7 @@ export function useFinanceSessions(): FinanceSessionsState {
     const shuttleCostMap = new Map<string, number>()
     for (const u of usageRows) {
       const costPerTube = batchCostMap.get(u.batch_id) ?? 0
-      const lineCost = u.tubes_used * costPerTube
+      const lineCost = u.shuttles_used * (costPerTube / 12)
       shuttleCostMap.set(u.session_id, (shuttleCostMap.get(u.session_id) ?? 0) + lineCost)
     }
 
