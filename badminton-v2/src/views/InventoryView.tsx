@@ -58,7 +58,7 @@ export default function InventoryView() {
 
   const form = useForm<AddBatchFormInput, unknown, AddBatchFormOutput>({
     resolver: zodResolver(addBatchSchema),
-    defaultValues: { brand: '', tubeCount: 1, costPerTube: 0, notes: '' },
+    defaultValues: { brand: '', tubeCount: '' as unknown as number, costPerTube: '' as unknown as number, notes: '' },
   })
 
   async function handleSubmit(data: AddBatchFormOutput) {
