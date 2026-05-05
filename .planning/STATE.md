@@ -10,8 +10,8 @@ progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 75
+  completed_plans: 4
+  percent: 100
 ---
 
 ﻿# Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-03)
 ## Current Position
 
 Phase: 9 of 11 (Inventory Management)
-Plan: 2 of 3 complete
-Status: Executing — plan 09-02 complete, Wave 3 (09-03) remaining
-Last activity: 2026-05-05 — 09-02 InventoryView component built (shadcn table/badge/dialog + InventoryView.tsx)
+Plan: 3 of 3 complete
+Status: Phase 9 complete — all 3 waves done (useShuttleBatches hook, InventoryView component, dialog + routing + nav)
+Last activity: 2026-05-05 — 09-03 Add Batch dialog wired, /inventory route added, Inventory nav tab added
 
-Progress: [##########] 67% (2 of 3 plans in phase 9)
+Progress: [##########] 100% (3 of 3 plans in phase 9)
 
 ## Performance Metrics
 
@@ -66,6 +66,8 @@ Recent decisions affecting current work:
 - shadcn Table already provides overflow-x-auto container natively — no extra wrapper div needed in InventoryView
 - Add Batch button onClick is no-op stub in Wave 2 — Wave 3 (09-03) wires dialog open handler
 - dialog.tsx pre-installed in Wave 2 so Wave 3 can import without separate install step
+- Zod v4 requires z.input<>/z.output<> split with useForm when using z.coerce fields — invalid_type_error param removed in v4 (use error instead)
+- /inventory route wrapped in AdminRoute + PlayerLayout consistent with /admin and /players
 
 ### Pending Todos
 
@@ -89,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05 05:24
-Stopped at: Completed 09-02-PLAN.md (InventoryView component). Next: 09-03 (route wiring + Add Batch dialog).
+Last session: 2026-05-05 09:17
+Stopped at: Completed 09-03-PLAN.md (Add Batch dialog, /inventory route, Inventory nav tab). Phase 9 complete.
 Resume file: None
