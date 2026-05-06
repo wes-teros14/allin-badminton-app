@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { RosterPanel } from '@/components/RosterPanel'
 
 const usageSchema = z.object({
   totalShuttles: z.coerce
@@ -241,6 +242,9 @@ export default function FinanceDetailView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Section 4: Payment Status */}
+      <RosterPanel sessionId={sessionId ?? ''} paymentOnly />
 
     </div>
   )
