@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-03)
 
 ## Current Position
 
-Phase: 9 of 11 (Inventory Management)
+Phase: 11 of 11 (Payment Migration)
 Plan: 3 of 3 complete
-Status: Phase 9 complete — all 3 waves done (useShuttleBatches hook, InventoryView component, dialog + routing + nav)
-Last activity: 2026-05-05 — 09-03 Add Batch dialog wired, /inventory route added, Inventory nav tab added
+Status: Phase 11 complete — payment controls migrated to Finance page (PAY-01, PAY-02, PAY-03 all verified)
+Last activity: 2026-05-06 — 11-03 removed payment UI from SessionView; Finance page now owns all payment controls
 
-Progress: [##########] 100% (3 of 3 plans in phase 9)
+Progress: [##########] 100% (3 of 3 plans in phase 11)
 
 ## Performance Metrics
 
