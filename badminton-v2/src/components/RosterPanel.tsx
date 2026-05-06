@@ -145,21 +145,6 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false }
                       {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
                     </select>
 
-                    <div className="flex rounded overflow-hidden border shrink-0">
-                      {([true, false] as const).map((p) => (
-                        <button
-                          key={String(p)}
-                          onClick={() => updatePaid(player.registrationId, p)}
-                          className={`px-1.5 py-0.5 transition-colors ${
-                            player.paid === p
-                              ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
-                              : 'bg-background text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {p ? 'Paid' : 'Unpaid'}
-                        </button>
-                      ))}
-                    </div>
                   </>
                 )}
 
