@@ -49,6 +49,7 @@ export default function FinanceView() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Cost</TableHead>
                   <TableHead className="text-right">P&L</TableHead>
@@ -62,6 +63,9 @@ export default function FinanceView() {
                     onClick={() => navigate(`/finance/${s.id}`)}
                   >
                     <TableCell className="text-sm">{formatDate(s.date)}</TableCell>
+                    <TableCell className="text-sm text-right text-muted-foreground">
+                      {s.paidCount} / {s.totalCount}
+                    </TableCell>
                     <TableCell className="text-sm text-right">{formatPeso(s.revenue)}</TableCell>
                     <TableCell className="text-sm text-right">{formatPeso(s.totalCost)}</TableCell>
                     <TableCell

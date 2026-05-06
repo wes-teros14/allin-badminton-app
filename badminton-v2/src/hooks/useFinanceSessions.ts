@@ -12,6 +12,8 @@ export interface FinanceSessionRow {
   shuttleCost: number     // SUM(tubes_used * cost_per_tube) for this session
   totalCost: number       // shuttleCost + courtCost
   profit: number          // revenue - totalCost
+  paidCount: number       // registrations where paid = true
+  totalCount: number      // all registrations for this session
 }
 
 interface FinanceSessionsState {
@@ -66,6 +68,12 @@ export function useFinanceSessions(): FinanceSessionsState {
       if (r.paid) regCountMap.set(r.session_id, (regCountMap.get(r.session_id) ?? 0) + 1)
     }
 
+    // totalCount per session_id — all registrations (for payment summary display)
+    const totalCountMap = new Map<string, number>()
+    for (const r of registrationRows) {
+      totalCountMap.set(r.session_id, (totalCountMap.get(r.session_id) ?? 0) + 1)
+    }
+
     // cost_per_tube per batch_id
     const batchCostMap = new Map<string, number>()
     for (const b of batchRows) {
@@ -99,6 +107,8 @@ export function useFinanceSessions(): FinanceSessionsState {
         shuttleCost,
         totalCost,
         profit,
+        paidCount: regCountMap.get(s.id) ?? 0,
+        totalCount: totalCountMap.get(s.id) ?? 0,
       }
     })
 
