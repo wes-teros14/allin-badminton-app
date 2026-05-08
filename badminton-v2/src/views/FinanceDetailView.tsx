@@ -1,5 +1,6 @@
 import { useParams, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
+import type { FormEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -77,6 +78,16 @@ export default function FinanceDetailView() {
     }
   }
 
+  const handleUsageSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void usageForm.handleSubmit(onSaveUsage)(event)
+  }
+
+  const handleCourtCostSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void courtForm.handleSubmit(onSaveCourtCost)(event)
+  }
+
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
 
@@ -115,7 +126,7 @@ export default function FinanceDetailView() {
                   {finance.totalShuttlesLogged} shuttles logged
                 </p>
               )}
-              <form onSubmit={usageForm.handleSubmit(onSaveUsage)} className="space-y-3">
+              <form onSubmit={handleUsageSubmit} className="space-y-3">
                 <div className="space-y-1">
                   <Label htmlFor="totalShuttles">Total Shuttles Used</Label>
                   <Input
@@ -131,8 +142,8 @@ export default function FinanceDetailView() {
                     </p>
                   )}
                 </div>
-                <Button type="submit" disabled={finance.isSaving}>
-                  {finance.isSaving ? 'Saving…' : hasUsage ? 'Update Usage' : 'Save Usage'}
+                <Button type="submit" disabled={finance.isSavingUsage}>
+                  {finance.isSavingUsage ? 'Saving…' : hasUsage ? 'Update Usage' : 'Save Usage'}
                 </Button>
               </form>
               {hasUsage && (
@@ -178,7 +189,7 @@ export default function FinanceDetailView() {
           {finance.isLoading ? (
             <div className="h-10 bg-muted rounded animate-pulse" />
           ) : (
-            <form onSubmit={courtForm.handleSubmit(onSaveCourtCost)} className="space-y-3">
+            <form onSubmit={handleCourtCostSubmit} className="space-y-3">
               <div className="space-y-1">
                 <Label htmlFor="courtCost">Total Court Cost (₱)</Label>
                 <Input
@@ -195,8 +206,8 @@ export default function FinanceDetailView() {
                   </p>
                 )}
               </div>
-              <Button type="submit" disabled={finance.isSaving}>
-                {finance.isSaving ? 'Saving…' : 'Save Cost'}
+              <Button type="submit" disabled={finance.isSavingCourtCost}>
+                {finance.isSavingCourtCost ? 'Saving…' : 'Save Cost'}
               </Button>
             </form>
           )}
