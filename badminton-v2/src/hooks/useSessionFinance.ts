@@ -21,15 +21,20 @@ export interface SessionFinanceData {
   usageAllocations: UsageAllocation[]
   revenue: number
   shuttleCost: number
+  baseProfit: number
   profit: number
+  personalShareOverride: number | null
+  effectivePersonalShare: number
   totalShuttlesLogged: number
   isLoading: boolean
   fetchError: string | null
   isSavingUsage: boolean
   isSavingCourtCost: boolean
+  isSavingPersonalShare: boolean
   totalStockAvailable: number
   logUsage: (totalShuttles: number) => Promise<{ error: string | null }>
   saveCourtCost: (amount: number) => Promise<{ error: string | null }>
+  savePersonalShare: (amount: number | null) => Promise<{ error: string | null }>
   refetch: () => Promise<void>
 }
 
@@ -39,6 +44,13 @@ export interface BatchForAllocation {
   shuttlesRemaining: number
   costPerTube: number
   tubeStart: number
+}
+
+export function calculateProfitAfterPersonalShare(
+  baseProfit: number,
+  personalShareOverride: number | null
+): number {
+  return Number((baseProfit - (personalShareOverride ?? 0)).toFixed(2))
 }
 
 export function allocateCheapestFirst(
@@ -70,15 +82,23 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingUsage, setIsSavingUsage] = useState(false)
   const [isSavingCourtCost, setIsSavingCourtCost] = useState(false)
+  const [isSavingPersonalShare, setIsSavingPersonalShare] = useState(false)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
-  const [session, setSession] = useState<{ date: string; feePerPlayer: number; courtCost: number | null } | null>(null)
+  const [session, setSession] = useState<{
+    date: string
+    feePerPlayer: number
+    courtCost: number | null
+    personalShareOverride: number | null
+  } | null>(null)
   const [registrationCount, setRegistrationCount] = useState(0)
   const [usageAllocations, setUsageAllocations] = useState<UsageAllocation[]>([])
   const [batchesForAllocation, setBatchesForAllocation] = useState<BatchForAllocation[]>([])
   const [revenue, setRevenue] = useState(0)
   const [shuttleCost, setShuttleCost] = useState(0)
+  const [baseProfit, setBaseProfit] = useState(0)
   const [profit, setProfit] = useState(0)
+  const [effectivePersonalShare, setEffectivePersonalShare] = useState(0)
   const [totalShuttlesLogged, setTotalShuttlesLogged] = useState(0)
 
   const fetchAll = useCallback(async (options?: { background?: boolean }) => {
@@ -109,11 +129,16 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       date: financeRow.date,
       feePerPlayer: Number(financeRow.fee_per_player),
       courtCost: financeRow.court_cost === null ? null : Number(financeRow.court_cost),
+      personalShareOverride: financeRow.personal_share_override === null
+        ? null
+        : Number(financeRow.personal_share_override),
     })
-    setRegistrationCount(Number(financeRow.paid_count))
+    setRegistrationCount(Number(financeRow.total_count))
     setRevenue(Number(financeRow.revenue))
     setShuttleCost(Number(financeRow.shuttle_cost))
-    setProfit(Number(financeRow.profit))
+    setBaseProfit(Number(financeRow.profit))
+    setProfit(Number(financeRow.profit_after_personal_share))
+    setEffectivePersonalShare(Number(financeRow.effective_personal_share))
     setTotalShuttlesLogged(Number(financeRow.total_shuttles_logged))
 
     const { data: batchRows, error: batchErr } = await supabase
@@ -242,6 +267,22 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     return { error: null }
   }, [sessionId, fetchAll, hasLoadedOnce])
 
+  const savePersonalShare = useCallback(async (amount: number | null): Promise<{ error: string | null }> => {
+    setIsSavingPersonalShare(true)
+    const { error } = await supabase
+      .from('sessions')
+      .update({ personal_share_override: amount })
+      .eq('id', sessionId)
+    if (error) {
+      setIsSavingPersonalShare(false)
+      return { error: error.message }
+    }
+
+    await fetchAll({ background: hasLoadedOnce })
+    setIsSavingPersonalShare(false)
+    return { error: null }
+  }, [sessionId, fetchAll, hasLoadedOnce])
+
   const totalStockAvailable = batchesForAllocation.reduce((sum, batch) => sum + batch.shuttlesRemaining, 0)
 
   return {
@@ -253,15 +294,20 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     usageAllocations,
     revenue,
     shuttleCost,
+    baseProfit,
     profit,
+    personalShareOverride: session?.personalShareOverride ?? null,
+    effectivePersonalShare,
     totalShuttlesLogged,
     isLoading,
     fetchError,
     isSavingUsage,
     isSavingCourtCost,
+    isSavingPersonalShare,
     totalStockAvailable,
     logUsage,
     saveCourtCost,
+    savePersonalShare,
     refetch: fetchAll,
   }
 }

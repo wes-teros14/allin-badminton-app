@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
-import type { FormEvent } from 'react'
+import { useEffect, type FormEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -31,6 +31,13 @@ const courtCostSchema = z.object({
 })
 type CourtCostFormOutput = z.output<typeof courtCostSchema>
 
+const personalShareSchema = z.object({
+  personalShare: z
+    .number({ error: 'Enter a valid amount.' })
+    .min(0, 'Share must be 0 or more.'),
+})
+type PersonalShareFormOutput = z.output<typeof personalShareSchema>
+
 export default function FinanceDetailView() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const finance = useSessionFinance(sessionId ?? '')
@@ -40,6 +47,9 @@ export default function FinanceDetailView() {
   })
   const courtForm = useForm<CourtCostFormOutput>({
     resolver: zodResolver(courtCostSchema),
+  })
+  const personalShareForm = useForm<PersonalShareFormOutput>({
+    resolver: zodResolver(personalShareSchema),
   })
 
   const hasUsage = finance.usageAllocations.length > 0
@@ -51,6 +61,10 @@ export default function FinanceDetailView() {
         year: 'numeric', month: 'long', day: 'numeric',
       })
     : ''
+
+  useEffect(() => {
+    personalShareForm.setValue('personalShare', finance.effectivePersonalShare)
+  }, [finance.effectivePersonalShare, personalShareForm])
 
   const onSaveUsage = async (values: UsageFormOutput) => {
     if (values.totalShuttles > finance.totalStockAvailable) {
@@ -78,6 +92,26 @@ export default function FinanceDetailView() {
     }
   }
 
+  const onSavePersonalShare = async (values: PersonalShareFormOutput) => {
+    const { error } = await finance.savePersonalShare(values.personalShare)
+    if (error) {
+      toast.error('Failed to save your share. Try again.')
+    } else {
+      toast.success('Your share saved.')
+      personalShareForm.reset({ personalShare: values.personalShare })
+    }
+  }
+
+  const onResetPersonalShare = async () => {
+    const { error } = await finance.savePersonalShare(null)
+    if (error) {
+      toast.error('Failed to clear your share. Try again.')
+    } else {
+      toast.success('Your share cleared.')
+      personalShareForm.reset({ personalShare: 0 })
+    }
+  }
+
   const handleUsageSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     void usageForm.handleSubmit(onSaveUsage)(event)
@@ -86,6 +120,11 @@ export default function FinanceDetailView() {
   const handleCourtCostSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     void courtForm.handleSubmit(onSaveCourtCost)(event)
+  }
+
+  const handlePersonalShareSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void personalShareForm.handleSubmit(onSavePersonalShare)(event)
   }
 
   return (
@@ -214,7 +253,63 @@ export default function FinanceDetailView() {
         </CardContent>
       </Card>
 
-      {/* Section 3: P&L Summary */}
+      {/* Section 3: Your Share */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold">Your Share</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {finance.isLoading ? (
+            <div className="space-y-2">
+              <div className="h-10 bg-muted rounded animate-pulse" />
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Optional manual deduction if you also paid part of the session costs.
+              </p>
+              <form onSubmit={handlePersonalShareSubmit} className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="personalShare">Your Share (PHP)</Label>
+                  <Input
+                    id="personalShare"
+                    type="number"
+                    step="0.01"
+                    placeholder="e.g. 120"
+                    aria-invalid={!!personalShareForm.formState.errors.personalShare}
+                    {...personalShareForm.register('personalShare', { valueAsNumber: true })}
+                  />
+                  {personalShareForm.formState.errors.personalShare && (
+                    <p className="text-xs text-destructive mt-1">
+                      {personalShareForm.formState.errors.personalShare.message}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={finance.isSavingPersonalShare}>
+                    {finance.isSavingPersonalShare ? 'Saving...' : 'Save Share'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={finance.isSavingPersonalShare || finance.personalShareOverride === null}
+                    onClick={() => void onResetPersonalShare()}
+                  >
+                    Clear Share
+                  </Button>
+                </div>
+              </form>
+              {finance.personalShareOverride !== null && (
+                <p className="text-xs text-muted-foreground">
+                  Manual share active and deducted from net profit.
+                </p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Section 4: P&L Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold">P&L Summary</CardTitle>
@@ -244,6 +339,10 @@ export default function FinanceDetailView() {
                 <span className="text-sm text-muted-foreground">Court Cost</span>
                 <span className="text-sm">{formatPeso(finance.courtCost ?? 0)}</span>
               </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Your Share</span>
+                <span className="text-sm">{formatPeso(finance.effectivePersonalShare)}</span>
+              </div>
               <div className="border-t border-border my-2" />
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold">
@@ -262,7 +361,7 @@ export default function FinanceDetailView() {
         </CardContent>
       </Card>
 
-      {/* Section 4: Payment Status */}
+      {/* Section 5: Payment Status */}
       <RosterPanel sessionId={sessionId ?? ''} paymentOnly />
 
     </div>

@@ -441,6 +441,7 @@ export type Database = {
           generator_settings: Json | null
           id: string
           name: string
+          personal_share_override: number | null
           price: number | null
           registration_opens_at: string | null
           session_notes: string | null
@@ -458,6 +459,7 @@ export type Database = {
           generator_settings?: Json | null
           id?: string
           name: string
+          personal_share_override?: number | null
           price?: number | null
           registration_opens_at?: string | null
           session_notes?: string | null
@@ -475,6 +477,7 @@ export type Database = {
           generator_settings?: Json | null
           id?: string
           name?: string
+          personal_share_override?: number | null
           price?: number | null
           registration_opens_at?: string | null
           session_notes?: string | null
@@ -572,10 +575,13 @@ export type Database = {
         Returns: {
           court_cost: number | null
           date: string
+          effective_personal_share: number
           fee_per_player: number
           name: string
           paid_count: number
+          personal_share_override: number | null
           profit: number
+          profit_after_personal_share: number
           revenue: number
           session_id: string
           shuttle_cost: number
