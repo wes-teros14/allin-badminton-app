@@ -39,20 +39,24 @@ const addBatchSchema = z.object({
     .positive('Cost must be greater than 0.'),
   notes: z.string().optional(),
 })
-// z.input uses the pre-coerce types (string | number for coerce fields) which
-// matches what react-hook-form sees from HTML inputs. z.output gives the
-// validated/coerced types used inside handleSubmit.
+
 type AddBatchFormInput = z.input<typeof addBatchSchema>
 type AddBatchFormOutput = z.output<typeof addBatchSchema>
 
 export default function InventoryView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { batches, isLoading, totalStockRemaining, addBatch } = useShuttleBatches()
+  const [archivingId, setArchivingId] = useState<string | null>(null)
+  const { batches, isLoading, totalStockRemaining, addBatch, archiveBatch } = useShuttleBatches()
 
   const form = useForm<AddBatchFormInput, unknown, AddBatchFormOutput>({
     resolver: zodResolver(addBatchSchema),
-    defaultValues: { brand: '', quantity: '' as unknown as number, costPerTube: '' as unknown as number, notes: '' },
+    defaultValues: {
+      brand: '',
+      quantity: '' as unknown as number,
+      costPerTube: '' as unknown as number,
+      notes: '',
+    },
   })
 
   async function handleSubmit(data: AddBatchFormOutput) {
@@ -73,9 +77,19 @@ export default function InventoryView() {
     setDialogOpen(false)
   }
 
+  async function handleArchive(batchId: string) {
+    setArchivingId(batchId)
+    const result = await archiveBatch(batchId)
+    setArchivingId(null)
+    if (result.error) {
+      toast.error(result.error)
+      return
+    }
+    toast.success('Tube archived.')
+  }
+
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
-      {/* Page header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-primary">Inventory</h1>
         <Button
@@ -88,37 +102,32 @@ export default function InventoryView() {
         </Button>
       </div>
 
-      {/* Stock summary — only shown when data is loaded and batches exist */}
       {!isLoading && batches.length > 0 && (
         <p className="text-sm text-muted-foreground">
           {batches.length} tube{batches.length !== 1 ? 's' : ''} &middot; {totalStockRemaining} shuttles remaining
         </p>
       )}
 
-      {/* Batch table card */}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
-            /* Loading state: 3 animate-pulse skeleton rows */
             <div className="p-4 space-y-2">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="h-12 bg-muted rounded animate-pulse" />
               ))}
             </div>
           ) : batches.length === 0 ? (
-            /* Empty state */
             <div className="py-12 text-center space-y-2">
               <Package
                 className="size-8 text-muted-foreground mx-auto"
                 aria-hidden="true"
               />
-              <p className="text-sm font-semibold">No batches yet</p>
+              <p className="text-sm font-semibold">No active tubes</p>
               <p className="text-sm text-muted-foreground">
-                Add your first shuttle batch to start tracking inventory.
+                Add shuttle tubes to start tracking inventory.
               </p>
             </div>
           ) : (
-            /* Batch table — 6 columns per D-03 */
             <Table>
               <TableHeader>
                 <TableRow>
@@ -127,6 +136,7 @@ export default function InventoryView() {
                   <TableHead className="text-center whitespace-normal w-20">Shuttles Left</TableHead>
                   <TableHead className="text-right">Cost/Tube</TableHead>
                   <TableHead>Notes</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -159,7 +169,19 @@ export default function InventoryView() {
                       {formatPeso(batch.costPerTube)}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate">
-                      {batch.notes ?? '—'}
+                      {batch.notes ?? '-'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {batch.shuttlesRemaining === 0 ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={archivingId === batch.id}
+                          onClick={() => handleArchive(batch.id)}
+                        >
+                          {archivingId === batch.id ? 'Archiving...' : 'Archive'}
+                        </Button>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -169,7 +191,6 @@ export default function InventoryView() {
         </CardContent>
       </Card>
 
-      {/* Add Batch Dialog — controlled via dialogOpen state (no DialogTrigger) */}
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
@@ -186,7 +207,6 @@ export default function InventoryView() {
           </DialogHeader>
 
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {/* Brand */}
             <div className="space-y-1">
               <Label htmlFor="brand">Brand</Label>
               <Input
@@ -202,7 +222,6 @@ export default function InventoryView() {
               )}
             </div>
 
-            {/* Tubes Bought */}
             <div className="space-y-1">
               <Label htmlFor="quantity">Quantity (tubes)</Label>
               <Input
@@ -220,7 +239,6 @@ export default function InventoryView() {
               )}
             </div>
 
-            {/* Cost per Tube */}
             <div className="space-y-1">
               <Label htmlFor="costPerTube">Cost per Tube (&#8369;)</Label>
               <Input
@@ -239,12 +257,11 @@ export default function InventoryView() {
               )}
             </div>
 
-            {/* Notes */}
             <div className="space-y-1">
               <Label htmlFor="notes">Notes</Label>
               <Input
                 id="notes"
-                placeholder="Optional — e.g. bought at SM Megamall"
+                placeholder="Optional - e.g. bought at SM Megamall"
                 {...form.register('notes')}
               />
             </div>
@@ -255,7 +272,7 @@ export default function InventoryView() {
                 className="w-full"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Adding…' : 'Add Tubes'}
+                {isSubmitting ? 'Adding...' : 'Add Tubes'}
               </Button>
             </DialogFooter>
           </form>

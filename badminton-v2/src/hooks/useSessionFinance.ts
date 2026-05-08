@@ -25,8 +25,9 @@ export interface SessionFinanceData {
   totalShuttlesLogged: number
   isLoading: boolean
   fetchError: string | null
-  isSaving: boolean
-  totalStockAvailable: number   // total shuttles remaining across all tubes
+  isSavingUsage: boolean
+  isSavingCourtCost: boolean
+  totalStockAvailable: number
   logUsage: (totalShuttles: number) => Promise<{ error: string | null }>
   saveCourtCost: (amount: number) => Promise<{ error: string | null }>
   refetch: () => Promise<void>
@@ -35,29 +36,27 @@ export interface SessionFinanceData {
 export interface BatchForAllocation {
   id: string
   brand: string
-  shuttlesRemaining: number   // 0–12 per tube (tube_count * 12 - shuttles_used)
+  shuttlesRemaining: number
   costPerTube: number
   tubeStart: number
 }
 
-// Pure function — exported for testing. Batches must be pre-sorted cheapest-first.
-// Returns null when totalShuttles exceeds available stock.
 export function allocateCheapestFirst(
   totalShuttles: number,
   batches: BatchForAllocation[]
 ): UsageAllocation[] | null {
   const result: UsageAllocation[] = []
   let remaining = totalShuttles
-  for (const b of batches) {
+  for (const batch of batches) {
     if (remaining <= 0) break
-    const take = Math.min(remaining, b.shuttlesRemaining)
+    const take = Math.min(remaining, batch.shuttlesRemaining)
     if (take > 0) {
       result.push({
-        batchId: b.id,
-        tubeId: b.tubeStart,
-        brand: b.brand,
+        batchId: batch.id,
+        tubeId: batch.tubeStart,
+        brand: batch.brand,
         shuttlesUsed: take,
-        costPerTube: b.costPerTube,
+        costPerTube: batch.costPerTube,
       })
       remaining -= take
     }
@@ -69,43 +68,54 @@ export function allocateCheapestFirst(
 export function useSessionFinance(sessionId: string): SessionFinanceData {
   const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
+  const [isSavingUsage, setIsSavingUsage] = useState(false)
+  const [isSavingCourtCost, setIsSavingCourtCost] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
-  const [session, setSession] = useState<{ date: string; price: number | null; court_cost: number | null } | null>(null)
+  const [session, setSession] = useState<{ date: string; feePerPlayer: number; courtCost: number | null } | null>(null)
   const [registrationCount, setRegistrationCount] = useState(0)
   const [usageAllocations, setUsageAllocations] = useState<UsageAllocation[]>([])
   const [batchesForAllocation, setBatchesForAllocation] = useState<BatchForAllocation[]>([])
+  const [revenue, setRevenue] = useState(0)
+  const [shuttleCost, setShuttleCost] = useState(0)
+  const [profit, setProfit] = useState(0)
+  const [totalShuttlesLogged, setTotalShuttlesLogged] = useState(0)
 
-  const fetchAll = useCallback(async () => {
-    setIsLoading(true)
+  const fetchAll = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background ?? false
+    if (!background) {
+      setIsLoading(true)
+    }
     setFetchError(null)
-
-    const { data: sessionRow, error: sessionErr } = await supabase
-      .from('sessions')
-      .select('id, date, price, court_cost')
-      .eq('id', sessionId)
-      .single()
-    if (sessionErr || !sessionRow) {
-      setFetchError(sessionErr?.message ?? 'Session not found')
+    if (!sessionId) {
+      setFetchError('Session not found')
       setIsLoading(false)
+      setHasLoadedOnce(true)
       return
     }
-    setSession({ date: sessionRow.date, price: sessionRow.price, court_cost: sessionRow.court_cost })
 
-    // Count paid registrations only — revenue = feePerPlayer × paid count
-    const { count, error: regErr } = await supabase
-      .from('session_registrations')
-      .select('id', { count: 'exact', head: true })
-      .eq('session_id', sessionId)
-      .eq('paid', true)
-    if (regErr) {
-      setFetchError(regErr.message)
+    const { data: financeRows, error: financeErr } = await supabase.rpc('get_session_finance', {
+      p_session_id: sessionId,
+    })
+    const financeRow = financeRows?.[0]
+    if (financeErr || !financeRow) {
+      setFetchError(financeErr?.message ?? 'Session not found')
       setIsLoading(false)
+      setHasLoadedOnce(true)
       return
     }
-    setRegistrationCount(count ?? 0)
 
-    // Fetch all batches cheapest-first for allocation + stock check
+    setSession({
+      date: financeRow.date,
+      feePerPlayer: Number(financeRow.fee_per_player),
+      courtCost: financeRow.court_cost === null ? null : Number(financeRow.court_cost),
+    })
+    setRegistrationCount(Number(financeRow.paid_count))
+    setRevenue(Number(financeRow.revenue))
+    setShuttleCost(Number(financeRow.shuttle_cost))
+    setProfit(Number(financeRow.profit))
+    setTotalShuttlesLogged(Number(financeRow.total_shuttles_logged))
+
     const { data: batchRows, error: batchErr } = await supabase
       .from('shuttle_batches')
       .select('id, brand, tube_count, cost_per_tube, created_at')
@@ -114,6 +124,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     if (batchErr) {
       setFetchError(batchErr.message)
       setIsLoading(false)
+      setHasLoadedOnce(true)
       return
     }
 
@@ -122,12 +133,11 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     )
     const tubeStartMap = new Map<string, number>()
     let cursor = 1001
-    for (const b of creationOrdered) {
-      tubeStartMap.set(b.id, cursor)
-      cursor += b.tube_count
+    for (const batch of creationOrdered) {
+      tubeStartMap.set(batch.id, cursor)
+      cursor += batch.tube_count
     }
 
-    // Fetch shuttle_usage for this session joined to shuttle_batches for brand + cost_per_tube
     const { data: usageRows, error: usageErr } = await supabase
       .from('shuttle_usage')
       .select('batch_id, shuttles_used, shuttle_batches(brand, cost_per_tube)')
@@ -135,107 +145,110 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     if (usageErr) {
       setFetchError(usageErr.message)
       setIsLoading(false)
+      setHasLoadedOnce(true)
       return
     }
-    const allocations: UsageAllocation[] = (usageRows ?? []).map((u) => {
-      const batchData = u.shuttle_batches as { brand: string; cost_per_tube: number } | null
+
+    setUsageAllocations((usageRows ?? []).map((usage) => {
+      const batchData = usage.shuttle_batches as { brand: string; cost_per_tube: number } | null
       return {
-        batchId: u.batch_id,
-        tubeId: tubeStartMap.get(u.batch_id) ?? null,
+        batchId: usage.batch_id,
+        tubeId: tubeStartMap.get(usage.batch_id) ?? null,
         brand: batchData?.brand ?? '',
-        shuttlesUsed: u.shuttles_used,
+        shuttlesUsed: usage.shuttles_used,
         costPerTube: Number(batchData?.cost_per_tube ?? 0),
       }
-    })
-    setUsageAllocations(allocations)
+    }))
 
-    // Fetch ALL shuttle_usage to compute remaining shuttles per batch
     const { data: allUsage, error: allUsageErr } = await supabase
       .from('shuttle_usage')
       .select('batch_id, shuttles_used')
     if (allUsageErr) {
       setFetchError(allUsageErr.message)
       setIsLoading(false)
+      setHasLoadedOnce(true)
       return
     }
+
     const usageMap = new Map<string, number>()
-    for (const u of (allUsage ?? [])) {
-      usageMap.set(u.batch_id, (usageMap.get(u.batch_id) ?? 0) + u.shuttles_used)
+    for (const usage of allUsage ?? []) {
+      usageMap.set(usage.batch_id, (usageMap.get(usage.batch_id) ?? 0) + usage.shuttles_used)
     }
-    const batchesForAlloc: BatchForAllocation[] = (batchRows ?? []).map((b) => ({
-      id: b.id,
-      brand: b.brand,
-      shuttlesRemaining: Math.max(0, b.tube_count * SHUTTLES_PER_TUBE - (usageMap.get(b.id) ?? 0)),
-      costPerTube: Number(b.cost_per_tube),
-      tubeStart: tubeStartMap.get(b.id) ?? 1001,
-    }))
-    setBatchesForAllocation(batchesForAlloc)
+
+    setBatchesForAllocation((batchRows ?? []).map((batch) => ({
+      id: batch.id,
+      brand: batch.brand,
+      shuttlesRemaining: Math.max(0, batch.tube_count * SHUTTLES_PER_TUBE - (usageMap.get(batch.id) ?? 0)),
+      costPerTube: Number(batch.cost_per_tube),
+      tubeStart: tubeStartMap.get(batch.id) ?? 1001,
+    })))
     setIsLoading(false)
+    setHasLoadedOnce(true)
   }, [sessionId])
 
   useEffect(() => {
     fetchAll()
   }, [fetchAll])
 
-  // logUsage: delete-then-insert (D-05). Allocates cheapest-first in shuttles.
   const logUsage = useCallback(async (totalShuttles: number): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Not authenticated' }
+
     const allocation = allocateCheapestFirst(totalShuttles, batchesForAllocation)
     if (!allocation) {
-      const totalAvailable = batchesForAllocation.reduce((s, b) => s + b.shuttlesRemaining, 0)
+      const totalAvailable = batchesForAllocation.reduce((sum, batch) => sum + batch.shuttlesRemaining, 0)
       return { error: `Not enough stock. Only ${totalAvailable} shuttles available.` }
     }
-    setIsSaving(true)
+
+    setIsSavingUsage(true)
     const { error: deleteErr } = await supabase
       .from('shuttle_usage')
       .delete()
       .eq('session_id', sessionId)
     if (deleteErr) {
-      setIsSaving(false)
+      setIsSavingUsage(false)
       return { error: deleteErr.message }
     }
-    const insertRows = allocation.map((a) => ({
+
+    const insertRows = allocation.map((item) => ({
       session_id: sessionId,
-      batch_id: a.batchId,
-      shuttles_used: a.shuttlesUsed,
+      batch_id: item.batchId,
+      shuttles_used: item.shuttlesUsed,
       recorded_by: user.id,
     }))
     const { error: insertErr } = await supabase.from('shuttle_usage').insert(insertRows)
-    setIsSaving(false)
-    if (insertErr) return { error: insertErr.message }
-    await fetchAll()
+    if (insertErr) {
+      setIsSavingUsage(false)
+      return { error: insertErr.message }
+    }
+
+    await fetchAll({ background: hasLoadedOnce })
+    setIsSavingUsage(false)
     return { error: null }
-  }, [user, sessionId, batchesForAllocation, fetchAll])
+  }, [user, sessionId, batchesForAllocation, fetchAll, hasLoadedOnce])
 
   const saveCourtCost = useCallback(async (amount: number): Promise<{ error: string | null }> => {
-    setIsSaving(true)
+    setIsSavingCourtCost(true)
     const { error } = await supabase
       .from('sessions')
       .update({ court_cost: amount })
       .eq('id', sessionId)
-    setIsSaving(false)
-    if (error) return { error: error.message }
-    await fetchAll()
-    return { error: null }
-  }, [sessionId, fetchAll])
+    if (error) {
+      setIsSavingCourtCost(false)
+      return { error: error.message }
+    }
 
-  // Cost per shuttle = costPerTube / SHUTTLES_PER_TUBE
-  const feePerPlayer = session?.price ?? 0
-  const revenue = feePerPlayer * registrationCount
-  const shuttleCost = usageAllocations.reduce(
-    (sum, a) => sum + a.shuttlesUsed * (a.costPerTube / SHUTTLES_PER_TUBE),
-    0
-  )
-  const courtCostValue = session?.court_cost ?? 0
-  const profit = revenue - shuttleCost - courtCostValue
-  const totalShuttlesLogged = usageAllocations.reduce((sum, a) => sum + a.shuttlesUsed, 0)
-  const totalStockAvailable = batchesForAllocation.reduce((sum, b) => sum + b.shuttlesRemaining, 0)
+    await fetchAll({ background: hasLoadedOnce })
+    setIsSavingCourtCost(false)
+    return { error: null }
+  }, [sessionId, fetchAll, hasLoadedOnce])
+
+  const totalStockAvailable = batchesForAllocation.reduce((sum, batch) => sum + batch.shuttlesRemaining, 0)
 
   return {
     sessionId,
     sessionDate: session?.date ?? '',
-    feePerPlayer: session?.price ?? null,
-    courtCost: session?.court_cost ?? null,
+    feePerPlayer: session?.feePerPlayer ?? null,
+    courtCost: session?.courtCost ?? null,
     registrationCount,
     usageAllocations,
     revenue,
@@ -244,7 +257,8 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     totalShuttlesLogged,
     isLoading,
     fetchError,
-    isSaving,
+    isSavingUsage,
+    isSavingCourtCost,
     totalStockAvailable,
     logUsage,
     saveCourtCost,

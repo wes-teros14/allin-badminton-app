@@ -484,37 +484,40 @@ export type Database = {
         }
         Relationships: []
       }
-      shuttle_batches: {
-        Row: {
-          brand: string
-          cost_per_tube: number
-          created_at: string
-          created_by: string
-          id: string
-          notes: string | null
-          purchased_at: string
-          tube_count: number
-        }
-        Insert: {
-          brand: string
-          cost_per_tube: number
-          created_at?: string
-          created_by: string
-          id?: string
-          notes?: string | null
-          purchased_at?: string
-          tube_count: number
-        }
-        Update: {
-          brand?: string
-          cost_per_tube?: number
-          created_at?: string
-          created_by?: string
-          id?: string
-          notes?: string | null
-          purchased_at?: string
-          tube_count?: number
-        }
+        shuttle_batches: {
+          Row: {
+            brand: string
+            cost_per_tube: number
+            created_at: string
+            created_by: string
+            id: string
+            is_archived: boolean
+            notes: string | null
+            purchased_at: string
+            tube_count: number
+          }
+          Insert: {
+            brand: string
+            cost_per_tube: number
+            created_at?: string
+            created_by: string
+            id?: string
+            is_archived?: boolean
+            notes?: string | null
+            purchased_at?: string
+            tube_count: number
+          }
+          Update: {
+            brand?: string
+            cost_per_tube?: number
+            created_at?: string
+            created_by?: string
+            id?: string
+            is_archived?: boolean
+            notes?: string | null
+            purchased_at?: string
+            tube_count?: number
+          }
         Relationships: []
       }
       shuttle_usage: {
@@ -564,6 +567,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_session_finance: {
+        Args: { p_session_id?: string | null }
+        Returns: {
+          court_cost: number | null
+          date: string
+          fee_per_player: number
+          name: string
+          paid_count: number
+          profit: number
+          revenue: number
+          session_id: string
+          shuttle_cost: number
+          total_cost: number
+          total_count: number
+          total_shuttles_logged: number
+        }[]
+      }
       reverse_session_stats: { Args: { p_session_id: string }; Returns: string }
     }
     Enums: {

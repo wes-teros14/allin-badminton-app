@@ -58,9 +58,9 @@ export default function FinanceView() {
               <TableBody>
                 {sessions.map((s) => (
                   <TableRow
-                    key={s.id}
+                    key={s.sessionId}
                     className="cursor-pointer hover:bg-muted/20"
-                    onClick={() => navigate(`/finance/${s.id}`)}
+                    onClick={() => navigate(`/finance/${s.sessionId}`)}
                   >
                     <TableCell>
                       <div className="space-y-0.5">
