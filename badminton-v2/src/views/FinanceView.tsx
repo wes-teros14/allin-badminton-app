@@ -62,7 +62,12 @@ export default function FinanceView() {
                     className="cursor-pointer hover:bg-muted/20"
                     onClick={() => navigate(`/finance/${s.id}`)}
                   >
-                    <TableCell className="text-sm">{formatDate(s.date)}</TableCell>
+                    <TableCell>
+                      <div className="space-y-0.5">
+                        <p className="text-sm">{formatDate(s.date)}</p>
+                        <p className="text-xs text-muted-foreground">{s.name}</p>
+                      </div>
+                    </TableCell>
                     <TableCell className="text-sm text-right text-muted-foreground">
                       {s.paidCount} / {s.totalCount}
                     </TableCell>
