@@ -16,26 +16,30 @@ import {
 import { RosterPanel } from '@/components/RosterPanel'
 
 const usageSchema = z.object({
-  totalShuttles: z.coerce
+  totalShuttles: z
     .number({ error: 'Enter total shuttles used.' })
     .int({ message: 'Enter a whole number.' })
     .min(1, 'Must be at least 1 shuttle.'),
 })
-type UsageForm = z.infer<typeof usageSchema>
+type UsageFormOutput = z.output<typeof usageSchema>
 
 const courtCostSchema = z.object({
-  courtCost: z.coerce
+  courtCost: z
     .number({ error: 'Enter a valid amount.' })
     .min(0, 'Cost must be 0 or more.'),
 })
-type CourtCostForm = z.infer<typeof courtCostSchema>
+type CourtCostFormOutput = z.output<typeof courtCostSchema>
 
 export default function FinanceDetailView() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const finance = useSessionFinance(sessionId ?? '')
 
-  const usageForm = useForm<UsageForm>({ resolver: zodResolver(usageSchema) })
-  const courtForm = useForm<CourtCostForm>({ resolver: zodResolver(courtCostSchema) })
+  const usageForm = useForm<UsageFormOutput>({
+    resolver: zodResolver(usageSchema),
+  })
+  const courtForm = useForm<CourtCostFormOutput>({
+    resolver: zodResolver(courtCostSchema),
+  })
 
   const hasUsage = finance.usageAllocations.length > 0
   const hasCourtCost = finance.courtCost !== null
@@ -47,7 +51,7 @@ export default function FinanceDetailView() {
       })
     : ''
 
-  const onSaveUsage = async (values: UsageForm) => {
+  const onSaveUsage = async (values: UsageFormOutput) => {
     if (values.totalShuttles > finance.totalStockAvailable) {
       usageForm.setError('totalShuttles', {
         message: `Not enough stock for ${values.totalShuttles} shuttles. Only ${finance.totalStockAvailable} available.`,
@@ -63,7 +67,7 @@ export default function FinanceDetailView() {
     }
   }
 
-  const onSaveCourtCost = async (values: CourtCostForm) => {
+  const onSaveCourtCost = async (values: CourtCostFormOutput) => {
     const { error } = await finance.saveCourtCost(values.courtCost)
     if (error) {
       toast.error('Failed to save court cost. Try again.')
@@ -119,7 +123,7 @@ export default function FinanceDetailView() {
                     type="number"
                     placeholder="e.g. 20"
                     aria-invalid={!!usageForm.formState.errors.totalShuttles}
-                    {...usageForm.register('totalShuttles')}
+                    {...usageForm.register('totalShuttles', { valueAsNumber: true })}
                   />
                   {usageForm.formState.errors.totalShuttles && (
                     <p className="text-xs text-destructive mt-1">
@@ -137,6 +141,7 @@ export default function FinanceDetailView() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Tube ID</TableHead>
                         <TableHead>Brand</TableHead>
                         <TableHead className="text-right">Shuttles</TableHead>
                         <TableHead className="text-right">Cost</TableHead>
@@ -145,6 +150,9 @@ export default function FinanceDetailView() {
                     <TableBody>
                       {finance.usageAllocations.map((a) => (
                         <TableRow key={a.batchId}>
+                          <TableCell className="text-sm font-mono">
+                            {a.tubeId !== null ? `T-${a.tubeId}` : 'T-?'}
+                          </TableCell>
                           <TableCell className="text-sm">{a.brand}</TableCell>
                           <TableCell className="text-sm text-right">{a.shuttlesUsed}</TableCell>
                           <TableCell className="text-sm text-right">
@@ -179,7 +187,7 @@ export default function FinanceDetailView() {
                   placeholder="e.g. 400"
                   defaultValue={finance.courtCost ?? undefined}
                   aria-invalid={!!courtForm.formState.errors.courtCost}
-                  {...courtForm.register('courtCost')}
+                  {...courtForm.register('courtCost', { valueAsNumber: true })}
                 />
                 {courtForm.formState.errors.courtCost && (
                   <p className="text-xs text-destructive mt-1">

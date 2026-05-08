@@ -6,6 +6,7 @@ const SHUTTLES_PER_TUBE = 12
 
 export interface UsageAllocation {
   batchId: string
+  tubeId: number | null
   brand: string
   shuttlesUsed: number
   costPerTube: number
@@ -36,6 +37,7 @@ export interface BatchForAllocation {
   brand: string
   shuttlesRemaining: number   // 0–12 per tube (tube_count * 12 - shuttles_used)
   costPerTube: number
+  tubeStart: number
 }
 
 // Pure function — exported for testing. Batches must be pre-sorted cheapest-first.
@@ -50,7 +52,13 @@ export function allocateCheapestFirst(
     if (remaining <= 0) break
     const take = Math.min(remaining, b.shuttlesRemaining)
     if (take > 0) {
-      result.push({ batchId: b.id, brand: b.brand, shuttlesUsed: take, costPerTube: b.costPerTube })
+      result.push({
+        batchId: b.id,
+        tubeId: b.tubeStart,
+        brand: b.brand,
+        shuttlesUsed: take,
+        costPerTube: b.costPerTube,
+      })
       remaining -= take
     }
   }
@@ -97,6 +105,28 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     }
     setRegistrationCount(count ?? 0)
 
+    // Fetch all batches cheapest-first for allocation + stock check
+    const { data: batchRows, error: batchErr } = await supabase
+      .from('shuttle_batches')
+      .select('id, brand, tube_count, cost_per_tube, created_at')
+      .order('cost_per_tube', { ascending: true })
+      .order('created_at', { ascending: true })
+    if (batchErr) {
+      setFetchError(batchErr.message)
+      setIsLoading(false)
+      return
+    }
+
+    const creationOrdered = [...(batchRows ?? [])].sort((a, b) =>
+      a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0
+    )
+    const tubeStartMap = new Map<string, number>()
+    let cursor = 1001
+    for (const b of creationOrdered) {
+      tubeStartMap.set(b.id, cursor)
+      cursor += b.tube_count
+    }
+
     // Fetch shuttle_usage for this session joined to shuttle_batches for brand + cost_per_tube
     const { data: usageRows, error: usageErr } = await supabase
       .from('shuttle_usage')
@@ -111,24 +141,13 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       const batchData = u.shuttle_batches as { brand: string; cost_per_tube: number } | null
       return {
         batchId: u.batch_id,
+        tubeId: tubeStartMap.get(u.batch_id) ?? null,
         brand: batchData?.brand ?? '',
         shuttlesUsed: u.shuttles_used,
         costPerTube: Number(batchData?.cost_per_tube ?? 0),
       }
     })
     setUsageAllocations(allocations)
-
-    // Fetch all batches cheapest-first for allocation + stock check
-    const { data: batchRows, error: batchErr } = await supabase
-      .from('shuttle_batches')
-      .select('id, brand, tube_count, cost_per_tube, created_at')
-      .order('cost_per_tube', { ascending: true })
-      .order('created_at', { ascending: true })
-    if (batchErr) {
-      setFetchError(batchErr.message)
-      setIsLoading(false)
-      return
-    }
 
     // Fetch ALL shuttle_usage to compute remaining shuttles per batch
     const { data: allUsage, error: allUsageErr } = await supabase
@@ -148,6 +167,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       brand: b.brand,
       shuttlesRemaining: Math.max(0, b.tube_count * SHUTTLES_PER_TUBE - (usageMap.get(b.id) ?? 0)),
       costPerTube: Number(b.cost_per_tube),
+      tubeStart: tubeStartMap.get(b.id) ?? 1001,
     }))
     setBatchesForAllocation(batchesForAlloc)
     setIsLoading(false)
