@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
-const SHUTTLES_PER_TUBE = 12
-
 export interface UsageAllocation {
   batchId: string
   tubeId: number | null
@@ -143,7 +141,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
 
     const { data: batchRows, error: batchErr } = await supabase
       .from('shuttle_batches')
-      .select('id, brand, tube_count, cost_per_tube, created_at')
+      .select('id, brand, tube_count, shuttles_per_tube, cost_per_tube, created_at')
       .order('cost_per_tube', { ascending: true })
       .order('created_at', { ascending: true })
     if (batchErr) {
@@ -203,7 +201,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     setBatchesForAllocation((batchRows ?? []).map((batch) => ({
       id: batch.id,
       brand: batch.brand,
-      shuttlesRemaining: Math.max(0, batch.tube_count * SHUTTLES_PER_TUBE - (usageMap.get(batch.id) ?? 0)),
+      shuttlesRemaining: Math.max(0, batch.tube_count * batch.shuttles_per_tube - (usageMap.get(batch.id) ?? 0)),
       costPerTube: Number(batch.cost_per_tube),
       tubeStart: tubeStartMap.get(batch.id) ?? 1001,
     })))
