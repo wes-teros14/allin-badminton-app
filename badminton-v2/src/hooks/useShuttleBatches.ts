@@ -2,12 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
-const SHUTTLES_PER_TUBE = 12
-
 export interface ShuttleBatch {
   id: string
   brand: string
   tubeCount: number
+  shuttlesPerTube: number
   costPerTube: number
   isArchived: boolean
   notes: string | null
@@ -21,6 +20,7 @@ export interface ShuttleBatch {
 export interface AddBatchInput {
   brand: string
   quantity: number
+  shuttlesPerTube: number
   costPerTube: number
   notes?: string | null
 }
@@ -46,7 +46,7 @@ export function useShuttleBatches(): ShuttleBatchState {
 
     const { data: batchRows, error } = await supabase
       .from('shuttle_batches')
-      .select('id, brand, tube_count, cost_per_tube, is_archived, notes, purchased_at, created_at')
+      .select('id, brand, tube_count, shuttles_per_tube, cost_per_tube, is_archived, notes, purchased_at, created_at')
       .order('cost_per_tube', { ascending: true })
       .order('created_at', { ascending: true })
 
@@ -85,12 +85,13 @@ export function useShuttleBatches(): ShuttleBatchState {
     const mapped: ShuttleBatch[] = (batchRows ?? []).map((batch) => {
       const shuttlesUsed = usageMap.get(batch.id) ?? 0
       const tubeStart = tubeStartMap.get(batch.id) ?? 1001
-      const maxShuttles = batch.tube_count * SHUTTLES_PER_TUBE
+      const maxShuttles = batch.tube_count * batch.shuttles_per_tube
 
       return {
         id: batch.id,
         brand: batch.brand,
         tubeCount: batch.tube_count,
+        shuttlesPerTube: batch.shuttles_per_tube,
         costPerTube: Number(batch.cost_per_tube),
         isArchived: batch.is_archived,
         notes: batch.notes,
@@ -116,6 +117,7 @@ export function useShuttleBatches(): ShuttleBatchState {
     const rows = Array.from({ length: input.quantity }, () => ({
       brand: input.brand,
       tube_count: 1,
+      shuttles_per_tube: input.shuttlesPerTube,
       cost_per_tube: input.costPerTube,
       notes: input.notes ?? null,
       created_by: user.id,

@@ -34,6 +34,11 @@ const addBatchSchema = z.object({
     .number({ error: 'Enter number of tubes.' })
     .int()
     .min(1, 'Must be at least 1 tube.'),
+  shuttlesPerTube: z.coerce
+    .number({ error: 'Enter shuttles per tube.' })
+    .int('Enter a whole number.')
+    .min(1, 'Must be at least 1 shuttle.')
+    .max(12, 'Cannot exceed 12 shuttles.'),
   costPerTube: z.coerce
     .number({ error: 'Enter cost per tube.' })
     .positive('Cost must be greater than 0.'),
@@ -54,6 +59,7 @@ export default function InventoryView() {
     defaultValues: {
       brand: '',
       quantity: '' as unknown as number,
+      shuttlesPerTube: 12,
       costPerTube: '' as unknown as number,
       notes: '',
     },
@@ -64,6 +70,7 @@ export default function InventoryView() {
     const result = await addBatch({
       brand: data.brand,
       quantity: data.quantity,
+      shuttlesPerTube: data.shuttlesPerTube,
       costPerTube: data.costPerTube,
       notes: data.notes || null,
     })
@@ -202,7 +209,7 @@ export default function InventoryView() {
           <DialogHeader>
             <DialogTitle>Add Tubes</DialogTitle>
             <DialogDescription>
-              Record a tube purchase. Each tube holds 12 shuttles. IDs are assigned automatically.
+              Record a tube purchase. Set the current shuttles per tube if you are adding a partial tube. IDs are assigned automatically.
             </DialogDescription>
           </DialogHeader>
 
@@ -253,6 +260,23 @@ export default function InventoryView() {
               {form.formState.errors.costPerTube && (
                 <p className="text-xs text-destructive mt-1">
                   {form.formState.errors.costPerTube.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="shuttlesPerTube"># of Shuttles / Tube</Label>
+              <Input
+                id="shuttlesPerTube"
+                type="number"
+                min={1}
+                max={12}
+                aria-invalid={!!form.formState.errors.shuttlesPerTube}
+                {...form.register('shuttlesPerTube')}
+              />
+              {form.formState.errors.shuttlesPerTube && (
+                <p className="text-xs text-destructive mt-1">
+                  {form.formState.errors.shuttlesPerTube.message}
                 </p>
               )}
             </div>

@@ -488,39 +488,42 @@ export type Database = {
         Relationships: []
       }
         shuttle_batches: {
-          Row: {
-            brand: string
-            cost_per_tube: number
-            created_at: string
-            created_by: string
-            id: string
-            is_archived: boolean
-            notes: string | null
-            purchased_at: string
-            tube_count: number
-          }
-          Insert: {
-            brand: string
-            cost_per_tube: number
-            created_at?: string
-            created_by: string
-            id?: string
-            is_archived?: boolean
-            notes?: string | null
-            purchased_at?: string
-            tube_count: number
-          }
-          Update: {
-            brand?: string
-            cost_per_tube?: number
-            created_at?: string
-            created_by?: string
-            id?: string
-            is_archived?: boolean
-            notes?: string | null
-            purchased_at?: string
-            tube_count?: number
-          }
+            Row: {
+              brand: string
+              cost_per_tube: number
+              created_at: string
+              created_by: string
+              id: string
+              is_archived: boolean
+              notes: string | null
+              purchased_at: string
+              shuttles_per_tube: number
+              tube_count: number
+            }
+            Insert: {
+              brand: string
+              cost_per_tube: number
+              created_at?: string
+              created_by: string
+              id?: string
+              is_archived?: boolean
+              notes?: string | null
+              purchased_at?: string
+              shuttles_per_tube?: number
+              tube_count: number
+            }
+            Update: {
+              brand?: string
+              cost_per_tube?: number
+              created_at?: string
+              created_by?: string
+              id?: string
+              is_archived?: boolean
+              notes?: string | null
+              purchased_at?: string
+              shuttles_per_tube?: number
+              tube_count?: number
+            }
         Relationships: []
       }
       shuttle_usage: {
