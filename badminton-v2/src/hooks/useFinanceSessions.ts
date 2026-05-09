@@ -47,7 +47,7 @@ export function useFinanceSessions(): FinanceSessionsState {
       revenue: Number(row.revenue),
       shuttleCost: Number(row.shuttle_cost),
       totalCost: Number(row.total_cost),
-      profit: Number(row.profit),
+      profit: Number(row.profit_after_personal_share ?? row.profit),
       paidCount: Number(row.paid_count),
       totalCount: Number(row.total_count),
     })))

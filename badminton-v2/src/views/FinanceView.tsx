@@ -52,7 +52,7 @@ export default function FinanceView() {
                   <TableHead className="text-right">Paid</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
                   <TableHead className="text-right">Cost</TableHead>
-                  <TableHead className="text-right">P&L</TableHead>
+                  <TableHead className="text-right">Net Cash</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
