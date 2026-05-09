@@ -309,10 +309,10 @@ export default function FinanceDetailView() {
         </CardContent>
       </Card>
 
-      {/* Section 4: P&L Summary */}
+      {/* Section 4: Net Cash Summary */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-semibold">P&L Summary</CardTitle>
+          <CardTitle className="text-sm font-semibold">Net Cash Summary</CardTitle>
         </CardHeader>
         <CardContent>
           {finance.isLoading ? (
@@ -346,7 +346,7 @@ export default function FinanceDetailView() {
               <div className="border-t border-border my-2" />
               <div className="flex justify-between items-center">
                 <span className="text-sm font-semibold">
-                  {finance.profit >= 0 ? 'Net Profit' : 'Net Loss'}
+                  {finance.profit >= 0 ? 'Net Cash In' : 'Net Cash Out'}
                 </span>
                 <span
                   className={`text-lg font-semibold ${
