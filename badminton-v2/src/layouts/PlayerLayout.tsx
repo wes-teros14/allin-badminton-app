@@ -1,15 +1,29 @@
-import { Outlet } from 'react-router'
+import { useMemo } from 'react'
+import { Outlet, useParams } from 'react-router'
 import { TopNavBar } from '@/components/TopNavBar'
 import { NotificationProvider } from '@/contexts/NotificationContext'
-import { useActiveSessions } from '@/hooks/useActiveSession'
+import { useCheersEligibleSessions } from '@/hooks/useActiveSession'
 import { useMatchCheers } from '@/hooks/useMatchCheers'
 import { CheersPanel } from '@/components/CheersPanel'
 
 export function PlayerLayout() {
-  const { activeSessions } = useActiveSessions()
-  const activeSessionId = activeSessions[0]?.sessionId
+  const { sessionId } = useParams<{ sessionId: string }>()
+  const { sessions } = useCheersEligibleSessions()
+  const cheersSessionIds = useMemo(() => {
+    const routeSession = sessionId && sessions.some((s) => s.sessionId === sessionId)
+      ? [sessionId]
+      : []
+    const inProgress = sessions
+      .filter((s) => s.status === 'in_progress' && s.sessionId !== sessionId)
+      .map((s) => s.sessionId)
+    const complete = sessions
+      .filter((s) => s.status === 'complete' && s.sessionId !== sessionId)
+      .map((s) => s.sessionId)
 
-  const { cheerTypes, pendingMatches, hasPendingCheers, isLoading: cheerLoading, submitCheer } = useMatchCheers(activeSessionId)
+    return [...routeSession, ...inProgress, ...complete]
+  }, [sessionId, sessions])
+
+  const { cheerTypes, pendingMatches, hasPendingCheers, isLoading: cheerLoading, submitCheer } = useMatchCheers(cheersSessionIds)
 
   const showGate = !cheerLoading && hasPendingCheers
 
