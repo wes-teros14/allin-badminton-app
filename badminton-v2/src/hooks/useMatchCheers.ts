@@ -26,6 +26,7 @@ export interface UseMatchCheersResult {
 
 type MatchRow = {
   id: string
+  session_id: string
   queue_position: number
   team1_player1_id: string
   team1_player2_id: string
@@ -33,14 +34,21 @@ type MatchRow = {
   team2_player2_id: string
 }
 
-export function useMatchCheers(sessionId: string | undefined): UseMatchCheersResult {
+export function useMatchCheers(sessionId: string | string[] | undefined): UseMatchCheersResult {
   const { user } = useAuth()
   const [cheerTypes, setCheerTypes] = useState<CheerType[]>([])
   const [pendingMatches, setPendingMatches] = useState<PendingMatchCheer[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const sessionKey = Array.isArray(sessionId) ? sessionId.join('|') : sessionId ?? ''
 
   const load = useCallback(async () => {
-    if (!sessionId || !user) { setIsLoading(false); return }
+    const sessionIds = sessionKey ? sessionKey.split('|') : []
+    if (sessionIds.length === 0 || !user) {
+      setPendingMatches([])
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     try {
       // Fetch cheer types + completed matches where user played + cheers given by user
@@ -48,8 +56,8 @@ export function useMatchCheers(sessionId: string | undefined): UseMatchCheersRes
         supabase.from('cheer_types').select('id, slug, name, emoji').eq('is_active', true),
         supabase
           .from('matches')
-          .select('id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id')
-          .eq('session_id', sessionId)
+          .select('id, session_id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id')
+          .in('session_id', sessionIds)
           .eq('status', 'complete'),
         supabase
           .from('cheers')
@@ -62,6 +70,7 @@ export function useMatchCheers(sessionId: string | undefined): UseMatchCheersRes
 
       const allMatches = (matchesRes.data ?? []) as MatchRow[]
       const allCheers = (cheersRes.data ?? []) as Array<{ match_id: string; receiver_id: string }>
+      const sessionPriority = new Map(sessionIds.map((id, index) => [id, index]))
 
       // Filter to matches where user is a player
       const myMatches = allMatches.filter(m =>
@@ -98,10 +107,17 @@ export function useMatchCheers(sessionId: string | undefined): UseMatchCheersRes
 
       // Build pending matches list (sorted by queue_position)
       const pending: PendingMatchCheer[] = []
-      // Track game number per player (count of completed matches in queue order)
-      const sortedMatches = [...myMatches].sort((a, b) => a.queue_position - b.queue_position)
+      // Track game number per session (count of completed matches in queue order)
+      const sortedMatches = [...myMatches].sort((a, b) =>
+        (sessionPriority.get(a.session_id) ?? Number.MAX_SAFE_INTEGER) -
+          (sessionPriority.get(b.session_id) ?? Number.MAX_SAFE_INTEGER) ||
+        a.queue_position - b.queue_position
+      )
+      const completedBySession = new Map<string, number>()
       for (let i = 0; i < sortedMatches.length; i++) {
         const m = sortedMatches[i]
+        const gameNumber = (completedBySession.get(m.session_id) ?? 0) + 1
+        completedBySession.set(m.session_id, gameNumber)
         const otherPlayerIds = [m.team1_player1_id, m.team1_player2_id, m.team2_player1_id, m.team2_player2_id]
           .filter(id => id !== user.id)
         const givenTo = cheersMap.get(m.id) ?? new Set()
@@ -111,7 +127,7 @@ export function useMatchCheers(sessionId: string | undefined): UseMatchCheersRes
 
         pending.push({
           matchId: m.id,
-          gameNumber: i + 1,
+          gameNumber,
           players: otherPlayerIds.map(id => ({
             playerId: id,
             displayName: nameMap.get(id) ?? id,
@@ -124,28 +140,30 @@ export function useMatchCheers(sessionId: string | undefined): UseMatchCheersRes
     } finally {
       setIsLoading(false)
     }
-  }, [sessionId, user])
+  }, [sessionKey, user])
 
   useEffect(() => { load() }, [load])
 
   // Real-time: listen for match completions to trigger cheers gate
   useEffect(() => {
-    if (!sessionId) return
+    const sessionIds = sessionKey ? sessionKey.split('|') : []
+    if (sessionIds.length === 0) return
+    const sessionIdSet = new Set(sessionIds)
     const channel = supabase
-      .channel(`match-cheers-rt-${sessionId}`)
+      .channel(`match-cheers-rt-${sessionKey}`)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'matches',
-        filter: `session_id=eq.${sessionId}`,
       }, (payload) => {
-        if ((payload.new as { status?: string })?.status === 'complete') {
+        const row = payload.new as { session_id?: string; status?: string }
+        if (row.status === 'complete' && row.session_id && sessionIdSet.has(row.session_id)) {
           load()
         }
       })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [sessionId, load])
+  }, [sessionKey, load])
 
   const submitCheer = useCallback(async (matchId: string, receiverId: string, cheerTypeId: string) => {
     if (!user) return
