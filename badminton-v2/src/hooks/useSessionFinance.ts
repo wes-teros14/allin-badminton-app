@@ -44,6 +44,28 @@ export interface BatchForAllocation {
   tubeStart: number
 }
 
+interface BatchIdentity {
+  id: string
+  created_at: string
+}
+
+export function compareBatchIdentity(a: BatchIdentity, b: BatchIdentity): number {
+  if (a.created_at !== b.created_at) {
+    return a.created_at < b.created_at ? -1 : 1
+  }
+  return a.id.localeCompare(b.id)
+}
+
+export function compareAllocationOrder(a: BatchForAllocation, b: BatchForAllocation): number {
+  if (a.costPerTube !== b.costPerTube) {
+    return a.costPerTube - b.costPerTube
+  }
+  if (a.tubeStart !== b.tubeStart) {
+    return a.tubeStart - b.tubeStart
+  }
+  return a.id.localeCompare(b.id)
+}
+
 export function calculateProfitAfterPersonalShare(
   baseProfit: number,
   personalShareOverride: number | null
@@ -57,7 +79,8 @@ export function allocateCheapestFirst(
 ): UsageAllocation[] | null {
   const result: UsageAllocation[] = []
   let remaining = totalShuttles
-  for (const batch of batches) {
+  const orderedBatches = [...batches].sort(compareAllocationOrder)
+  for (const batch of orderedBatches) {
     if (remaining <= 0) break
     const take = Math.min(remaining, batch.shuttlesRemaining)
     if (take > 0) {
@@ -144,6 +167,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       .select('id, brand, tube_count, shuttles_per_tube, cost_per_tube, created_at')
       .order('cost_per_tube', { ascending: true })
       .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
     if (batchErr) {
       setFetchError(batchErr.message)
       setIsLoading(false)
@@ -151,9 +175,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       return
     }
 
-    const creationOrdered = [...(batchRows ?? [])].sort((a, b) =>
-      a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0
-    )
+    const creationOrdered = [...(batchRows ?? [])].sort(compareBatchIdentity)
     const tubeStartMap = new Map<string, number>()
     let cursor = 1001
     for (const batch of creationOrdered) {
