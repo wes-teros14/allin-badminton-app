@@ -77,8 +77,13 @@ export function PlayersView() {
                     <th className="text-left py-1 pr-2 font-medium">Name</th>
                     <th className="text-left py-1 pr-2 font-medium">Email</th>
                     <th className="text-left py-1 pr-2 font-medium">Nickname</th>
-                    <th className="text-left py-1 pr-2 font-medium">G</th>
-                    <th className="text-left py-1 pr-2 font-medium">Lvl</th>
+                    <th className="text-left py-1 pr-2 font-medium">Gender</th>
+                    <th className="text-left py-1 pr-2 font-medium">
+                      <div className="flex flex-col leading-tight">
+                        <span>Lvl</span>
+                        <span className="text-[9px] normal-case tracking-normal text-muted-foreground/80">1=Noob 10=Pro</span>
+                      </div>
+                    </th>
                     <th className="text-left py-1 font-medium">Status</th>
                   </tr>
                 </thead>

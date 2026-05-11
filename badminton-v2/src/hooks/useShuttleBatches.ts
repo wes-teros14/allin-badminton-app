@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { compareBatchIdentity } from '@/hooks/useSessionFinance'
 
 export interface ShuttleBatch {
   id: string
@@ -49,6 +50,7 @@ export function useShuttleBatches(): ShuttleBatchState {
       .select('id, brand, tube_count, shuttles_per_tube, cost_per_tube, is_archived, notes, purchased_at, created_at')
       .order('cost_per_tube', { ascending: true })
       .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
 
     if (error) {
       setFetchError(error.message)
@@ -72,9 +74,7 @@ export function useShuttleBatches(): ShuttleBatchState {
     }
 
     // Keep display numbering stable by numbering all tubes, then filtering archived rows.
-    const creationOrdered = [...(batchRows ?? [])].sort((a, b) =>
-      a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0
-    )
+    const creationOrdered = [...(batchRows ?? [])].sort(compareBatchIdentity)
     const tubeStartMap = new Map<string, number>()
     let cursor = 1001
     for (const batch of creationOrdered) {

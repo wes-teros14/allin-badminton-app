@@ -112,7 +112,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
   }
 
   return (
-    <div className="flex-1 flex flex-col p-8 gap-6 border-r border-border last:border-r-0">
+    <div className="flex-1 flex flex-col p-8 gap-5 border-r border-border last:border-r-0">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold tracking-widest text-muted-foreground">
@@ -171,17 +171,17 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
                 <p className="game-hero text-primary">{current.gameNumber}</p>
 
                 {/* Names + finish button — tight group just below the number */}
-                <div className="flex flex-col items-center gap-4 w-full mt-2">
-                  <div className="text-center space-y-3">
-                    <p className="text-2xl font-medium">{current.t1p1} &amp; {current.t1p2}</p>
+                <div className="flex flex-col items-center gap-3 w-full mt-1">
+                  <div className="text-center space-y-2">
+                    <p className="text-4xl leading-tight font-medium">{current.t1p1} &amp; {current.t1p2}</p>
                     <p className="text-sm uppercase tracking-widest text-muted-foreground">vs</p>
-                    <p className="text-2xl font-medium">{current.t2p1} &amp; {current.t2p2}</p>
+                    <p className="text-4xl leading-tight font-medium">{current.t2p1} &amp; {current.t2p2}</p>
                   </div>
 
                   <button
                     onClick={() => setConfirmingFinish(true)}
                     disabled={isSaving}
-                    className="w-full py-5 rounded-lg bg-primary text-primary-foreground text-xl font-bold tracking-wide hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    className="w-full py-4 rounded-lg bg-primary text-primary-foreground text-xl font-bold tracking-wide hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     Finish
                   </button>
