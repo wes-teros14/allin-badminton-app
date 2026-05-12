@@ -10,6 +10,18 @@ export interface ProfileStats {
   toughestOpponents: Array<{ nameSlug: string; losses: number }>
 }
 
+interface PlayerStatsRow {
+  sessions_attended: number
+  games_played: number
+  wins: number
+}
+
+interface ProfileNameRow {
+  id: string
+  name_slug: string
+  nickname: string | null
+}
+
 function topRanked(
   countMap: Map<string, number>,
   nameMap: Map<string, string>,
@@ -40,9 +52,10 @@ export function useProfileStats(userId: string | undefined) {
         .eq('player_id', userId!)
         .maybeSingle()
 
-      const sessionsAttended = (statsRow as any)?.sessions_attended ?? 0
-      const gamesPlayed      = (statsRow as any)?.games_played      ?? 0
-      const wins             = (statsRow as any)?.wins              ?? 0
+      const playerStats = statsRow as PlayerStatsRow | null
+      const sessionsAttended = playerStats?.sessions_attended ?? 0
+      const gamesPlayed      = playerStats?.games_played      ?? 0
+      const wins             = playerStats?.wins              ?? 0
 
       // 2. Best partners + toughest opponents
       const { data: pairRows } = await supabase
@@ -63,11 +76,11 @@ export function useProfileStats(userId: string | undefined) {
       const allIds = [...new Set([...partnerMap.keys(), ...opponentMap.keys()])]
       const nameMap = new Map<string, string>()
       if (allIds.length > 0) {
-        const { data: profiles } = await (supabase as any)
+        const { data: profiles } = await supabase
           .from('profiles')
           .select('id, name_slug, nickname')
           .in('id', allIds)
-        for (const p of (profiles ?? []) as Array<{ id: string; name_slug: string; nickname?: string | null }>) {
+        for (const p of (profiles ?? []) as ProfileNameRow[]) {
           nameMap.set(p.id, p.nickname ?? p.name_slug)
         }
       }

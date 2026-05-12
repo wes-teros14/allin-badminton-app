@@ -675,8 +675,9 @@ export function generateSchedule(
   players: PlayerInput[],
   options: GenerateOptions = {},
   _decisionLog?: MatchDecision[],
-  _skipBalance = false,  // accepted for API compat, not used in v3
+  _skipBalance?: boolean,  // accepted for API compat, not used in v3
 ): GeneratedMatch[] {
+  void _skipBalance
   const n = players.length
   if (n < 4) return []
 

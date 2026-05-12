@@ -65,6 +65,10 @@ interface Award {
   label: string
 }
 
+interface NicknameRow {
+  nickname: string | null
+}
+
 async function fetchAwards(userId: string): Promise<Award[]> {
   const latestSessionRes = await supabase
     .from('sessions')
@@ -141,7 +145,7 @@ export function ProfileView() {
   useEffect(() => {
     if (!user) return
     supabase.from('profiles').select('nickname').eq('id', user.id).maybeSingle()
-      .then(({ data }) => { if (data) setNickname((data as any).nickname ?? '') })
+      .then(({ data }) => { if (data) setNickname((data as NicknameRow).nickname ?? '') })
   }, [user?.id])
 
   useEffect(() => {

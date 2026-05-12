@@ -11,6 +11,17 @@ function isInAppBrowser() {
 
 export function RegisterView() {
   const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') ?? localStorage.getItem('registration_token')
+  const { user, isLoading, isValidToken, isAlreadyRegistered, isFull, signIn, register } =
+    useRegistration(token)
+  const hasAutoRegistered = useRef(false)
+
+  useEffect(() => {
+    if (user && isValidToken && !isAlreadyRegistered && !isFull && !isLoading && !hasAutoRegistered.current) {
+      hasAutoRegistered.current = true
+      register()
+    }
+  }, [user, isValidToken, isAlreadyRegistered, isFull, isLoading, register])
 
   if (isInAppBrowser()) {
     const currentUrl = window.location.href
@@ -37,24 +48,11 @@ export function RegisterView() {
       </div>
     )
   }
-  // After OAuth redirect, Supabase drops query params — restore token from sessionStorage
-  const token = searchParams.get('token') ?? localStorage.getItem('registration_token')
+
   console.log('[Register] token from URL:', searchParams.get('token'))
   console.log('[Register] token from localStorage:', localStorage.getItem('registration_token'))
   console.log('[Register] token used:', token)
-  const { user, isLoading, isValidToken, isAlreadyRegistered, isFull, signIn, register } =
-    useRegistration(token)
 
-  // Auto-register once conditions are confirmed — skip manual confirmation step
-  const hasAutoRegistered = useRef(false)
-  useEffect(() => {
-    if (user && isValidToken && !isAlreadyRegistered && !isFull && !isLoading && !hasAutoRegistered.current) {
-      hasAutoRegistered.current = true
-      register()
-    }
-  }, [user, isValidToken, isAlreadyRegistered, isFull, isLoading])
-
-  // No token in URL at all — definitely closed
   if (!token) {
     return (
       <div className="p-6 max-w-sm mx-auto">
@@ -68,10 +66,8 @@ export function RegisterView() {
     )
   }
 
-  // Show loading while auth resolves — prevents sign-in screen flashing on OAuth return
-  if (isLoading) return <div className="p-6">Loading…</div>
+  if (isLoading) return <div className="p-6">Loading...</div>
 
-  // Token present but not signed in — prompt sign-in (validate after OAuth)
   if (!user) {
     return (
       <div className="p-6 max-w-sm mx-auto">
@@ -128,7 +124,7 @@ export function RegisterView() {
   return (
     <div className="p-6 max-w-sm mx-auto">
       <Card>
-        <CardHeader><CardTitle>Registering…</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Registering...</CardTitle></CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">Please wait while we complete your registration.</p>
         </CardContent>
