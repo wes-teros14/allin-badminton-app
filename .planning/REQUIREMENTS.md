@@ -1,57 +1,51 @@
 # Requirements: All-In Badminton App
 
-**Defined:** 2026-05-04
+**Defined:** 2026-05-12
 **Core Value:** Players can register, get a fair auto-generated match schedule, and track live results without the admin manually coordinating anything during play.
 
-## v1.1 Requirements
+## v1.2 Requirements
 
-Requirements for milestone v1.1 — Finance & Inventory Tab.
+Requirements for milestone v1.2 - Public Registration Homepage.
 
-### Inventory Management
+### Public Entry
 
-- [ ] **INV-01**: Admin can add a new shuttle batch (brand, tube count, cost per tube, date purchased)
-- [ ] **INV-02**: Admin can view all batches with their tubes listed cheapest-cost-first
-- [ ] **INV-03**: Each tube in a batch gets a unique sequential physical ID starting from 1001 (T-1001, T-1002…) for physical labeling
-- [ ] **INV-04**: Admin sees remaining shuttlecock count per tube (e.g., "T-1001: 4 / 12")
-- [ ] **INV-05**: Finance page shows total shuttles currently in stock across all tubes
+- [ ] **REG-01**: Signed-out visitors can open the root app URL and see a public homepage instead of being immediately prompted to sign in with Google.
+- [ ] **REG-02**: Signed-out visitors can click a clear Register button from the public homepage.
+- [ ] **REG-03**: Clicking Register starts the existing Google sign-in flow, with no extra public registration form.
 
-### Session Finance
+### Existing User Behavior
 
-- [ ] **FIN-01**: Admin can log shuttle usage for a session per specific tube (tube ID + how many shuttlecocks used from it)
-- [ ] **FIN-02**: Admin can enter or override court rental cost per session
-- [ ] **FIN-03**: Admin sees a P&L summary per session: revenue collected, court cost, shuttle COGS, net profit
-- [ ] **FIN-04**: Finance page shows a list of all sessions with their P&L summary
+- [ ] **AUTH-01**: Signed-in users keep the current homepage behavior and continue into the authenticated app experience without a new landing step.
+- [ ] **AUTH-02**: Existing Google OAuth behavior remains the only authentication method for registration and sign-in.
 
-### Payment Tracking
+### Compatibility
 
-- [ ] **PAY-01**: Admin can mark each registered player as Paid or Unpaid per session from the Finance page
-- [ ] **PAY-02**: Finance page shows payment count summary per session (e.g., "12 / 16 paid")
-- [ ] **PAY-03**: Existing Paid/Unpaid controls are removed from the Admin tab (moved here)
+- [ ] **INVITE-01**: Existing invite-link code remains in the codebase and is not removed during this milestone.
+- [ ] **INVITE-02**: Normal onboarding no longer depends on the admin sending a session invite link.
 
 ## Future Requirements
 
-Features discussed but deferred beyond v1.1.
+Features discussed but deferred beyond v1.2.
 
 ### Finance Insights
 
-- **FIN-F01**: Session-to-session profit trend view (needs 5+ sessions of data first)
-- **FIN-F02**: Low stock alert when remaining shuttles fall below one session's worth (< 20)
-- **FIN-F03**: Shuttle sell-price tracking in settings to compute markup vs cost
+- **FIN-F01**: Session-to-session profit trend view after enough session data exists.
+- **FIN-F02**: Low stock alert when remaining shuttles fall below one session's worth.
+- **FIN-F03**: Shuttle sell-price tracking in settings to compute markup versus cost.
 
 ### Inventory
 
-- **INV-F01**: Batch quality notes (feather vs plastic, brand rating)
-- **INV-F02**: Batch expiry tracking
+- **INV-F01**: Batch quality notes, such as feather versus plastic and brand rating.
+- **INV-F02**: Batch expiry tracking.
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Player-visible cost breakdown | Admin-only data — players see the fee, not cost/profit details |
-| Automatic cheapest-batch allocation | Admin manually selects which tube to draw from — auto-allocation adds complexity without benefit |
-| Realtime subscriptions for finance data | Finance is low-frequency admin data — query-on-load is sufficient |
-| Invoice / receipt generation | Out of scope for a casual weekly club |
-| Multi-currency | App is PHP only |
+| Public registration form | User explicitly wants Google sign-in only with no extra form. |
+| Removing invite-token code | Keep the existing code for now; only stop relying on invite links for normal onboarding. |
+| Changing signed-in user routing | Existing signed-in behavior should remain unchanged. |
+| Adding new auth providers | Google OAuth remains the only auth method. |
 
 ## Traceability
 
@@ -59,24 +53,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INV-01 | Phase 9 | Pending |
-| INV-02 | Phase 9 | Pending |
-| INV-03 | Phase 9 | Pending |
-| INV-04 | Phase 9 | Pending |
-| INV-05 | Phase 9 | Pending |
-| FIN-01 | Phase 10 | Pending |
-| FIN-02 | Phase 10 | Pending |
-| FIN-03 | Phase 10 | Pending |
-| FIN-04 | Phase 10 | Pending |
-| PAY-01 | Phase 11 | Pending |
-| PAY-02 | Phase 11 | Pending |
-| PAY-03 | Phase 11 | Pending |
+| REG-01 | TBD | Pending |
+| REG-02 | TBD | Pending |
+| REG-03 | TBD | Pending |
+| AUTH-01 | TBD | Pending |
+| AUTH-02 | TBD | Pending |
+| INVITE-01 | TBD | Pending |
+| INVITE-02 | TBD | Pending |
 
 **Coverage:**
-- v1.1 requirements: 12 total
-- Mapped to phases: 12 ✓
-- Unmapped: 0
+- v1.2 requirements: 7 total
+- Mapped to phases: 0
+- Unmapped: 7
 
 ---
-*Requirements defined: 2026-05-04*
-*Last updated: 2026-05-04 — traceability mapped via roadmap creation*
+*Requirements defined: 2026-05-12*
+*Last updated: 2026-05-12 after milestone scoping*
