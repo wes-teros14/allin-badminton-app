@@ -29,18 +29,20 @@ Players can register, get a fair auto-generated match schedule, and track live r
 - ✓ Roster search + active player filter in admin views — v1.0
 - ✓ Registration Early Bird award (latest session only, excludes setup sessions) — v1.0
 
-## Current Milestone: v1.1 Finance & Inventory
+## Current Milestone: v1.2 Public Registration Homepage
 
-**Goal:** Add an admin-only Finance tab covering shuttle stock management, session P&L, and per-player payment tracking.
+**Goal:** Signed-out visitors who open the app homepage see a public registration entry point instead of an immediate Google sign-in prompt.
 
 **Target features:**
-- Shuttle batch inventory with partial tube tracking (cheapest batch consumed first)
-- Session P&L: revenue, court cost, shuttle COGS, net profit
-- Per-player payment status per session (moves from Admin tab)
+- Public homepage at the root app URL for signed-out visitors
+- Clear Register action for new players
+- Register triggers Google sign-in only, with no extra public form
+- Signed-in users keep the current post-login behavior
+- Invite-link code remains in the codebase but is not the normal onboarding path
 
 ### Active
 
-<!-- v1.1 scope -->
+<!-- v1.2 scope -->
 
 ### Out of Scope
 
@@ -91,4 +93,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-03 — bootstrapped from existing codebase for GSD initialization*
+*Last updated: 2026-05-12 - started milestone v1.2 Public Registration Homepage*

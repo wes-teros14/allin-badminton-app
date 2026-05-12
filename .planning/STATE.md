@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Finance & Inventory Tab
-status: executing
-stopped_at: Roadmap written, Ready to execute (1 plan, 1 wave) Phase 8
-last_updated: "2026-05-04T21:24:11.941Z"
-last_activity: 2026-05-04 â€” Roadmap created for milestone v1.1 (4 phases, 12 requirements)
+milestone: v1.2
+milestone_name: Public Registration Homepage
+status: planning
+stopped_at: Defining requirements
+last_updated: "2026-05-12T00:00:00.000Z"
+last_activity: 2026-05-12 - Milestone v1.2 started
 progress:
-  total_phases: 4
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 ﻿# Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03)
 
 **Core value:** Players can register, get a fair auto-generated match schedule, and track live results without the admin manually coordinating anything during play.
-**Current focus:** Phase 8 â€” DB Foundation (v1.1 start)
+**Current focus:** Defining requirements for v1.2 Public Registration Homepage
 
 ## Current Position
 
-Phase: 11 of 11 (Payment Migration)
-Plan: 3 of 3 complete
-Status: Phase 11 complete — payment controls migrated to Finance page (PAY-01, PAY-02, PAY-03 all verified)
-Last activity: 2026-05-06 — 11-03 removed payment UI from SessionView; Finance page now owns all payment controls
+Phase: Not started (defining requirements)
+Plan: -
+Status: Defining requirements
+Last activity: 2026-05-12 - Milestone v1.2 started
 
-Progress: [##########] 100% (3 of 3 plans in phase 11)
+Progress: [----------] 0% (0 of 0 phases)
 
 ## Performance Metrics
 
