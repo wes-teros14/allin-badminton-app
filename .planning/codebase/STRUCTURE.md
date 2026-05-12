@@ -1,142 +1,183 @@
-# STRUCTURE.md — Directory Layout & Organization
+# Codebase Structure
 
-## Repository Root
+**Analysis Date:** 2026-05-12
 
-```
-C:/1Wes/all-in-badminton-app/
-├── badminton-v2/              # Main app (the only production codebase)
-├── _bmad-output/              # BMAD framework artifacts (planning docs, specs)
-├── _bmad/                     # BMAD framework modules (do not edit)
-├── agent-os/                  # Agent OS config
-├── .claude/                   # Claude Code config, GSD workflows, agents
-├── .planning/                 # GSD planning directory (this document lives here)
-├── docs/                      # Human-facing project documentation
-├── tasks/                     # Task tracking (todo.md, lessons.md)
-├── temporary_files/           # Scratch space
-└── CLAUDE.md                  # Project-level Claude instructions
-```
+## Directory Layout
 
-## App Directory: `badminton-v2/`
-
-```
-badminton-v2/
-├── src/                       # Application source code
-│   ├── main.tsx               # React root mount
-│   ├── App.tsx                # Router tree + providers
-│   ├── App.css                # App-level styles
-│   ├── index.css              # Tailwind + global CSS
-│   ├── views/                 # Route-level page components (lazy-loaded)
-│   ├── components/            # Feature + UI components
-│   │   └── ui/                # shadcn/ui base components
-│   ├── layouts/               # Shared layout wrappers
-│   │   └── PlayerLayout.tsx   # Top nav, cheers gate, notification provider
-│   ├── hooks/                 # Custom hooks (data fetching + mutations)
-│   ├── contexts/              # React contexts (Auth, Notifications)
-│   ├── lib/                   # Utility modules
-│   │   ├── supabase.ts        # Supabase singleton client
-│   │   ├── matchGenerator.ts  # Match generation engine (SA optimizer)
-│   │   └── utils.ts           # cn() Tailwind class utility
-│   ├── types/                 # TypeScript type definitions
-│   │   ├── app.ts             # Domain types (UserRole, SessionStatus, etc.)
-│   │   └── database.ts        # Generated Supabase schema types
-│   └── assets/                # Static assets (images, icons)
-├── supabase/
-│   └── migrations/            # 44 SQL migration files (001–044)
-├── scripts/                   # Dev utilities
-│   ├── seed-test-users.ts     # Seed test player accounts
-│   ├── seed-extra-users.ts    # Seed extra users
-│   └── copy-prod-profiles-to-dev.ts
-├── tests/                     # Playwright E2E tests
-├── __tests__/                 # Vitest unit tests (excluded from tsconfig)
-├── public/                    # Vite static assets
-├── dist/                      # Build output
-├── package.json
-├── vite.config.ts
-├── tsconfig.app.json          # App TypeScript config (strict mode)
-├── tsconfig.json
-├── tsconfig.node.json
-├── playwright.config.ts
-├── vitest.config.ts
-├── vercel.json
-├── eslint.config.js
-└── components.json            # shadcn/ui config
+```text
+[project-root]/
+├── badminton-v2/            # Active Vite + React application
+├── .planning/               # GSD project state, plans, and generated codebase docs
+├── tasks/                   # Planning/task artifacts outside runtime
+├── old_app_references/      # Legacy reference material
+├── temporary_files/         # Temporary workspace artifacts
+├── _bmad/                   # BMAD workflow/config assets
+└── _bmad-output/            # Generated BMAD outputs
 ```
 
-## Views (`src/views/`)
+## Directory Purposes
 
-| File | Route | Role |
-|------|-------|------|
-| `HomeView.tsx` | `/` | Public |
-| `LiveBoardView.tsx` | `/live-board/:sessionId?` | Public |
-| `RegisterView.tsx` | `/register` | Public |
-| `ProfileView.tsx` | `/profile` | Player |
-| `MySessionsView.tsx` | `/sessions` | Player |
-| `SessionPlayerDetailView.tsx` | `/sessions/:sessionId` | Player |
-| `LeaderboardView.tsx` | `/leaderboard` | Player |
-| `TodayView.tsx` | `/today` | Player (legacy) |
-| `PlayerView.tsx` | `/match-schedule/...` | Player (legacy) |
-| `AdminView.tsx` | `/admin` | Admin |
-| `SessionView.tsx` | `/session/:sessionId` | Admin |
-| `PlayersView.tsx` | `/players` | Admin |
+**`badminton-v2/`:**
+- Purpose: Main application and the only runtime subtree that ships the product.
+- Contains: `src/`, `public/`, `supabase/migrations/`, `tests/`, `scripts/`, build output/config files
+- Key files: `badminton-v2/package.json`, `badminton-v2/src/main.tsx`, `badminton-v2/src/App.tsx`
 
-## Components (`src/components/`)
+**`badminton-v2/src/`:**
+- Purpose: Application source code.
+- Contains: Route views, components, hooks, contexts, layouts, libs, types, utilities, unit tests
+- Key files: `badminton-v2/src/App.tsx`, `badminton-v2/src/lib/supabase.ts`, `badminton-v2/src/lib/matchGenerator.ts`
 
-| File | Purpose |
-|------|---------|
-| `TopNavBar.tsx` | Global top navigation bar |
-| `CheersPanel.tsx` | Post-match cheer rating gate |
-| `MatchGeneratorPanel.tsx` | Admin match schedule generator UI |
-| `CourtCard.tsx` | Single court match display |
-| `CourtTabs.tsx` | Court tab switcher |
-| `GameCard.tsx` | Match card display |
-| `RosterPanel.tsx` | Session player roster |
-| `LiveIndicator.tsx` | Realtime connection status badge |
-| `StatusChip.tsx` | Session status display chip |
-| `PlayerScheduleHeader.tsx` | Player match schedule header |
-| `RegistrationURLCard.tsx` | Shareable registration link card |
-| `SessionRecapBanner.tsx` | Post-session summary banner |
-| `DevLoginPanel.tsx` | Dev-only quick login panel |
+**`badminton-v2/src/views/`:**
+- Purpose: Route-level screens.
+- Contains: Player, admin, finance, inventory, registration, leaderboard, and live-board pages
+- Key files: `badminton-v2/src/views/SessionView.tsx`, `badminton-v2/src/views/RegisterView.tsx`, `badminton-v2/src/views/FinanceView.tsx`
 
-## Hooks (`src/hooks/`)
+**`badminton-v2/src/hooks/`:**
+- Purpose: Stateful feature logic and Supabase access.
+- Contains: Session lifecycle hooks, player schedule hooks, realtime subscriptions, finance/inventory hooks
+- Key files: `badminton-v2/src/hooks/useSession.ts`, `badminton-v2/src/hooks/useRegistration.ts`, `badminton-v2/src/hooks/useSessionFinance.ts`
 
-| File | Purpose |
-|------|---------|
-| `useSession.ts` | Full session lifecycle + mutations |
-| `useActiveSession.ts` | Current active session detection |
-| `useAdminSession.ts` | Admin session management |
-| `useAdminActions.ts` | Admin-specific mutations |
-| `useAuth.ts` | Auth context consumer hook |
-| `useRealtime.ts` | Supabase Realtime subscription wrapper |
-| `useCourtState.ts` | Court assignment state |
-| `useMatchCheers.ts` | Pending cheer detection + submission |
-| `usePlayerList.ts` | Player list data |
-| `usePlayers.ts` | Player data with stats |
-| `usePlayerSchedule.ts` | Individual player match schedule |
-| `usePlayerSessions.ts` | Player session history |
-| `usePlayerStats.ts` | Player statistics |
-| `useProfileStats.ts` | Profile page stats |
-| `useRegisteredPlayers.ts` | Session registration list |
-| `useRegistration.ts` | Player self-registration |
-| `useRoster.ts` | Session roster |
-| `useSession.ts` | Session lifecycle |
-| `useSessionList.ts` | All sessions list |
+**`badminton-v2/src/components/`:**
+- Purpose: Reusable UI fragments composed by views.
+- Contains: Domain-specific panels/cards plus vendored `ui/` primitives
+- Key files: `badminton-v2/src/components/TopNavBar.tsx`, `badminton-v2/src/components/CourtTabs.tsx`, `badminton-v2/src/components/ui/table.tsx`
 
-## Database Migrations (`supabase/migrations/`)
+**`badminton-v2/src/contexts/`:**
+- Purpose: App-wide state shared through React context.
+- Contains: Auth and notification providers
+- Key files: `badminton-v2/src/contexts/AuthContext.tsx`, `badminton-v2/src/contexts/NotificationContext.tsx`
 
-44 sequential migrations, numbered `001_` through `044_`. Key milestones:
+**`badminton-v2/src/lib/`:**
+- Purpose: Shared non-UI logic.
+- Contains: Supabase client setup, match generation engine, generic utility helpers
+- Key files: `badminton-v2/src/lib/supabase.ts`, `badminton-v2/src/lib/matchGenerator.ts`, `badminton-v2/src/lib/utils.ts`
 
-- `001-005` — Core tables: profiles, sessions, invitations, registrations, matches
-- `013` — Player stats tables
-- `022-031` — Cheer system (types, multipliers, match-scoped)
-- `029` + `041` — Notifications + Realtime
-- `033` — Announcements
-- `044` — Generator settings stored on sessions
+**`badminton-v2/src/types/`:**
+- Purpose: Shared TypeScript contracts.
+- Contains: App-level types and generated database types
+- Key files: `badminton-v2/src/types/app.ts`, `badminton-v2/src/types/database.ts`
+
+**`badminton-v2/src/utils/`:**
+- Purpose: Small formatting helpers that do not warrant a full domain module.
+- Contains: Presentation-oriented utilities
+- Key files: `badminton-v2/src/utils/formatPeso.ts`
+
+**`badminton-v2/src/__tests__/`:**
+- Purpose: Vitest unit tests colocated under source.
+- Contains: Pure logic and hook tests plus fixtures
+- Key files: `badminton-v2/src/__tests__/matchGenerator.test.ts`, `badminton-v2/src/__tests__/useSessionFinance.test.ts`
+
+**`badminton-v2/tests/`:**
+- Purpose: Playwright end-to-end coverage.
+- Contains: Browser specs driven against the Vite dev server
+- Key files: `badminton-v2/tests/registration-limit.spec.ts`
+
+**`badminton-v2/scripts/`:**
+- Purpose: Operational scripts for seeding and manual data maintenance.
+- Contains: `tsx` seeders plus helper SQL files
+- Key files: `badminton-v2/scripts/seed-test-users.ts`, `badminton-v2/scripts/copy-prod-profiles-to-dev.ts`
+
+**`badminton-v2/supabase/migrations/`:**
+- Purpose: Database schema and backend behavior definitions.
+- Contains: Ordered SQL migrations for tables, RLS, triggers, RPCs, and finance/inventory changes
+- Key files: `badminton-v2/supabase/migrations/001_create_profiles.sql`, `badminton-v2/supabase/migrations/058_create_get_session_finance.sql`, `badminton-v2/supabase/migrations/061_add_shuttles_per_tube_to_shuttle_batches.sql`
+
+**`.planning/`:**
+- Purpose: Planning-system source of truth used by GSD workflows.
+- Contains: `STATE.md`, milestone/phase plans, generated codebase maps
+- Key files: `.planning/STATE.md`, `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/STRUCTURE.md`
+
+## Key File Locations
+
+**Entry Points:**
+- `badminton-v2/index.html`: Vite HTML entry document
+- `badminton-v2/src/main.tsx`: Browser bootstrap and router mount
+- `badminton-v2/src/App.tsx`: Route graph and provider composition
+
+**Configuration:**
+- `badminton-v2/package.json`: Scripts and dependencies
+- `badminton-v2/tsconfig.json`: TS project references and path alias root
+- `badminton-v2/vite.config.ts`: Vite plugins and `@` alias
+- `badminton-v2/eslint.config.js`: Lint rules and ignored paths
+- `badminton-v2/vitest.config.ts`: Unit-test include pattern and alias
+- `badminton-v2/playwright.config.ts`: E2E runner configuration and local dev server boot
+
+**Core Logic:**
+- `badminton-v2/src/hooks/useSession.ts`: Admin session workflow
+- `badminton-v2/src/hooks/useRegistration.ts`: Public invitation registration workflow
+- `badminton-v2/src/hooks/useSessionFinance.ts`: Finance detail state and shuttle allocation
+- `badminton-v2/src/lib/matchGenerator.ts`: Match scheduling engine
+- `badminton-v2/src/lib/supabase.ts`: Typed Supabase client
+
+**Testing:**
+- `badminton-v2/src/__tests__/`: Unit tests
+- `badminton-v2/tests/`: Playwright specs
+- `badminton-v2/src/__tests__/fixtures/`: Test data helpers
 
 ## Naming Conventions
 
-- **Files:** `PascalCase.tsx` for React components/views; `camelCase.ts` for hooks/lib
-- **Hooks:** prefix `use` (e.g., `useSession`, `useRealtime`)
-- **DB tables:** snake_case plural (e.g., `session_registrations`, `player_stats`)
-- **Supabase types:** Generated in `src/types/database.ts` — not hand-edited
-- **App types:** Hand-written in `src/types/app.ts` — add as needed
-- **Path alias:** `@/` maps to `src/` (e.g., `@/hooks/useSession`)
+**Files:**
+- Route views and major components use PascalCase: `badminton-v2/src/views/SessionView.tsx`
+- Hooks use `use*.ts`: `badminton-v2/src/hooks/useRealtime.ts`
+- Generic helpers use lower camel or noun phrases in lowercase filenames: `badminton-v2/src/lib/utils.ts`, `badminton-v2/src/utils/formatPeso.ts`
+- Unit tests use `*.test.ts`: `badminton-v2/src/__tests__/matchGenerator.scoring.test.ts`
+- Playwright specs use kebab-case `*.spec.ts`: `badminton-v2/tests/registration-limit.spec.ts`
+
+**Directories:**
+- Source groupings are lowercase plural buckets by role: `badminton-v2/src/views`, `badminton-v2/src/hooks`, `badminton-v2/src/components`
+- Vendored shadcn primitives live under a dedicated lowercase subtree: `badminton-v2/src/components/ui`
+
+## Where to Add New Code
+
+**New Feature:**
+- Primary code: add the route screen in `badminton-v2/src/views/` and feature state/data logic in `badminton-v2/src/hooks/`
+- Tests: add unit coverage in `badminton-v2/src/__tests__/` and browser coverage in `badminton-v2/tests/` when the feature crosses page flows
+
+**New Component/Module:**
+- Implementation: put reusable display pieces in `badminton-v2/src/components/`; keep route-specific orchestration in the owning file under `badminton-v2/src/views/`
+
+**Utilities:**
+- Shared helpers: put pure domain algorithms in `badminton-v2/src/lib/` and lightweight formatting/presentation helpers in `badminton-v2/src/utils/`
+
+**New Database Behavior:**
+- Schema/RLS/RPC changes: create a new ordered SQL migration in `badminton-v2/supabase/migrations/`
+- Client typing touchpoints: update consumers that depend on `badminton-v2/src/types/database.ts`
+
+**New Operational Script:**
+- Seed/admin scripts: place `tsx` or `.sql` utilities in `badminton-v2/scripts/`
+
+## Special Directories
+
+**`badminton-v2/src/components/ui/`:**
+- Purpose: Reusable UI primitives used across views and components
+- Generated: Yes
+- Committed: Yes
+
+**`badminton-v2/dist/`:**
+- Purpose: Vite production build output
+- Generated: Yes
+- Committed: Yes
+
+**`badminton-v2/playwright-report/`:**
+- Purpose: Playwright HTML test reports
+- Generated: Yes
+- Committed: Yes
+
+**`badminton-v2/test-results/`:**
+- Purpose: Playwright run artifacts
+- Generated: Yes
+- Committed: Yes
+
+**`badminton-v2/.vercel/output/`:**
+- Purpose: Vercel build/export artifacts
+- Generated: Yes
+- Committed: Yes
+
+**`badminton-v2/html/`:**
+- Purpose: Snapshot/export-style static output separate from `dist/`
+- Generated: Yes
+- Committed: Yes
+
+---
+
+*Structure analysis: 2026-05-12*

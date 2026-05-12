@@ -1,76 +1,96 @@
-# INTEGRATIONS.md — External Services & APIs
+# External Integrations
 
-## Supabase
+**Analysis Date:** 2026-05-12
 
-**Primary backend** — handles database, auth, and real-time events.
+## APIs & External Services
 
-### Database (PostgreSQL)
-- Typed via generated `src/types/database.ts`
-- Client: `src/lib/supabase.ts`
-  ```ts
-  export const supabase = createClient<Database>(url, anonKey, { auth: { flowType: 'pkce' } })
-  ```
-- **Tables (44 migrations):**
-  - `profiles` — player profiles with role, gender, skill level
-  - `sessions` — badminton sessions with status, venue, timing, price, generator settings
-  - `session_invitations` — per-session registration links with max player limits
-  - `session_registrations` — player registration per session (source, paid, overrides)
-  - `matches` — generated court matches with status, duration
-  - `player_stats` — aggregate player performance stats
-  - `notifications` — in-app notifications
-  - `announcements` — admin broadcasts
-  - `cheers` — player appreciation system (6 types: offense, defense, technique, movement, good_sport, solid_effort)
+**Backend Platform:**
+- Supabase - Primary backend for auth, Postgres data access, realtime subscriptions, and RPC
+  - SDK/Client: `@supabase/supabase-js`
+  - Auth: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+  - Implementation: `badminton-v2/src/lib/supabase.ts`, `badminton-v2/src/contexts/AuthContext.tsx`, `badminton-v2/src/hooks/`
 
-### Row-Level Security (RLS)
-- Extensive RLS policies across all tables
-- Anonymous read access on `players` view (migration `008`)
-- Session registrations: read-all, update/delete granted (migrations `009`, `012`)
-- Authenticated read-all on profiles (migration `037`)
-- Admin update on profiles (migration `043`)
-- Registration opens_at gating (migration `034`)
+**Authentication Provider:**
+- Google OAuth via Supabase Auth - End-user sign-in path for public and admin entry points
+  - SDK/Client: `@supabase/supabase-js`
+  - Auth: Supabase project OAuth configuration plus `VITE_APP_URL`
+  - Entry points: `badminton-v2/src/App.tsx`, `badminton-v2/src/views/HomeView.tsx`, `badminton-v2/src/hooks/useRegistration.ts`
 
-### Auth
-- **Flow:** PKCE (configured in supabase client)
-- **Provider:** Google OAuth for admin users
-  ```ts
-  supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo: `${VITE_APP_URL}/admin` }
-  })
-  ```
-- **Roles:** `admin` | `player` — read from `profiles.role` via `AuthContext`
-- **Admin gate:** `AdminRoute` component in `App.tsx` — redirects non-admins to `/`
+**Realtime:**
+- Supabase Realtime - Live UI updates for matches, player stats, cheers, rosters, notifications, and leaderboard views
+  - SDK/Client: `@supabase/supabase-js`
+  - Publication setup: `badminton-v2/supabase/migrations/010_realtime_replica_identity.sql`, `badminton-v2/supabase/migrations/017_player_stats_realtime.sql`, `badminton-v2/supabase/migrations/041_notifications_realtime.sql`
+  - Subscribers: `badminton-v2/src/contexts/NotificationContext.tsx`, `badminton-v2/src/hooks/useRealtime.ts`, `badminton-v2/src/hooks/useMatchCheers.ts`, `badminton-v2/src/hooks/useRoster.ts`, `badminton-v2/src/views/ProfileView.tsx`, `badminton-v2/src/views/TodayView.tsx`, `badminton-v2/src/views/SessionPlayerDetailView.tsx`
 
-### Realtime
-- Tables configured with replica identity (migration `010`)
-- Realtime enabled for `player_stats` (migration `017`), `notifications` (migration `041`)
-- Hook: `useRealtime.ts` — subscribes to live session/match updates
-- Context: `NotificationContext.tsx` — subscribes to user notifications channel
+## Data Storage
 
-### Supabase CLI
-- Linked to dev project: `npx supabase link --project-ref tsvetqzkullivprbjtli`
-- Linked to prod project: `npx supabase link --project-ref ensdfitpeyreunihkqkh`
+**Databases:**
+- Supabase Postgres
+  - Connection: Client-side app uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+  - Admin/script access: `SUPABASE_SERVICE_ROLE_KEY`
+  - Client: `@supabase/supabase-js`
+  - Schema source: `badminton-v2/supabase/migrations/`
+  - Generated types: `badminton-v2/src/types/database.ts`
 
-## Vercel
+**File Storage:**
+- Local filesystem only detected in the repo
+- No `supabase.storage` or other object-storage client usage detected in `badminton-v2/src/`, `badminton-v2/scripts/`, or `badminton-v2/tests/`
 
-- **Hosting:** Static SPA deployment
-- **Config:** `badminton-v2/vercel.json`
-  ```json
-  { "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }] }
-  ```
-- Handles all client-side routing (no 404s on deep-links)
+**Caching:**
+- None detected
 
-## Google OAuth
+## Authentication & Identity
 
-- Used exclusively for admin sign-in
-- Configured as Supabase OAuth provider
-- Redirect URI: `{VITE_APP_URL}/admin` or `window.location.origin/admin`
+**Auth Provider:**
+- Supabase Auth
+  - Implementation: PKCE client flow in `badminton-v2/src/lib/supabase.ts`, session listeners in `badminton-v2/src/contexts/AuthContext.tsx` and `badminton-v2/src/hooks/useRegistration.ts`, role lookup from `public.profiles`
 
-## No Other External APIs
+**Identity Sources:**
+- Google OAuth for production/user-facing sign-in in `badminton-v2/src/App.tsx`, `badminton-v2/src/views/HomeView.tsx`, and `badminton-v2/src/hooks/useRegistration.ts`
+- Email/password sign-in for local dev test accounts in `badminton-v2/src/components/DevLoginPanel.tsx`
+- Supabase Admin API for provisioning test and copied users in `badminton-v2/scripts/seed-test-users.ts`, `badminton-v2/scripts/seed-extra-users.ts`, and `badminton-v2/scripts/copy-prod-profiles-to-dev.ts`
 
-As of the current codebase, there are no integrations with:
-- Payment processors
-- Email services (notifications are in-app only)
-- Analytics platforms
-- Push notification services
-- CDN or asset pipelines beyond Vercel
+## Monitoring & Observability
+
+**Error Tracking:**
+- None detected
+
+**Logs:**
+- Browser console and script stdout/stderr only
+- Examples: `console.error` in `badminton-v2/scripts/seed-test-users.ts` and `badminton-v2/scripts/copy-prod-profiles-to-dev.ts`, `console.error` in `badminton-v2/src/hooks/useRegistration.ts`
+
+## CI/CD & Deployment
+
+**Hosting:**
+- Vercel static deployment with SPA rewrites in `badminton-v2/vercel.json`
+- Generated output present under `badminton-v2/.vercel/output/`
+
+**CI Pipeline:**
+- Not detected
+
+## Environment Configuration
+
+**Required env vars:**
+- `VITE_APP_URL` - OAuth redirect base used in `badminton-v2/src/App.tsx` and `badminton-v2/src/views/HomeView.tsx`
+- `VITE_SUPABASE_URL` - Supabase project URL for app and scripts
+- `VITE_SUPABASE_ANON_KEY` - Public client key for browser auth/data access
+- `SUPABASE_SERVICE_ROLE_KEY` - Admin key for scripts and DB-prep E2E flows in `badminton-v2/scripts/` and `badminton-v2/tests/registration-limit.spec.ts`
+
+**Secrets location:**
+- Local env files under `badminton-v2/.env*`
+- Vercel preview-local env file exists at `badminton-v2/.vercel/.env.preview.local`
+- Supabase-side secrets/config are implied by migration comments and project setup, but no local edge-function source is present in `badminton-v2/supabase/`
+
+## Webhooks & Callbacks
+
+**Incoming:**
+- OAuth redirect callbacks handled by the SPA routes `/`, `/admin`, and `/register` in `badminton-v2/src/App.tsx`, `badminton-v2/src/views/HomeView.tsx`, and `badminton-v2/src/hooks/useRegistration.ts`
+- No standalone HTTP webhook endpoints are implemented in this repo
+
+**Outgoing:**
+- None active in current repo code
+- Historical outbound email/edge-function design exists only in Supabase migration history `badminton-v2/supabase/migrations/045_enable_pgnet_email_logs.sql` through `badminton-v2/supabase/migrations/050_rollback_email_system.sql`; the rollback migration indicates that path is not current runtime behavior
+
+---
+
+*Integration audit: 2026-05-12*
