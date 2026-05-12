@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Public Registration Homepage
 status: ready_to_plan
-stopped_at: Roadmap created for Phase 12
+stopped_at: Phase 12 context gathered
 last_updated: "2026-05-12T00:00:00.000Z"
-last_activity: 2026-05-12 - Roadmap created for milestone v1.2
+last_activity: 2026-05-12 - Phase 12 context gathered
 progress:
   total_phases: 1
   completed_phases: 0
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-03)
 Phase: 12 of 12 (Public Registration Homepage)
 Plan: -
 Status: Ready to plan
-Last activity: 2026-05-12 - Roadmap created for milestone v1.2
+Last activity: 2026-05-12 - Phase 12 context gathered
 
 Progress: [----------] 0% (0 of 1 phases)
 
@@ -88,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-12 00:00
-Stopped at: Created roadmap and traceability for Phase 12 Public Registration Homepage.
-Resume file: None
+Stopped at: Phase 12 context gathered.
+Resume file: .planning/phases/12-public-registration-homepage/12-CONTEXT.md
