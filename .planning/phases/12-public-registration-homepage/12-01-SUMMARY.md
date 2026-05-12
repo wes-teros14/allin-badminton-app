@@ -72,7 +72,7 @@ Each implementation task was committed atomically:
 
 - `npx.cmd eslint src/views/HomeView.tsx tests/public-homepage.spec.ts` - PASS
 - `npm.cmd run test:e2e -- public-homepage.spec.ts` - PASS, 4/4 tests
-- `npm.cmd run lint` - FAIL, blocked by pre-existing unrelated lint errors outside this phase's touched files.
+- `npm.cmd run lint` - PASS after audit finding `F-01`
 
 ## Decisions Made
 
@@ -85,7 +85,7 @@ None - plan implementation scope was executed as written.
 
 ## Issues Encountered
 
-Full repo lint is currently blocked by unrelated existing errors in files not touched by this plan, including `CourtTabs.tsx`, several hooks, `RegisterView.tsx`, and existing tests. The changed phase files pass targeted ESLint, and the focused phase E2E suite passes.
+Repo-wide lint initially failed on existing unrelated errors. Audit finding `F-01` fixed the blocking lint debt and reran lint, unit tests, focused Phase 12 E2E, and production build successfully.
 
 ## User Setup Required
 
@@ -93,11 +93,11 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-Phase behavior is implemented and covered by focused E2E tests. Before claiming a fully green repository gate, the existing repo-wide lint debt needs a separate cleanup pass.
+Phase behavior is implemented, covered by focused E2E tests, and no longer blocked by repo-wide lint.
 
-## Self-Check: FAILED
+## Self-Check: PASSED
 
-The signed-out homepage, Register CTA, signed-in branch, and `/register` compatibility behavior are verified by focused E2E coverage. The plan-level full `npm run lint` gate remains failed due to pre-existing unrelated repository lint errors.
+The signed-out homepage, Register CTA, signed-in branch, and `/register` compatibility behavior are verified by focused E2E coverage. Lint, unit tests, production build, and schema drift checks pass.
 
 ---
 *Phase: 12-public-registration-homepage*
