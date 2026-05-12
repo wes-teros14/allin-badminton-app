@@ -1,105 +1,141 @@
-# CONCERNS.md — Technical Debt, Issues & Areas of Concern
+# Codebase Concerns
 
-## Type System Debt
+**Analysis Date:** 2026-05-12
 
-### Stale `database.ts` (widespread impact)
-The generated Supabase types in `src/types/database.ts` are **out of sync** with the actual schema. Multiple migrations have added columns (e.g., `duration_seconds`, `paid`, `gender`, `level`, `generator_settings`, `email`, `nickname`) that aren't reflected in the types.
+## Tech Debt
 
-This forces widespread `as never` and `as unknown as` casts throughout hooks and components:
-- `src/components/CourtCard.tsx:49` — `{ status: 'complete', duration_seconds: elapsed } as never`
-- `src/components/RegistrationURLCard.tsx:29` — `{ max_players: val } as never`
-- `src/hooks/useAdminActions.ts:94` — `{ status: 'complete', ... } as never`
-- `src/hooks/useMatchCheers.ts:157` — `... as never`
-- `src/hooks/useRegistration.ts:113,119,125,132` — profile insert/update casts
-- `src/hooks/useRoster.ts:122,131` — `{ gender, level } as never`, `{ paid } as never`
-- `src/views/ProfileView.tsx:166` — `{ nickname: ... } as never`
-- `src/contexts/AuthContext.tsx:22` — `(data as { role?: string } | null)`
+**Session orchestration spread across client hooks:**
+- Issue: Session lifecycle, queue management, and court assignment are implemented as many separate client-side writes instead of transactional database functions.
+- Files: `badminton-v2/src/hooks/useSession.ts`, `badminton-v2/src/hooks/useAdminActions.ts`, `badminton-v2/src/components/CourtCard.tsx`
+- Impact: Partial failures can leave sessions, invitations, matches, and courts in inconsistent states.
+- Fix approach: Move multi-step mutations into Supabase RPC functions or SQL transactions and have React call one durable command per transition.
 
-**Fix:** Run `npx supabase gen types --linked > src/types/database.ts` against both dev and prod projects to regenerate. This should eliminate most casts.
+**Oversized UI and domain modules:**
+- Issue: Match generation and session UI logic are concentrated in very large files with mixed concerns.
+- Files: `badminton-v2/src/components/MatchGeneratorPanel.tsx`, `badminton-v2/src/lib/matchGenerator.ts`, `badminton-v2/src/views/PlayersView.tsx`, `badminton-v2/src/views/SessionView.tsx`
+- Impact: Changes are high-risk, review is slow, and isolated testing is difficult.
+- Fix approach: Split scheduling UI, audit widgets, edit flows, and scoring logic into smaller modules with narrow responsibilities.
 
-### `as unknown as` casts for Supabase JOIN responses
-Hooks that use Supabase PostgREST JOINs (nested selects) get back complex inferred types that don't match hand-written interfaces:
-- `src/hooks/usePlayerList.ts:49,71` — session JOIN shape cast
-- `src/hooks/usePlayerSchedule.ts:91,112` — session JOIN shape cast
-- `src/hooks/usePlayerSessions.ts:62,69` — session JOIN shapes cast
+**Duplicated Supabase query logic across hooks and views:**
+- Issue: Registration, roster, player schedule, leaderboard, profile, and finance views each assemble their own Supabase reads with repeated mapping logic.
+- Files: `badminton-v2/src/hooks/useRegisteredPlayers.ts`, `badminton-v2/src/hooks/useRoster.ts`, `badminton-v2/src/hooks/usePlayerSchedule.ts`, `badminton-v2/src/views/LeaderboardView.tsx`, `badminton-v2/src/views/ProfileView.tsx`
+- Impact: Behavior drifts between screens, RLS failures are handled inconsistently, and changes require touching multiple files.
+- Fix approach: Consolidate repeated queries into shared data-access helpers or RPC endpoints and standardize error handling at the boundary.
 
-These should be resolved by type regeneration + proper interface definitions for JOIN response shapes.
+## Known Bugs
 
-## Legacy Routes (dead code risk)
+**Notification bootstrap runs only once per app mount:**
+- Symptoms: The initial unread-notification fetch and toast replay do not run again after switching users in the same browser session.
+- Files: `badminton-v2/src/contexts/NotificationContext.tsx`
+- Trigger: Sign in as one user, sign out, then sign in as another without a full page reload.
+- Workaround: Refresh the page after changing users.
 
-Two legacy player-facing routes kept in `App.tsx` "for internal links":
-- `/today` → `TodayView`
-- `/match-schedule` / `/match-schedule/:nameSlug` / `/match-schedule/session/:sessionId` → `PlayerView`
+**Registration token is left in browser storage and printed to the console:**
+- Symptoms: `/register` can reuse a stale invitation token and the token is exposed in browser logs.
+- Files: `badminton-v2/src/views/RegisterView.tsx`, `badminton-v2/src/hooks/useRegistration.ts`
+- Trigger: Open a registration link, complete or abandon sign-in, then revisit `/register` later without a token in the URL.
+- Workaround: Clear `localStorage.registration_token` manually or open registration links in a fresh browser session.
 
-These are marked `// Legacy routes — kept for internal links (AllMatchesView, etc.)` but `AllMatchesView` doesn't appear in the views directory. These routes may be dead code that can be removed.
+**Shuttle usage update is destructive on partial failure:**
+- Symptoms: Editing usage deletes existing rows first; if reinsertion fails, the session is left with no recorded shuttle usage.
+- Files: `badminton-v2/src/hooks/useSessionFinance.ts`
+- Trigger: Any network, validation, or RLS failure after the delete step inside `logUsage`.
+- Workaround: Re-enter usage manually after the failure.
 
-## `DevLoginPanel` in Production Bundle
+## Security Considerations
 
-`src/components/DevLoginPanel.tsx` is **unconditionally imported and rendered** in `App.tsx`:
-```tsx
-import { DevLoginPanel } from '@/components/DevLoginPanel'
-...
-<DevLoginPanel />
-```
-The component itself contains hardcoded test credentials (`admin@test.local`, `Test1234!`, etc.). Even if it renders nothing in production, it ships in the bundle with credentials visible in the JS. This is a **security concern** — the component should be gated on `import.meta.env.DEV` or removed from production builds.
+**Hardcoded dev credentials live in source:**
+- Risk: Test account emails and passwords are committed in the UI and seed flow, creating reuse risk and accidental exposure if the dev panel is enabled outside local development.
+- Files: `badminton-v2/src/components/DevLoginPanel.tsx`, `badminton-v2/scripts/seed-test-users.ts`
+- Current mitigation: `DevLoginPanel` returns `null` when `import.meta.env.DEV` is false.
+- Recommendations: Remove passwords from tracked source, load them from local-only env or generated fixtures, and gate test auth behind Playwright-only helpers.
 
-## No Optimistic Updates
+**Local secret files are required by test tooling:**
+- Risk: E2E and seeding depend on `.env`-backed service-role credentials on disk.
+- Files: `badminton-v2/playwright.config.ts`, `badminton-v2/tests/registration-limit.spec.ts`, `badminton-v2/scripts/seed-test-users.ts`
+- Current mitigation: Secrets are not hardcoded in the files; `.env` files exist locally.
+- Recommendations: Prefer CI secret injection over manual file parsing and keep service-role usage limited to setup utilities.
 
-All mutations (session lifecycle, match finish, cheer submission) await server round-trips before updating local state. For the live board (admin managing a session in real-time), this creates latency spikes. The Realtime subscription partially compensates, but there's a window between mutation and realtime update where the UI lags.
+**Lint ignores generated UI primitives entirely:**
+- Risk: Unlinted code in shared UI components can accumulate unsafe patterns or stale accessibility issues without detection.
+- Files: `badminton-v2/eslint.config.js`, `badminton-v2/src/components/ui`
+- Current mitigation: The directory is intentionally excluded.
+- Recommendations: Either lint the directory or treat it as vendored code that is not modified locally.
 
-## Missing CI Pipeline
+## Performance Bottlenecks
 
-No `.github/workflows/` or CI config found. ESLint and TypeScript build are documented as required (`lessons.md`: "Always run `npm run build` + `npm run lint`") but not automated. Test suite (`npm run test:unit`) is not run in CI.
+**Leaderboard and awards pages perform broad client-side aggregation:**
+- Problem: The awards flow fetches large sets from `cheers`, `player_cheer_stats`, `player_stats`, `profiles`, `sessions`, and `session_registrations`, then computes rankings in the browser.
+- Files: `badminton-v2/src/views/LeaderboardView.tsx`, `badminton-v2/src/views/ProfileView.tsx`
+- Cause: Aggregation logic sits in React instead of SQL views or RPC functions.
+- Improvement path: Move leaderboard and award calculations into database views or RPCs with pre-aggregated outputs.
 
-## Thin Test Coverage
+**Inventory and finance recompute stock from all usage rows on every load:**
+- Problem: Admin inventory screens read all `shuttle_usage` rows to derive remaining stock.
+- Files: `badminton-v2/src/hooks/useSessionFinance.ts`, `badminton-v2/src/hooks/useShuttleBatches.ts`
+- Cause: Remaining inventory is computed client-side from full-table scans rather than a summarized source.
+- Improvement path: Add a stock summary view/RPC per batch and fetch only the session usage plus aggregated remaining inventory.
 
-- **Only `matchGenerator.ts` is tested** — no tests for hooks, components, views, or auth flows
-- **E2E:** Only registration limit scenario covered
-- No tests for session lifecycle, cheer submission, realtime updates, admin actions
-- No component rendering tests (no `@testing-library/react` setup)
-- Bugs from `lessons.md` (duplicate realtime channels, multiple active sessions, RLS gaps) were not caught by tests
+**Match generation runs entirely on the main thread:**
+- Problem: Large optimization settings execute synchronous CPU-heavy work inside the browser UI.
+- Files: `badminton-v2/src/components/MatchGeneratorPanel.tsx`, `badminton-v2/src/lib/matchGenerator.ts`
+- Cause: `generateScheduleOptimized` performs many trials and restarts in-process without a worker.
+- Improvement path: Offload scheduling to a Web Worker or server-side function and stream progress back to the UI.
 
 ## Fragile Areas
 
-### Cheers gate in `PlayerLayout`
-The cheers gate (`CheersPanel` blocks `<Outlet />`) is sensitive to timing:
-- `useMatchCheers` fires on every `PlayerLayout` mount
-- Gate shows if `hasPendingCheers` — if Supabase is slow, gate may flash briefly before loading completes
-- Admin users: `showGate = !cheerLoading && hasPendingCheers` is hardcoded in layout — admin can hit the gate too if they're registered players
+**RLS and migration workflow is easy to misconfigure:**
+- Files: `badminton-v2/supabase/migrations/`, `.planning/STATE.md`
+- Why fragile: The app relies heavily on RLS policies, explicit grants, and manual SQL execution through the Supabase Dashboard because the CLI workflow is blocked on Windows.
+- Safe modification: Add every schema change with matching `ENABLE ROW LEVEL SECURITY`, policies, and grants in the same migration, then regenerate `badminton-v2/src/types/database.ts`.
+- Test coverage: No automated migration verification is present in `badminton-v2/tests/` or `badminton-v2/src/__tests__/`.
 
-### Multiple active sessions edge case
-`useActiveSessions()` returns all in-progress sessions (no filter). If two simultaneous live sessions exist (e.g., test seed + real session), the `PlayerLayout` takes the first one (`activeSessions[0]`) for the cheers gate. Wrong session ID → wrong match cheers queried.
+**Realtime behavior is distributed and uncached:**
+- Files: `badminton-v2/src/contexts/NotificationContext.tsx`, `badminton-v2/src/hooks/useRoster.ts`, `badminton-v2/src/hooks/useMatchCheers.ts`, `badminton-v2/src/views/ProfileView.tsx`, `badminton-v2/src/views/TodayView.tsx`
+- Why fragile: Multiple features open their own channels and independently refetch state, which makes ordering bugs and duplicate fetches hard to reason about.
+- Safe modification: Centralize realtime subscriptions by domain and keep channel lifecycle logic in dedicated hooks with stable invalidation paths.
+- Test coverage: No subscription behavior is covered by Vitest or Playwright.
 
-### Session status machine — no server enforcement
-Session status transitions (setup → registration_open → ... → complete) are only enforced client-side in `useSession.ts`. No server-side state machine. An admin with direct Supabase access could skip states. Migration triggers enforce registration limits (migration 020) but not status transitions.
+**Auth and role resolution fails silently:**
+- Files: `badminton-v2/src/contexts/AuthContext.tsx`
+- Why fragile: Profile lookup errors are not surfaced, so auth failures collapse into `role = null` and redirect behavior without a clear user-facing error.
+- Safe modification: Handle Supabase errors explicitly, show an auth recovery state, and avoid assuming profile reads always succeed.
+- Test coverage: No tests exercise auth state transitions or inactive-user sign-out behavior.
 
-### `lockSchedule` — no duplicate check
-`lockSchedule()` bulk-inserts matches without checking if matches already exist for the session. If called twice (e.g., user double-clicks "Lock Schedule"), duplicate matches would be inserted. The UI has a loading state but no debounce guard.
+## Scaling Limits
 
-## Performance Concerns
+**Frontend data layer does not scale past small datasets:**
+- Current capacity: 67 source files, 61 migrations, 3 unit tests, and 1 E2E spec indicate the app is still optimized for a small admin/player population and light historical data.
+- Limit: Full-table reads in leaderboard, cheers, inventory, and finance flows will degrade as sessions and usage history grow.
+- Scaling path: Introduce paginated admin queries, SQL summaries, and RPC endpoints that return already-ranked or already-aggregated results.
 
-### Match generator CPU cost
-`generateScheduleOptimized()` runs 15 SA starts × 50 trials = 750 scoring passes on the main thread. For 16+ players with 20+ matches, this can take 200–500ms and blocks the UI thread (no Web Worker). Users experience a brief freeze when generating optimized schedules.
+## Dependencies at Risk
 
-### No pagination
-`useSessionList`, `usePlayerList`, `usePlayerSessions` all fetch all rows without pagination. As the session/player history grows, these queries will become slower.
+**Generated Supabase types can drift from schema:**
+- Risk: The app depends on a checked-in generated file that must match the latest migrations.
+- Impact: Hook queries fall back to `any`, casts, or broken inferred types when migrations advance without regenerating types.
+- Migration plan: Regenerate `badminton-v2/src/types/database.ts` immediately after each schema change and reduce `as any` usage in `badminton-v2/src/hooks/`.
 
-### Supabase queries in `useRegisteredPlayers` / `useRoster`
-Some hooks fetch player profile data by making N individual queries or large JOINs. No query result caching (no SWR/React Query).
+## Missing Critical Features
 
-## Security
+**No transactional server API for critical admin workflows:**
+- Problem: High-value mutations still rely on direct client table writes.
+- Blocks: Reliable queue reordering, schedule locking, session start/stop flows, and finance updates under concurrent admin activity.
 
-### `DevLoginPanel` credentials in production bundle
-See above — hardcoded test credentials ship in the production JS bundle. Low actual risk (test-only accounts with no prod data access), but should be env-gated.
+## Test Coverage Gaps
 
-### No CSRF protection needed (SPA + Supabase JWT handles it)
-Supabase JWT auth via PKCE is CSRF-safe by design. Not a concern.
+**Admin, auth, realtime, and registration flows are mostly untested:**
+- What's not tested: `useSession`, `useAdminActions`, `AuthContext`, `NotificationContext`, inventory management, cheers flows, and most player/admin views.
+- Files: `badminton-v2/src/hooks/useSession.ts`, `badminton-v2/src/hooks/useAdminActions.ts`, `badminton-v2/src/contexts/AuthContext.tsx`, `badminton-v2/src/contexts/NotificationContext.tsx`, `badminton-v2/src/views/InventoryView.tsx`, `badminton-v2/src/views/FinanceDetailView.tsx`
+- Risk: Regressions in session state, payment updates, auth gating, and realtime UX can ship unnoticed.
+- Priority: High
 
-### RLS policy completeness
-Multiple RLS gaps have been patched over time (see `lessons.md`). Pattern: new tables added without explicit `anon`/`authenticated` grants → silent empty results. Risk: future migrations adding tables may forget RLS grants. Each migration should include `GRANT SELECT` and both policy variants as a checklist item.
+**Test suite coverage is narrow relative to the app surface:**
+- What's not tested: 67 non-test source files are covered by only 3 unit test files and 1 Playwright spec.
+- Files: `badminton-v2/src/__tests__/matchGenerator.test.ts`, `badminton-v2/src/__tests__/matchGenerator.scoring.test.ts`, `badminton-v2/src/__tests__/useSessionFinance.test.ts`, `badminton-v2/tests/registration-limit.spec.ts`
+- Risk: Most screens and hooks have no executable safety net.
+- Priority: High
 
-## Minor Debt
+---
 
-- `useSession.ts` is a fat hook (~340 lines) that handles both data fetching and all lifecycle mutations. Could be split into `useSessionData` + `useSessionMutations` for maintainability.
-- `src/types/app.ts` comment: "add types as features are implemented" — some domain types (e.g., `Session`, `Invitation`) are still defined inline in `useSession.ts` rather than centralized in `app.ts`.
-- Inline hex color values (`#EB5B00`, `#FFB200`, `#D91656`) used for status indicators — not mapped to design tokens.
+*Concerns audit: 2026-05-12*

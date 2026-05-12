@@ -1,70 +1,91 @@
-# STACK.md — Technology Stack
+# Technology Stack
 
-## Runtime & Language
+**Analysis Date:** 2026-05-12
 
-- **Language:** TypeScript ~5.9.3 (strict mode, ES2023 target)
-- **Runtime:** Browser SPA — no server-side rendering
-- **Module system:** ESNext modules (`"type": "module"`)
-- **Build tool:** Vite 8 with `@vitejs/plugin-react`
-- **Package manager:** npm (package-lock.json present)
+## Languages
 
-## Frontend Framework
+**Primary:**
+- TypeScript 5.9.x - Frontend app, Supabase client access, Playwright specs, and Node utility scripts in `badminton-v2/src/`, `badminton-v2/tests/`, and `badminton-v2/scripts/`
+- SQL - Database schema, RLS, triggers, realtime publication, cron, and finance functions in `badminton-v2/supabase/migrations/`
 
-- **UI framework:** React 19
-- **Routing:** React Router v7 (lazy-loaded views via `React.lazy`)
-- **Styling:** Tailwind CSS v4 (`@tailwindcss/vite` plugin)
-- **Component library:** shadcn/ui (Base UI backed — `@base-ui/react ^1.3.0`)
-- **Class utilities:** `clsx` + `tailwind-merge` → `cn()` helper in `src/lib/utils.ts`
-- **Theming:** `next-themes ^0.4.6`
-- **Icons:** `lucide-react ^0.577.0`
-- **Fonts:** Geist variable font via `@fontsource-variable/geist`
-- **Animations:** `tw-animate-css`
+**Secondary:**
+- CSS - App styling and Tailwind v4 entry CSS in `badminton-v2/src/index.css` and `badminton-v2/src/App.css`
+- HTML - Vite entry document in `badminton-v2/index.html`
 
-## Forms & Validation
+## Runtime
 
-- **Form library:** React Hook Form v7 (`react-hook-form`)
-- **Validation:** Zod v4 (`zod ^4.3.6`)
-- **Resolver:** `@hookform/resolvers`
+**Environment:**
+- Node.js v22.22.2 - Local development/runtime detected in the workspace
+- Browser runtime - React SPA bundled by Vite and served from static assets
 
-## Notifications / UI Feedback
+**Package Manager:**
+- npm 10.9.7
+- Lockfile: present in `badminton-v2/package-lock.json` (lockfileVersion 3)
 
-- **Toast library:** Sonner v2 (`sonner ^2.0.7`)
-- **Toast config:** `position="top-center"`, `offset={52}`, `fontSize: '1rem'`, 20s duration
-- **Toaster mounting:** `App.tsx` root-level
+## Frameworks
 
-## Backend / Database
+**Core:**
+- React 19.2.4 - UI runtime in `badminton-v2/src/main.tsx` and `badminton-v2/src/App.tsx`
+- React Router 7.13.1 - Client-side routing in `badminton-v2/src/App.tsx`
+- Supabase JS 2.99.2 - Auth, PostgREST, Realtime, and RPC client in `badminton-v2/src/lib/supabase.ts`
+- Tailwind CSS 4.2.1 - Utility styling via `@tailwindcss/vite` in `badminton-v2/vite.config.ts` and `badminton-v2/src/index.css`
 
-- **Backend-as-a-service:** Supabase (`@supabase/supabase-js ^2.99.2`)
-  - PostgreSQL database
-  - Row-Level Security (RLS) policies
-  - Realtime subscriptions
-  - Auth (PKCE flow)
-- **Client init:** `src/lib/supabase.ts` — typed via `Database` type from `src/types/database.ts`
-- **Migrations:** 44 SQL migration files in `badminton-v2/supabase/migrations/`
+**Testing:**
+- Vitest 2.0.0 - Unit tests via `badminton-v2/vitest.config.ts`
+- Playwright 1.58.2 - Browser E2E tests via `badminton-v2/playwright.config.ts`
 
-## TypeScript Configuration
+**Build/Dev:**
+- Vite 8.0.0 - Dev server and production bundler in `badminton-v2/package.json` and `badminton-v2/vite.config.ts`
+- TypeScript project references - Type-check/build config in `badminton-v2/tsconfig.json`, `badminton-v2/tsconfig.app.json`, and `badminton-v2/tsconfig.node.json`
+- ESLint 9.39.4 - Linting in `badminton-v2/eslint.config.js`
+- shadcn CLI 4.0.8 - UI scaffold metadata in `badminton-v2/components.json`
 
-- **Strict mode:** enabled (`strict: true`)
-- **Unused locals/params:** errors enforced
-- **Path aliases:** `@/*` → `./src/*`
-- **JSX:** `react-jsx`
-- **Excluded from compile:** `src/__tests__` (only Vitest test files live there)
+## Key Dependencies
 
-## Deployment
+**Critical:**
+- `@supabase/supabase-js` 2.99.2 - Single backend client for auth, database access, realtime subscriptions, and RPC calls; used throughout `badminton-v2/src/lib/supabase.ts`, `badminton-v2/src/contexts/AuthContext.tsx`, and `badminton-v2/src/hooks/`
+- `react` 19.2.4 and `react-dom` 19.2.4 - SPA runtime in `badminton-v2/src/main.tsx`
+- `react-router` 7.13.1 - Route protection and page composition in `badminton-v2/src/App.tsx`
+- `zod` 4.3.6 and `react-hook-form` 7.71.2 with `@hookform/resolvers` 5.2.2 - Form validation stack used by finance/inventory flows in `badminton-v2/src/views/` and `badminton-v2/src/hooks/`
 
-- **Host:** Vercel
-- **Config:** `vercel.json` — all routes rewrite to `/index.html` (SPA routing)
-- **Environments:** dev (`tsvetqzkullivprbjtli`) and prod (`ensdfitpeyreunihkqkh`) Supabase projects
+**Infrastructure:**
+- `@vitejs/plugin-react` 6.0.0 - React integration for Vite in `badminton-v2/vite.config.ts`
+- `@tailwindcss/vite` 4.2.1 - Tailwind v4 Vite plugin in `badminton-v2/vite.config.ts`
+- `@playwright/test` 1.58.2 - E2E runner in `badminton-v2/playwright.config.ts`
+- `vitest` 2.0.0 - Unit test runner in `badminton-v2/vitest.config.ts`
+- `sonner` 2.0.7 - Toast notifications in `badminton-v2/src/contexts/NotificationContext.tsx` and `badminton-v2/src/components/DevLoginPanel.tsx`
+- `@fontsource-variable/geist` 5.2.8 - Bundled typography assets used by the app bundle
 
-## Environment Variables
+## Configuration
 
-- `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` — Supabase anon key
-- `VITE_APP_URL` — App base URL (used for OAuth redirects)
+**Environment:**
+- Vite client config reads `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_APP_URL` via `import.meta.env` in `badminton-v2/src/lib/supabase.ts`, `badminton-v2/src/App.tsx`, and `badminton-v2/src/views/HomeView.tsx`
+- Seed/admin scripts read `VITE_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` by manually parsing env files in `badminton-v2/scripts/seed-test-users.ts` and `badminton-v2/scripts/copy-prod-profiles-to-dev.ts`
+- Env files present: `badminton-v2/.env`, `badminton-v2/.env.development`, `badminton-v2/.env.production`, and `badminton-v2/.env.example`
+- Additional deployment-local env file present: `badminton-v2/.vercel/.env.preview.local`
+- Auth-sensitive package-manager config file present: `badminton-v2/.npmrc`
 
-## Dev Tooling
+**Build:**
+- Vite config: `badminton-v2/vite.config.ts`
+- TypeScript config: `badminton-v2/tsconfig.json`, `badminton-v2/tsconfig.app.json`, `badminton-v2/tsconfig.node.json`
+- ESLint config: `badminton-v2/eslint.config.js`
+- Vitest config: `badminton-v2/vitest.config.ts`
+- Playwright config: `badminton-v2/playwright.config.ts`
+- Vercel SPA rewrite config: `badminton-v2/vercel.json`
+- shadcn/ui config: `badminton-v2/components.json`
 
-- **Linter:** ESLint 9 with `typescript-eslint`, `eslint-plugin-react-hooks`, `eslint-plugin-react-refresh`
-- **Unit tests:** Vitest v2 (`vitest.config.ts`)
-- **E2E tests:** Playwright (`playwright.config.ts`)
-- **DB seeding scripts:** `badminton-v2/scripts/` — TypeScript scripts run via `tsx`
+## Platform Requirements
+
+**Development:**
+- Run commands from `badminton-v2/`
+- Requires Node.js and npm
+- Requires Supabase project credentials in local env files for app auth/data access
+- Requires Supabase service-role credentials for seed/admin scripts and Playwright DB setup in `badminton-v2/scripts/` and `badminton-v2/tests/registration-limit.spec.ts`
+
+**Production:**
+- Static SPA deployment target on Vercel indicated by `badminton-v2/vercel.json` and generated `.vercel/` output
+- Backend platform is Supabase Postgres/Auth/Realtime with schema managed by `badminton-v2/supabase/migrations/`
+
+---
+
+*Stack analysis: 2026-05-12*
