@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { evaluateSessionScore, DEFAULT_WEIGHTS } from '@/lib/matchGenerator'
-import type { GeneratedMatch, ScoreWeights } from '@/lib/matchGenerator'
+import type { GeneratedMatch } from '@/lib/matchGenerator'
 
 // ---------------------------------------------------------------------------
 // Helpers

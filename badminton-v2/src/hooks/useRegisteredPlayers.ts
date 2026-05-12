@@ -5,6 +5,20 @@ import type { PlayerInput } from '@/lib/matchGenerator'
 
 export type { PlayerInput as RegisteredPlayer }
 
+interface RegistrationRow {
+  player_id: string
+  gender: 'M' | 'F' | null
+  level: number | null
+}
+
+interface ProfileRow {
+  id: string
+  name_slug: string
+  nickname: string | null
+  gender: 'M' | 'F' | null
+  level: number | null
+}
+
 interface RegisteredPlayersState {
   players: PlayerInput[]
   isLoading: boolean
@@ -30,7 +44,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
         return
       }
 
-      const regsFull = (regs ?? []) as any[]
+      const regsFull = (regs ?? []) as RegistrationRow[]
       const playerIds = regsFull.map((r) => r.player_id as string)
 
       if (playerIds.length === 0) {
@@ -51,7 +65,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
       }
 
       const profileMap = new Map(
-        (profiles ?? []).map((p: any) => [p.id as string, p as { id: string; name_slug: string; nickname: string | null; gender: 'M' | 'F' | null; level: number | null }])
+        ((profiles ?? []) as ProfileRow[]).map((p) => [p.id, p])
       )
 
       const result: PlayerInput[] = regsFull.map((r) => {

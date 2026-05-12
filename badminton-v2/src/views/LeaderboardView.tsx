@@ -26,6 +26,18 @@ interface CheerLeaderboardEntry {
   solid_effort_received: number
 }
 
+interface CheerStatsRow {
+  player_id: string
+  cheers_received: number
+  cheers_given: number
+  offense_received: number
+  defense_received: number
+  technique_received: number
+  movement_received: number
+  good_sport_received: number
+  solid_effort_received: number
+}
+
 type Tab = 'wins' | 'cheers' | 'awards'
 
 interface AwardEntry {
@@ -80,7 +92,7 @@ async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
 
   const CHEER_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
 
-  return ((statsRes.data ?? []) as any[])
+  return ((statsRes.data ?? []) as CheerStatsRow[])
     .filter(s => !CHEER_EXCLUDED.has(s.player_id) && nameMap.has(s.player_id))
     .map(s => ({
       ...s,

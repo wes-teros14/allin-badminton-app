@@ -18,6 +18,14 @@ export interface UnregisteredPlayer {
   nickname: string | null
 }
 
+interface RegistrationRow {
+  id: string
+  player_id: string
+  gender: 'M' | 'F' | null
+  level: number | null
+  paid: boolean | null
+}
+
 interface RosterState {
   players: RosterPlayer[]
   unregisteredPlayers: UnregisteredPlayer[]
@@ -44,8 +52,8 @@ export function useRoster(sessionId: string | undefined): RosterState {
 
     if (regsError) { toast.error(regsError.message); return }
 
-    const registrations = (regs ?? []) as { id: string; player_id: string }[]
-    const regsFull = (regs ?? []) as any[]
+    const regsFull = (regs ?? []) as RegistrationRow[]
+    const registrations = regsFull.map((r) => ({ id: r.id, player_id: r.player_id }))
     const registeredIds = registrations.map((r) => r.player_id)
 
     // Profile defaults (name, gender, level)

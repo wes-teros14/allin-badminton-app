@@ -13,6 +13,17 @@ export interface Player {
   isActive: boolean
 }
 
+interface ProfileRow {
+  id: string
+  name_slug: string
+  email: string | null
+  nickname: string | null
+  gender: 'M' | 'F' | null
+  level: number | null
+  role: string
+  is_active: boolean | null
+}
+
 export function usePlayers() {
   const [players, setPlayers] = useState<Player[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -24,7 +35,7 @@ export function usePlayers() {
       .order('name_slug')
     if (error) { toast.error(error.message); return }
     setPlayers(
-      (data ?? []).map((p: any) => ({
+      ((data ?? []) as ProfileRow[]).map((p) => ({
         id: p.id,
         nameSlug: p.name_slug,
         email: p.email ?? null,

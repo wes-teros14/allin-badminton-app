@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { generateSchedule, generateScheduleOptimized, evaluateSessionScore, DEFAULT_WEIGHTS, type MatchDecision } from '@/lib/matchGenerator'
+import { generateSchedule, generateScheduleOptimized, DEFAULT_WEIGHTS, type MatchDecision } from '@/lib/matchGenerator'
 import {
   FIXTURE_A,
   FIXTURE_B,
