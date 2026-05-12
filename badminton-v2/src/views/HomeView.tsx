@@ -123,7 +123,7 @@ function BulletinBoard({ isAdmin }: { isAdmin: boolean }) {
 export function HomeView() {
   const { user, role, isLoading } = useAuth()
 
-  function signIn() {
+  function registerWithGoogle() {
     supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/` },
@@ -140,17 +140,34 @@ export function HomeView() {
 
   if (!user) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight text-primary">Badminton Gang</h1>
-          <p className="text-muted-foreground text-sm">Game Na Kahit Walang Warm Up</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm space-y-8 text-center">
+          <div className="space-y-3">
+            <img src="/pp-logo.jpeg" alt="PP" className="mx-auto w-20 h-20 rounded-full object-cover" />
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold tracking-tight text-primary">Badminton Gang</h1>
+              <p className="text-sm text-muted-foreground">Game Na Kahit Walang Warm Up</p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h2 className="text-xl font-semibold">Register for upcoming games</h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Join the group, see available sessions, and get your match schedule from one simple player app.
+            </p>
+          </div>
+
+          <button
+            onClick={registerWithGoogle}
+            className="w-full px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
+          >
+            Register with Google
+          </button>
+
+          <p className="text-xs text-muted-foreground">
+            Existing players can use the same Google account to continue.
+          </p>
         </div>
-        <button
-          onClick={signIn}
-          className="px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
-        >
-          Sign in with Google
-        </button>
       </div>
     )
   }
