@@ -9,19 +9,19 @@ Requirements for milestone v1.2 - Public Registration Homepage.
 
 ### Public Entry
 
-- [ ] **REG-01**: Signed-out visitors can open the root app URL and see a public homepage instead of being immediately prompted to sign in with Google.
-- [ ] **REG-02**: Signed-out visitors can click a clear Register button from the public homepage.
-- [ ] **REG-03**: Clicking Register starts the existing Google sign-in flow, with no extra public registration form.
+- [x] **REG-01**: Signed-out visitors can open the root app URL and see a public homepage instead of being immediately prompted to sign in with Google.
+- [x] **REG-02**: Signed-out visitors can click a clear Register button from the public homepage.
+- [x] **REG-03**: Clicking Register starts the existing Google sign-in flow, with no extra public registration form.
 
 ### Existing User Behavior
 
-- [ ] **AUTH-01**: Signed-in users keep the current homepage behavior and continue into the authenticated app experience without a new landing step.
-- [ ] **AUTH-02**: Existing Google OAuth behavior remains the only authentication method for registration and sign-in.
+- [x] **AUTH-01**: Signed-in users keep the current homepage behavior and continue into the authenticated app experience without a new landing step.
+- [x] **AUTH-02**: Existing Google OAuth behavior remains the only authentication method for registration and sign-in.
 
 ### Compatibility
 
-- [ ] **INVITE-01**: Existing invite-link code remains in the codebase and is not removed during this milestone.
-- [ ] **INVITE-02**: Normal onboarding no longer depends on the admin sending a session invite link.
+- [x] **INVITE-01**: Existing invite-link code remains in the codebase and is not removed during this milestone.
+- [x] **INVITE-02**: Normal onboarding no longer depends on the admin sending a session invite link.
 
 ## Future Requirements
 
@@ -53,13 +53,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase 12 | Pending |
-| REG-02 | Phase 12 | Pending |
-| REG-03 | Phase 12 | Pending |
-| AUTH-01 | Phase 12 | Pending |
-| AUTH-02 | Phase 12 | Pending |
-| INVITE-01 | Phase 12 | Pending |
-| INVITE-02 | Phase 12 | Pending |
+| REG-01 | Phase 12 | Complete |
+| REG-02 | Phase 12 | Complete |
+| REG-03 | Phase 12 | Complete |
+| AUTH-01 | Phase 12 | Complete |
+| AUTH-02 | Phase 12 | Complete |
+| INVITE-01 | Phase 12 | Complete |
+| INVITE-02 | Phase 12 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 7 total

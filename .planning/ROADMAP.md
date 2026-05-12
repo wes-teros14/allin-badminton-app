@@ -81,7 +81,7 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 
 **Milestone Goal:** Signed-out visitors who open the app homepage see a public registration entry point instead of an immediate Google sign-in prompt.
 
-- [ ] **Phase 12: Public Registration Homepage** - Signed-out visitors land on a public homepage with a direct registration entry point while signed-in users keep current behavior.
+- [ ] **Phase 12: Public Registration Homepage** - Signed-out visitors land on a public homepage with a direct registration entry point while signed-in users keep current behavior. (plan executed; verification gap)
 
 ## Phase Details
 
@@ -94,7 +94,8 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
   2. The public homepage presents a clear Register action that starts the existing Google sign-in flow directly, with no extra public registration form
   3. A signed-in user who opens the homepage continues into the existing authenticated app experience without an added landing step
   4. Normal onboarding can begin from the homepage without an invite link, and existing invite-link code paths still load for compatibility
-**Plans**: TBD
+**Plans**: 1 plan
+- [x] 12-01-PLAN.md - Public homepage registration entry and compatibility smoke coverage
 **UI hint**: yes
 
 ## Progress
@@ -107,4 +108,4 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 | 9. Inventory Management | v1.1 | 3/3 | Complete | 2026-05-05 |
 | 10. Session Finance | v1.1 | 4/4 | Complete | 2026-05-06 |
 | 11. Payment Migration | v1.1 | 3/3 | Complete | 2026-05-06 |
-| 12. Public Registration Homepage | v1.2 | 0/TBD | Not started | - |
+| 12. Public Registration Homepage | v1.2 | 1/1 | Verification gaps | - |
