@@ -145,7 +145,7 @@ export function HomeView() {
           <div className="space-y-3">
             <img src="/pp-logo.jpeg" alt="PP" className="mx-auto w-20 h-20 rounded-full object-cover" />
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold tracking-tight text-primary">Badminton Gang</h1>
+              <h1 className="text-4xl font-bold tracking-tight text-primary">Badminton Palo Palo</h1>
               <p className="text-sm text-muted-foreground">Game Na Kahit Walang Warm Up</p>
             </div>
           </div>
@@ -161,7 +161,7 @@ export function HomeView() {
             onClick={registerWithGoogle}
             className="w-full px-8 py-3 rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors"
           >
-            Register with Google
+            Sign In / Register
           </button>
 
           <p className="text-xs text-muted-foreground">
