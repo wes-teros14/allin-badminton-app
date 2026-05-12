@@ -2,43 +2,43 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Public Registration Homepage
-status: planning
-stopped_at: Defining requirements
+status: ready_to_plan
+stopped_at: Roadmap created for Phase 12
 last_updated: "2026-05-12T00:00:00.000Z"
-last_activity: 2026-05-12 - Milestone v1.2 started
+last_activity: 2026-05-12 - Roadmap created for milestone v1.2
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
   percent: 0
 ---
 
-﻿# Project State
+# Project State
 
 ## Project Reference
 
 See: .planning/PROJECT.md (updated 2026-05-03)
 
 **Core value:** Players can register, get a fair auto-generated match schedule, and track live results without the admin manually coordinating anything during play.
-**Current focus:** Defining requirements for v1.2 Public Registration Homepage
+**Current focus:** Phase 12 planning for v1.2 Public Registration Homepage
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 12 of 12 (Public Registration Homepage)
 Plan: -
-Status: Defining requirements
-Last activity: 2026-05-12 - Milestone v1.2 started
+Status: Ready to plan
+Last activity: 2026-05-12 - Roadmap created for milestone v1.2
 
-Progress: [----------] 0% (0 of 0 phases)
+Progress: [----------] 0% (0 of 1 phases)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0 (v1.1 milestone)
-- Average duration: â€”
-- Total execution time: â€”
+- Total plans completed: 0 (v1.2 milestone)
+- Average duration: -
+- Total execution time: -
 
 **By Phase:**
 
@@ -48,8 +48,8 @@ Progress: [----------] 0% (0 of 0 phases)
 
 **Recent Trend:**
 
-- Last 5 plans: â€”
-- Trend: â€”
+- Last 5 plans: -
+- Trend: -
 
 *Updated after each plan completion*
 
@@ -59,15 +59,12 @@ Progress: [----------] 0% (0 of 0 phases)
 
 Recent decisions affecting current work:
 
-- All monetary arithmetic (P&L, COGS, stock remaining) stays in Postgres — never computed in React
-- Finance page is a top-level admin-only page (not nested inside SessionView as originally noted in research)
-- Payment controls move to Finance page; removed from Admin tab entirely
-- No new npm packages — reuse React Hook Form, Zod, shadcn/ui
-- shadcn Table already provides overflow-x-auto container natively — no extra wrapper div needed in InventoryView
-- Add Batch button onClick is no-op stub in Wave 2 — Wave 3 (09-03) wires dialog open handler
-- dialog.tsx pre-installed in Wave 2 so Wave 3 can import without separate install step
-- Zod v4 requires z.input<>/z.output<> split with useForm when using z.coerce fields — invalid_type_error param removed in v4 (use error instead)
-- /inventory route wrapped in AdminRoute + PlayerLayout consistent with /admin and /players
+- All monetary arithmetic (P&L, COGS, stock remaining) stays in Postgres and not in React
+- Finance page is a top-level admin-only page rather than a SessionView subpanel
+- Payment controls moved to Finance and were removed from the Admin tab
+- No new npm packages should be introduced when existing React, Zod, and shadcn primitives can cover the work
+- v1.2 onboarding starts from the public root homepage for signed-out visitors rather than from invite links
+- Google OAuth remains the only sign-in and registration method, with no extra public registration form
 
 ### Pending Todos
 
@@ -75,9 +72,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- Supabase CLI blocked on Windows â€” all DB migrations must be run via Supabase Dashboard SQL Editor
-- Silent RLS empty results is a known recurring issue (hit 4Ã— in v1.0) â€” every new table needs ENABLE ROW LEVEL SECURITY + admin-only USING policy + explicit GRANT
-- Must run `supabase gen types` after migrations before writing any hook â€” stale types cause `never` errors
+- Supabase CLI is blocked on Windows, so any DB migration work still has to run via the Supabase Dashboard SQL Editor
+- Research was intentionally skipped for v1.2, so Phase 12 planning should validate current route and auth behavior from the existing code before implementation
 
 ## Deferred Items
 
@@ -91,6 +87,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-05 09:17
-Stopped at: Completed 09-03-PLAN.md (Add Batch dialog, /inventory route, Inventory nav tab). Phase 9 complete.
+Last session: 2026-05-12 00:00
+Stopped at: Created roadmap and traceability for Phase 12 Public Registration Homepage.
 Resume file: None

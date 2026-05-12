@@ -53,18 +53,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | TBD | Pending |
-| REG-02 | TBD | Pending |
-| REG-03 | TBD | Pending |
-| AUTH-01 | TBD | Pending |
-| AUTH-02 | TBD | Pending |
-| INVITE-01 | TBD | Pending |
-| INVITE-02 | TBD | Pending |
+| REG-01 | Phase 12 | Pending |
+| REG-02 | Phase 12 | Pending |
+| REG-03 | Phase 12 | Pending |
+| AUTH-01 | Phase 12 | Pending |
+| AUTH-02 | Phase 12 | Pending |
+| INVITE-01 | Phase 12 | Pending |
+| INVITE-02 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 7 total
-- Mapped to phases: 0
-- Unmapped: 7
+- Mapped to phases: 7
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-12*
