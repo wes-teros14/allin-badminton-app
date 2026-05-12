@@ -2,14 +2,14 @@
 
 ## Milestones
 
-- ✅ **v1.0 Initial Build** - Phases 1-7 (shipped 2026-05-03)
-- ✅ **v1.1 Finance & Inventory Tab** - Phases 8-11 (shipped 2026-05-06)
-- 🚧 **v1.2 Public Registration Homepage** - Phase 12 (planned)
+- Complete **v1.0 Initial Build** - Phases 1-7 (shipped 2026-05-03)
+- Complete **v1.1 Finance & Inventory Tab** - Phases 8-11 (shipped 2026-05-06)
+- Complete **v1.2 Public Registration Homepage** - Phase 12 (verified 2026-05-12)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 Initial Build (Phases 1-7) - SHIPPED 2026-05-03</summary>
+<summary>Complete v1.0 Initial Build (Phases 1-7) - SHIPPED 2026-05-03</summary>
 
 Phases 1-7 implemented via BMAD (Epics 1-7):
 - Session lifecycle + admin controls
@@ -23,7 +23,7 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 </details>
 
 <details>
-<summary>✅ v1.1 Finance & Inventory Tab (Phases 8-11) - SHIPPED 2026-05-06</summary>
+<summary>Complete v1.1 Finance & Inventory Tab (Phases 8-11) - SHIPPED 2026-05-06</summary>
 
 ### Phase 8: DB Foundation
 **Goal**: All database structures required for Finance & Inventory are live, secured, and reflected in TypeScript types
@@ -77,11 +77,11 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 
 </details>
 
-### 🚧 v1.2 Public Registration Homepage (Planned)
+### Complete v1.2 Public Registration Homepage (Verified 2026-05-12)
 
 **Milestone Goal:** Signed-out visitors who open the app homepage see a public registration entry point instead of an immediate Google sign-in prompt.
 
-- [ ] **Phase 12: Public Registration Homepage** - Signed-out visitors land on a public homepage with a direct registration entry point while signed-in users keep current behavior. (plan executed; verification gap)
+- [x] **Phase 12: Public Registration Homepage** - Signed-out visitors land on a public homepage with a direct registration entry point while signed-in users keep current behavior. (completed 2026-05-12)
 
 ## Phase Details
 
@@ -100,7 +100,7 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 
 ## Progress
 
-**Execution Order:** 8 → 9 → 10 → 11 → 12
+**Execution Order:** 8 -> 9 -> 10 -> 11 -> 12
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -108,4 +108,4 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 | 9. Inventory Management | v1.1 | 3/3 | Complete | 2026-05-05 |
 | 10. Session Finance | v1.1 | 4/4 | Complete | 2026-05-06 |
 | 11. Payment Migration | v1.1 | 3/3 | Complete | 2026-05-06 |
-| 12. Public Registration Homepage | v1.2 | 1/1 | Verification gaps | - |
+| 12. Public Registration Homepage | v1.2 | 1/1 | Complete | 2026-05-12 |

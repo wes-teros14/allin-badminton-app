@@ -1,6 +1,6 @@
 ---
 phase: 12-public-registration-homepage
-status: gaps_found
+status: passed
 verified: 2026-05-12
 source:
   - 12-01-PLAN.md
@@ -11,9 +11,9 @@ source:
 
 ## Verdict
 
-Status: `gaps_found`
+Status: `passed`
 
-The user-facing phase goal is implemented and the focused Playwright suite verifies the required public, authenticated, OAuth, and invite compatibility paths. The phase cannot be marked fully passed because the required repo-wide `npm run lint` gate fails on pre-existing unrelated lint errors.
+The user-facing phase goal is implemented and automated verification now passes for the required public, authenticated, OAuth, and invite compatibility paths. The previous repo-wide lint gap was closed by audit finding `F-01`.
 
 ## Must-Have Verification
 
@@ -33,18 +33,14 @@ The user-facing phase goal is implemented and the focused Playwright suite verif
 |---------|--------|-------|
 | `npx.cmd eslint src/views/HomeView.tsx tests/public-homepage.spec.ts` | PASS | Changed phase files are lint-clean. |
 | `npm.cmd run test:e2e -- public-homepage.spec.ts` | PASS | 4/4 Playwright tests passed. |
-| `npm.cmd run lint` | FAIL | Fails on existing unrelated lint errors outside Phase 12 touched files. |
+| `npm.cmd run lint` | PASS | Exits 0; four non-blocking exhaustive-deps warnings remain. |
+| `npm.cmd run test:unit` | PASS | 59/59 Vitest tests passed. |
+| `npm.cmd run build` | PASS | TypeScript build and Vite production build passed. |
 | `node .codex/get-shit-done/bin/gsd-tools.cjs verify.schema-drift 12` | PASS | No schema drift detected. |
 
 ## Gaps
 
-### Gap 1: Repo-wide lint gate is not green
-
-- **Status:** failed
-- **Scope:** Existing unrelated files outside `badminton-v2/src/views/HomeView.tsx` and `badminton-v2/tests/public-homepage.spec.ts`.
-- **Examples from lint output:** `CourtTabs.tsx`, `AuthContext.tsx`, `NotificationContext.tsx`, several hooks, `RegisterView.tsx`, and existing tests.
-- **Impact:** Blocks a strict phase pass because the plan-level verification required `npm run lint`.
-- **Recommended closure:** Run a separate lint cleanup pass, then rerun `npm.cmd run lint` and this verification.
+None.
 
 ## Human Verification
 
@@ -54,4 +50,4 @@ Recommended manual check remains:
 
 ## Summary
 
-Phase behavior is ready for review and focused automated coverage is passing. The only blocking verification gap is repo-wide lint debt that predates this phase's implementation.
+Phase behavior is ready for review, focused automated coverage is passing, and the repo-wide lint gate no longer blocks Phase 12 completion.

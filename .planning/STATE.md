@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Public Registration Homepage
-status: verification_gaps
-stopped_at: Phase 12 executed; full lint gap remains
-last_updated: "2026-05-12T03:54:50.968Z"
-last_activity: 2026-05-12 - Phase 12 plan executed; focused E2E passed; full lint blocked by existing debt
+status: complete
+stopped_at: Phase 12 complete
+last_updated: "2026-05-12T04:10:59.214Z"
+last_activity: 2026-05-12 - Phase 12 verified; lint gap closed by audit finding F-01
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 1
   completed_plans: 1
   percent: 100
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-03)
 
 **Core value:** Players can register, get a fair auto-generated match schedule, and track live results without the admin manually coordinating anything during play.
-**Current focus:** Phase 12 execution for v1.2 Public Registration Homepage
+**Current focus:** Phase 12 complete for v1.2 Public Registration Homepage
 
 ## Current Position
 
 Phase: 12 of 12 (Public Registration Homepage)
 Plan: 12-01 complete
-Status: Verification gaps
-Last activity: 2026-05-12 - Phase 12 plan executed; focused E2E passed; full lint blocked by existing debt
+Status: Complete
+Last activity: 2026-05-12 - Phase 12 verified; lint gap closed by audit finding F-01
 
-Progress: [██████████] 100% plan execution (0 of 1 phases verified)
+Progress: [██████████] 100% (1 of 1 phases verified)
 
 ## Performance Metrics
 
 **Velocity:**
 
 - Total plans completed: 1 (v1.2 milestone)
-- Average duration: -
-- Total execution time: -
+- Average duration: 25 min
+- Total execution time: 25 min
 
 **By Phase:**
 
@@ -49,7 +49,7 @@ Progress: [██████████] 100% plan execution (0 of 1 phases ve
 **Recent Trend:**
 
 - Last 5 plans: 12-01
-- Trend: focused implementation complete; repo-wide lint debt remains
+- Trend: phase implementation and verification complete
 
 *Updated after each plan completion*
 
@@ -74,7 +74,7 @@ None yet.
 
 - Supabase CLI is blocked on Windows, so any DB migration work still has to run via the Supabase Dashboard SQL Editor
 - Phase 12 behavior is implemented and focused Playwright coverage passes
-- Repo-wide `npm run lint` is blocked by existing unrelated lint errors outside the Phase 12 touched files
+- Repo-wide lint gap was closed by audit finding F-01
 
 ## Deferred Items
 
@@ -89,5 +89,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-12 00:00
-Stopped at: Phase 12 executed; full lint gap remains.
-Resume file: .planning/phases/12-public-registration-homepage/12-01-SUMMARY.md
+Stopped at: Phase 12 complete.
+Resume file: .planning/phases/12-public-registration-homepage/12-VERIFICATION.md
