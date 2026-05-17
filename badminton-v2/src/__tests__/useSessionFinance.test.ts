@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   allocateCheapestFirst,
+  buildUsageMapForAllocation,
   calculateProfitAfterPersonalShare,
   compareAllocationOrder,
   compareBatchIdentity,
@@ -29,6 +30,25 @@ describe('useSessionFinance helpers', () => {
       { batchId: 'a', tubeId: 1001, brand: 'A', shuttlesUsed: 6, costPerTube: 80 },
       { batchId: 'b', tubeId: 1002, brand: 'B', shuttlesUsed: 2, costPerTube: 90 },
     ])
+  })
+
+  it('returns no allocation for zero shuttles', () => {
+    expect(
+      allocateCheapestFirst(0, [
+        { id: 'a', brand: 'A', shuttlesRemaining: 12, costPerTube: 80, tubeStart: 1001 },
+      ])
+    ).toEqual([])
+  })
+
+  it('excludes current session usage when computing allocation stock', () => {
+    const usageMap = buildUsageMapForAllocation([
+      { session_id: 'current-session', batch_id: 'tube-1006', shuttles_used: 1 },
+      { session_id: 'other-session', batch_id: 'tube-1006', shuttles_used: 5 },
+      { session_id: 'other-session', batch_id: 'tube-1007', shuttles_used: 2 },
+    ], 'current-session')
+
+    expect(usageMap.get('tube-1006')).toBe(5)
+    expect(usageMap.get('tube-1007')).toBe(2)
   })
 
   it('uses the lower tube number first when same-price tubes tie', () => {

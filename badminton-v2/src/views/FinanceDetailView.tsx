@@ -20,7 +20,7 @@ const usageSchema = z.object({
   totalShuttles: z
     .number({ error: 'Enter total shuttles used.' })
     .int({ message: 'Enter a whole number.' })
-    .min(1, 'Must be at least 1 shuttle.'),
+    .min(0, 'Must be 0 or more.'),
 })
 type UsageFormOutput = z.output<typeof usageSchema>
 

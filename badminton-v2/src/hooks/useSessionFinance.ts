@@ -49,6 +49,12 @@ interface BatchIdentity {
   created_at: string
 }
 
+interface UsageForStock {
+  session_id: string
+  batch_id: string
+  shuttles_used: number
+}
+
 export function compareBatchIdentity(a: BatchIdentity, b: BatchIdentity): number {
   if (a.created_at !== b.created_at) {
     return a.created_at < b.created_at ? -1 : 1
@@ -71,6 +77,18 @@ export function calculateProfitAfterPersonalShare(
   personalShareOverride: number | null
 ): number {
   return Number((baseProfit - (personalShareOverride ?? 0)).toFixed(2))
+}
+
+export function buildUsageMapForAllocation(
+  usageRows: UsageForStock[],
+  excludedSessionId: string
+): Map<string, number> {
+  const usageMap = new Map<string, number>()
+  for (const usage of usageRows) {
+    if (usage.session_id === excludedSessionId) continue
+    usageMap.set(usage.batch_id, (usageMap.get(usage.batch_id) ?? 0) + usage.shuttles_used)
+  }
+  return usageMap
 }
 
 export function allocateCheapestFirst(
@@ -207,7 +225,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
 
     const { data: allUsage, error: allUsageErr } = await supabase
       .from('shuttle_usage')
-      .select('batch_id, shuttles_used')
+      .select('session_id, batch_id, shuttles_used')
     if (allUsageErr) {
       setFetchError(allUsageErr.message)
       setIsLoading(false)
@@ -215,10 +233,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       return
     }
 
-    const usageMap = new Map<string, number>()
-    for (const usage of allUsage ?? []) {
-      usageMap.set(usage.batch_id, (usageMap.get(usage.batch_id) ?? 0) + usage.shuttles_used)
-    }
+    const usageMap = buildUsageMapForAllocation(allUsage ?? [], sessionId)
 
     setBatchesForAllocation((batchRows ?? []).map((batch) => ({
       id: batch.id,
@@ -252,6 +267,12 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     if (deleteErr) {
       setIsSavingUsage(false)
       return { error: deleteErr.message }
+    }
+
+    if (totalShuttles === 0) {
+      await fetchAll({ background: hasLoadedOnce })
+      setIsSavingUsage(false)
+      return { error: null }
     }
 
     const insertRows = allocation.map((item) => ({
