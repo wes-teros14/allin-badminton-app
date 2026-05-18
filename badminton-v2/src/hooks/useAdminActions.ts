@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { completedMatchUpdate, playingMatchUpdate, queuedMatchUpdate } from '@/utils/matchTiming'
 import type { AdminMatchDisplay } from './useAdminSession'
 
 interface EditIds {
@@ -69,12 +70,12 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  async function markDone(matchId: string, courtNumber: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, durationSeconds?: number) {
+  async function markDone(matchId: string, courtNumber: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, startedAt?: string | null) {
     setIsSaving(true)
     try {
       const { data: completed, error: e1 } = await supabase
         .from('matches')
-        .update({ status: 'complete', ...(durationSeconds != null ? { duration_seconds: durationSeconds } : {}) } as never)
+        .update(completedMatchUpdate(startedAt ?? null) as never)
         .eq('id', matchId)
         .eq('status', 'playing')
         .select('id')
@@ -100,7 +101,7 @@ export function useAdminActions(onDone: () => void) {
       if (nextMatch) {
         const { error: e3 } = await supabase
           .from('matches')
-          .update({ status: 'playing', court_number: courtNumber })
+          .update(playingMatchUpdate(courtNumber))
           .eq('id', (nextMatch as { id: string }).id)
         if (e3) { toast.error(e3.message); return }
       }
@@ -116,7 +117,7 @@ export function useAdminActions(onDone: () => void) {
     try {
       const { error } = await supabase
         .from('matches')
-        .update({ status: 'playing', court_number: courtNumber })
+        .update(playingMatchUpdate(courtNumber))
         .eq('id', matchId)
 
       if (error) { toast.error(error.message); return }
@@ -142,7 +143,7 @@ export function useAdminActions(onDone: () => void) {
 
       const { error } = await supabase
         .from('matches')
-        .update({ status: 'queued', court_number: null, queue_position: maxPos + 1 })
+        .update(queuedMatchUpdate(maxPos + 1))
         .eq('id', matchId)
 
       if (error) { toast.error(error.message); return }

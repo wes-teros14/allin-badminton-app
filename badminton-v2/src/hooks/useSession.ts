@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { playingMatchUpdate, queuedMatchUpdate } from '@/utils/matchTiming'
 
 type SessionStatus =
   | 'setup'
@@ -293,8 +294,9 @@ export function useSession(sessionId?: string): SessionState {
       return
     }
 
+    const startedAt = new Date().toISOString()
     const updates = (queued as Array<{ id: string }>).map((m, i) =>
-      supabase.from('matches').update({ status: 'playing', court_number: i + 1 }).eq('id', m.id)
+      supabase.from('matches').update(playingMatchUpdate((i + 1) as 1 | 2, startedAt)).eq('id', m.id)
     )
     await Promise.all(updates)
 
@@ -313,7 +315,7 @@ export function useSession(sessionId?: string): SessionState {
     if (!session) return
     // Revert all playing/queued matches back to queued, clear court numbers
     await supabase.from('matches')
-      .update({ status: 'queued', court_number: null })
+      .update(queuedMatchUpdate())
       .eq('session_id', session.id)
       .in('status', ['playing', 'queued'])
     const { data: updated, error } = await supabase

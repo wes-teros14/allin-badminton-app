@@ -5,10 +5,12 @@ import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import { useRealtime } from '@/hooks/useRealtime'
+import { useCourtState, type CourtData } from '@/hooks/useCourtState'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { supabase } from '@/lib/supabase'
+import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
 
 interface AllMatch {
   id: string
@@ -17,6 +19,114 @@ interface AllMatch {
   team1: string
   team2: string
   players: string[]
+}
+
+function formatElapsed(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function PlayerCourtTabs({
+  court1,
+  court2,
+  isLoading,
+  courtLabels,
+}: {
+  court1: CourtData
+  court2: CourtData
+  isLoading: boolean
+  courtLabels: Record<1 | 2, string>
+}) {
+  const court1StartedAt = court1.current?.startedAt ?? null
+  const court2StartedAt = court2.current?.startedAt ?? null
+  const [elapsedByCourt, setElapsedByCourt] = useState<Record<1 | 2, number>>({
+    1: elapsedSecondsFromStartedAt(court1StartedAt) ?? 0,
+    2: elapsedSecondsFromStartedAt(court2StartedAt) ?? 0,
+  })
+
+  useEffect(() => {
+    function updateElapsed() {
+      setElapsedByCourt({
+        1: elapsedSecondsFromStartedAt(court1StartedAt) ?? 0,
+        2: elapsedSecondsFromStartedAt(court2StartedAt) ?? 0,
+      })
+    }
+
+    updateElapsed()
+    const intervalId = setInterval(updateElapsed, 1000)
+    return () => clearInterval(intervalId)
+  }, [court1StartedAt, court2StartedAt])
+
+  const courts = [
+    { courtNumber: 1 as const, label: courtLabels[1], data: court1 },
+    { courtNumber: 2 as const, label: courtLabels[2], data: court2 },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {courts.map((court) => {
+        const match = court.data.current ?? court.data.next
+        const isPlaying = !!court.data.current
+
+        return (
+          <div
+            key={court.label}
+            className={`min-h-[7rem] rounded-xl border p-3 ${
+              isPlaying
+                ? 'border-primary/30 bg-[var(--primary-subtle)]'
+                : 'border-border bg-card'
+            }`}
+          >
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                {court.label}
+              </p>
+              <div className="flex items-center gap-2">
+                {isPlaying && (
+                  <>
+                    <span className="text-[0.65rem] font-mono font-semibold text-[#FFB200]">
+                      {formatElapsed(elapsedByCourt[court.courtNumber])}
+                    </span>
+                    <span className="flex items-center gap-1 text-[0.65rem] font-bold tracking-widest text-red-500">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                      LIVE
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-2">
+                <div className="h-4 w-12 rounded bg-muted animate-pulse" />
+                <div className="h-3 w-full rounded bg-muted animate-pulse" />
+                <div className="h-3 w-4/5 rounded bg-muted animate-pulse" />
+              </div>
+            ) : match ? (
+              <div className="space-y-1">
+                {isPlaying && (
+                  <p className="text-[0.65rem] font-bold uppercase tracking-widest text-red-500">Playing</p>
+                )}
+                <p className="whitespace-nowrap text-xl font-bold text-primary">Game {match.gameNumber}</p>
+                <p className="truncate text-xs font-medium text-primary">
+                  {match.t1p1} &amp; {match.t1p2}
+                </p>
+                <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">vs</p>
+                <p className="truncate text-xs font-medium text-primary">
+                  {match.t2p1} &amp; {match.t2p2}
+                </p>
+              </div>
+            ) : (
+              <div className="flex h-14 items-center">
+                <p className="text-xs text-muted-foreground">No match</p>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export function PlayerView() {
@@ -282,7 +392,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
                   className={`rounded-xl border border-border p-4 ${m.status === 'complete' ? 'opacity-50' : ''} ${m.status === 'playing' ? 'border-primary/30 bg-[var(--primary-subtle)]' : ''}`}
                 >
                   <div className="flex items-center gap-3 mb-1">
-                    <span className={`text-3xl font-bold tabular-nums ${m.status === 'complete' ? 'line-through' : ''}`}>{m.gameNumber}</span>
+                    <span className={`whitespace-nowrap text-2xl font-bold tabular-nums ${m.status === 'complete' ? 'line-through' : ''}`}>Game {m.gameNumber}</span>
                     {m.status === 'playing' && <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Playing</span>}
                     {m.status === 'complete' && <span className="text-[var(--success)] text-lg">✓</span>}
                   </div>
@@ -300,7 +410,18 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 
 function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: string; sessionId?: string }) {
   const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, gamesAhead, waitSeconds, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
-  const { status } = useRealtime(sessionId, refresh)
+  const {
+    court1,
+    court2,
+    courtLabels,
+    isLoading: courtsLoading,
+    refresh: refreshCourts,
+  } = useCourtState(sessionId || undefined)
+  const refreshAll = useCallback(() => {
+    refresh()
+    refreshCourts()
+  }, [refresh, refreshCourts])
+  const { status } = useRealtime(sessionId, refreshAll)
 
   if (!isLoading && notFound) {
     return (
@@ -317,7 +438,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
-      <LiveIndicator status={status} onRefresh={refresh} />
+      <LiveIndicator status={status} onRefresh={refreshAll} />
       {isLoading ? (
         <div className="bg-primary px-4 py-5 animate-pulse">
           <div className="h-7 w-32 bg-primary-foreground/30 rounded mb-1" />
@@ -363,6 +484,12 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             ? `⏳ ~${waitSeconds == null ? '?' : waitSeconds < 60 ? `${waitSeconds}s` : `${Math.floor(waitSeconds / 60)}m${waitSeconds % 60 > 0 ? ` ${waitSeconds % 60}s` : ''}`} estimated wait until your next game`
             : `⏳ ~${waitSeconds == null ? '?' : Math.ceil(waitSeconds / 60)} min estimated wait until your next game`
           }
+        </div>
+      )}
+
+      {!isLoading && sessionId && sessionStatus !== 'registration_open' && (
+        <div className="max-w-sm mx-auto px-4 pt-4">
+          <PlayerCourtTabs court1={court1} court2={court2} courtLabels={courtLabels} isLoading={courtsLoading} />
         </div>
       )}
 

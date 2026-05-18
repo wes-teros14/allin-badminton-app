@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { CourtData } from '@/hooks/useCourtState'
+import { completedMatchUpdate, elapsedSecondsFromStartedAt, playingMatchUpdate } from '@/utils/matchTiming'
 
 interface Props {
   courtNumber: 1 | 2
@@ -21,24 +22,20 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [elapsed, setElapsed] = useState(0)
-  const matchStartRef = useRef<number>(Date.now())
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Reset timer when match changes
   useEffect(() => {
-    matchStartRef.current = Date.now()
-    setElapsed(0)
-  }, [current?.id])
+    setElapsed(elapsedSecondsFromStartedAt(current?.startedAt ?? null) ?? 0)
+  }, [current?.startedAt])
 
-  // Run timer while playing, pause while confirming finish
   useEffect(() => {
-    if (current && !confirmingFinish) {
-      intervalRef.current = setInterval(() => {
-        setElapsed(Math.floor((Date.now() - matchStartRef.current) / 1000))
-      }, 1000)
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [current?.id, confirmingFinish])
+    if (!current || confirmingFinish) return
+
+    const intervalId = setInterval(() => {
+      setElapsed(elapsedSecondsFromStartedAt(current.startedAt) ?? 0)
+    }, 1000)
+
+    return () => clearInterval(intervalId)
+  }, [current, confirmingFinish])
 
   async function handleFinish(winningPairIndex: 1 | 2 | null) {
     if (!current || !sessionId || isSaving) return
@@ -48,7 +45,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
       // 1. Mark current match complete — only if still 'playing' (atomic guard against concurrent double-finish)
       const { data: completed, error: e1 } = await supabase
         .from('matches')
-        .update({ status: 'complete', duration_seconds: elapsed } as never)
+        .update(completedMatchUpdate(current.startedAt) as never)
         .eq('id', current.id)
         .eq('status', 'playing')
         .select('id')
@@ -76,7 +73,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
         // 4. Assign to this court
         await supabase
           .from('matches')
-          .update({ status: 'playing', court_number: courtNumber, started_at: new Date().toISOString() })
+          .update(playingMatchUpdate(courtNumber))
           .eq('id', (nextMatch as { id: string }).id)
       } else {
         // Check if other court still has a playing match
@@ -168,7 +165,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
             {current ? (
               <>
                 {/* Game number — large, anchored to top of content area */}
-                <p className="game-hero text-primary">{current.gameNumber}</p>
+                <p className="game-hero whitespace-nowrap text-primary">Game {current.gameNumber}</p>
 
                 {/* Names + finish button — tight group just below the number */}
                 <div className="flex flex-col items-center gap-3 w-full mt-1">

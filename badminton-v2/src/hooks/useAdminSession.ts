@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 export interface AdminMatchDisplay {
   id: string
   gameNumber: number
+  startedAt: string | null
   t1p1: string
   t1p2: string
   t2p1: string
@@ -35,6 +36,7 @@ type MatchRow = {
   team2_player2_id: string
   status: string
   court_number: number | null
+  started_at: string | null
 }
 
 export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult {
@@ -118,7 +120,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
       // 2. Fetch all matches
       const { data: rows } = await supabase
         .from('matches')
-        .select('id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status, court_number')
+        .select('id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status, court_number, started_at')
         .eq('session_id', sid)
         .order('queue_position')
 
@@ -157,6 +159,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
       const toDisplay = (m: MatchRow): AdminMatchDisplay => ({
         id: m.id,
         gameNumber: m.queue_position,
+        startedAt: m.started_at,
         t1p1: name(m.team1_player1_id),
         t1p2: name(m.team1_player2_id),
         t2p1: name(m.team2_player1_id),

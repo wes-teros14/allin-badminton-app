@@ -166,7 +166,7 @@
 }
 
 @utility game-hero {
-    font-size: 18rem;
+    font-size: clamp(4.5rem, 10vw, 8rem);
     font-weight: 700;
     line-height: 1;
 }
