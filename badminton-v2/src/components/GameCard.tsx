@@ -42,8 +42,8 @@ export function GameCard({ gameNumber, partnerNameSlug, opp1NameSlug, opp2NameSl
   return (
     <div className={`${cardClass} ${isComplete ? 'opacity-50' : ''}`}>
       <div className="flex items-center gap-3 mb-2">
-        <span className={`text-4xl font-bold tabular-nums ${isComplete ? 'line-through' : ''}`}>
-          {gameNumber}
+        <span className={`whitespace-nowrap text-2xl font-bold tabular-nums ${isComplete ? 'line-through' : ''}`}>
+          Game {gameNumber}
         </span>
         {isComplete
           ? won === true

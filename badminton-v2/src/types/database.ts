@@ -433,6 +433,8 @@ export type Database = {
       sessions: {
         Row: {
           completed_at: string | null
+          court_1_label: string
+          court_2_label: string
           court_cost: number | null
           created_at: string
           created_by: string
@@ -451,6 +453,8 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          court_1_label?: string
+          court_2_label?: string
           court_cost?: number | null
           created_at?: string
           created_by: string
@@ -469,6 +473,8 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          court_1_label?: string
+          court_2_label?: string
           court_cost?: number | null
           created_at?: string
           created_by?: string

@@ -38,6 +38,29 @@ export function useRealtime(
           onUpdateRef.current()
         },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'match_results',
+        },
+        () => {
+          onUpdateRef.current()
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sessions',
+          filter: `id=eq.${sessionId}`,
+        },
+        () => {
+          onUpdateRef.current()
+        },
+      )
       .subscribe((channelStatus) => {
         if (channelStatus === 'SUBSCRIBED') {
           setStatus('connected')
@@ -55,7 +78,7 @@ export function useRealtime(
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [sessionId])
+  }, [channelPrefix, sessionId])
 
   return { status, refresh }
 }

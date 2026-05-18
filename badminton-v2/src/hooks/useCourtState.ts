@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 export interface CourtMatchDisplay {
   id: string
   gameNumber: number
+  startedAt: string | null
   t1p1: string
   t1p2: string
   t2p1: string
@@ -15,9 +16,15 @@ export interface CourtData {
   next: CourtMatchDisplay | null
 }
 
+export interface CourtLabels {
+  1: string
+  2: string
+}
+
 interface UseCourtStateResult {
   court1: CourtData
   court2: CourtData
+  courtLabels: CourtLabels
   sessionId: string | null
   isLoading: boolean
   hasSession: boolean
@@ -26,6 +33,14 @@ interface UseCourtStateResult {
 }
 
 const EMPTY: CourtData = { current: null, next: null }
+const DEFAULT_COURT_LABELS: CourtLabels = { 1: 'Court 1', 2: 'Court 2' }
+
+function labelsFromSession(session: { court_1_label?: string | null; court_2_label?: string | null } | null): CourtLabels {
+  return {
+    1: session?.court_1_label || DEFAULT_COURT_LABELS[1],
+    2: session?.court_2_label || DEFAULT_COURT_LABELS[2],
+  }
+}
 
 type MatchRow = {
   id: string
@@ -36,11 +51,13 @@ type MatchRow = {
   team2_player2_id: string
   status: string
   court_number: number | null
+  started_at: string | null
 }
 
 export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
   const [court1, setCourt1] = useState<CourtData>(EMPTY)
   const [court2, setCourt2] = useState<CourtData>(EMPTY)
+  const [courtLabels, setCourtLabels] = useState<CourtLabels>(DEFAULT_COURT_LABELS)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasSession, setHasSession] = useState(false)
@@ -58,10 +75,11 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
 
       // 1. Find session — by ID if provided, otherwise latest active
       let sid: string
+      let activeCourtLabels: CourtLabels
       if (sessionIdParam) {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, status')
+          .select('id, status, court_1_label, court_2_label')
           .eq('id', sessionIdParam)
           .maybeSingle()
 
@@ -72,6 +90,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setHasSession(false)
           setIsClosed(false)
           setSessionId(null)
+          setCourtLabels(DEFAULT_COURT_LABELS)
           setCourt1(EMPTY)
           setCourt2(EMPTY)
           setIsLoading(false)
@@ -81,16 +100,18 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setHasSession(false)
           setIsClosed(true)
           setSessionId(null)
+          setCourtLabels(labelsFromSession(session))
           setCourt1(EMPTY)
           setCourt2(EMPTY)
           setIsLoading(false)
           return
         }
         sid = s.id
+        activeCourtLabels = labelsFromSession(session)
       } else {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id')
+          .select('id, court_1_label, court_2_label')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -101,20 +122,23 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
         if (!session) {
           setHasSession(false)
           setSessionId(null)
+          setCourtLabels(DEFAULT_COURT_LABELS)
           setCourt1(EMPTY)
           setCourt2(EMPTY)
           setIsLoading(false)
           return
         }
         sid = (session as { id: string }).id
+        activeCourtLabels = labelsFromSession(session)
       }
       setHasSession(true)
       setSessionId(sid)
+      setCourtLabels(activeCourtLabels)
 
       // 2. Fetch matches
       const { data: rows } = await supabase
         .from('matches')
-        .select('id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status, court_number')
+        .select('id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status, court_number, started_at')
         .eq('session_id', sid)
         .order('queue_position')
 
@@ -151,6 +175,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
       const toDisplay = (m: MatchRow): CourtMatchDisplay => ({
         id: m.id,
         gameNumber: m.queue_position,
+        startedAt: m.started_at,
         t1p1: name(m.team1_player1_id),
         t1p2: name(m.team1_player2_id),
         t2p1: name(m.team2_player1_id),
@@ -181,5 +206,5 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
     return () => { cancelled = true }
   }, [refreshKey, sessionIdParam])
 
-  return { court1, court2, sessionId, isLoading, hasSession, isClosed, refresh }
+  return { court1, court2, courtLabels, sessionId, isLoading, hasSession, isClosed, refresh }
 }
