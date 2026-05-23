@@ -29,20 +29,21 @@ Players can register, get a fair auto-generated match schedule, and track live r
 - ✓ Roster search + active player filter in admin views — v1.0
 - ✓ Registration Early Bird award (latest session only, excludes setup sessions) — v1.0
 
-## Current Milestone: v1.2 Public Registration Homepage
+## Current Milestone: v1.3 Split Match Scoring
 
-**Goal:** Signed-out visitors who open the app homepage see a public registration entry point instead of an immediate Google sign-in prompt.
+**Goal:** Admins can choose a session-level split-match format so scheduled matches can be scored as either one normal game or two shorter games while leaderboard stats remain correct.
 
 **Target features:**
-- Public homepage at the root app URL for signed-out visitors
-- Clear Register action for new players
-- Register triggers Google sign-in only, with no extra public form
-- Signed-in users keep the current post-login behavior
-- Invite-link code remains in the codebase but is not the normal onboarding path
+- Session-level admin checkbox/toggle to split matches
+- Existing one-game result flow remains available when split matches are disabled
+- Split matches record two game results per scheduled match
+- `1-1` split results are valid final results
+- Stats count each game win independently: `2-0` gives two wins to the winning team, and `1-1` gives one win to each team
+- Live board/result flow supports finishing and displaying split-match results
 
 ### Active
 
-<!-- v1.2 scope -->
+<!-- v1.3 scope -->
 
 ### Out of Scope
 
@@ -93,4 +94,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-12 - started milestone v1.2 Public Registration Homepage*
+*Last updated: 2026-05-23 - started milestone v1.3 Split Match Scoring*
