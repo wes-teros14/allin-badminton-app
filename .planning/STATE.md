@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Split Match Scoring
-status: phase_complete
-stopped_at: Phase 13 complete — ready for Phase 14 planning
-last_updated: "2026-05-23T14:03:00.000Z"
-last_activity: 2026-05-23 - Phase 13 fully verified; migration applied and live data confirmed
+status: in_progress
+stopped_at: Phase 14 plan 02 complete
+last_updated: "2026-05-23T00:00:00.000Z"
+last_activity: 2026-05-23 - Phase 14 plan 02 complete; split_match_scoring wired into component tree and SessionView toggle added
 progress:
   total_phases: 3
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 33
+  total_plans: 4
+  completed_plans: 3
+  percent: 44
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 
 ## Current Position
 
-Phase: 13 - Split Scoring Schema
-Plan: 13-01, 13-02
-Status: Complete
-Last activity: 2026-05-23 - Phase 13 fully verified; migration applied, game_number = 1 confirmed on live data
+Phase: 14 - Split Result Entry
+Plan: 14-02 complete; 14-03 next
+Status: In Progress
+Last activity: 2026-05-23 - Plan 14-02 complete; split_match_scoring wired into LiveBoardView/CourtCard, SessionView toggle added
 
-Progress: [####------] 33% (1 of 3 phases complete)
+Progress: [#####-----] 44% (3 of ~7 plans complete)
 
 ## Performance Metrics
 
@@ -92,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-05-23T14:03:00.000Z
-Stopped at: Phase 13 complete
-Resume file: .planning/ROADMAP.md (next: Phase 14)
+Last session: 2026-05-23T00:00:00.000Z
+Stopped at: Phase 14 plan 02 complete
+Resume file: .planning/phases/14-split-result-entry/14-03-PLAN.md (next: Plan 14-03)
