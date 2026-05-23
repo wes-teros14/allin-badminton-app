@@ -399,7 +399,7 @@ export function SessionView() {
               id="split-scoring"
               checked={splitScoring}
               onChange={handleSplitScoringChange}
-              disabled={splitSaving}
+              disabled={splitSaving || session.status === 'in_progress'}
               className="h-4 w-4 rounded border-input accent-primary disabled:opacity-50"
             />
             <Label htmlFor="split-scoring" className="cursor-pointer">
@@ -419,7 +419,7 @@ export function SessionView() {
               id="split-scoring"
               checked={splitScoring}
               onChange={handleSplitScoringChange}
-              disabled={splitSaving}
+              disabled={splitSaving || session.status === 'in_progress'}
               className="h-4 w-4 rounded border-input accent-primary disabled:opacity-50"
             />
             <Label htmlFor="split-scoring" className="cursor-pointer">
