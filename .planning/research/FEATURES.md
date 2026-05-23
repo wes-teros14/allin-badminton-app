@@ -1,63 +1,32 @@
-# Features: Finance & Inventory Tab
+# Feature Research: v1.3 Split Match Scoring
 
-**Project:** All-In Badminton App
-**Feature:** Finance tab + Shuttle Inventory
-**Date:** 2026-05-04
+## Admin Session Setup
 
----
+Admins need one session-level checkbox/toggle for split-match scoring. This belongs in the existing session setup/admin flow, near the other session-level fields in `SessionView.tsx`.
 
-## Feature Breakdown
+## Result Entry
 
-### Table Stakes (must have for v1.1)
+Current result entry asks "Who won?" and inserts one `match_results` row. Split mode should ask for the two game winners for the same scheduled match:
 
-| Feature | Description | Complexity |
-|---------|-------------|------------|
-| Shuttle batch management | Admin logs tube purchases: date, brand, quantity, cost per tube | Low |
-| Cheapest-first batch ordering | Batches sorted by cost ascending so admin draws cheapest stock first | Low (UI sort) |
-| Partial tube tracking | Remaining tubes per batch computed from usage records (`NUMERIC`) | Medium |
-| Session shuttle usage log | Admin records how many tubes used per session, linked to a batch | Medium |
-| Session P&L summary | Revenue (price × players), shuttle COGS, net profit/loss | Medium |
-| Per-player payment status | Admin marks Paid/Unpaid per player per session (moves from Admin tab) | Low (column exists) |
-| Current stock level | Total shuttles remaining across all batches | Low (derived query) |
+- `2-0`: insert two result rows for the same winning pair.
+- `1-1`: insert one result row for each pair.
 
-### Differentiators (nice to have, not v1.1)
+## Live Board
 
-| Feature | Description | Dependency |
-|---------|-------------|------------|
-| Session-to-session profit trend | Line chart or table showing profit over recent sessions | Needs 5+ sessions of data |
-| Low stock alert | Warn admin when remaining shuttles < 1 session's worth (< 20 pcs) | After v1.1 |
-| Shuttle sell price tracking | Track per-shuttle sell price in settings, show revenue from shuttle markup vs court | After v1.1 |
-| Batch expiry / quality notes | Track feather vs plastic, batch quality notes | After v1.1 |
+The unauthenticated live board uses `CourtCard.tsx` and can insert `match_results` today via anon RLS. It must load the session split setting and present the split result options when enabled.
 
-### Anti-Features (explicitly exclude)
+## Admin Court Controls
 
-| Feature | Why Excluded |
-|---------|-------------|
-| Player-visible cost breakdown | Admin-only data — players see the fee but not cost/profit details |
-| Automatic shuttle consumption | "Cheapest-first" is a UI hint, not auto-allocation — admin manually selects batch |
-| Multi-currency support | App is PHP only |
-| Invoice / receipt generation | Out of scope for a casual weekly club |
-| Realtime updates for finance | Finance is low-frequency admin data — no Realtime subscription needed |
+The authenticated admin court controls use `CourtTabs.tsx` and `useAdminActions.ts`. They need the same result options and insert behavior as the live board.
 
----
+## Player Views And Leaderboards
 
-## Feature Dependencies
+Several readers currently assume only the first result row matters:
 
-```
-shuttle_batches (CRUD)
-    └── shuttle_usage (per session, references batch)
-            └── Session P&L (joins sessions + registrations + usage)
-                    └── Finance tab (reads P&L + payment status)
+- `TodayView.tsx`
+- `SessionPlayerDetailView.tsx`
+- `usePlayerSchedule.ts`
+- `usePlayerStats.ts`
 
-session_registrations.paid (already exists)
-    └── Payment status list (reuses existing column + updatePaid mutation)
-```
+These must aggregate all result rows for a match.
 
----
-
-## Court Cost Handling
-
-- Court cost is entered per session by the admin (fixed amount, overridable)
-- Needs a `court_cost` column on `sessions` table OR a separate field in a `session_financials` table
-- Simpler: add `court_cost NUMERIC(10,2)` directly to `sessions` — one column, no extra table
-- This feeds into P&L: `net_profit = revenue - court_cost - shuttle_COGS`
