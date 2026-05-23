@@ -96,6 +96,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setCourt1(EMPTY)
           setCourt2(EMPTY)
           setSplitMatchScoring(false)
+          isFirstLoad.current = false
           setIsLoading(false)
           return
         }
@@ -107,6 +108,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setCourt1(EMPTY)
           setCourt2(EMPTY)
           setSplitMatchScoring(false)
+          isFirstLoad.current = false
           setIsLoading(false)
           return
         }
@@ -131,6 +133,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setCourt1(EMPTY)
           setCourt2(EMPTY)
           setSplitMatchScoring(false)
+          isFirstLoad.current = false
           setIsLoading(false)
           return
         }
@@ -156,6 +159,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
       if (matchRows.length === 0) {
         setCourt1(EMPTY)
         setCourt2(EMPTY)
+        isFirstLoad.current = false
         setIsLoading(false)
         return
       }
