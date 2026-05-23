@@ -8,10 +8,21 @@ interface Props {
   status: 'queued' | 'playing' | 'complete'
   isNextUp: boolean
   isLoading?: boolean
+  outcome?: 'won' | 'lost' | 'draw' | null
   won?: boolean | null
 }
 
-export function GameCard({ gameNumber, partnerNameSlug, opp1NameSlug, opp2NameSlug, status, isNextUp, isLoading, won }: Props) {
+export function GameCard({
+  gameNumber,
+  partnerNameSlug,
+  opp1NameSlug,
+  opp2NameSlug,
+  status,
+  isNextUp,
+  isLoading,
+  outcome,
+  won,
+}: Props) {
   if (isLoading) {
     return (
       <div className="rounded-xl border border-border p-4 space-y-3 animate-pulse">
@@ -46,7 +57,9 @@ export function GameCard({ gameNumber, partnerNameSlug, opp1NameSlug, opp2NameSl
           Game {gameNumber}
         </span>
         {isComplete
-          ? won === true
+          ? outcome === 'draw'
+            ? <span className="rounded-full bg-muted px-2.5 py-1 text-sm font-bold text-muted-foreground">1-1</span>
+            : won === true
             ? <span className="text-sm font-bold text-[var(--success)]">✅ Win</span>
             : won === false
             ? <span className="text-sm font-bold text-destructive">❌ Loss</span>

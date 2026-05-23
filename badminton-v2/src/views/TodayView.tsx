@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { computeStatsFromResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 
@@ -17,7 +18,7 @@ type MatchRow = {
   team1_player2_id: string
   team2_player1_id: string
   team2_player2_id: string
-  match_results: Array<{ winning_pair_index: 1 | 2 }>
+  match_results: Array<{ winning_pair_index: 1 | 2; game_number: number | null }>
 }
 
 async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> {
@@ -28,7 +29,7 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
       .eq('session_id', sessionId),
     supabase
       .from('matches')
-      .select('team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index)')
+      .select('team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index, game_number)')
       .eq('session_id', sessionId)
       .eq('status', 'complete'),
   ])
@@ -56,16 +57,11 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
   )
 
   for (const match of (matchesRes.data ?? []) as MatchRow[]) {
-    const result = match.match_results[0]
-    if (!result) continue
-    const team1 = [match.team1_player1_id, match.team1_player2_id]
-    const team2 = [match.team2_player1_id, match.team2_player2_id]
-    const winners = result.winning_pair_index === 1 ? team1 : team2
-    for (const id of [...team1, ...team2]) {
+    for (const [id, matchStats] of computeStatsFromResults(match)) {
       const s = statsMap.get(id)
       if (!s) continue
-      s.games++
-      if (winners.includes(id)) s.wins++
+      s.games += matchStats.games
+      s.wins += matchStats.wins
     }
   }
 
