@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { completedMatchUpdate, playingMatchUpdate, queuedMatchUpdate } from '@/utils/matchTiming'
 import type { AdminMatchDisplay } from './useAdminSession'
+import { submitSplitResult, type SplitOutcome } from '@/lib/matchResults'
 
 interface EditIds {
   t1p1Id: string
@@ -70,7 +71,14 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  async function markDone(matchId: string, courtNumber: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, startedAt?: string | null) {
+  async function markDone(
+    matchId: string,
+    courtNumber: 1 | 2,
+    sessionId: string,
+    winningPairIndex?: 1 | 2,
+    startedAt?: string | null,
+    splitOutcome?: SplitOutcome,
+  ) {
     setIsSaving(true)
     try {
       const { data: completed, error: e1 } = await supabase
@@ -83,8 +91,15 @@ export function useAdminActions(onDone: () => void) {
       if (e1) { toast.error(e1.message); return }
       if (!completed || completed.length === 0) return
 
-      if (winningPairIndex) {
-        await supabase.from('match_results').insert({ match_id: matchId, winning_pair_index: winningPairIndex })
+      if (splitOutcome) {
+        const { error: eResult } = await submitSplitResult(matchId, splitOutcome)
+        if (eResult) { toast.error(String(eResult)); return }
+      } else if (winningPairIndex) {
+        await supabase.from('match_results').insert({
+          match_id: matchId,
+          winning_pair_index: winningPairIndex,
+          game_number: 1,
+        })
       }
 
       const { data: nextMatch, error: e2 } = await supabase

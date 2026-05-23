@@ -48,7 +48,7 @@ function BackToAdmin() {
   )
 }
 
-function LiveSessionView({ sessionId }: { sessionId: string }) {
+function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; splitScoring: boolean }) {
   const { court1Current, court2Current, queued, sessionId: sid, sessionName, sessionDate, isLoading, refresh } =
     useAdminSession(sessionId)
   const { status } = useRealtime(sid, refresh, 'session')
@@ -88,6 +88,7 @@ function LiveSessionView({ sessionId }: { sessionId: string }) {
         isLoading={isLoading}
         sessionId={sid}
         onDone={refresh}
+        splitScoring={splitScoring}
       />
     </div>
   )
@@ -332,7 +333,7 @@ export function SessionView() {
     return (
       <div className="p-4 max-w-lg mx-auto space-y-4">
         <SessionStepper status={session.status} />
-        <LiveSessionView sessionId={session.id} />
+        <LiveSessionView sessionId={session.id} splitScoring={session.split_match_scoring ?? false} />
         <Button variant="outline" onClick={unstartSession} className="w-full text-muted-foreground">
           ← Back to Schedule
         </Button>
