@@ -9,6 +9,7 @@ interface Props {
   sessionId: string | null
   isLoading: boolean
   refresh: () => void
+  splitScoring: boolean
 }
 
 function formatElapsed(seconds: number) {
@@ -17,7 +18,8 @@ function formatElapsed(seconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: Props) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, splitScoring }: Props) {
   const { current } = data
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -56,6 +58,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh }: 
         await supabase.from('match_results').insert({
           match_id: current.id,
           winning_pair_index: winningPairIndex,
+          game_number: 1,
         })
       }
 

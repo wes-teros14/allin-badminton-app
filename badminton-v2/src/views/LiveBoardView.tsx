@@ -6,7 +6,7 @@ import { CourtCard } from '@/components/CourtCard'
 
 export function LiveBoardView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
-  const { court1, court2, sessionId, isLoading, hasSession, isClosed, refresh } = useCourtState(sessionIdParam)
+  const { court1, court2, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, refresh } = useCourtState(sessionIdParam)
   useRealtime(sessionId, refresh)
   const [isPortrait, setIsPortrait] = useState(false)
 
@@ -49,8 +49,8 @@ export function LiveBoardView() {
       {/* Court split layout */}
       {(isLoading || hasSession) && (
         <div className="h-full flex">
-          <CourtCard courtNumber={1} data={court1} sessionId={sessionId} isLoading={isLoading} refresh={refresh} />
-          <CourtCard courtNumber={2} data={court2} sessionId={sessionId} isLoading={isLoading} refresh={refresh} />
+          <CourtCard courtNumber={1} data={court1} sessionId={sessionId} isLoading={isLoading} refresh={refresh} splitScoring={splitMatchScoring} />
+          <CourtCard courtNumber={2} data={court2} sessionId={sessionId} isLoading={isLoading} refresh={refresh} splitScoring={splitMatchScoring} />
         </div>
       )}
 

@@ -263,6 +263,13 @@ export function SessionView() {
   const [confirmingClose, setConfirmingClose] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  const [splitScoring, setSplitScoring] = useState(session?.split_match_scoring ?? false)
+  const [splitSaving, setSplitSaving] = useState(false)
+
+  useEffect(() => {
+    setSplitScoring(session?.split_match_scoring ?? false)
+  }, [session?.split_match_scoring])
+
   useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current) }, [])
 
   function handleCloseRegistration() {
@@ -273,6 +280,24 @@ export function SessionView() {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
       setConfirmingClose(false)
       closeRegistration()
+    }
+  }
+
+  async function handleSplitScoringChange() {
+    if (!session) return
+    const newValue = !splitScoring
+    setSplitScoring(newValue)
+    setSplitSaving(true)
+    const { error } = await supabase
+      .from('sessions')
+      .update({ split_match_scoring: newValue })
+      .eq('id', session.id)
+    setSplitSaving(false)
+    if (error) {
+      toast.error(error.message)
+      setSplitScoring(!newValue)
+    } else {
+      toast.success(newValue ? 'Split scoring enabled' : 'Split scoring disabled')
     }
   }
 
@@ -367,6 +392,19 @@ export function SessionView() {
         <div className="space-y-4">
           <RosterPanel sessionId={session.id} editable />
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} />
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="split-scoring"
+              checked={splitScoring}
+              onChange={handleSplitScoringChange}
+              disabled={splitSaving}
+              className="h-4 w-4 rounded border-input accent-primary disabled:opacity-50"
+            />
+            <Label htmlFor="split-scoring" className="cursor-pointer">
+              Split match scoring
+            </Label>
+          </div>
           <Button variant="outline" onClick={reopenRegistration} className="w-full">Reopen Registration</Button>
         </div>
       )}
@@ -374,6 +412,19 @@ export function SessionView() {
       {session.status === 'schedule_locked' && (
         <div className="space-y-4">
           <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="split-scoring"
+              checked={splitScoring}
+              onChange={handleSplitScoringChange}
+              disabled={splitSaving}
+              className="h-4 w-4 rounded border-input accent-primary disabled:opacity-50"
+            />
+            <Label htmlFor="split-scoring" className="cursor-pointer">
+              Split match scoring
+            </Label>
+          </div>
           <Button onClick={startSession} className="w-full">Start Session</Button>
           <Button variant="outline" onClick={() => window.open(`/live-board/${session.id}`, '_blank')} className="w-full">Open LiveBoard ↗</Button>
           <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>

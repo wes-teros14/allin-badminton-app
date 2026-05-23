@@ -29,6 +29,7 @@ interface UseCourtStateResult {
   isLoading: boolean
   hasSession: boolean
   isClosed: boolean
+  splitMatchScoring: boolean
   refresh: () => void
 }
 
@@ -62,6 +63,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
   const [isLoading, setIsLoading] = useState(true)
   const [hasSession, setHasSession] = useState(false)
   const [isClosed, setIsClosed] = useState(false)
+  const [splitMatchScoring, setSplitMatchScoring] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const isFirstLoad = useRef(true)
 
@@ -79,7 +81,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
       if (sessionIdParam) {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, status, court_1_label, court_2_label')
+          .select('id, status, court_1_label, court_2_label, split_match_scoring')
           .eq('id', sessionIdParam)
           .maybeSingle()
 
@@ -93,6 +95,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setCourtLabels(DEFAULT_COURT_LABELS)
           setCourt1(EMPTY)
           setCourt2(EMPTY)
+          setSplitMatchScoring(false)
           setIsLoading(false)
           return
         }
@@ -103,15 +106,17 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setCourtLabels(labelsFromSession(session))
           setCourt1(EMPTY)
           setCourt2(EMPTY)
+          setSplitMatchScoring(false)
           setIsLoading(false)
           return
         }
         sid = s.id
         activeCourtLabels = labelsFromSession(session)
+        setSplitMatchScoring((session as { split_match_scoring?: boolean | null }).split_match_scoring === true)
       } else {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, court_1_label, court_2_label')
+          .select('id, court_1_label, court_2_label, split_match_scoring')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -125,11 +130,13 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
           setCourtLabels(DEFAULT_COURT_LABELS)
           setCourt1(EMPTY)
           setCourt2(EMPTY)
+          setSplitMatchScoring(false)
           setIsLoading(false)
           return
         }
         sid = (session as { id: string }).id
         activeCourtLabels = labelsFromSession(session)
+        setSplitMatchScoring((session as { split_match_scoring?: boolean | null }).split_match_scoring === true)
       }
       setHasSession(true)
       setSessionId(sid)
@@ -206,5 +213,5 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
     return () => { cancelled = true }
   }, [refreshKey, sessionIdParam])
 
-  return { court1, court2, courtLabels, sessionId, isLoading, hasSession, isClosed, refresh }
+  return { court1, court2, courtLabels, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, refresh }
 }

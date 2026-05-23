@@ -24,6 +24,7 @@ export interface Session {
   price: number | null
   session_notes: string | null
   registration_opens_at: string | null
+  split_match_scoring: boolean | null
 }
 
 export interface Invitation {
