@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Split Match Scoring
 status: in_progress
-stopped_at: Phase 14 plan 02 complete
+stopped_at: Phase 14 plan 03 complete
 last_updated: "2026-05-23T00:00:00.000Z"
-last_activity: 2026-05-23 - Phase 14 plan 02 complete; split_match_scoring wired into component tree and SessionView toggle added
+last_activity: 2026-05-23 - Phase 14 plan 03 complete; 3-button split finish UI implemented in CourtCard and CourtTabs, submitSplitResult routed through admin and live board paths
 progress:
   total_phases: 3
   completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 44
+  completed_plans: 4
+  percent: 57
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-23)
 ## Current Position
 
 Phase: 14 - Split Result Entry
-Plan: 14-02 complete; 14-03 next
+Plan: 14-03 complete; phase 14 complete
 Status: In Progress
-Last activity: 2026-05-23 - Plan 14-02 complete; split_match_scoring wired into LiveBoardView/CourtCard, SessionView toggle added
+Last activity: 2026-05-23 - Plan 14-03 complete; 3-button split finish UI in CourtCard and CourtTabs, admin path routed through submitSplitResult
 
-Progress: [#####-----] 44% (3 of ~7 plans complete)
+Progress: [######----] 57% (4 of ~7 plans complete)
 
 ## Performance Metrics
 
@@ -93,5 +93,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-23T00:00:00.000Z
-Stopped at: Phase 14 plan 02 complete
-Resume file: .planning/phases/14-split-result-entry/14-03-PLAN.md (next: Plan 14-03)
+Stopped at: Phase 14 plan 03 complete
+Resume file: None (phase 14 complete; next: phase 15 or manual UAT)
