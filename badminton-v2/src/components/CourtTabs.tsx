@@ -5,6 +5,7 @@ import { useAdminActions } from '@/hooks/useAdminActions'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { supabase } from '@/lib/supabase'
 import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
+import type { SplitOutcome } from '@/lib/matchResults'
 
 function formatElapsed(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -23,6 +24,7 @@ interface Props {
   isLoading: boolean
   sessionId: string | null
   onDone: () => void
+  splitScoring: boolean
 }
 
 function CourtCard({
@@ -30,6 +32,7 @@ function CourtCard({
   current,
   sessionId,
   isSaving,
+  splitScoring,
   onMarkDone,
   onEdit,
   onMoveUp,
@@ -44,7 +47,8 @@ function CourtCard({
   current: AdminMatchDisplay | null
   sessionId: string | null
   isSaving: boolean
-  onMarkDone: (matchId: string, court: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, startedAt?: string | null) => void
+  splitScoring: boolean
+  onMarkDone: (matchId: string, court: 1 | 2, sessionId: string, winningPairIndex?: 1 | 2, startedAt?: string | null, splitOutcome?: SplitOutcome) => void
   onEdit: (m: AdminMatchDisplay) => void
   onMoveUp: () => void
   onMoveDown: () => void
@@ -72,9 +76,9 @@ function CourtCard({
     return () => clearInterval(intervalId)
   }, [current, confirmingFinish])
 
-  function handleFinish(winningPairIndex: 1 | 2) {
+  function handleFinish(winningPairIndex?: 1 | 2, splitOutcome?: SplitOutcome) {
     if (!current || !sessionId) return
-    onMarkDone(current.id, courtNumber, sessionId, winningPairIndex, current.startedAt)
+    onMarkDone(current.id, courtNumber, sessionId, winningPairIndex, current.startedAt, splitOutcome)
     setConfirmingFinish(false)
   }
 
@@ -114,27 +118,55 @@ function CourtCard({
             /* Who won? */
             <div className="space-y-2">
               <p className="text-xs font-bold uppercase tracking-widest text-[#FFB200] text-center">Who won?</p>
-              <button
-                onClick={() => handleFinish(1)}
-                disabled={isSaving}
-                className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
-              >
-                {current.t1p1} &amp; {current.t1p2}
-              </button>
-              <button
-                onClick={() => handleFinish(2)}
-                disabled={isSaving}
-                className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
-              >
-                {current.t2p1} &amp; {current.t2p2}
-              </button>
-              <button
-                onClick={() => { if (current && sessionId) { onMarkDone(current.id, courtNumber, sessionId, undefined, current.startedAt); setConfirmingFinish(false) } }}
-                disabled={isSaving}
-                className="w-full py-3 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:bg-muted/50 disabled:opacity-50 transition-colors"
-              >
-                Draw / No Winner
-              </button>
+              {splitScoring ? (
+                <>
+                  <button
+                    onClick={() => handleFinish(undefined, '2-0-t1')}
+                    disabled={isSaving}
+                    className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+                  >
+                    {current.t1p1} &amp; {current.t1p2} won 2-0
+                  </button>
+                  <button
+                    onClick={() => handleFinish(undefined, '1-1')}
+                    disabled={isSaving}
+                    className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+                  >
+                    1-1 Draw
+                  </button>
+                  <button
+                    onClick={() => handleFinish(undefined, '2-0-t2')}
+                    disabled={isSaving}
+                    className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+                  >
+                    {current.t2p1} &amp; {current.t2p2} won 2-0
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleFinish(1)}
+                    disabled={isSaving}
+                    className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+                  >
+                    {current.t1p1} &amp; {current.t1p2}
+                  </button>
+                  <button
+                    onClick={() => handleFinish(2)}
+                    disabled={isSaving}
+                    className="w-full py-3 rounded-lg bg-primary/20 border border-primary/40 text-sm font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+                  >
+                    {current.t2p1} &amp; {current.t2p2}
+                  </button>
+                  <button
+                    onClick={() => { if (current && sessionId) { onMarkDone(current.id, courtNumber, sessionId, undefined, current.startedAt); setConfirmingFinish(false) } }}
+                    disabled={isSaving}
+                    className="w-full py-3 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:bg-muted/50 disabled:opacity-50 transition-colors"
+                  >
+                    Draw / No Winner
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => setConfirmingFinish(false)}
                 disabled={isSaving}
@@ -212,7 +244,7 @@ function PlayerSelect({
   )
 }
 
-export function CourtTabs({ court1Current, court2Current, queued, isLoading, sessionId, onDone }: Props) {
+export function CourtTabs({ court1Current, court2Current, queued, isLoading, sessionId, onDone, splitScoring }: Props) {
   const { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt } = useAdminActions(onDone)
   const { players } = usePlayerList(sessionId ?? undefined)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -335,6 +367,7 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
         <div>
           <CourtCard
             courtNumber={1} current={court1Current} sessionId={sessionId} isSaving={isSaving}
+            splitScoring={splitScoring}
             courtLabel={courtLabels[1]} onCourtLabelChange={handleCourtLabelChange} onCourtLabelCommit={handleCourtLabelCommit}
             onMarkDone={markDone} onEdit={startEdit}
             canMoveUp={!!court1Current} canMoveDown={!!court2Current}
@@ -346,6 +379,7 @@ export function CourtTabs({ court1Current, court2Current, queued, isLoading, ses
         <div>
           <CourtCard
             courtNumber={2} current={court2Current} sessionId={sessionId} isSaving={isSaving}
+            splitScoring={splitScoring}
             courtLabel={courtLabels[2]} onCourtLabelChange={handleCourtLabelChange} onCourtLabelCommit={handleCourtLabelCommit}
             onMarkDone={markDone} onEdit={startEdit}
             canMoveUp={!!court1Current} canMoveDown={!!court2Current}
