@@ -126,9 +126,9 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
   5. Finishing a match still completes the match, advances the next queued match to the same court, and refreshes both admin and live board views
 **Plans**: 3 plans
 Plans:
-- [ ] 14-01-PLAN.md — submitSplitResult helper in matchResults.ts + unit tests
-- [ ] 14-02-PLAN.md — Session toggle in SessionView + splitScoring propagation to CourtCard
-- [ ] 14-03-PLAN.md — Split finish UI in CourtCard and CourtTabs + useAdminActions split path
+- [x] 14-01-PLAN.md â€” submitSplitResult helper in matchResults.ts + unit tests
+- [x] 14-02-PLAN.md â€” Session toggle in SessionView + splitScoring propagation to CourtCard
+- [x] 14-03-PLAN.md â€” Split finish UI in CourtCard and CourtTabs + useAdminActions split path
 **UI hint**: yes
 
 ### Phase 15: Split Stats Aggregation
@@ -156,5 +156,5 @@ Plans:
 | 11. Payment Migration | v1.1 | 3/3 | Complete | 2026-05-06 |
 | 12. Public Registration Homepage | v1.2 | 1/1 | Complete | 2026-05-12 |
 | 13. Split Scoring Schema | v1.3 | 2/2 | Complete | 2026-05-23 |
-| 14. Split Result Entry | v1.3 | 0/3 | Pending | - |
+| 14. Split Result Entry | v1.3 | 3/3 | Complete (UAT pending) | 2026-05-23 |
 | 15. Split Stats Aggregation | v1.3 | 0/TBD | Pending | - |

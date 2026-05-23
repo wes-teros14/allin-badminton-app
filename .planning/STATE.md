@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Split Match Scoring
-status: in_progress
-stopped_at: Phase 14 plan 03 complete
-last_updated: "2026-05-23T00:00:00.000Z"
-last_activity: 2026-05-23 - Phase 14 plan 03 complete; 3-button split finish UI implemented in CourtCard and CourtTabs, submitSplitResult routed through admin and live board paths
+status: phase_complete
+stopped_at: Phase 14 complete — human UAT pending for live board and admin UI flows
+last_updated: "2026-05-23T18:15:00.000Z"
+last_activity: 2026-05-23 - Phase 14 fully verified (14/14 must-haves); 5 browser UAT items pending
 progress:
   total_phases: 3
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 57
+  completed_phases: 2
+  total_plans: 5
+  completed_plans: 5
+  percent: 67
 ---
 
 # Project State
