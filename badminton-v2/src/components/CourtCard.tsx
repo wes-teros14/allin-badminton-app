@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { CourtData } from '@/hooks/useCourtState'
 import { completedMatchUpdate, elapsedSecondsFromStartedAt, playingMatchUpdate } from '@/utils/matchTiming'
+import { submitSplitResult, type SplitOutcome } from '@/lib/matchResults'
 
 interface Props {
   courtNumber: 1 | 2
@@ -39,7 +40,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, sp
     return () => clearInterval(intervalId)
   }, [current, confirmingFinish])
 
-  async function handleFinish(winningPairIndex: 1 | 2 | null) {
+  async function handleFinish(winningPairIndex: 1 | 2 | null, splitOutcome?: SplitOutcome) {
     if (!current || !sessionId || isSaving) return
     setIsSaving(true)
 
@@ -54,7 +55,10 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, sp
       if (e1 || !completed || completed.length === 0) return
 
       // 2. Record result (skip if not recording)
-      if (winningPairIndex !== null) {
+      if (splitOutcome) {
+        const { error } = await submitSplitResult(current.id, splitOutcome)
+        if (error) return
+      } else if (winningPairIndex !== null) {
         await supabase.from('match_results').insert({
           match_id: current.id,
           winning_pair_index: winningPairIndex,
@@ -136,20 +140,48 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, sp
         /* Who Won — takes over the full middle area */
         <div className="flex-1 flex flex-col items-center justify-center gap-4 animate-[court-fade-in_0.3s_ease-out]">
           <p className="text-2xl font-bold uppercase tracking-widest text-[#FFB200]">Who won?</p>
-          <button
-            onClick={() => handleFinish(1)}
-            disabled={isSaving}
-            className="w-full py-8 rounded-xl bg-primary/20 border border-primary/40 text-foreground text-2xl font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
-          >
-            {current.t1p1} &amp; {current.t1p2}
-          </button>
-          <button
-            onClick={() => handleFinish(2)}
-            disabled={isSaving}
-            className="w-full py-8 rounded-xl bg-primary/20 border border-primary/40 text-foreground text-2xl font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
-          >
-            {current.t2p1} &amp; {current.t2p2}
-          </button>
+          {splitScoring ? (
+            <>
+              <button
+                onClick={() => handleFinish(null, '2-0-t1')}
+                disabled={isSaving}
+                className="w-full py-8 rounded-xl bg-primary/20 border border-primary/40 text-foreground text-2xl font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+              >
+                {current.t1p1} &amp; {current.t1p2} won 2-0
+              </button>
+              <button
+                onClick={() => handleFinish(null, '1-1')}
+                disabled={isSaving}
+                className="w-full py-8 rounded-xl bg-primary/20 border border-primary/40 text-foreground text-2xl font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+              >
+                1-1 Draw
+              </button>
+              <button
+                onClick={() => handleFinish(null, '2-0-t2')}
+                disabled={isSaving}
+                className="w-full py-8 rounded-xl bg-primary/20 border border-primary/40 text-foreground text-2xl font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+              >
+                {current.t2p1} &amp; {current.t2p2} won 2-0
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => handleFinish(1)}
+                disabled={isSaving}
+                className="w-full py-8 rounded-xl bg-primary/20 border border-primary/40 text-foreground text-2xl font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+              >
+                {current.t1p1} &amp; {current.t1p2}
+              </button>
+              <button
+                onClick={() => handleFinish(2)}
+                disabled={isSaving}
+                className="w-full py-8 rounded-xl bg-primary/20 border border-primary/40 text-foreground text-2xl font-semibold hover:bg-primary/30 disabled:opacity-50 transition-colors"
+              >
+                {current.t2p1} &amp; {current.t2p2}
+              </button>
+            </>
+          )}
           <button
             onClick={() => setConfirmingFinish(false)}
             disabled={isSaving}
