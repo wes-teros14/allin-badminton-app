@@ -5,6 +5,7 @@
 - Complete **v1.0 Initial Build** - Phases 1-7 (shipped 2026-05-03)
 - Complete **v1.1 Finance & Inventory Tab** - Phases 8-11 (shipped 2026-05-06)
 - Complete **v1.2 Public Registration Homepage** - Phase 12 (verified 2026-05-12)
+- Planned **v1.3 Split Match Scoring** - Phases 13-15
 
 ## Phases
 
@@ -98,9 +99,48 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 - [x] 12-01-PLAN.md - Public homepage registration entry and compatibility smoke coverage
 **UI hint**: yes
 
+### Phase 13: Split Scoring Schema
+**Goal**: Database and TypeScript types can represent session-level split scoring and multiple game results per scheduled match
+**Depends on**: Phase 12
+**Requirements**: FMT-01, RES-03, RES-04, COMP-01
+**Success Criteria** (what must be TRUE):
+  1. `sessions` stores a boolean split-match scoring setting with a default that preserves current one-game behavior
+  2. `match_results` stores a game number for each result row and existing rows remain valid as game 1
+  3. Duplicate result rows for the same match and game number are rejected at the database level
+  4. TypeScript database types include the new session and result fields without introducing `never` errors
+  5. Existing completed one-game matches still read as one-game results
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 14: Split Result Entry
+**Goal**: Admin and live board finish flows support both one-game and two-game result recording while preserving queue advancement and realtime updates
+**Depends on**: Phase 13
+**Requirements**: FMT-01, FMT-02, FMT-03, RES-01, RES-02, RES-03, COMP-02
+**Success Criteria** (what must be TRUE):
+  1. Admin can enable or disable split-match scoring for a session from the admin/session setup flow
+  2. One-game sessions keep the current finish flow and insert a single game result
+  3. Split sessions show explicit result choices for `2-0` team 1, `2-0` team 2, and `1-1`
+  4. Split result submission inserts exactly two game-level result rows for the scheduled match
+  5. Finishing a match still completes the match, advances the next queued match to the same court, and refreshes both admin and live board views
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 15: Split Stats Aggregation
+**Goal**: All stats, leaderboard, schedule, and profile surfaces aggregate every game-level result row correctly
+**Depends on**: Phase 14
+**Requirements**: STAT-01, STAT-02, STAT-03, COMP-01, COMP-02
+**Success Criteria** (what must be TRUE):
+  1. A `2-0` split result gives each winning player two wins and each losing player two games played
+  2. A `1-1` split result gives every player two games played and one win
+  3. Today leaderboard and session leaderboard calculate wins, games, losses, and win rate from all result rows
+  4. Player schedule/profile views display completed split matches without treating only the first result as authoritative
+  5. Existing one-game result rows continue to count exactly once across all stats surfaces
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
-**Execution Order:** 8 -> 9 -> 10 -> 11 -> 12
+**Execution Order:** 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -109,3 +149,6 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 | 10. Session Finance | v1.1 | 4/4 | Complete | 2026-05-06 |
 | 11. Payment Migration | v1.1 | 3/3 | Complete | 2026-05-06 |
 | 12. Public Registration Homepage | v1.2 | 1/1 | Complete | 2026-05-12 |
+| 13. Split Scoring Schema | v1.3 | 0/TBD | Pending | - |
+| 14. Split Result Entry | v1.3 | 0/TBD | Pending | - |
+| 15. Split Stats Aggregation | v1.3 | 0/TBD | Pending | - |
