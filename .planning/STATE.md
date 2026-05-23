@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Split Match Scoring
 status: planning
-stopped_at: Defining requirements
+stopped_at: Roadmap drafted
 last_updated: "2026-05-23T00:00:00.000+08:00"
 last_activity: 2026-05-23 - Milestone v1.3 started
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-23)
 
 **Core value:** Players can register, get a fair auto-generated match schedule, and track live results without the admin manually coordinating anything during play.
-**Current focus:** Defining requirements for v1.3 Split Match Scoring
+**Current focus:** Roadmap drafted for v1.3 Split Match Scoring
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Not started (roadmap drafted)
 Plan: -
-Status: Defining requirements
-Last activity: 2026-05-23 - Milestone v1.3 started
+Status: Roadmap drafted
+Last activity: 2026-05-23 - Milestone v1.3 roadmap drafted
 
-Progress: [----------] 0% (requirements not yet mapped)
+Progress: [----------] 0% (0 of 3 phases verified)
 
 ## Performance Metrics
 
@@ -92,5 +92,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-05-23
-Stopped at: Defining requirements for v1.3.
-Resume file: .planning/REQUIREMENTS.md
+Stopped at: Roadmap drafted for v1.3.
+Resume file: .planning/ROADMAP.md

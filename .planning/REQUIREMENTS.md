@@ -61,24 +61,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FMT-01 | TBD | Pending |
-| FMT-02 | TBD | Pending |
-| FMT-03 | TBD | Pending |
-| RES-01 | TBD | Pending |
-| RES-02 | TBD | Pending |
-| RES-03 | TBD | Pending |
-| RES-04 | TBD | Pending |
-| STAT-01 | TBD | Pending |
-| STAT-02 | TBD | Pending |
-| STAT-03 | TBD | Pending |
-| COMP-01 | TBD | Pending |
-| COMP-02 | TBD | Pending |
+| FMT-01 | Phase 13, Phase 14 | Pending |
+| FMT-02 | Phase 14 | Pending |
+| FMT-03 | Phase 14 | Pending |
+| RES-01 | Phase 14 | Pending |
+| RES-02 | Phase 14 | Pending |
+| RES-03 | Phase 13, Phase 14 | Pending |
+| RES-04 | Phase 13 | Pending |
+| STAT-01 | Phase 15 | Pending |
+| STAT-02 | Phase 15 | Pending |
+| STAT-03 | Phase 15 | Pending |
+| COMP-01 | Phase 13, Phase 15 | Pending |
+| COMP-02 | Phase 14, Phase 15 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-23*
-*Last updated: 2026-05-23 after milestone scoping*
+*Last updated: 2026-05-23 after roadmap creation*
