@@ -156,5 +156,5 @@ Plans:
 | 11. Payment Migration | v1.1 | 3/3 | Complete | 2026-05-06 |
 | 12. Public Registration Homepage | v1.2 | 1/1 | Complete | 2026-05-12 |
 | 13. Split Scoring Schema | v1.3 | 2/2 | Complete | 2026-05-23 |
-| 14. Split Result Entry | v1.3 | 3/3 | Complete (UAT pending) | 2026-05-23 |
+| 14. Split Result Entry | v1.3 | 3/3 | Complete | 2026-05-23 |
 | 15. Split Stats Aggregation | v1.3 | 0/TBD | Pending | - |
