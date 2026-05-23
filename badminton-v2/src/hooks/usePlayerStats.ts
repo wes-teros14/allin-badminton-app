@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { computeStatsFromResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 
 interface AttendedSession {
@@ -24,7 +25,7 @@ type MatchWithResult = {
   team1_player2_id: string
   team2_player1_id: string
   team2_player2_id: string
-  match_results: { winning_pair_index: number }[]
+  match_results: { winning_pair_index: number; game_number: number | null }[]
 }
 
 type RegRow = {
@@ -61,7 +62,7 @@ export function usePlayerStats(nameSlug: string): UsePlayerStatsResult {
       // 2. Fetch all matches this player appeared in, with their results
       const { data: matchRows, error: matchError } = await supabase
         .from('matches')
-        .select('id, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index)')
+        .select('id, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index, game_number)')
         .or(`team1_player1_id.eq.${playerId},team1_player2_id.eq.${playerId},team2_player1_id.eq.${playerId},team2_player2_id.eq.${playerId}`)
 
       if (cancelled) return
@@ -77,13 +78,10 @@ export function usePlayerStats(nameSlug: string): UsePlayerStatsResult {
       let totalGames = 0
 
       for (const m of rows) {
-        if (!m.match_results || m.match_results.length === 0) continue
-        totalGames++
-        const result = m.match_results[0]
-        const onTeam1 =
-          m.team1_player1_id === playerId || m.team1_player2_id === playerId
-        const playerPairIndex = onTeam1 ? 1 : 2
-        if (result.winning_pair_index === playerPairIndex) wins++
+        const playerStats = computeStatsFromResults(m).get(playerId)
+        if (!playerStats || playerStats.games === 0) continue
+        wins += playerStats.wins
+        totalGames += playerStats.games
       }
 
       // 4. Fetch attendance (all sessions this player registered for)

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
+  computeStatsFromResults,
   getLegacyWinningPairIndex,
   isSplitMatchScoringEnabled,
   normalizeMatchResult,
@@ -50,6 +51,57 @@ describe('match result compatibility helpers', () => {
       { winning_pair_index: 1, game_number: 1 },
     ])).toBe(1)
     expect(getLegacyWinningPairIndex([])).toBeNull()
+  })
+
+  it('aggregates legacy one-game results as one game for all four players', () => {
+    const stats = computeStatsFromResults({
+      team1_player1_id: 'p1',
+      team1_player2_id: 'p2',
+      team2_player1_id: 'p3',
+      team2_player2_id: 'p4',
+      match_results: [{ winning_pair_index: 1 }],
+    })
+
+    expect(stats.get('p1')).toEqual({ wins: 1, games: 1 })
+    expect(stats.get('p2')).toEqual({ wins: 1, games: 1 })
+    expect(stats.get('p3')).toEqual({ wins: 0, games: 1 })
+    expect(stats.get('p4')).toEqual({ wins: 0, games: 1 })
+  })
+
+  it('aggregates 2-0 split results as two wins for the winning team', () => {
+    const stats = computeStatsFromResults({
+      team1_player1_id: 'p1',
+      team1_player2_id: 'p2',
+      team2_player1_id: 'p3',
+      team2_player2_id: 'p4',
+      match_results: [
+        { winning_pair_index: 2, game_number: 2 },
+        { winning_pair_index: 2, game_number: 1 },
+      ],
+    })
+
+    expect(stats.get('p1')).toEqual({ wins: 0, games: 2 })
+    expect(stats.get('p2')).toEqual({ wins: 0, games: 2 })
+    expect(stats.get('p3')).toEqual({ wins: 2, games: 2 })
+    expect(stats.get('p4')).toEqual({ wins: 2, games: 2 })
+  })
+
+  it('aggregates 1-1 split results as one win each across two games', () => {
+    const stats = computeStatsFromResults({
+      team1_player1_id: 'p1',
+      team1_player2_id: 'p2',
+      team2_player1_id: 'p3',
+      team2_player2_id: 'p4',
+      match_results: [
+        { winning_pair_index: 1, game_number: 1 },
+        { winning_pair_index: 2, game_number: 2 },
+      ],
+    })
+
+    expect(stats.get('p1')).toEqual({ wins: 1, games: 2 })
+    expect(stats.get('p2')).toEqual({ wins: 1, games: 2 })
+    expect(stats.get('p3')).toEqual({ wins: 1, games: 2 })
+    expect(stats.get('p4')).toEqual({ wins: 1, games: 2 })
   })
 })
 

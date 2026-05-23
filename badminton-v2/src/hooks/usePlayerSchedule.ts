@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { sortMatchResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 
 const AVG_GAME_SECS = 11 * 60 // average game duration in seconds
@@ -10,6 +11,7 @@ export interface PlayerMatch {
   partnerNameSlug: string
   opp1NameSlug: string
   opp2NameSlug: string
+  outcome: 'won' | 'lost' | 'draw' | null
   won: boolean | null
 }
 
@@ -70,7 +72,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
       setNotFound(false)
       setGamesAhead(null)
 
-      // 1. Resolve nameSlug → player id
+      // 1. Resolve nameSlug to player id
       const { data: profile } = await supabase
         .from('profiles')
         .select('id, name_slug, nickname')
@@ -98,9 +100,13 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
           .from('sessions').select('id, name, date, venue, time, duration, status')
           .eq('id', sessionIdOverride).maybeSingle()
         if (cancelled || !session) { setIsLoading(false); return }
-        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string }
-        setSessionId(s.id); setSessionName(s.name); setSessionDate(s.date)
-        setSessionVenue(s.venue); setSessionTime(s.time); setSessionDuration(s.duration)
+        const s = session as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string }
+        setSessionId(s.id)
+        setSessionName(s.name)
+        setSessionDate(s.date)
+        setSessionVenue(s.venue)
+        setSessionTime(s.time)
+        setSessionDuration(s.duration)
         setSessionStatus(s.status)
       } else {
         const { data: session } = await supabase
@@ -120,7 +126,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
           return
         }
 
-        const s = session as unknown as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string }
+        const s = session as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string }
         setSessionId(s.id)
         setSessionName(s.name)
         setSessionDate(s.date)
@@ -150,7 +156,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         return
       }
 
-      // 4. Resolve all player IDs → name_slugs
+      // 4. Resolve all player IDs to display names
       const allIds = [...new Set(matchRows.flatMap((m) => [
         m.team1_player1_id, m.team1_player2_id,
         m.team2_player1_id, m.team2_player2_id,
@@ -165,13 +171,13 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       const nameMap = new Map(
         ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
-          .map((p) => [p.id, p.nickname ?? p.name_slug])
+          .map((profileRow) => [profileRow.id, profileRow.nickname ?? profileRow.name_slug])
       )
       const name = (id: string) => nameMap.get(id) ?? id
 
       // 5. Build PlayerMatch array
-      const result: PlayerMatch[] = matchRows.map((m) => {
-        const onTeam1 = m.team1_player1_id === playerId || m.team1_player2_id === playerId
+      const result: PlayerMatch[] = matchRows.map((match) => {
+        const onTeam1 = match.team1_player1_id === playerId || match.team1_player2_id === playerId
 
         let partnerNameSlug: string
         let opp1NameSlug: string
@@ -179,50 +185,72 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
         if (onTeam1) {
           partnerNameSlug = name(
-            m.team1_player1_id === playerId ? m.team1_player2_id : m.team1_player1_id
+            match.team1_player1_id === playerId ? match.team1_player2_id : match.team1_player1_id
           )
-          opp1NameSlug = name(m.team2_player1_id)
-          opp2NameSlug = name(m.team2_player2_id)
+          opp1NameSlug = name(match.team2_player1_id)
+          opp2NameSlug = name(match.team2_player2_id)
         } else {
           partnerNameSlug = name(
-            m.team2_player1_id === playerId ? m.team2_player2_id : m.team2_player1_id
+            match.team2_player1_id === playerId ? match.team2_player2_id : match.team2_player1_id
           )
-          opp1NameSlug = name(m.team1_player1_id)
-          opp2NameSlug = name(m.team1_player2_id)
+          opp1NameSlug = name(match.team1_player1_id)
+          opp2NameSlug = name(match.team1_player2_id)
         }
 
         return {
-          id: m.id,
-          gameNumber: m.queue_position,
-          status: m.status,
+          id: match.id,
+          gameNumber: match.queue_position,
+          status: match.status,
           partnerNameSlug,
           opp1NameSlug,
           opp2NameSlug,
+          outcome: null,
           won: null,
         }
       })
 
       // 6. Batch-fetch match results for completed matches
-      const completedIds = matchRows.filter((m) => m.status === 'complete').map((m) => m.id)
+      const completedIds = matchRows.filter((match) => match.status === 'complete').map((match) => match.id)
       if (completedIds.length > 0) {
         const { data: resultsData } = await supabase
           .from('match_results')
-          .select('match_id, winning_pair_index')
+          .select('match_id, winning_pair_index, game_number')
           .in('match_id', completedIds)
 
         if (!cancelled && resultsData) {
-          const resultMap = new Map(
-            (resultsData as Array<{ match_id: string; winning_pair_index: number }>)
-              .map((r) => [r.match_id, r.winning_pair_index])
-          )
+          const resultMap = new Map<string, Array<{ winning_pair_index: number; game_number: number | null }>>()
 
-          for (const pm of result) {
-            if (pm.status !== 'complete') continue
-            const winningIndex = resultMap.get(pm.id)
-            if (winningIndex == null) continue // no result recorded → won stays null
-            const row = matchRows.find((r) => r.id === pm.id)!
+          for (const resultRow of resultsData as Array<{ match_id: string; winning_pair_index: number; game_number: number | null }>) {
+            const matchResults = resultMap.get(resultRow.match_id) ?? []
+            matchResults.push({
+              winning_pair_index: resultRow.winning_pair_index,
+              game_number: resultRow.game_number,
+            })
+            resultMap.set(resultRow.match_id, matchResults)
+          }
+
+          for (const playerMatch of result) {
+            if (playerMatch.status !== 'complete') continue
+            const matchResults = sortMatchResults(resultMap.get(playerMatch.id))
+            if (matchResults.length === 0) continue
+
+            const row = matchRows.find((match) => match.id === playerMatch.id)
+            if (!row) continue
+
             const onTeam1 = row.team1_player1_id === playerId || row.team1_player2_id === playerId
-            pm.won = (onTeam1 && winningIndex === 1) || (!onTeam1 && winningIndex === 2)
+            const playerTeamIndex = onTeam1 ? 1 : 2
+            const winCount = matchResults.filter((resultRow) => resultRow.winning_pair_index === playerTeamIndex).length
+
+            if (winCount === matchResults.length) {
+              playerMatch.outcome = 'won'
+              playerMatch.won = true
+            } else if (winCount === 0) {
+              playerMatch.outcome = 'lost'
+              playerMatch.won = false
+            } else {
+              playerMatch.outcome = 'draw'
+              playerMatch.won = null
+            }
           }
         }
       }
@@ -230,7 +258,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
       setMatches(result)
 
       // Wait time anchored to highest currently-playing game in the session
-      const firstQueuedMatch = result.find(m => m.status === 'queued')
+      const firstQueuedMatch = result.find((match) => match.status === 'queued')
       if (firstQueuedMatch) {
         const yourGame = firstQueuedMatch.gameNumber
 
@@ -243,15 +271,15 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         if (cancelled) return
 
         type PlayingRow = { queue_position: number; started_at: string | null }
-        const rows = (playingRows ?? []) as unknown as PlayingRow[]
+        const currentPlayingRows = (playingRows ?? []) as PlayingRow[]
 
-        const highestPlaying = rows.length > 0
-          ? Math.max(...rows.map(r => r.queue_position))
+        const highestPlaying = currentPlayingRows.length > 0
+          ? Math.max(...currentPlayingRows.map((playingRow) => playingRow.queue_position))
           : 2
 
-        const startedAts = rows
-          .map(r => r.started_at)
-          .filter((s): s is string => s !== null)
+        const startedAts = currentPlayingRows
+          .map((playingRow) => playingRow.started_at)
+          .filter((startedAt): startedAt is string => startedAt !== null)
           .sort()
 
         const earliestStartedAt = startedAts[0] ?? null
@@ -300,16 +328,35 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
   useEffect(() => {
     const id = setInterval(() => {
       if (waitTierRef.current === 'none') return
-      if (waitTierRef.current === 'zero') { setWaitSeconds(0); return }
-      const avgSecs = AVG_GAME_SECS
-      const started = earliestStartedAtRef.current
-      const remainingSecs = started
-        ? Math.max(0, avgSecs - (Date.now() - new Date(started).getTime()) / 1000)
+      if (waitTierRef.current === 'zero') {
+        setWaitSeconds(0)
+        return
+      }
+
+      const remainingSecs = earliestStartedAtRef.current
+        ? Math.max(0, AVG_GAME_SECS - (Date.now() - new Date(earliestStartedAtRef.current).getTime()) / 1000)
         : AVG_GAME_SECS
+
       setWaitSeconds(Math.round(remainingSecs) + staticExtraSecsRef.current)
     }, 1000)
+
     return () => clearInterval(id)
   }, [])
 
-  return { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, gamesAhead, waitSeconds, refresh }
+  return {
+    matches,
+    playerDisplayName,
+    sessionName,
+    sessionDate,
+    sessionVenue,
+    sessionTime,
+    sessionDuration,
+    sessionId,
+    sessionStatus,
+    isLoading,
+    notFound,
+    gamesAhead,
+    waitSeconds,
+    refresh,
+  }
 }

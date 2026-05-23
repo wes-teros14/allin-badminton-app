@@ -5,6 +5,13 @@ export interface MatchResultLike {
   game_number?: number | null
 }
 
+export interface MatchPlayersLike {
+  team1_player1_id: string
+  team1_player2_id: string
+  team2_player1_id: string
+  team2_player2_id: string
+}
+
 export interface SplitScoringSessionLike {
   split_match_scoring?: boolean | null
 }
@@ -34,6 +41,30 @@ export function getLegacyWinningPairIndex(results: MatchResultLike[] | null | un
   const primaryResult = sortMatchResults(results)[0]
   if (!primaryResult) return null
   return primaryResult.winning_pair_index === 2 ? 2 : 1
+}
+
+export function computeStatsFromResults(
+  match: MatchPlayersLike & { match_results: MatchResultLike[] | null | undefined },
+): Map<string, { wins: number; games: number }> {
+  const statsMap = new Map<string, { wins: number; games: number }>()
+  const team1 = [match.team1_player1_id, match.team1_player2_id]
+  const team2 = [match.team2_player1_id, match.team2_player2_id]
+
+  for (const playerId of [...team1, ...team2]) {
+    statsMap.set(playerId, { wins: 0, games: 0 })
+  }
+
+  for (const result of sortMatchResults(match.match_results)) {
+    const winners = result.winning_pair_index === 2 ? team2 : team1
+    for (const playerId of [...team1, ...team2]) {
+      const stats = statsMap.get(playerId)
+      if (!stats) continue
+      stats.games++
+      if (winners.includes(playerId)) stats.wins++
+    }
+  }
+
+  return statsMap
 }
 
 export type SplitOutcome = '2-0-t1' | '1-1' | '2-0-t2'

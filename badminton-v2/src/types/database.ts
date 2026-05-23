@@ -114,18 +114,21 @@ export type Database = {
       match_results: {
         Row: {
           completed_at: string
+          game_number: number
           id: string
           match_id: string
           winning_pair_index: number
         }
         Insert: {
           completed_at?: string
+          game_number?: number
           id?: string
           match_id: string
           winning_pair_index: number
         }
         Update: {
           completed_at?: string
+          game_number?: number
           id?: string
           match_id?: string
           winning_pair_index?: number
@@ -447,6 +450,7 @@ export type Database = {
           price: number | null
           registration_opens_at: string | null
           session_notes: string | null
+          split_match_scoring: boolean
           status: Database["public"]["Enums"]["session_status"]
           time: string | null
           venue: string | null
@@ -467,6 +471,7 @@ export type Database = {
           price?: number | null
           registration_opens_at?: string | null
           session_notes?: string | null
+          split_match_scoring?: boolean
           status?: Database["public"]["Enums"]["session_status"]
           time?: string | null
           venue?: string | null
@@ -487,6 +492,7 @@ export type Database = {
           price?: number | null
           registration_opens_at?: string | null
           session_notes?: string | null
+          split_match_scoring?: boolean
           status?: Database["public"]["Enums"]["session_status"]
           time?: string | null
           venue?: string | null
