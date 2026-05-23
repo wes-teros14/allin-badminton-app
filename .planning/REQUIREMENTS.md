@@ -1,31 +1,39 @@
 # Requirements: All-In Badminton App
 
-**Defined:** 2026-05-12
+**Defined:** 2026-05-23
 **Core Value:** Players can register, get a fair auto-generated match schedule, and track live results without the admin manually coordinating anything during play.
 
-## v1.2 Requirements
+## v1.3 Requirements
 
-Requirements for milestone v1.2 - Public Registration Homepage.
+Requirements for milestone v1.3 - Split Match Scoring.
 
-### Public Entry
+### Match Format
 
-- [x] **REG-01**: Signed-out visitors can open the root app URL and see a public homepage instead of being immediately prompted to sign in with Google.
-- [x] **REG-02**: Signed-out visitors can click a clear Register button from the public homepage.
-- [x] **REG-03**: Clicking Register starts the existing Google sign-in flow, with no extra public registration form.
+- [ ] **FMT-01**: Admin can enable or disable split-match scoring for a session with a single session-level checkbox/toggle.
+- [ ] **FMT-02**: Sessions with split-match scoring disabled keep the current one-result match finish behavior.
+- [ ] **FMT-03**: Sessions with split-match scoring enabled require two game winners when finishing a scheduled match.
 
-### Existing User Behavior
+### Result Recording
 
-- [x] **AUTH-01**: Signed-in users keep the current homepage behavior and continue into the authenticated app experience without a new landing step.
-- [x] **AUTH-02**: Existing Google OAuth behavior remains the only authentication method for registration and sign-in.
+- [ ] **RES-01**: Admin/live board can record a `2-0` split result for either team.
+- [ ] **RES-02**: Admin/live board can record a `1-1` split result as a valid final result.
+- [ ] **RES-03**: Split results persist as two game-level result records for the same scheduled match.
+- [ ] **RES-04**: Duplicate split-game result records are prevented for the same match and game number.
+
+### Stats And Leaderboards
+
+- [ ] **STAT-01**: A `2-0` result counts as two wins for each player on the winning team.
+- [ ] **STAT-02**: A `1-1` result counts as one win for each team's players.
+- [ ] **STAT-03**: Session leaderboards, today leaderboard, player schedule, player profile stats, and all-time leaderboard aggregate all game-level result records correctly.
 
 ### Compatibility
 
-- [x] **INVITE-01**: Existing invite-link code remains in the codebase and is not removed during this milestone.
-- [x] **INVITE-02**: Normal onboarding no longer depends on the admin sending a session invite link.
+- [ ] **COMP-01**: Existing completed matches without split-game data continue to display and count as one-game results.
+- [ ] **COMP-02**: Existing session lifecycle, queue advancement, court assignment, and realtime updates keep working in both scoring modes.
 
 ## Future Requirements
 
-Features discussed but deferred beyond v1.2.
+Features discussed but deferred beyond v1.3.
 
 ### Finance Insights
 
@@ -42,10 +50,10 @@ Features discussed but deferred beyond v1.2.
 
 | Feature | Reason |
 |---------|--------|
-| Public registration form | User explicitly wants Google sign-in only with no extra form. |
-| Removing invite-token code | Keep the existing code for now; only stop relying on invite links for normal onboarding. |
-| Changing signed-in user routing | Existing signed-in behavior should remain unchanged. |
-| Adding new auth providers | Google OAuth remains the only auth method. |
+| Per-match scoring format | User specified the split setting should apply per session. |
+| Custom point targets | User specified no custom scoring input is needed; use a checkbox only. |
+| Tiebreaker/decider game | User specified `1-1` is an allowed final result. |
+| New stats formula | Game wins remain the stat unit; split results add one or two wins through game-level result rows. |
 
 ## Traceability
 
@@ -53,19 +61,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase 12 | Complete |
-| REG-02 | Phase 12 | Complete |
-| REG-03 | Phase 12 | Complete |
-| AUTH-01 | Phase 12 | Complete |
-| AUTH-02 | Phase 12 | Complete |
-| INVITE-01 | Phase 12 | Complete |
-| INVITE-02 | Phase 12 | Complete |
+| FMT-01 | TBD | Pending |
+| FMT-02 | TBD | Pending |
+| FMT-03 | TBD | Pending |
+| RES-01 | TBD | Pending |
+| RES-02 | TBD | Pending |
+| RES-03 | TBD | Pending |
+| RES-04 | TBD | Pending |
+| STAT-01 | TBD | Pending |
+| STAT-02 | TBD | Pending |
+| STAT-03 | TBD | Pending |
+| COMP-01 | TBD | Pending |
+| COMP-02 | TBD | Pending |
 
 **Coverage:**
-- v1.2 requirements: 7 total
-- Mapped to phases: 7
-- Unmapped: 0
+- v1.3 requirements: 12 total
+- Mapped to phases: 0
+- Unmapped: 12
 
 ---
-*Requirements defined: 2026-05-12*
-*Last updated: 2026-05-12 after milestone scoping*
+*Requirements defined: 2026-05-23*
+*Last updated: 2026-05-23 after milestone scoping*
