@@ -57,13 +57,22 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, sp
       // 2. Record result (skip if not recording)
       if (splitOutcome) {
         const { error } = await submitSplitResult(current.id, splitOutcome)
-        if (error) return
+        if (error) {
+          // Log the error but do NOT bail — match is already complete.
+          // Fall through to promote next match so the queue does not stall.
+          // Admin can re-enter the result manually later.
+          console.error('Failed to record split result', error)
+        }
       } else if (winningPairIndex !== null) {
-        await supabase.from('match_results').insert({
+        const { error: resultError } = await supabase.from('match_results').insert({
           match_id: current.id,
           winning_pair_index: winningPairIndex,
           game_number: 1,
         })
+        if (resultError) {
+          console.error('Failed to record result', resultError)
+          // Fall through to promote next match; log for admin awareness.
+        }
       }
 
       // 3. Find next queued match
