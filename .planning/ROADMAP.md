@@ -109,7 +109,9 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
   3. Duplicate result rows for the same match and game number are rejected at the database level
   4. TypeScript database types include the new session and result fields without introducing `never` errors
   5. Existing completed one-game matches still read as one-game results
-**Plans**: TBD
+**Plans**: 2 plans
+- [x] 13-01-PLAN.md - Split scoring schema migration, composite uniqueness, typed contract, and compatibility test baseline
+- [x] 13-02-PLAN.md - App-side result compatibility helper plus reader/writer normalization for game-1 legacy behavior
 **UI hint**: no
 
 ### Phase 14: Split Result Entry
@@ -122,7 +124,11 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
   3. Split sessions show explicit result choices for `2-0` team 1, `2-0` team 2, and `1-1`
   4. Split result submission inserts exactly two game-level result rows for the scheduled match
   5. Finishing a match still completes the match, advances the next queued match to the same court, and refreshes both admin and live board views
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 14-01-PLAN.md — submitSplitResult helper in matchResults.ts + unit tests
+- [ ] 14-02-PLAN.md — Session toggle in SessionView + splitScoring propagation to CourtCard
+- [ ] 14-03-PLAN.md — Split finish UI in CourtCard and CourtTabs + useAdminActions split path
 **UI hint**: yes
 
 ### Phase 15: Split Stats Aggregation
@@ -149,6 +155,6 @@ Phases 1-7 implemented via BMAD (Epics 1-7):
 | 10. Session Finance | v1.1 | 4/4 | Complete | 2026-05-06 |
 | 11. Payment Migration | v1.1 | 3/3 | Complete | 2026-05-06 |
 | 12. Public Registration Homepage | v1.2 | 1/1 | Complete | 2026-05-12 |
-| 13. Split Scoring Schema | v1.3 | 0/TBD | Pending | - |
-| 14. Split Result Entry | v1.3 | 0/TBD | Pending | - |
+| 13. Split Scoring Schema | v1.3 | 2/2 | Complete | 2026-05-23 |
+| 14. Split Result Entry | v1.3 | 0/3 | Pending | - |
 | 15. Split Stats Aggregation | v1.3 | 0/TBD | Pending | - |
