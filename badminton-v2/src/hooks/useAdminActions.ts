@@ -29,7 +29,6 @@ export function useAdminActions(onDone: () => void) {
         .eq('id', matchId)
 
       if (error) { toast.error(error.message); return }
-
       toast.success('Match updated')
     } finally {
       setIsSaving(false)
@@ -123,7 +122,6 @@ export function useAdminActions(onDone: () => void) {
           .eq('id', (nextMatch as { id: string }).id)
         if (e3) { toast.error(e3.message); return }
       }
-
       onDone()
     } finally {
       setIsSaving(false)
@@ -193,7 +191,6 @@ export function useAdminActions(onDone: () => void) {
         toast.error(e3.message)
         return
       }
-
       onDone()
     } finally {
       setIsSaving(false)

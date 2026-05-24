@@ -15,6 +15,7 @@ export function useRealtime(
 ): UseRealtimeResult {
   const [status, setStatus] = useState<ConnectionStatus>('reconnecting')
   const onUpdateRef = useRef(onUpdate)
+  const previousStatusRef = useRef<ConnectionStatus>('reconnecting')
   onUpdateRef.current = onUpdate
 
   const refresh = useCallback(() => {
@@ -63,14 +64,20 @@ export function useRealtime(
       )
       .subscribe((channelStatus) => {
         if (channelStatus === 'SUBSCRIBED') {
+          if (previousStatusRef.current !== 'connected') {
+            onUpdateRef.current()
+          }
+          previousStatusRef.current = 'connected'
           setStatus('connected')
         } else if (
           channelStatus === 'CHANNEL_ERROR' ||
           channelStatus === 'TIMED_OUT' ||
           channelStatus === 'CLOSED'
         ) {
+          previousStatusRef.current = 'disconnected'
           setStatus('disconnected')
         } else {
+          previousStatusRef.current = 'reconnecting'
           setStatus('reconnecting')
         }
       })
