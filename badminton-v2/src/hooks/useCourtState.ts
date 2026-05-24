@@ -70,6 +70,30 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   useEffect(() => {
+    if (!sessionId || isClosed) return
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refresh()
+      }
+    }, 5000)
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refresh()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.clearInterval(intervalId)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isClosed, refresh, sessionId])
+
+  useEffect(() => {
     let cancelled = false
 
     async function load() {

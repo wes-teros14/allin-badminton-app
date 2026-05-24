@@ -69,6 +69,7 @@ const SESSION_NAMES = {
   toggle: 'Phase 14 Validate Toggle',
   liveSplit: 'Phase 14 Validate Live Split',
   adminSplit: 'Phase 14 Validate Admin Split',
+  crossDeviceAdmin: 'Phase 14 Validate Cross Device Admin',
   legacyLive: 'Phase 14 Validate Legacy Live',
   legacyAdmin: 'Phase 14 Validate Legacy Admin',
 }
@@ -355,6 +356,18 @@ test.beforeAll(async () => {
     }),
   )
   sessionFixtures.set(
+    'crossDeviceAdmin',
+    await createSessionFixture({
+      name: SESSION_NAMES.crossDeviceAdmin,
+      status: 'in_progress',
+      splitMatchScoring: true,
+      matches: [
+        { queuePosition: 1, status: 'playing', courtNumber: 1, startedAt: now },
+        { queuePosition: 2, status: 'queued', courtNumber: null },
+      ],
+    }),
+  )
+  sessionFixtures.set(
     'legacyLive',
     await createSessionFixture({
       name: SESSION_NAMES.legacyLive,
@@ -484,6 +497,45 @@ test('records admin split draw as two rows and advances the queue', async ({ pag
     { id: queuedMatchId, status: 'playing', court_number: 1, queue_position: 2 },
   ])
   await expect(page.getByText('Game 2').first()).toBeVisible({ timeout: 10000 })
+})
+
+test('cross-device live board updates after admin finishes a match', async ({ browser }) => {
+  const session = sessionFixtures.get('crossDeviceAdmin')!
+  const playingMatchId = session.matchIds.playing!
+  const queuedMatchId = session.matchIds.queued!
+  const team1 = teamLabel(userIds.get(TEST_USERS.target)!, userIds.get(TEST_USERS.partner)!)
+  const adminContext = await browser.newContext()
+  const boardContext = await browser.newContext()
+  const adminPage = await adminContext.newPage()
+  const boardPage = await boardContext.newPage()
+
+  try {
+    await adminPage.goto('/')
+    await ensureSignedOut(adminPage)
+    await signInAs(adminPage, 'Admin')
+
+    await boardPage.goto('/')
+    await ensureSignedOut(boardPage)
+    await boardPage.goto(`/live-board/${session.id}`)
+    await expect(boardPage.getByText('Game 1').first()).toBeVisible({ timeout: 10000 })
+
+    await adminPage.goto(`/session/${session.id}`)
+    await adminPage.getByRole('button', { name: 'Finish' }).first().click()
+    await adminPage.getByRole('button', { name: `${team1} won 2-0`, exact: true }).click()
+
+    await expect.poll(async () => getMatchResults(playingMatchId)).toEqual([
+      { winning_pair_index: 1, game_number: 1 },
+      { winning_pair_index: 1, game_number: 2 },
+    ])
+    await expect.poll(async () => getMatchStates(session.id)).toEqual([
+      { id: playingMatchId, status: 'complete', court_number: 1, queue_position: 1 },
+      { id: queuedMatchId, status: 'playing', court_number: 1, queue_position: 2 },
+    ])
+    await expect(boardPage.getByText('Game 2').first()).toBeVisible({ timeout: 12000 })
+  } finally {
+    await adminContext.close()
+    await boardContext.close()
+  }
 })
 
 test('keeps the live board legacy finish flow on one-game sessions', async ({ page }) => {
