@@ -80,6 +80,13 @@ const DEFAULTS: Settings = {
   disabledWeights: [],
 }
 
+export function buildRosterVersion(players: Array<{ id: string; gender: 'M' | 'F' | null; level: number | null }>): string {
+  return players
+    .map((player) => `${player.id}:${player.gender ?? ''}:${player.level ?? ''}`)
+    .sort()
+    .join('|')
+}
+
 export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props) {
   const { players, isLoading } = useRegisteredPlayers(sessionId)
   const [stage, setStage] = useState<'idle' | 'generating' | 'preview' | 'locking' | 'locked'>('idle')
@@ -90,6 +97,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
   const [settings, setSettings] = useState<Settings>(DEFAULTS)
   const [confirmingLock, setConfirmingLock] = useState(false)
   const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const generateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const previousRosterVersionRef = useRef<string | null>(null)
   const [lockedMatchMeta, setLockedMatchMeta] = useState<Array<{ id: string; status: string }>>([])
   const [editingGameNumber, setEditingGameNumber] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ t1p1: '', t1p2: '', t2p1: '', t2p2: '' })
@@ -134,8 +143,40 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
 
   // Cleanup lock confirm timer on unmount
   useEffect(() => {
-    return () => { if (lockTimerRef.current) clearTimeout(lockTimerRef.current) }
+    return () => {
+      if (lockTimerRef.current) clearTimeout(lockTimerRef.current)
+      if (generateTimerRef.current) clearTimeout(generateTimerRef.current)
+    }
   }, [])
+
+  useEffect(() => {
+    const currentRosterVersion = buildRosterVersion(players)
+
+    if (sessionStatus !== 'registration_closed') {
+      previousRosterVersionRef.current = currentRosterVersion
+      return
+    }
+
+    const previousRosterVersion = previousRosterVersionRef.current
+    previousRosterVersionRef.current = currentRosterVersion
+
+    if (previousRosterVersion == null || previousRosterVersion === currentRosterVersion) {
+      return
+    }
+
+    if (generateTimerRef.current) {
+      clearTimeout(generateTimerRef.current)
+      generateTimerRef.current = null
+    }
+
+    setIsRegenerating(false)
+    setMatches([])
+    setAudit(null)
+    setEditingGameNumber(null)
+    setStage((currentStage) => (
+      currentStage === 'preview' || currentStage === 'generating' ? 'idle' : currentStage
+    ))
+  }, [players, sessionStatus])
 
   async function handleLock() {
     if (!confirmingLock) {
@@ -179,6 +220,11 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
       return
     }
 
+    if (generateTimerRef.current) {
+      clearTimeout(generateTimerRef.current)
+      generateTimerRef.current = null
+    }
+
     const fromPreview = stage === 'preview'
     if (fromPreview) {
       setIsRegenerating(true)
@@ -187,7 +233,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
     }
 
     // Defer computation so React can render the loading state first
-    setTimeout(() => {
+    generateTimerRef.current = setTimeout(() => {
       // Resolve wishlist: "slug1-slug2, slug3-slug4" → ID pairs
       const nameToId = new Map(players.map((p) => [(p.nickname ?? p.nameSlug).toLowerCase(), p.id]))
       const wishlistPairs: [string, string][] = []
@@ -234,6 +280,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
       setAudit(result.audit)
       setStage('preview')
       setIsRegenerating(false)
+      generateTimerRef.current = null
     }, 50)
   }
 
