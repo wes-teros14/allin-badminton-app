@@ -1,12 +1,21 @@
 import { useParams, Link } from 'react-router'
 import { useForm } from 'react-hook-form'
-import { useEffect, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { ChevronLeft } from 'lucide-react'
-import { useSessionFinance } from '@/hooks/useSessionFinance'
+import {
+  useSessionFinance,
+  type AllocationMode,
+  type BatchForAllocation,
+  type ManualBatchOption,
+  type UsageAllocation,
+  validateManualUsageRows,
+} from '@/hooks/useSessionFinance'
 import { formatPeso } from '@/utils/formatPeso'
+import { ManualAllocationEditor } from '@/components/ManualAllocationEditor'
+import { ManualBatchPickerDialog } from '@/components/ManualBatchPickerDialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -41,6 +50,9 @@ type PersonalShareFormOutput = z.output<typeof personalShareSchema>
 export default function FinanceDetailView() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const finance = useSessionFinance(sessionId ?? '')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [manualRows, setManualRows] = useState<UsageAllocation[]>([])
+  const previousModeRef = useRef<AllocationMode | null>(null)
 
   const usageForm = useForm<UsageFormOutput>({
     resolver: zodResolver(usageSchema),
@@ -55,6 +67,31 @@ export default function FinanceDetailView() {
   const hasUsage = finance.usageAllocations.length > 0
   const hasCourtCost = finance.courtCost !== null
   const pnlComplete = hasUsage || hasCourtCost
+  const manualValidationBatches = [
+    ...finance.availableManualBatches.map<BatchForAllocation>((batch) => ({
+      id: batch.batchId,
+      brand: batch.brand,
+      shuttlesRemaining: batch.shuttlesRemaining,
+      costPerTube: batch.costPerTube,
+      tubeStart: batch.tubeId,
+      notes: batch.notes,
+    })),
+    ...manualRows.map<BatchForAllocation>((row) => ({
+      id: row.batchId,
+      brand: row.brand,
+      shuttlesRemaining: row.shuttlesRemaining,
+      costPerTube: row.costPerTube,
+      tubeStart: row.tubeId ?? 0,
+      notes: row.notes,
+    })),
+  ].filter((batch, index, allBatches) => allBatches.findIndex((candidate) => candidate.id === batch.id) === index)
+  const manualValidation = validateManualUsageRows(
+    manualRows.map((row) => ({
+      batchId: row.batchId,
+      shuttlesUsed: row.shuttlesUsed,
+    })),
+    manualValidationBatches
+  )
 
   const formattedDate = finance.sessionDate
     ? new Date(finance.sessionDate + 'T00:00:00').toLocaleDateString('en-PH', {
@@ -65,6 +102,22 @@ export default function FinanceDetailView() {
   useEffect(() => {
     personalShareForm.setValue('personalShare', finance.effectivePersonalShare)
   }, [finance.effectivePersonalShare, personalShareForm])
+
+  useEffect(() => {
+    const previousMode = previousModeRef.current
+
+    if (finance.allocationMode !== 'manual') {
+      setManualRows([])
+    } else if (previousMode === null) {
+      setManualRows(finance.usageAllocations)
+    } else if (previousMode !== finance.allocationMode) {
+      setManualRows([])
+    } else {
+      setManualRows(finance.usageAllocations)
+    }
+
+    previousModeRef.current = finance.allocationMode
+  }, [finance.allocationMode, finance.usageAllocations])
 
   const onSaveUsage = async (values: UsageFormOutput) => {
     if (values.totalShuttles > finance.totalStockAvailable) {
@@ -112,9 +165,79 @@ export default function FinanceDetailView() {
     }
   }
 
+  const handleModeChange = async (mode: AllocationMode) => {
+    if (mode === finance.allocationMode) return
+
+    const { error } = await finance.saveAllocationMode(mode)
+    if (error) {
+      toast.error('Failed to update allocation mode. Try again.')
+      return
+    }
+
+    toast.success(mode === 'auto'
+      ? 'Automatic allocation mode saved.'
+      : 'Manual allocation mode saved.')
+  }
+
   const handleUsageSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     void usageForm.handleSubmit(onSaveUsage)(event)
+  }
+
+  const handleAddManualBatch = (batch: ManualBatchOption) => {
+    setManualRows((currentRows) => {
+      if (currentRows.some((row) => row.batchId === batch.batchId)) {
+        return currentRows
+      }
+
+      return [
+        ...currentRows,
+        {
+          batchId: batch.batchId,
+          tubeId: batch.tubeId,
+          brand: batch.brand,
+          shuttlesUsed: 1,
+          shuttlesRemaining: batch.shuttlesRemaining,
+          costPerTube: batch.costPerTube,
+          notes: batch.notes,
+        },
+      ]
+    })
+    setPickerOpen(false)
+  }
+
+  const handleManualRowChange = (batchId: string, shuttlesUsed: number) => {
+    setManualRows((currentRows) => currentRows.map((row) => (
+      row.batchId === batchId
+        ? { ...row, shuttlesUsed }
+        : row
+    )))
+  }
+
+  const handleManualRowRemove = (batchId: string) => {
+    setManualRows((currentRows) => currentRows.filter((row) => row.batchId !== batchId))
+  }
+
+  const handleManualSave = async () => {
+    if (!manualValidation.isValid) {
+      toast.error(manualValidation.formError ?? 'Fix the highlighted manual allocation rows before saving.')
+      return
+    }
+
+    const { error } = await finance.saveUsageAllocation({
+      allocationMode: 'manual',
+      rows: manualRows.map((row) => ({
+        batchId: row.batchId,
+        shuttlesUsed: row.shuttlesUsed,
+      })),
+    })
+
+    if (error) {
+      toast.error(error)
+      return
+    }
+
+    toast.success('Manual batch allocation saved.')
   }
 
   const handleCourtCostSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -127,9 +250,38 @@ export default function FinanceDetailView() {
     void personalShareForm.handleSubmit(onSavePersonalShare)(event)
   }
 
-  return (
-    <div className="p-6 max-w-lg mx-auto space-y-6">
+  const allocationTable = hasUsage ? (
+    <div className="space-y-2">
+      <p className="text-sm font-semibold">Batch allocation</p>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Tube ID</TableHead>
+            <TableHead>Brand</TableHead>
+            <TableHead className="text-right">Shuttles</TableHead>
+            <TableHead className="text-right">Cost</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {finance.usageAllocations.map((allocation) => (
+            <TableRow key={allocation.batchId}>
+              <TableCell className="text-sm font-mono">
+                {allocation.tubeId !== null ? `T-${allocation.tubeId}` : 'T-?'}
+              </TableCell>
+              <TableCell className="text-sm">{allocation.brand}</TableCell>
+              <TableCell className="text-sm text-right">{allocation.shuttlesUsed}</TableCell>
+              <TableCell className="text-sm text-right">
+                {formatPeso(allocation.shuttlesUsed * (allocation.costPerTube / 12))}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  ) : null
 
+  return (
+    <div className="p-6 mx-auto max-w-5xl space-y-6">
       <div>
         <Link
           to="/finance"
@@ -147,10 +299,36 @@ export default function FinanceDetailView() {
         )}
       </div>
 
-      {/* Section 1: Shuttle Usage */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-semibold">Shuttle Usage</CardTitle>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-semibold">Shuttle Usage</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Choose whether this session uses the current automatic flow or manual batch allocation.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={finance.allocationMode === 'auto' ? 'default' : 'outline'}
+                disabled={finance.isLoading || finance.isSavingAllocationMode}
+                onClick={() => void handleModeChange('auto')}
+              >
+                Auto
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={finance.allocationMode === 'manual' ? 'default' : 'outline'}
+                disabled={finance.isLoading || finance.isSavingAllocationMode}
+                onClick={() => void handleModeChange('manual')}
+              >
+                Manual
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {finance.isLoading ? (
@@ -165,53 +343,64 @@ export default function FinanceDetailView() {
                   {finance.totalShuttlesLogged} shuttles logged
                 </p>
               )}
-              <form onSubmit={handleUsageSubmit} className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="totalShuttles">Total Shuttles Used</Label>
-                  <Input
-                    id="totalShuttles"
-                    type="number"
-                    placeholder="e.g. 20"
-                    aria-invalid={!!usageForm.formState.errors.totalShuttles}
-                    {...usageForm.register('totalShuttles', { valueAsNumber: true })}
+              {finance.allocationMode === 'auto' ? (
+                <>
+                  <form onSubmit={handleUsageSubmit} className="space-y-3">
+                    <div className="space-y-1">
+                      <Label htmlFor="totalShuttles">Total Shuttles Used</Label>
+                      <Input
+                        id="totalShuttles"
+                        type="number"
+                        placeholder="e.g. 20"
+                        aria-invalid={!!usageForm.formState.errors.totalShuttles}
+                        {...usageForm.register('totalShuttles', { valueAsNumber: true })}
+                      />
+                      {usageForm.formState.errors.totalShuttles && (
+                        <p className="text-xs text-destructive mt-1">
+                          {usageForm.formState.errors.totalShuttles.message}
+                        </p>
+                      )}
+                    </div>
+                    <Button type="submit" disabled={finance.isSavingUsage}>
+                      {finance.isSavingUsage ? 'Saving...' : hasUsage ? 'Update Usage' : 'Save Usage'}
+                    </Button>
+                  </form>
+                  {allocationTable}
+                </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold">Manual batch allocation</p>
+                      <p className="text-sm text-muted-foreground">
+                        Add batches from inventory, enter per-batch counts, and save the current manual allocation.
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setPickerOpen(true)}
+                      >
+                        Add batch
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={finance.isSavingUsage || !manualValidation.isValid}
+                        onClick={() => void handleManualSave()}
+                      >
+                        {finance.isSavingUsage ? 'Saving...' : 'Save Allocation'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <ManualAllocationEditor
+                    formError={manualValidation.formError}
+                    rows={manualRows}
+                    rowErrors={manualValidation.rowErrors}
+                    onRowChange={handleManualRowChange}
+                    onRemoveRow={handleManualRowRemove}
                   />
-                  {usageForm.formState.errors.totalShuttles && (
-                    <p className="text-xs text-destructive mt-1">
-                      {usageForm.formState.errors.totalShuttles.message}
-                    </p>
-                  )}
-                </div>
-                <Button type="submit" disabled={finance.isSavingUsage}>
-                  {finance.isSavingUsage ? 'Saving…' : hasUsage ? 'Update Usage' : 'Save Usage'}
-                </Button>
-              </form>
-              {hasUsage && (
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold">Batch allocation</p>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Tube ID</TableHead>
-                        <TableHead>Brand</TableHead>
-                        <TableHead className="text-right">Shuttles</TableHead>
-                        <TableHead className="text-right">Cost</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {finance.usageAllocations.map((a) => (
-                        <TableRow key={a.batchId}>
-                          <TableCell className="text-sm font-mono">
-                            {a.tubeId !== null ? `T-${a.tubeId}` : 'T-?'}
-                          </TableCell>
-                          <TableCell className="text-sm">{a.brand}</TableCell>
-                          <TableCell className="text-sm text-right">{a.shuttlesUsed}</TableCell>
-                          <TableCell className="text-sm text-right">
-                            {formatPeso(a.shuttlesUsed * (a.costPerTube / 12))}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
                 </div>
               )}
             </>
@@ -219,7 +408,6 @@ export default function FinanceDetailView() {
         </CardContent>
       </Card>
 
-      {/* Section 2: Court Cost */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold">Court Cost</CardTitle>
@@ -230,7 +418,7 @@ export default function FinanceDetailView() {
           ) : (
             <form onSubmit={handleCourtCostSubmit} className="space-y-3">
               <div className="space-y-1">
-                <Label htmlFor="courtCost">Total Court Cost (₱)</Label>
+                <Label htmlFor="courtCost">Total Court Cost (PHP)</Label>
                 <Input
                   id="courtCost"
                   type="number"
@@ -246,14 +434,13 @@ export default function FinanceDetailView() {
                 )}
               </div>
               <Button type="submit" disabled={finance.isSavingCourtCost}>
-                {finance.isSavingCourtCost ? 'Saving…' : 'Save Cost'}
+                {finance.isSavingCourtCost ? 'Saving...' : 'Save Cost'}
               </Button>
             </form>
           )}
         </CardContent>
       </Card>
 
-      {/* Section 3: Your Share */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold">Your Share</CardTitle>
@@ -309,7 +496,6 @@ export default function FinanceDetailView() {
         </CardContent>
       </Card>
 
-      {/* Section 4: Net Cash Summary */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-semibold">Net Cash Summary</CardTitle>
@@ -323,7 +509,7 @@ export default function FinanceDetailView() {
             </div>
           ) : !pnlComplete ? (
             <p className="text-sm text-muted-foreground text-center py-4">
-              Log shuttle usage and court cost to see P&L.
+              Log shuttle usage and court cost to see P&amp;L.
             </p>
           ) : (
             <div className="space-y-2">
@@ -361,9 +547,15 @@ export default function FinanceDetailView() {
         </CardContent>
       </Card>
 
-      {/* Section 5: Payment Status */}
       <RosterPanel sessionId={sessionId ?? ''} paymentOnly />
 
+      <ManualBatchPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        batches={finance.availableManualBatches}
+        selectedBatchIds={manualRows.map((row) => row.batchId)}
+        onAddBatch={handleAddManualBatch}
+      />
     </div>
   )
 }
