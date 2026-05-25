@@ -6,6 +6,7 @@
 - Complete **v1.1 Finance & Inventory Tab** - Phases 8-11 (shipped 2026-05-06)
 - Complete **v1.2 Public Registration Homepage** - Phase 12 (verified 2026-05-12)
 - Complete **v1.3 Split Match Scoring** - Phases 13-15 (shipped 2026-05-23)
+- Complete **v1.4 Finance Manual Shuttle Allocation** - Phases 16-18 (verified 2026-05-25)
 
 ## Phases
 
@@ -51,9 +52,23 @@ Archive: [v1.3-ROADMAP.md](/C:/1Wes/all-in-badminton-app/.planning/milestones/v1
 
 </details>
 
+<details>
+<summary>Complete v1.4 Finance Manual Shuttle Allocation (Phases 16-18) - VERIFIED 2026-05-25</summary>
+
+- [x] Phase 16: Finance Allocation Mode Foundation (3/3 plans) - auto/manual finance allocation mode foundations verified
+- [x] Phase 17: Manual Batch Allocation UI (3/3 plans) - searchable batch picker, editable manual rows, and reload flow verified
+- [x] Phase 18: Validation And Finance Regression Coverage (3/3 plans) - validation hardening and finance regression coverage verified
+
+Archive:
+- [v1.4-ROADMAP.md](/C:/1Wes/all-in-badminton-app/.planning/milestones/v1.4-ROADMAP.md)
+- [v1.4-REQUIREMENTS.md](/C:/1Wes/all-in-badminton-app/.planning/milestones/v1.4-REQUIREMENTS.md)
+- [18-UAT.md](/C:/1Wes/all-in-badminton-app/.planning/phases/18-validation-and-finance-regression-coverage/18-UAT.md)
+
+</details>
+
 ## Progress
 
-**Execution Order:** 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15
+**Execution Order:** 8 -> 9 -> 10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -65,3 +80,6 @@ Archive: [v1.3-ROADMAP.md](/C:/1Wes/all-in-badminton-app/.planning/milestones/v1
 | 13. Split Scoring Schema | v1.3 | 2/2 | Complete | 2026-05-23 |
 | 14. Split Result Entry | v1.3 | 3/3 | Verified | 2026-05-23 |
 | 15. Split Stats Aggregation | v1.3 | 3/3 | Verified | 2026-05-23 |
+| 16. Finance Allocation Mode Foundation | v1.4 | 3/3 | Verified | 2026-05-25 |
+| 17. Manual Batch Allocation UI | v1.4 | 3/3 | Verified | 2026-05-25 |
+| 18. Validation And Finance Regression Coverage | v1.4 | 3/3 | Verified | 2026-05-25 |

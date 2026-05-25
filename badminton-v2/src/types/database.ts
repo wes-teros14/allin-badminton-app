@@ -450,6 +450,7 @@ export type Database = {
           price: number | null
           registration_opens_at: string | null
           session_notes: string | null
+          shuttle_allocation_mode: Database["public"]["Enums"]["shuttle_allocation_mode"]
           split_match_scoring: boolean
           status: Database["public"]["Enums"]["session_status"]
           time: string | null
@@ -471,6 +472,7 @@ export type Database = {
           price?: number | null
           registration_opens_at?: string | null
           session_notes?: string | null
+          shuttle_allocation_mode?: Database["public"]["Enums"]["shuttle_allocation_mode"]
           split_match_scoring?: boolean
           status?: Database["public"]["Enums"]["session_status"]
           time?: string | null
@@ -492,6 +494,7 @@ export type Database = {
           price?: number | null
           registration_opens_at?: string | null
           session_notes?: string | null
+          shuttle_allocation_mode?: Database["public"]["Enums"]["shuttle_allocation_mode"]
           split_match_scoring?: boolean
           status?: Database["public"]["Enums"]["session_status"]
           time?: string | null
@@ -599,6 +602,7 @@ export type Database = {
           profit_after_personal_share: number
           revenue: number
           session_id: string
+          shuttle_allocation_mode: Database["public"]["Enums"]["shuttle_allocation_mode"]
           shuttle_cost: number
           total_cost: number
           total_count: number
@@ -616,6 +620,7 @@ export type Database = {
         | "schedule_locked"
         | "in_progress"
         | "complete"
+      shuttle_allocation_mode: "auto" | "manual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -752,6 +757,7 @@ export const Constants = {
         "in_progress",
         "complete",
       ],
+      shuttle_allocation_mode: ["auto", "manual"],
     },
   },
 } as const

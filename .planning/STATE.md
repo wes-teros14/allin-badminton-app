@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Split Match Scoring
-status: milestone_complete
-stopped_at: milestone v1.3 archived and ready for next milestone planning (2026-05-23)
-last_updated: "2026-05-23T21:19:00.000Z"
-last_activity: "2026-05-23 - Milestone v1.3 closed after audit pass, archive prep, and roadmap/project updates"
+milestone: v1.4
+milestone_name: Finance Manual Shuttle Allocation
+status: completed
+stopped_at: Phase 18 verified
+last_updated: "2026-05-25T05:35:00.000Z"
+last_activity: "2026-05-25 - Phase 18 verified and v1.4 Finance Manual Shuttle Allocation completed"
 progress:
-  total_phases: 4
-  completed_phases: 4
+  total_phases: 3
+  completed_phases: 3
   total_plans: 9
   completed_plans: 9
   percent: 100
@@ -18,19 +18,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-23)
+See: .planning/PROJECT.md (updated 2026-05-25)
 
 **Core value:** Players can register, get a fair auto-generated match schedule, and track live results without the admin manually coordinating anything during play.
-**Current focus:** Planning the next milestone after v1.3 split match scoring
+**Current focus:** v1.4 closed out after Phase 18 verification; next milestone planning is ready
 
 ## Current Position
 
-Phase: milestone closeout
-Plan: archived
-Status: Complete
-Last activity: 2026-05-23 - v1.3 closeout prepared; next step is starting a new milestone definition flow.
+Phase: 18 - Validation And Finance Regression Coverage
+Plan: 3 plans completed
+Status: Verified
+Last activity: 2026-05-25 - Phase 18 verified
 
-Progress: [##########] 100% (v1.3 shipped)
+Progress: [##########] 100% (v1.4 execution)
 
 ## Performance Metrics
 
@@ -50,7 +50,7 @@ Progress: [##########] 100% (v1.3 shipped)
 
 ### Pending Todos
 
-- Start the next milestone with fresh milestone-scoped requirements
+- Start the next milestone and define the next active phase set
 
 ### Blockers/Concerns
 
@@ -68,6 +68,6 @@ Progress: [##########] 100% (v1.3 shipped)
 
 ## Session Continuity
 
-Last session: 2026-05-23T21:19:00.000Z
-Stopped at: v1.3 closeout complete; waiting on next milestone kickoff
-Resume file: None
+Last session: 2026-05-25T00:00:00.000Z
+Stopped at: v1.4 milestone complete after Phase 18 verification
+Resume file: .planning/ROADMAP.md
