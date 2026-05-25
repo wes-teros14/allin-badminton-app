@@ -1,5 +1,48 @@
 # Retrospective
 
+## Milestone: v1.4 - Finance Manual Shuttle Allocation
+
+**Shipped:** 2026-05-25
+**Phases:** 3 | **Plans:** 9
+
+### What Was Built
+
+- Added allocation-mode persistence and compatibility-safe session finance schema support
+- Added a mode-aware finance hook and UI toggle that preserves the existing automatic allocation flow
+- Added a searchable manual batch picker and editable per-batch allocation table
+- Added save-time manual allocation validation plus inline validation feedback
+- Added browser-backed finance allocation regression coverage for both manual and automatic paths
+
+### What Worked
+
+- The milestone split was coherent: foundation first, UI workflow second, validation and regression last
+- Reusing one shared save seam made auto/manual compatibility easier to keep correct
+- Real browser coverage was effective for closing confidence gaps on finance behavior
+
+### What Was Inefficient
+
+- `REQUIREMENTS.md` drifted behind the executed work and had to be reconciled at closeout
+- `gsd-sdk` was unavailable in this shell, so milestone archival had to be completed manually
+- Windows tooling friction still affects Supabase and workflow automation reliability
+
+### Patterns Established
+
+- Persist feature-mode switches at the data contract boundary, not only in the UI
+- Keep manual UI flows thin by pushing allocation shaping and validation into the hook layer
+- Enforce validation both inline for the user and at the persistence seam for safety
+
+### Key Lessons
+
+- If a phase closes validation gaps, update the requirements artifact immediately instead of waiting for milestone close
+- Finance workflows benefit from a single replacement-save contract that supports both compatibility and new modes
+- Browser regression coverage is the fastest way to verify that finance totals and allocation displays still match persisted data
+
+### Cost Observations
+
+- Model mix: not tracked in repo artifacts
+- Sessions: 1 concentrated milestone execution and closeout day
+- Notable: the milestone was technically complete before the planning artifacts fully reflected it
+
 ## Milestone: v1.3 - Split Match Scoring
 
 **Shipped:** 2026-05-23
@@ -46,3 +89,4 @@
 
 - Browser automation is becoming necessary for milestone close confidence, not optional polish
 - Planning and validation drift is the main recurring closeout risk, more than implementation defects
+- Milestone close quality depends heavily on planning artifact freshness; stale requirements create avoidable archival friction
