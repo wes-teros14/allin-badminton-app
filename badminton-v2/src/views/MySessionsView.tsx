@@ -10,8 +10,9 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress') {
     return {
       label: 'Live',
-      className: 'border-destructive bg-destructive text-white',
+      className: 'border-destructive/50 bg-destructive text-white',
       accentClassName: 'bg-destructive',
+      isActive: true,
     }
   }
 
@@ -32,42 +33,48 @@ function statusBadge(s: SessionPickerItem) {
       label,
       className: 'border-primary bg-primary text-primary-foreground',
       accentClassName: 'bg-primary',
+      isActive: true,
     }
   }
 
   if (s.status === 'registration_open' && s.isRegistered) {
     return {
       label: 'Registered',
-      className: 'border-primary/25 bg-primary/10 text-primary',
+      className: 'border-primary/30 bg-primary/10 text-primary',
       accentClassName: 'bg-primary',
+      isActive: true,
     }
   }
 
   if (s.status === 'registration_closed') {
     return {
       label: 'Registration Closed',
-      className: 'border-border bg-secondary text-foreground',
-      accentClassName: 'bg-foreground/60',
+      className: 'border-border bg-secondary text-muted-foreground',
+      accentClassName: 'bg-muted-foreground/50',
+      isActive: true,
     }
   }
 
   if (s.status === 'schedule_locked') {
     return {
       label: 'Schedule Ready',
-      className: 'border-border bg-secondary text-foreground',
-      accentClassName: 'bg-primary',
+      className: 'border-[#FFB200]/40 bg-[#FFB200]/10 text-[#FFB200]',
+      accentClassName: 'bg-[#FFB200]',
+      isActive: true,
     }
   }
 
   return {
     label: 'Ended',
-    className: 'border-border bg-secondary text-muted-foreground',
-    accentClassName: 'bg-muted-foreground',
+    className: 'border-border bg-secondary/60 text-muted-foreground',
+    accentClassName: 'bg-border',
+    isActive: false,
   }
 }
 
 function SessionRow({ s }: { s: SessionPickerItem }) {
   const badge = statusBadge(s)
+  const isActive = ACTIVE_STATUSES.has(s.status)
   const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -88,16 +95,22 @@ function SessionRow({ s }: { s: SessionPickerItem }) {
   return (
     <Link
       to={`/sessions/${s.id}`}
-      className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card px-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={`group relative flex w-full flex-col overflow-hidden rounded-2xl border px-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+        isActive
+          ? 'border-primary/30 bg-card hover:border-primary/50'
+          : 'border-border bg-card hover:border-border'
+      }`}
     >
       <div className={`absolute inset-x-0 top-0 h-1 ${badge.accentClassName}`} />
 
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0 space-y-0.5">
           <p className="text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
             {s.name}
           </p>
-          <p className="text-sm font-medium text-foreground">{formattedDate}</p>
+          <p className={`text-sm font-medium ${isActive ? 'text-primary/70' : 'text-muted-foreground'}`}>
+            {formattedDate}
+          </p>
         </div>
 
         <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
@@ -110,7 +123,11 @@ function SessionRow({ s }: { s: SessionPickerItem }) {
           {details.map((detail) => (
             <span
               key={detail}
-              className="inline-flex items-center rounded-full border border-border bg-secondary px-2.5 py-1 text-[11px] font-medium text-foreground"
+              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                isActive
+                  ? 'border-primary/20 bg-primary/8 text-primary'
+                  : 'border-border bg-secondary text-muted-foreground'
+              }`}
             >
               {detail}
             </span>
@@ -125,10 +142,10 @@ function SessionRow({ s }: { s: SessionPickerItem }) {
       )}
 
       <div className="mt-4 flex items-center justify-between text-xs font-medium">
-        <span className="text-foreground/80">
+        <span className={isActive ? 'text-primary/60' : 'text-muted-foreground'}>
           {s.isRegistered ? 'View session details' : 'Open session'}
         </span>
-        <span className="text-primary transition-transform group-hover:translate-x-0.5">View</span>
+        <span className="text-primary transition-transform group-hover:translate-x-0.5">View →</span>
       </div>
     </Link>
   )
