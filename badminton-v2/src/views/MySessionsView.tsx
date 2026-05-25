@@ -88,7 +88,7 @@ function SessionRow({ s }: { s: SessionPickerItem }) {
   return (
     <Link
       to={`/sessions/${s.id}`}
-      className="group relative overflow-hidden rounded-2xl border border-border bg-card px-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card px-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className={`absolute inset-x-0 top-0 h-1 ${badge.accentClassName}`} />
 
