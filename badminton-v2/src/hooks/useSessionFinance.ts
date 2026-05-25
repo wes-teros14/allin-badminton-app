@@ -1,18 +1,50 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import type { Database, TablesInsert } from '@/types/database'
+
+export type AllocationMode = Database['public']['Enums']['shuttle_allocation_mode']
+
+export interface ManualUsageRowInput {
+  batchId: string
+  shuttlesUsed: number
+}
+
+export interface ManualUsageInput {
+  allocationMode: 'manual'
+  rows: ManualUsageRowInput[]
+}
+
+export interface AutoUsageInput {
+  allocationMode: 'auto'
+  totalShuttles: number
+}
+
+export type SaveUsageInput = AutoUsageInput | ManualUsageInput
 
 export interface UsageAllocation {
   batchId: string
   tubeId: number | null
   brand: string
   shuttlesUsed: number
+  shuttlesRemaining: number
   costPerTube: number
+  notes: string | null
+}
+
+export interface ManualBatchOption {
+  batchId: string
+  tubeId: number
+  brand: string
+  shuttlesRemaining: number
+  costPerTube: number
+  notes: string | null
 }
 
 export interface SessionFinanceData {
   sessionId: string
   sessionDate: string
+  allocationMode: AllocationMode
   feePerPlayer: number | null
   courtCost: number | null
   registrationCount: number
@@ -27,10 +59,14 @@ export interface SessionFinanceData {
   isLoading: boolean
   fetchError: string | null
   isSavingUsage: boolean
+  isSavingAllocationMode: boolean
   isSavingCourtCost: boolean
   isSavingPersonalShare: boolean
   totalStockAvailable: number
+  availableManualBatches: ManualBatchOption[]
   logUsage: (totalShuttles: number) => Promise<{ error: string | null }>
+  saveUsageAllocation: (input: SaveUsageInput) => Promise<{ error: string | null }>
+  saveAllocationMode: (mode: AllocationMode) => Promise<{ error: string | null }>
   saveCourtCost: (amount: number) => Promise<{ error: string | null }>
   savePersonalShare: (amount: number | null) => Promise<{ error: string | null }>
   refetch: () => Promise<void>
@@ -42,6 +78,7 @@ export interface BatchForAllocation {
   shuttlesRemaining: number
   costPerTube: number
   tubeStart: number
+  notes: string | null
 }
 
 interface BatchIdentity {
@@ -53,6 +90,23 @@ interface UsageForStock {
   session_id: string
   batch_id: string
   shuttles_used: number
+}
+
+interface SavedUsageRow {
+  batch_id: string
+  shuttles_used: number
+}
+
+interface SaveUsageContext {
+  sessionId: string
+  userId: string
+  batchesForAllocation: BatchForAllocation[]
+}
+
+export interface ManualAllocationValidation {
+  isValid: boolean
+  formError: string | null
+  rowErrors: Record<string, string[]>
 }
 
 export function compareBatchIdentity(a: BatchIdentity, b: BatchIdentity): number {
@@ -77,6 +131,12 @@ export function calculateProfitAfterPersonalShare(
   personalShareOverride: number | null
 ): number {
   return Number((baseProfit - (personalShareOverride ?? 0)).toFixed(2))
+}
+
+export function normalizeAllocationMode(
+  mode: AllocationMode | null | undefined
+): AllocationMode {
+  return mode === 'manual' ? 'manual' : 'auto'
 }
 
 export function buildUsageMapForAllocation(
@@ -107,7 +167,9 @@ export function allocateCheapestFirst(
         tubeId: batch.tubeStart,
         brand: batch.brand,
         shuttlesUsed: take,
+        shuttlesRemaining: batch.shuttlesRemaining,
         costPerTube: batch.costPerTube,
+        notes: batch.notes,
       })
       remaining -= take
     }
@@ -116,14 +178,154 @@ export function allocateCheapestFirst(
   return result
 }
 
+export function validateManualUsageRows(
+  rows: ManualUsageRowInput[],
+  batches: BatchForAllocation[]
+): ManualAllocationValidation {
+  const batchMap = new Map(batches.map((batch) => [batch.id, batch]))
+  const duplicateBatchIds = new Set<string>()
+  const seenBatchIds = new Set<string>()
+  const rowErrors: Record<string, string[]> = {}
+
+  for (const row of rows) {
+    if (seenBatchIds.has(row.batchId)) {
+      duplicateBatchIds.add(row.batchId)
+      continue
+    }
+    seenBatchIds.add(row.batchId)
+  }
+
+  for (const row of rows) {
+    const errors: string[] = []
+    const batch = batchMap.get(row.batchId)
+
+    if (duplicateBatchIds.has(row.batchId)) {
+      errors.push('Select each batch only once.')
+    }
+
+    if (!Number.isInteger(row.shuttlesUsed) || row.shuttlesUsed <= 0) {
+      errors.push('Enter a whole number greater than 0.')
+    } else if (!batch) {
+      errors.push('Selected batch is no longer available.')
+    } else if (row.shuttlesUsed > batch.shuttlesRemaining) {
+      errors.push(`Only ${batch.shuttlesRemaining} shuttles available in this batch.`)
+    }
+
+    if (errors.length > 0) {
+      rowErrors[row.batchId] = errors
+    }
+  }
+
+  if (rows.length === 0) {
+    return {
+      isValid: false,
+      formError: 'Add at least one batch before saving.',
+      rowErrors,
+    }
+  }
+
+  return {
+    isValid: Object.keys(rowErrors).length === 0,
+    formError: Object.keys(rowErrors).length === 0
+      ? null
+      : 'Fix the highlighted manual allocation rows before saving.',
+    rowErrors,
+  }
+}
+
+export function buildUsageRowsForSave(
+  input: SaveUsageInput,
+  context: SaveUsageContext
+): { rows: TablesInsert<'shuttle_usage'>[]; error: string | null } {
+  if (input.allocationMode === 'manual') {
+    const validation = validateManualUsageRows(input.rows, context.batchesForAllocation)
+    if (!validation.isValid) {
+      return {
+        rows: [],
+        error: validation.formError,
+      }
+    }
+
+    return {
+      error: null,
+      rows: input.rows.map((row) => ({
+        session_id: context.sessionId,
+        batch_id: row.batchId,
+        shuttles_used: row.shuttlesUsed,
+        recorded_by: context.userId,
+      })),
+    }
+  }
+
+  const allocation = allocateCheapestFirst(input.totalShuttles, context.batchesForAllocation)
+  if (!allocation) {
+    const totalAvailable = context.batchesForAllocation.reduce(
+      (sum, batch) => sum + batch.shuttlesRemaining,
+      0
+    )
+    return {
+      rows: [],
+      error: `Not enough stock. Only ${totalAvailable} shuttles available.`,
+    }
+  }
+
+  return {
+    error: null,
+    rows: allocation.map((item) => ({
+      session_id: context.sessionId,
+      batch_id: item.batchId,
+      shuttles_used: item.shuttlesUsed,
+      recorded_by: context.userId,
+    })),
+  }
+}
+
+export function buildManualBatchOptions(
+  batches: BatchForAllocation[]
+): ManualBatchOption[] {
+  return batches
+    .filter((batch) => batch.shuttlesRemaining > 0)
+    .map((batch) => ({
+      batchId: batch.id,
+      tubeId: batch.tubeStart,
+      brand: batch.brand,
+      shuttlesRemaining: batch.shuttlesRemaining,
+      costPerTube: batch.costPerTube,
+      notes: batch.notes,
+    }))
+}
+
+export function buildManualAllocationRows(
+  usageRows: SavedUsageRow[],
+  batches: BatchForAllocation[]
+): UsageAllocation[] {
+  const batchMap = new Map(batches.map((batch) => [batch.id, batch]))
+
+  return usageRows.map((usage) => {
+    const batch = batchMap.get(usage.batch_id)
+
+    return {
+      batchId: usage.batch_id,
+      tubeId: batch?.tubeStart ?? null,
+      brand: batch?.brand ?? '',
+      shuttlesUsed: usage.shuttles_used,
+      shuttlesRemaining: batch?.shuttlesRemaining ?? 0,
+      costPerTube: batch?.costPerTube ?? 0,
+      notes: batch?.notes ?? null,
+    }
+  })
+}
+
 export function useSessionFinance(sessionId: string): SessionFinanceData {
   const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingUsage, setIsSavingUsage] = useState(false)
+  const [isSavingAllocationMode, setIsSavingAllocationMode] = useState(false)
   const [isSavingCourtCost, setIsSavingCourtCost] = useState(false)
   const [isSavingPersonalShare, setIsSavingPersonalShare] = useState(false)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [allocationMode, setAllocationMode] = useState<AllocationMode>('auto')
   const [session, setSession] = useState<{
     date: string
     feePerPlayer: number
@@ -172,6 +374,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
         ? null
         : Number(financeRow.personal_share_override),
     })
+    setAllocationMode(normalizeAllocationMode(financeRow.shuttle_allocation_mode))
     setRegistrationCount(Number(financeRow.total_count))
     setRevenue(Number(financeRow.revenue))
     setShuttleCost(Number(financeRow.shuttle_cost))
@@ -182,7 +385,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
 
     const { data: batchRows, error: batchErr } = await supabase
       .from('shuttle_batches')
-      .select('id, brand, tube_count, shuttles_per_tube, cost_per_tube, created_at')
+      .select('id, brand, tube_count, shuttles_per_tube, cost_per_tube, created_at, notes')
       .order('cost_per_tube', { ascending: true })
       .order('created_at', { ascending: true })
       .order('id', { ascending: true })
@@ -203,7 +406,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
 
     const { data: usageRows, error: usageErr } = await supabase
       .from('shuttle_usage')
-      .select('batch_id, shuttles_used, shuttle_batches(brand, cost_per_tube)')
+      .select('batch_id, shuttles_used')
       .eq('session_id', sessionId)
     if (usageErr) {
       setFetchError(usageErr.message)
@@ -211,17 +414,6 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       setHasLoadedOnce(true)
       return
     }
-
-    setUsageAllocations((usageRows ?? []).map((usage) => {
-      const batchData = usage.shuttle_batches as { brand: string; cost_per_tube: number } | null
-      return {
-        batchId: usage.batch_id,
-        tubeId: tubeStartMap.get(usage.batch_id) ?? null,
-        brand: batchData?.brand ?? '',
-        shuttlesUsed: usage.shuttles_used,
-        costPerTube: Number(batchData?.cost_per_tube ?? 0),
-      }
-    }))
 
     const { data: allUsage, error: allUsageErr } = await supabase
       .from('shuttle_usage')
@@ -235,13 +427,17 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
 
     const usageMap = buildUsageMapForAllocation(allUsage ?? [], sessionId)
 
-    setBatchesForAllocation((batchRows ?? []).map((batch) => ({
+    const mappedBatches = (batchRows ?? []).map((batch) => ({
       id: batch.id,
       brand: batch.brand,
       shuttlesRemaining: Math.max(0, batch.tube_count * batch.shuttles_per_tube - (usageMap.get(batch.id) ?? 0)),
       costPerTube: Number(batch.cost_per_tube),
       tubeStart: tubeStartMap.get(batch.id) ?? 1001,
-    })))
+      notes: batch.notes,
+    }))
+
+    setUsageAllocations(buildManualAllocationRows(usageRows ?? [], mappedBatches))
+    setBatchesForAllocation(mappedBatches)
     setIsLoading(false)
     setHasLoadedOnce(true)
   }, [sessionId])
@@ -250,16 +446,31 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     fetchAll()
   }, [fetchAll])
 
-  const logUsage = useCallback(async (totalShuttles: number): Promise<{ error: string | null }> => {
+  const saveUsageAllocation = useCallback(async (
+    input: SaveUsageInput
+  ): Promise<{ error: string | null }> => {
     if (!user) return { error: 'Not authenticated' }
+    setIsSavingUsage(true)
 
-    const allocation = allocateCheapestFirst(totalShuttles, batchesForAllocation)
-    if (!allocation) {
-      const totalAvailable = batchesForAllocation.reduce((sum, batch) => sum + batch.shuttlesRemaining, 0)
-      return { error: `Not enough stock. Only ${totalAvailable} shuttles available.` }
+    const { rows, error: buildError } = buildUsageRowsForSave(input, {
+      sessionId,
+      userId: user.id,
+      batchesForAllocation,
+    })
+    if (buildError) {
+      setIsSavingUsage(false)
+      return { error: buildError }
     }
 
-    setIsSavingUsage(true)
+    const { error: modeErr } = await supabase
+      .from('sessions')
+      .update({ shuttle_allocation_mode: input.allocationMode })
+      .eq('id', sessionId)
+    if (modeErr) {
+      setIsSavingUsage(false)
+      return { error: modeErr.message }
+    }
+
     const { error: deleteErr } = await supabase
       .from('shuttle_usage')
       .delete()
@@ -269,19 +480,13 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
       return { error: deleteErr.message }
     }
 
-    if (totalShuttles === 0) {
+    if (rows.length === 0) {
       await fetchAll({ background: hasLoadedOnce })
       setIsSavingUsage(false)
       return { error: null }
     }
 
-    const insertRows = allocation.map((item) => ({
-      session_id: sessionId,
-      batch_id: item.batchId,
-      shuttles_used: item.shuttlesUsed,
-      recorded_by: user.id,
-    }))
-    const { error: insertErr } = await supabase.from('shuttle_usage').insert(insertRows)
+    const { error: insertErr } = await supabase.from('shuttle_usage').insert(rows)
     if (insertErr) {
       setIsSavingUsage(false)
       return { error: insertErr.message }
@@ -291,6 +496,31 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     setIsSavingUsage(false)
     return { error: null }
   }, [user, sessionId, batchesForAllocation, fetchAll, hasLoadedOnce])
+
+  const logUsage = useCallback(async (totalShuttles: number): Promise<{ error: string | null }> => (
+    saveUsageAllocation({
+      allocationMode: 'auto',
+      totalShuttles,
+    })
+  ), [saveUsageAllocation])
+
+  const saveAllocationMode = useCallback(async (
+    mode: AllocationMode
+  ): Promise<{ error: string | null }> => {
+    setIsSavingAllocationMode(true)
+    const { error } = await supabase
+      .from('sessions')
+      .update({ shuttle_allocation_mode: mode })
+      .eq('id', sessionId)
+    if (error) {
+      setIsSavingAllocationMode(false)
+      return { error: error.message }
+    }
+
+    await fetchAll({ background: hasLoadedOnce })
+    setIsSavingAllocationMode(false)
+    return { error: null }
+  }, [sessionId, fetchAll, hasLoadedOnce])
 
   const saveCourtCost = useCallback(async (amount: number): Promise<{ error: string | null }> => {
     setIsSavingCourtCost(true)
@@ -329,6 +559,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
   return {
     sessionId,
     sessionDate: session?.date ?? '',
+    allocationMode,
     feePerPlayer: session?.feePerPlayer ?? null,
     courtCost: session?.courtCost ?? null,
     registrationCount,
@@ -343,10 +574,14 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     isLoading,
     fetchError,
     isSavingUsage,
+    isSavingAllocationMode,
     isSavingCourtCost,
     isSavingPersonalShare,
     totalStockAvailable,
+    availableManualBatches: buildManualBatchOptions(batchesForAllocation),
     logUsage,
+    saveUsageAllocation,
+    saveAllocationMode,
     saveCourtCost,
     savePersonalShare,
     refetch: fetchAll,
