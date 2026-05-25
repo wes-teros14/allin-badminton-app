@@ -40,8 +40,8 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'registration_open' && s.isRegistered) {
     return {
       label: 'Registered',
-      className: 'border-primary/30 bg-primary/10 text-primary',
-      accentClassName: 'bg-primary',
+      className: 'border-green-500/30 bg-green-500/10 text-green-700',
+      accentClassName: 'bg-green-500',
       isActive: true,
     }
   }
