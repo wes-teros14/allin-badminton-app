@@ -1,26 +1,47 @@
-# Stack Research: v1.3 Split Match Scoring
+# Stack Research: v1.4 Finance Manual Shuttle Allocation
 
 ## Existing Stack
 
-- React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui primitives
-- Supabase Postgres, Auth, Realtime, RLS, SQL migrations
-- Current scoring persistence is `match_results(match_id, winning_pair_index, completed_at)`
-- Current match lifecycle is `matches.status`: `queued`, `playing`, `complete`
+- React 19, TypeScript, Vite, Tailwind CSS v4, React Hook Form, Zod
+- `@base-ui/react` and `shadcn` are already installed in `package.json`
+- Finance currently uses `useSessionFinance.ts` plus `FinanceDetailView.tsx`
+- Inventory already exposes stable batch identity details through `useShuttleBatches.ts` and `InventoryView.tsx`
 
 ## Stack Additions
 
-No new npm packages are needed.
+No new runtime package is required.
+
+The likely code additions are repo-local UI primitives or copied components:
+- add a combobox/search picker component from the current shadcn stack if the repo does not already contain one
+- add any supporting overlay/input primitives needed by that picker in `src/components/ui/`
+
+Research basis:
+- shadcn/ui documents a `Combobox` with multi-select, chips, custom items, invalid state, and popup trigger patterns
+- WAI-ARIA APG treats combobox as the correct pattern for searchable suggestion pickers with keyboard navigation
+- React Hook Form remains the existing form layer and is suitable for dynamic per-batch rows
 
 ## Database Implications
 
-Use Supabase migration SQL:
+The current tables can likely support this milestone without a schema change:
+- `shuttle_batches` already provides brand, remaining stock inputs, cost per tube, and stable display ordering inputs
+- `shuttle_usage` already stores per-session per-batch `shuttles_used`
 
-- Add a session-level split setting, likely `sessions.split_match_scoring boolean not null default false`.
-- Add game sequencing to result rows, likely `match_results.game_number integer not null default 1`.
-- Add a uniqueness rule such as `unique(match_id, game_number)` to prevent duplicate game rows.
-- Keep `winning_pair_index in (1, 2)` because a 1-1 split can be represented as two rows with opposite winners.
+The open decision is write-path shape:
+- if manual mode only changes how rows are chosen before saving, existing `shuttle_usage` rows are sufficient
+- if the product needs to remember whether a saved allocation was auto or manual, add an explicit mode field on the finance/session side
+
+Inference: manual mode can ship without a migration if preserving mode after save is not a reporting requirement.
 
 ## TypeScript Implications
 
-Update `src/types/database.ts` after migration or manually keep types in sync if Supabase CLI remains blocked.
+`useSessionFinance.ts` currently exposes only `logUsage(totalShuttles)`.
+This milestone likely needs:
+- a persisted allocation input shape for manual rows
+- a view model for searchable batch options that includes inventory detail fields
+- explicit validation results for duplicate selection, stock overflow, and empty manual state
 
+## What Not To Add
+
+- No separate backend server
+- No ad hoc custom autocomplete that bypasses accessible combobox behavior if the shadcn/Base UI path is available
+- No duplicated batch-detail logic between inventory and finance if the same mapping can be reused

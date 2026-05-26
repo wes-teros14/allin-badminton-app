@@ -1,32 +1,29 @@
-# Pitfalls Research: v1.3 Split Match Scoring
+# Pitfalls Research: v1.4 Finance Manual Shuttle Allocation
 
-## Duplicate Result Rows
+## UI And Accessibility
 
-Risk: double-clicking finish or concurrent live board/admin actions could insert duplicate game rows.
+- Building a custom searchable dropdown without proper combobox semantics risks broken keyboard access and poor screen-reader behavior
+- A multi-select picker that does not clearly separate search text from selected values becomes hard to edit on mobile
 
-Prevention: enforce `unique(match_id, game_number)` and preserve the existing `matches.status = playing` update guard before inserts.
+## Data Integrity
 
-## Readers Only Using First Result
+- Letting the same batch be selected twice can create accidental over-allocation or confusing duplicate rows
+- Computing available stock from stale data can cause save failures or silent overuse if another session has logged usage in the meantime
+- Replacing all session `shuttle_usage` rows on every save is simple, but edit mode must prefill saved rows correctly or the QM can overwrite data by accident
 
-Risk: split matches appear as 1 game instead of 2, especially for `1-1`.
+## Product Drift
 
-Prevention: update all result readers to aggregate every result row, not `match_results[0]`.
+- Mixing manual and auto behaviors in one save path can accidentally change the current automatic rule set
+- Showing different batch details in finance than inventory creates trust problems when the QM cross-checks stock
+- Requiring a separate total input in manual mode conflicts with the product decision that totals should be derived from row entries
 
-## Stats Reversal
+## Verification Risks
 
-Risk: `reverse_session_stats` must subtract all result rows for a session. It already joins all `match_results`, but should be reviewed after adding `game_number`.
+- Unit tests that only cover `allocateCheapestFirst` will miss manual-mode validation and edit behavior
+- Browser coverage must include switching modes, searching by brand, selecting multiple batches, editing counts, and saving a pre-existing manual allocation
 
-Prevention: include reverse function verification in the DB phase.
+## Prevention Strategy
 
-## Match Versus Game Language
-
-Risk: UI currently labels scheduled matches as "Game N". Split mode could make "Game 1, Game 1.1" confusing.
-
-Prevention: keep scheduled queue label as "Match N" or "Game N" consistently, but make result entry explicit: "Game 1 winner" and "Game 2 winner" inside the same scheduled match.
-
-## Backward Compatibility
-
-Risk: old result rows have no game number.
-
-Prevention: migration default `game_number = 1` preserves existing completed matches.
-
+- Preserve the current auto path behind a clear branch with regression tests
+- Reuse inventory-derived batch labels/details instead of re-deriving them in the view
+- Validate per-row counts and duplicate selection before save, then re-check against latest available stock on submit

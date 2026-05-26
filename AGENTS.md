@@ -34,3 +34,8 @@ Recent history uses scoped conventional commits such as `feat(11-02): ...` and `
 
 ## Security & Configuration Tips
 Keep secrets in local `.env` files and use `.env.example` as the shareable template. Playwright and seed scripts expect Supabase values to be present; never commit service-role credentials.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
