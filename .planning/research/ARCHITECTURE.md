@@ -1,29 +1,41 @@
-# Architecture Research: v1.3 Split Match Scoring
+# Architecture Research: v1.4 Finance Manual Shuttle Allocation
 
-## Current Flow
+## Existing Integration Points
 
-1. `useSession.lockSchedule` inserts one row per scheduled match in `matches`.
-2. Starting a session marks the first queued matches as `playing`.
-3. `CourtCard` and `CourtTabs` finish a match by marking the match `complete` and inserting one `match_results` row.
-4. `on_match_result_insert` trigger increments `player_stats` and `player_pair_stats` once per inserted result row.
-5. Leaderboard and schedule views read `match_results`, but several views use only `match_results[0]`.
+- `useSessionFinance.ts` is the current orchestration layer for finance detail fetch, stock computation, and shuttle usage writes
+- `FinanceDetailView.tsx` owns the shuttle usage form UI and currently submits a single `totalShuttles` number
+- `useShuttleBatches.ts` already computes inventory-facing batch details, including stable `tubeStart`, `tubeEnd`, `shuttlesRemaining`, `costPerTube`, and notes
+- `InventoryView.tsx` is the canonical display reference for how batch details are currently presented
 
-## Recommended Design
+## Likely New Or Modified Pieces
 
-Keep one `matches` row as the scheduled match and store each split game as its own `match_results` row.
+Modified:
+- `useSessionFinance.ts`
+- `FinanceDetailView.tsx`
 
-Why:
+Potential additions:
+- a reusable finance batch picker component
+- repo-local `combobox` and related UI primitives in `src/components/ui/`
+- shared mapping/helper functions so finance and inventory do not diverge on batch labeling
 
-- The existing stats trigger already counts each result row as one game.
-- A `2-0` result naturally becomes two rows for the same winner.
-- A `1-1` result naturally becomes two rows with opposite winners.
-- No custom draw math is needed in `player_stats`.
+## Data Flow Recommendation
 
-## Build Order
+1. Fetch finance session and available batches as today
+2. Build searchable option rows from batch data already computed in hooks
+3. In manual mode, store selected batch rows in form state
+4. Derive total shuttle usage from the row sum on each change
+5. On save, replace existing `shuttle_usage` rows for the session with the explicit manual rows
+6. Recompute finance summary from the saved rows the same way auto mode already does
 
-1. Add DB migration and TypeScript type updates.
-2. Add result aggregation helpers for interpreting all result rows per match.
-3. Update live board and admin court finish flows to insert one or two result rows atomically enough for the UI path.
-4. Update player schedule/profile/session leaderboard readers to aggregate all rows.
-5. Add focused unit tests for aggregation logic and E2E or integration coverage for the split result flow.
+## Suggested Build Order
 
+1. Refactor finance hook types to support both auto and manual allocation input shapes
+2. Add reusable batch-label formatting based on inventory data
+3. Add searchable multi-select picker and manual allocation row editor in finance UI
+4. Extend save logic so auto mode keeps using current rules and manual mode writes explicit rows
+5. Add unit tests for allocation validation and browser coverage for both modes
+
+## Dependency Notes
+
+- Manual mode should depend on the existing `shuttle_usage` replacement behavior rather than introducing a second storage model
+- If a mode flag is added later, keep it optional and backward-compatible with sessions that only store usage rows

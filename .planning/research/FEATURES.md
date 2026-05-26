@@ -1,32 +1,58 @@
-# Feature Research: v1.3 Split Match Scoring
+# Feature Research: v1.4 Finance Manual Shuttle Allocation
 
-## Admin Session Setup
+## Allocation Mode
 
-Admins need one session-level checkbox/toggle for split-match scoring. This belongs in the existing session setup/admin flow, near the other session-level fields in `SessionView.tsx`.
+Table stakes:
+- preserve the current automatic finance allocation path exactly as-is when the toggle is on
+- expose a clear auto/manual switch in the shuttle usage section
 
-## Result Entry
+Differentiators:
+- make the mode choice understandable by showing whether the app is applying the existing automatic rules or waiting for explicit batch picks
 
-Current result entry asks "Who won?" and inserts one `match_results` row. Split mode should ask for the two game winners for the same scheduled match:
+Anti-feature:
+- changing the default or silently altering the existing allocation rules in auto mode
 
-- `2-0`: insert two result rows for the same winning pair.
-- `1-1`: insert one result row for each pair.
+## Manual Batch Selection
 
-## Live Board
+Table stakes:
+- searchable by brand
+- selectable across multiple batches
+- allow exact shuttle counts per selected batch
+- derive total shuttle usage from selected rows rather than a separate total input
 
-The unauthenticated live board uses `CourtCard.tsx` and can insert `match_results` today via anon RLS. It must load the session split setting and present the split result options when enabled.
+Differentiators:
+- use inventory-style details so batches can be distinguished quickly
+- support editing existing saved allocations without forcing full re-entry
 
-## Admin Court Controls
+Anti-feature:
+- a plain select that hides batch identity details or forces users to guess between similar brands
 
-The authenticated admin court controls use `CourtTabs.tsx` and `useAdminActions.ts`. They need the same result options and insert behavior as the live board.
+## Batch Detail Visibility
 
-## Player Views And Leaderboards
+Table stakes:
+- show stable batch identity such as tube ID / range
+- show brand
+- show remaining shuttles
+- show cost context consistent with inventory
+- show notes when present if that helps distinguish batches
 
-Several readers currently assume only the first result row matters:
+Differentiators:
+- keep list rows compact but information-dense enough for quick QM decisions
 
-- `TodayView.tsx`
-- `SessionPlayerDetailView.tsx`
-- `usePlayerSchedule.ts`
-- `usePlayerStats.ts`
+Inference:
+- the best candidate fields are the same ones already visible in inventory: tube ID, brand, shuttles left, cost per tube, and notes
 
-These must aggregate all result rows for a match.
+## Validation And Editing
 
+Table stakes:
+- at least one batch required in manual mode before save
+- no row can exceed that batch's remaining stock
+- no zero or negative shuttle counts
+- total auto-recomputes as rows change
+
+Differentiators:
+- surface row-level validation inline instead of only failing on submit
+- disable already-selected batches in the picker to reduce duplicate-row errors
+
+Anti-feature:
+- introducing a new finance completion gate tied to a separate "required shuttle count"
