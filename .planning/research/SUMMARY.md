@@ -1,27 +1,37 @@
-# Research Summary: v1.3 Split Match Scoring
+# Research Summary: v1.4 Finance Manual Shuttle Allocation
+
+## Recommendation
+
+Add an explicit auto/manual allocation switch in session finance. Keep the existing automatic allocation path untouched. In manual mode, use a searchable combobox-based batch picker that reuses inventory-style batch labels and writes explicit `shuttle_usage` rows from per-batch shuttle counts.
 
 ## Stack Additions
 
-No new frontend packages are needed. This is a Supabase schema + React flow change.
+- No new npm dependency is required based on the current `package.json`
+- The repo likely needs local shadcn/Base UI combobox primitives added under `src/components/ui/`
+- React Hook Form remains the right fit for dynamic manual allocation rows
 
-## Feature Table Stakes
+## Table Stakes
 
-- Session-level split-match checkbox/toggle.
-- One-game mode remains unchanged.
-- Split mode records two result rows for the same scheduled match.
-- `2-0` and `1-1` are both valid final outcomes.
-- Each inserted result row counts as one game win through the existing stats trigger.
+- Auto mode is behavior-identical to today
+- Manual mode supports multi-batch selection by brand
+- Each selected batch accepts an exact shuttle count
+- Total shuttle usage is derived from selected rows only
+- Manual entries cannot exceed available stock
 
-## Recommended Architecture
+## Best UX Direction
 
-Keep one scheduled `matches` row per matchup. Store split games as multiple `match_results` rows with a `game_number` column.
-
-The existing `update_player_stats_on_result` trigger already counts every inserted result row as one game. That matches the intended rule: `2-0` gives two wins to one team, `1-1` gives one win to each team.
+- Make batch search feel like the app's existing searchable picker patterns, not a plain select
+- Show the same distinguishing batch details already trusted in inventory: tube ID/range, brand, shuttles left, cost, notes
+- Prevent duplicate batch selection in the picker rather than only erroring later
 
 ## Watch Out For
 
-- Add a unique constraint on `(match_id, game_number)` to prevent duplicate split-game inserts.
-- Update all readers that currently use only `match_results[0]`.
-- Review `reverse_session_stats` after schema changes.
-- Make the result-entry UI explicit enough that admins know they are choosing winners for Game 1 and Game 2 of the same scheduled match.
+- Do not let manual-mode UI changes leak into the current automatic rule path
+- Do not create a new finance "completion gate" based on a required shuttle total
+- Prefill and edit existing saved usage rows correctly so updates do not accidentally wipe allocations
 
+## Suggested Phase Shape
+
+1. Finance data model and save-path refactor for manual allocations without breaking auto mode
+2. Manual allocation UI with searchable batch picker and inventory-style detail rendering
+3. Validation and regression coverage across auto mode, manual mode, and saved-edit flows
