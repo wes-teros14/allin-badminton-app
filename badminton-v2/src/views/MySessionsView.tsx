@@ -72,7 +72,7 @@ function statusBadge(s: SessionPickerItem) {
   }
 }
 
-function SessionRow({ s }: { s: SessionPickerItem }) {
+function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
   const badge = statusBadge(s)
   const isActive = ACTIVE_STATUSES.has(s.status)
   const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', {
@@ -85,30 +85,31 @@ function SessionRow({ s }: { s: SessionPickerItem }) {
     ? new Date(`1970-01-01T${s.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : null
 
-  const details = [
+  const metaLine = [
     formattedTime,
-    s.venue || null,
     s.duration ? `${s.duration} hrs` : null,
     s.price != null ? `PHP ${s.price}` : null,
-  ].filter(Boolean) as string[]
+    s.venue || null,
+  ].filter(Boolean).join(' · ')
 
   return (
     <Link
       to={`/sessions/${s.id}`}
-      className={`group relative flex w-full flex-col overflow-hidden rounded-2xl border px-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      style={{ animationDelay: `${index * 60}ms` }}
+      className={`animate-card-fade-up group relative flex w-full flex-col overflow-hidden rounded-2xl border pl-5 pr-4 py-4 shadow-sm transition-all hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         isActive
-          ? 'border-primary/30 bg-card hover:border-primary/50'
-          : 'border-border bg-card hover:border-border'
+          ? 'border-primary/30 bg-card hover:border-primary/50 hover:shadow-[0_8px_24px_-4px_rgba(111,62,135,0.15)]'
+          : 'border-border bg-card hover:border-border hover:shadow-md'
       }`}
     >
-      <div className={`absolute inset-x-0 top-0 h-1 ${badge.accentClassName}`} />
+      <div className={`absolute inset-y-0 left-0 w-1 ${badge.accentClassName}`} />
 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-0.5">
           <p className="text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
             {s.name}
           </p>
-          <p className={`text-sm font-medium ${isActive ? 'text-primary/70' : 'text-muted-foreground'}`}>
+          <p className="text-sm font-normal text-muted-foreground">
             {formattedDate}
           </p>
         </div>
@@ -118,35 +119,17 @@ function SessionRow({ s }: { s: SessionPickerItem }) {
         </span>
       </div>
 
-      {details.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {details.map((detail) => (
-            <span
-              key={detail}
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                isActive
-                  ? 'border-primary/20 bg-primary/8 text-primary'
-                  : 'border-border bg-secondary text-muted-foreground'
-              }`}
-            >
-              {detail}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {s.session_notes && (
-        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-          {s.session_notes}
+      {metaLine && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          {metaLine}
         </p>
       )}
 
-      <div className="mt-4 flex items-center justify-between text-xs font-medium">
-        <span className={isActive ? 'text-primary/60' : 'text-muted-foreground'}>
-          {s.isRegistered ? 'View session details' : 'Open session'}
-        </span>
-        <span className="text-primary transition-transform group-hover:translate-x-0.5">View →</span>
-      </div>
+      {s.session_notes && (
+        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+          {s.session_notes}
+        </p>
+      )}
     </Link>
   )
 }
@@ -183,7 +166,7 @@ export function MySessionsView() {
         <p className="text-sm text-muted-foreground">You're not registered in any sessions yet.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {activeSessions.map((s) => <SessionRow key={s.id} s={s} />)}
+          {activeSessions.map((s, i) => <SessionRow key={s.id} s={s} index={i} />)}
 
           {pastSessions.length > 0 && (
             <div className="space-y-3 pt-2">
@@ -193,7 +176,7 @@ export function MySessionsView() {
               >
                 {showPast ? 'Hide' : 'Show'} Past Sessions ({pastSessions.length})
               </button>
-              {showPast && pastSessions.map((s) => <SessionRow key={s.id} s={s} />)}
+              {showPast && pastSessions.map((s, i) => <SessionRow key={s.id} s={s} index={activeSessions.length + i} />)}
             </div>
           )}
         </div>
