@@ -5,6 +5,8 @@ import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
 
 const ACTIVE_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_open', 'registration_closed'])
+const SHOW_REGISTERED_PILL_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_closed'])
+const REGISTERED_BADGE_CLASS = 'border-green-500/30 bg-green-500/10 text-green-700'
 
 function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress') {
@@ -40,7 +42,7 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'registration_open' && s.isRegistered) {
     return {
       label: 'Registered',
-      className: 'border-green-500/30 bg-green-500/10 text-green-700',
+      className: REGISTERED_BADGE_CLASS,
       accentClassName: 'bg-green-500',
       isActive: true,
     }
@@ -75,6 +77,7 @@ function statusBadge(s: SessionPickerItem) {
 function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
   const badge = statusBadge(s)
   const isActive = ACTIVE_STATUSES.has(s.status)
+  const showRegisteredPill = s.isRegistered && SHOW_REGISTERED_PILL_STATUSES.has(s.status)
   const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -114,9 +117,16 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
           </p>
         </div>
 
-        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
-          {badge.label}
-        </span>
+        <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+          <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
+            {badge.label}
+          </span>
+          {showRegisteredPill && (
+            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${REGISTERED_BADGE_CLASS}`}>
+              Registered
+            </span>
+          )}
+        </div>
       </div>
 
       {metaLine && (
