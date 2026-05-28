@@ -112,12 +112,12 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
           <p className="text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
             {s.name}
           </p>
-          <p className="text-sm font-normal text-muted-foreground">
+          <p className="whitespace-nowrap text-sm font-normal text-muted-foreground">
             {formattedDate}
           </p>
         </div>
 
-        <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+        <div className={showRegisteredPill ? 'flex shrink-0 flex-col items-end gap-1.5' : 'flex shrink-0 flex-wrap justify-end gap-1.5'}>
           <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
             {badge.label}
           </span>
