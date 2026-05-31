@@ -93,14 +93,15 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       // 2. Find active session (or use override)
       let sid: string
+      let sessionCourtCount = 2
 
       if (sessionIdOverride) {
         sid = sessionIdOverride
         const { data: session } = await supabase
-          .from('sessions').select('id, name, date, venue, time, duration, status')
+          .from('sessions').select('id, name, date, venue, time, duration, status, court_count')
           .eq('id', sessionIdOverride).maybeSingle()
         if (cancelled || !session) { setIsLoading(false); return }
-        const s = session as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string }
+        const s = session as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string; court_count?: number | null }
         setSessionId(s.id)
         setSessionName(s.name)
         setSessionDate(s.date)
@@ -108,10 +109,11 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         setSessionTime(s.time)
         setSessionDuration(s.duration)
         setSessionStatus(s.status)
+        sessionCourtCount = s.court_count ?? 2
       } else {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, date, venue, time, duration, status')
+          .select('id, name, date, venue, time, duration, status, court_count')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -126,7 +128,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
           return
         }
 
-        const s = session as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string }
+        const s = session as { id: string; name: string; date: string; venue: string | null; time: string | null; duration: string | null; status: string; court_count?: number | null }
         setSessionId(s.id)
         setSessionName(s.name)
         setSessionDate(s.date)
@@ -134,6 +136,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         setSessionTime(s.time)
         setSessionDuration(s.duration)
         setSessionStatus(s.status)
+        sessionCourtCount = s.court_count ?? 2
         sid = s.id
       }
 
@@ -275,7 +278,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
         const highestPlaying = currentPlayingRows.length > 0
           ? Math.max(...currentPlayingRows.map((playingRow) => playingRow.queue_position))
-          : 2
+          : sessionCourtCount
 
         const startedAts = currentPlayingRows
           .map((playingRow) => playingRow.started_at)

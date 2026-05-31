@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { buildCourtLabels, buildCourtSlots, type CourtSlot, normalizeCourtCount } from '@/lib/courts'
 
 export interface CourtMatchDisplay {
   id: string
@@ -16,15 +17,9 @@ export interface CourtData {
   next: CourtMatchDisplay | null
 }
 
-export interface CourtLabels {
-  1: string
-  2: string
-}
-
 interface UseCourtStateResult {
-  court1: CourtData
-  court2: CourtData
-  courtLabels: CourtLabels
+  courts: CourtSlot<CourtMatchDisplay>[]
+  courtCount: number
   sessionId: string | null
   isLoading: boolean
   hasSession: boolean
@@ -33,15 +28,7 @@ interface UseCourtStateResult {
   refresh: () => void
 }
 
-const EMPTY: CourtData = { current: null, next: null }
-const DEFAULT_COURT_LABELS: CourtLabels = { 1: 'Court 1', 2: 'Court 2' }
-
-function labelsFromSession(session: { court_1_label?: string | null; court_2_label?: string | null } | null): CourtLabels {
-  return {
-    1: session?.court_1_label || DEFAULT_COURT_LABELS[1],
-    2: session?.court_2_label || DEFAULT_COURT_LABELS[2],
-  }
-}
+const DEFAULT_COURT_COUNT = 2
 
 type MatchRow = {
   id: string
@@ -55,10 +42,13 @@ type MatchRow = {
   started_at: string | null
 }
 
+function buildEmptyCourts(courtCount = DEFAULT_COURT_COUNT) {
+  return buildCourtSlots(courtCount, buildCourtLabels(courtCount), new Map(), [])
+}
+
 export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
-  const [court1, setCourt1] = useState<CourtData>(EMPTY)
-  const [court2, setCourt2] = useState<CourtData>(EMPTY)
-  const [courtLabels, setCourtLabels] = useState<CourtLabels>(DEFAULT_COURT_LABELS)
+  const [courts, setCourts] = useState<CourtSlot<CourtMatchDisplay>[]>(() => buildEmptyCourts())
+  const [courtCount, setCourtCount] = useState(DEFAULT_COURT_COUNT)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasSession, setHasSession] = useState(false)
@@ -99,50 +89,53 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
     async function load() {
       if (isFirstLoad.current) setIsLoading(true)
 
-      // 1. Find session — by ID if provided, otherwise latest active
       let sid: string
-      let activeCourtLabels: CourtLabels
+      let activeCourtCount = DEFAULT_COURT_COUNT
+      let activeCourtLabels = buildCourtLabels(DEFAULT_COURT_COUNT)
+
       if (sessionIdParam) {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, status, court_1_label, court_2_label, split_match_scoring')
+          .select('id, status, court_count, court_1_label, court_2_label, split_match_scoring')
           .eq('id', sessionIdParam)
           .maybeSingle()
 
         if (cancelled) return
 
-        const s = session as { id: string; status: string } | null
+        const s = session as { id: string; status: string; court_count?: number | null } | null
         if (!s) {
           setHasSession(false)
           setIsClosed(false)
           setSessionId(null)
-          setCourtLabels(DEFAULT_COURT_LABELS)
-          setCourt1(EMPTY)
-          setCourt2(EMPTY)
+          setCourtCount(DEFAULT_COURT_COUNT)
+          setCourts(buildEmptyCourts())
           setSplitMatchScoring(false)
           isFirstLoad.current = false
           setIsLoading(false)
           return
         }
+
+        activeCourtCount = normalizeCourtCount(s.court_count)
+        activeCourtLabels = buildCourtLabels(activeCourtCount, session)
+
         if (s.status === 'complete') {
           setHasSession(false)
           setIsClosed(true)
           setSessionId(null)
-          setCourtLabels(labelsFromSession(session))
-          setCourt1(EMPTY)
-          setCourt2(EMPTY)
+          setCourtCount(activeCourtCount)
+          setCourts(buildCourtSlots(activeCourtCount, activeCourtLabels, new Map(), []))
           setSplitMatchScoring(false)
           isFirstLoad.current = false
           setIsLoading(false)
           return
         }
+
         sid = s.id
-        activeCourtLabels = labelsFromSession(session)
         setSplitMatchScoring((session as { split_match_scoring?: boolean | null }).split_match_scoring === true)
       } else {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, court_1_label, court_2_label, split_match_scoring')
+          .select('id, court_count, court_1_label, court_2_label, split_match_scoring')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -153,23 +146,25 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
         if (!session) {
           setHasSession(false)
           setSessionId(null)
-          setCourtLabels(DEFAULT_COURT_LABELS)
-          setCourt1(EMPTY)
-          setCourt2(EMPTY)
+          setCourtCount(DEFAULT_COURT_COUNT)
+          setCourts(buildEmptyCourts())
           setSplitMatchScoring(false)
           isFirstLoad.current = false
           setIsLoading(false)
           return
         }
+
         sid = (session as { id: string }).id
-        activeCourtLabels = labelsFromSession(session)
+        activeCourtCount = normalizeCourtCount((session as { court_count?: number | null }).court_count)
+        activeCourtLabels = buildCourtLabels(activeCourtCount, session)
         setSplitMatchScoring((session as { split_match_scoring?: boolean | null }).split_match_scoring === true)
       }
-      setHasSession(true)
-      setSessionId(sid)
-      setCourtLabels(activeCourtLabels)
 
-      // 2. Fetch matches
+      setHasSession(true)
+      setIsClosed(false)
+      setSessionId(sid)
+      setCourtCount(activeCourtCount)
+
       const { data: rows } = await supabase
         .from('matches')
         .select('id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status, court_number, started_at')
@@ -181,14 +176,12 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
       const matchRows = (rows ?? []) as MatchRow[]
 
       if (matchRows.length === 0) {
-        setCourt1(EMPTY)
-        setCourt2(EMPTY)
+        setCourts(buildCourtSlots(activeCourtCount, activeCourtLabels, new Map(), []))
         isFirstLoad.current = false
         setIsLoading(false)
         return
       }
 
-      // 3. Resolve UUIDs → name_slugs
       const allIds = [...new Set(matchRows.flatMap((m) => [
         m.team1_player1_id, m.team1_player2_id,
         m.team2_player1_id, m.team2_player2_id,
@@ -217,22 +210,16 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
         t2p2: name(m.team2_player2_id),
       })
 
-      // 4. Derive court state using court_number for playing matches
-      const playing1 = matchRows.find((m) => m.status === 'playing' && m.court_number === 1)
-      const playing2 = matchRows.find((m) => m.status === 'playing' && m.court_number === 2)
-      const queued   = matchRows.filter((m) => m.status === 'queued')
+      const currentByCourt = new Map<number, CourtMatchDisplay>()
+      for (const match of matchRows) {
+        if (match.status !== 'playing' || match.court_number == null || match.court_number > activeCourtCount) continue
+        currentByCourt.set(match.court_number, toDisplay(match))
+      }
 
-      // Check if session is complete (no playing, no queued)
+      const queued = matchRows.filter((m) => m.status === 'queued').map(toDisplay)
       const allDone = matchRows.every((m) => m.status === 'complete')
 
-      setCourt1({
-        current: playing1 ? toDisplay(playing1) : null,
-        next: allDone ? null : (queued[0] ? toDisplay(queued[0]) : null),
-      })
-      setCourt2({
-        current: playing2 ? toDisplay(playing2) : null,
-        next: allDone ? null : (queued[1] ? toDisplay(queued[1]) : null),
-      })
+      setCourts(buildCourtSlots(activeCourtCount, activeCourtLabels, currentByCourt, allDone ? [] : queued))
       isFirstLoad.current = false
       setIsLoading(false)
     }
@@ -241,5 +228,5 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
     return () => { cancelled = true }
   }, [refreshKey, sessionIdParam])
 
-  return { court1, court2, courtLabels, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, refresh }
+  return { courts, courtCount, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, refresh }
 }

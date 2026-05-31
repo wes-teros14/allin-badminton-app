@@ -127,7 +127,7 @@ export function AdminView() {
     const today = new Date().toISOString().slice(0, 10)
     const { data, error } = await supabase
       .from('sessions')
-      .insert({ name: 'New Session', date: today, created_by: user.id })
+      .insert({ name: 'New Session', date: today, created_by: user.id, court_count: 2 })
       .select('id')
       .single()
 

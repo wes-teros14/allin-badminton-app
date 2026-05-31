@@ -7,7 +7,7 @@ export function elapsedSecondsFromStartedAt(startedAt: string | null, nowMs = Da
   return Math.max(0, Math.floor((nowMs - startedMs) / 1000))
 }
 
-export function playingMatchUpdate(courtNumber: 1 | 2, startedAt = new Date().toISOString()) {
+export function playingMatchUpdate(courtNumber: number, startedAt = new Date().toISOString()) {
   return { status: 'playing' as const, court_number: courtNumber, started_at: startedAt }
 }
 

@@ -43,13 +43,13 @@ function SessionStepper({ status }: { status: string }) {
 function BackToAdmin() {
   return (
     <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-      ← Admin
+      Back to Admin
     </Link>
   )
 }
 
 function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; splitScoring: boolean }) {
-  const { court1Current, court2Current, queued, sessionId: sid, sessionName, sessionDate, isLoading, refresh } =
+  const { courts, queued, sessionId: sid, sessionName, sessionDate, isLoading, refresh } =
     useAdminSession(sessionId)
   const { status } = useRealtime(sid, refresh, 'session')
 
@@ -70,20 +70,19 @@ function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; split
             onClick={() => window.open(`/match-schedule/session/${sessionId}`, '_blank')}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Match Schedule ↗
+            Match Schedule
           </button>
           <button
             onClick={() => window.open(`/live-board/${sessionId}`, '_blank')}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Open LiveBoard ↗
+            Open LiveBoard
           </button>
           <BackToAdmin />
         </div>
       </div>
       <CourtTabs
-        court1Current={court1Current}
-        court2Current={court2Current}
+        courts={courts}
         queued={queued}
         isLoading={isLoading}
         sessionId={sid}
@@ -96,7 +95,7 @@ function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; split
 
 function SetupCard({
   sessionId, initialName, initialDate, initialVenue, initialTime, initialDuration,
-  initialPrice, initialSessionNotes, initialRegistrationOpensAt, onConfirm,
+  initialPrice, initialSessionNotes, initialRegistrationOpensAt, initialCourtCount, onConfirm,
 }: {
   sessionId: string
   initialName: string
@@ -107,6 +106,7 @@ function SetupCard({
   initialPrice: number | null
   initialSessionNotes: string | null
   initialRegistrationOpensAt: string | null
+  initialCourtCount: number
   onConfirm: () => void
 }) {
   const [name, setName] = useState(initialName)
@@ -115,6 +115,7 @@ function SetupCard({
   const [time, setTime] = useState(initialTime ?? '')
   const [duration, setDuration] = useState(initialDuration ?? '')
   const [price, setPrice] = useState(initialPrice != null ? String(initialPrice) : '')
+  const [courtCount, setCourtCount] = useState(String(initialCourtCount))
   const [sessionNotes, setSessionNotes] = useState(initialSessionNotes ?? '')
   const [scheduleOpen, setScheduleOpen] = useState(initialRegistrationOpensAt != null)
   const [scheduledDate, setScheduledDate] = useState<string>(
@@ -131,6 +132,7 @@ function SetupCard({
   useEffect(() => { setTime(initialTime ?? '') }, [initialTime])
   useEffect(() => { setDuration(initialDuration ?? '') }, [initialDuration])
   useEffect(() => { setPrice(initialPrice != null ? String(initialPrice) : '') }, [initialPrice])
+  useEffect(() => { setCourtCount(String(initialCourtCount)) }, [initialCourtCount])
   useEffect(() => { setSessionNotes(initialSessionNotes ?? '') }, [initialSessionNotes])
   useEffect(() => {
     setScheduleOpen(initialRegistrationOpensAt != null)
@@ -141,6 +143,13 @@ function SetupCard({
   async function handleConfirm() {
     if (!name.trim() || !date) { toast.error('Session name and date are required'); return }
     if (scheduleOpen && (!scheduledDate || scheduledHour === '')) { toast.error('Select a date and time for scheduled registration open'); return }
+
+    const parsedCourtCount = Number(courtCount)
+    if (!Number.isInteger(parsedCourtCount) || parsedCourtCount < 1) {
+      toast.error('Court count must be a whole number of at least 1')
+      return
+    }
+
     setSaving(true)
 
     const registrationOpensAt = scheduleOpen && scheduledDate && scheduledHour !== ''
@@ -156,6 +165,7 @@ function SetupCard({
         time: time || null,
         duration: duration || null,
         price: price !== '' ? Number(price) : null,
+        court_count: parsedCourtCount,
         session_notes: sessionNotes || null,
         registration_opens_at: registrationOpensAt,
       })
@@ -195,8 +205,12 @@ function SetupCard({
           </div>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="setup-price">Price (₱)</Label>
+          <Label htmlFor="setup-price">Price (PHP)</Label>
           <Input id="setup-price" type="number" min="0" placeholder="e.g. 150" value={price} onChange={(e) => setPrice(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="setup-court-count">Court count</Label>
+          <Input id="setup-court-count" type="number" min="1" step="1" placeholder="e.g. 3" value={courtCount} onChange={(e) => setCourtCount(e.target.value)} />
         </div>
         <div className="space-y-1">
           <Label htmlFor="setup-notes">Notes</Label>
@@ -247,7 +261,7 @@ function SetupCard({
           )}
         </div>
         <Button onClick={handleConfirm} disabled={saving} className="w-full">
-          {saving ? 'Saving…' : 'Confirm'}
+          {saving ? 'Saving...' : 'Confirm'}
         </Button>
       </CardContent>
     </Card>
@@ -302,7 +316,7 @@ export function SessionView() {
     }
   }
 
-  if (isLoading) return <div className="p-6">Loading…</div>
+  if (isLoading) return <div className="p-6">Loading...</div>
 
   if (!session) {
     return (
@@ -335,13 +349,12 @@ export function SessionView() {
         <SessionStepper status={session.status} />
         <LiveSessionView sessionId={session.id} splitScoring={session.split_match_scoring ?? false} />
         <Button variant="outline" onClick={unstartSession} className="w-full text-muted-foreground">
-          ← Back to Schedule
+          Back to Schedule
         </Button>
       </div>
     )
   }
 
-  // Setup / registration / match generation states
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -371,6 +384,7 @@ export function SessionView() {
           initialPrice={session.price ?? null}
           initialSessionNotes={session.session_notes ?? null}
           initialRegistrationOpensAt={session.registration_opens_at ?? null}
+          initialCourtCount={session.court_count ?? 2}
           onConfirm={openRegistration}
         />
       )}
@@ -427,11 +441,10 @@ export function SessionView() {
             </Label>
           </div>
           <Button onClick={startSession} className="w-full">Start Session</Button>
-          <Button variant="outline" onClick={() => window.open(`/live-board/${session.id}`, '_blank')} className="w-full">Open LiveBoard ↗</Button>
+          <Button variant="outline" onClick={() => window.open(`/live-board/${session.id}`, '_blank')} className="w-full">Open LiveBoard</Button>
           <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>
         </div>
       )}
-
     </div>
   )
 }

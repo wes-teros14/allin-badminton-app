@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
+import type { CourtSlot } from '@/lib/courts'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import { useRealtime } from '@/hooks/useRealtime'
-import { useCourtState, type CourtData } from '@/hooks/useCourtState'
+import { useCourtState, type CourtMatchDisplay } from '@/hooks/useCourtState'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
@@ -28,50 +29,38 @@ function formatElapsed(seconds: number) {
 }
 
 function PlayerCourtTabs({
-  court1,
-  court2,
+  courts,
   isLoading,
-  courtLabels,
 }: {
-  court1: CourtData
-  court2: CourtData
+  courts: CourtSlot<CourtMatchDisplay>[]
   isLoading: boolean
-  courtLabels: Record<1 | 2, string>
 }) {
-  const court1StartedAt = court1.current?.startedAt ?? null
-  const court2StartedAt = court2.current?.startedAt ?? null
-  const [elapsedByCourt, setElapsedByCourt] = useState<Record<1 | 2, number>>({
-    1: elapsedSecondsFromStartedAt(court1StartedAt) ?? 0,
-    2: elapsedSecondsFromStartedAt(court2StartedAt) ?? 0,
-  })
+  const [elapsedByCourt, setElapsedByCourt] = useState<Record<number, number>>({})
 
   useEffect(() => {
     function updateElapsed() {
-      setElapsedByCourt({
-        1: elapsedSecondsFromStartedAt(court1StartedAt) ?? 0,
-        2: elapsedSecondsFromStartedAt(court2StartedAt) ?? 0,
-      })
+      setElapsedByCourt(Object.fromEntries(
+        courts.map((court) => [court.courtNumber, elapsedSecondsFromStartedAt(court.current?.startedAt ?? null) ?? 0]),
+      ))
     }
 
     updateElapsed()
     const intervalId = setInterval(updateElapsed, 1000)
     return () => clearInterval(intervalId)
-  }, [court1StartedAt, court2StartedAt])
-
-  const courts = [
-    { courtNumber: 1 as const, label: courtLabels[1], data: court1 },
-    { courtNumber: 2 as const, label: courtLabels[2], data: court2 },
-  ]
+  }, [courts])
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div
+      className="grid gap-2"
+      style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(courts.length, 1), 2)}, minmax(0, 1fr))` }}
+    >
       {courts.map((court) => {
-        const match = court.data.current ?? court.data.next
-        const isPlaying = !!court.data.current
+        const match = court.current ?? court.next
+        const isPlaying = !!court.current
 
         return (
           <div
-            key={court.label}
+            key={court.courtNumber}
             className={`min-h-[7rem] rounded-xl border p-3 ${
               isPlaying
                 ? 'border-primary/30 bg-[var(--primary-subtle)]'
@@ -86,7 +75,7 @@ function PlayerCourtTabs({
                 {isPlaying && (
                   <>
                     <span className="text-[0.65rem] font-mono font-semibold text-[#FFB200]">
-                      {formatElapsed(elapsedByCourt[court.courtNumber])}
+                      {formatElapsed(elapsedByCourt[court.courtNumber] ?? 0)}
                     </span>
                     <span className="flex items-center gap-1 text-[0.65rem] font-bold tracking-widest text-red-500">
                       <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -411,9 +400,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: string; sessionId?: string }) {
   const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, gamesAhead, waitSeconds, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
   const {
-    court1,
-    court2,
-    courtLabels,
+    courts,
     isLoading: courtsLoading,
     refresh: refreshCourts,
   } = useCourtState(sessionId || undefined)
@@ -489,7 +476,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
 
       {!isLoading && sessionId && sessionStatus !== 'registration_open' && (
         <div className="max-w-sm mx-auto px-4 pt-4">
-          <PlayerCourtTabs court1={court1} court2={court2} courtLabels={courtLabels} isLoading={courtsLoading} />
+          <PlayerCourtTabs courts={courts} isLoading={courtsLoading} />
         </div>
       )}
 

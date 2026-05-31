@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { buildCourtLabels, normalizeCourtCount } from '@/lib/courts'
 
 export interface AdminMatchDisplay {
   id: string
@@ -15,9 +16,15 @@ export interface AdminMatchDisplay {
   t2p2Id: string
 }
 
+export interface AdminCourtSlot {
+  courtNumber: number
+  label: string
+  current: AdminMatchDisplay | null
+}
+
 interface UseAdminSessionResult {
-  court1Current: AdminMatchDisplay | null
-  court2Current: AdminMatchDisplay | null
+  courts: AdminCourtSlot[]
+  courtCount: number
   queued: AdminMatchDisplay[]
   sessionId: string | null
   sessionName: string
@@ -26,6 +33,8 @@ interface UseAdminSessionResult {
   isLoading: boolean
   refresh: () => void
 }
+
+const DEFAULT_COURT_COUNT = 2
 
 type MatchRow = {
   id: string
@@ -40,8 +49,8 @@ type MatchRow = {
 }
 
 export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult {
-  const [court1Current, setCourt1Current] = useState<AdminMatchDisplay | null>(null)
-  const [court2Current, setCourt2Current] = useState<AdminMatchDisplay | null>(null)
+  const [courts, setCourts] = useState<AdminCourtSlot[]>([])
+  const [courtCount, setCourtCount] = useState(DEFAULT_COURT_COUNT)
   const [queued, setQueued] = useState<AdminMatchDisplay[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessionName, setSessionName] = useState('')
@@ -61,12 +70,13 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
       let sid: string
       let sessionLabel: string
+      let activeCourtCount = DEFAULT_COURT_COUNT
+      let activeCourtLabels = buildCourtLabels(DEFAULT_COURT_COUNT)
 
       if (sessionIdParam) {
-        // Load specific session by ID
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, status, date')
+          .select('id, name, status, date, court_count, court_1_label, court_2_label')
           .eq('id', sessionIdParam)
           .maybeSingle()
 
@@ -74,8 +84,8 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
         if (!session) {
           setSessionId(null)
-          setCourt1Current(null)
-          setCourt2Current(null)
+          setCourtCount(DEFAULT_COURT_COUNT)
+          setCourts([])
           setQueued([])
           isFirstLoad.current = false
           setIsLoading(false)
@@ -84,13 +94,14 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
         sid = (session as { id: string; name: string; status: string; date: string }).id
         sessionLabel = (session as { id: string; name: string; status: string; date: string }).name
-        setSessionStatus((session as { id: string; name: string; status: string; date: string }).status)
-        setSessionDate((session as { id: string; name: string; status: string; date: string }).date)
+        setSessionStatus((session as { status: string }).status)
+        setSessionDate((session as { date: string }).date)
+        activeCourtCount = normalizeCourtCount((session as { court_count?: number | null }).court_count)
+        activeCourtLabels = buildCourtLabels(activeCourtCount, session)
       } else {
-        // Find active session
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, status, date')
+          .select('id, name, status, date, court_count, court_1_label, court_2_label')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -100,8 +111,8 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
         if (!session) {
           setSessionId(null)
-          setCourt1Current(null)
-          setCourt2Current(null)
+          setCourtCount(DEFAULT_COURT_COUNT)
+          setCourts([])
           setQueued([])
           isFirstLoad.current = false
           setIsLoading(false)
@@ -110,14 +121,16 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
         sid = (session as { id: string; name: string; status: string; date: string }).id
         sessionLabel = (session as { id: string; name: string; status: string; date: string }).name
-        setSessionStatus((session as { id: string; name: string; status: string; date: string }).status)
-        setSessionDate((session as { id: string; name: string; status: string; date: string }).date)
+        setSessionStatus((session as { status: string }).status)
+        setSessionDate((session as { date: string }).date)
+        activeCourtCount = normalizeCourtCount((session as { court_count?: number | null }).court_count)
+        activeCourtLabels = buildCourtLabels(activeCourtCount, session)
       }
 
       setSessionId(sid)
       setSessionName(sessionLabel)
+      setCourtCount(activeCourtCount)
 
-      // 2. Fetch all matches
       const { data: rows } = await supabase
         .from('matches')
         .select('id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status, court_number, started_at')
@@ -129,15 +142,17 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
       const matchRows = (rows ?? []) as MatchRow[]
 
       if (matchRows.length === 0) {
-        setCourt1Current(null)
-        setCourt2Current(null)
+        setCourts(Array.from({ length: activeCourtCount }, (_, index) => ({
+          courtNumber: index + 1,
+          label: activeCourtLabels[index + 1],
+          current: null,
+        })))
         setQueued([])
         isFirstLoad.current = false
         setIsLoading(false)
         return
       }
 
-      // 3. Resolve UUIDs → name_slugs
       const allIds = [...new Set(matchRows.flatMap((m) => [
         m.team1_player1_id, m.team1_player2_id,
         m.team2_player1_id, m.team2_player2_id,
@@ -170,13 +185,23 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
         t2p2Id: m.team2_player2_id,
       })
 
-      // 4. Derive state
-      const playing1 = matchRows.find((m) => m.status === 'playing' && m.court_number === 1)
-      const playing2 = matchRows.find((m) => m.status === 'playing' && m.court_number === 2)
+      const currentByCourt = new Map<number, AdminMatchDisplay>()
+      for (const match of matchRows) {
+        if (match.status !== 'playing' || match.court_number == null || match.court_number > activeCourtCount) continue
+        currentByCourt.set(match.court_number, toDisplay(match))
+      }
+
       const queuedRows = matchRows.filter((m) => m.status === 'queued')
 
-      setCourt1Current(playing1 ? toDisplay(playing1) : null)
-      setCourt2Current(playing2 ? toDisplay(playing2) : null)
+      setCourts(Array.from({ length: activeCourtCount }, (_, index) => {
+        const courtNumber = index + 1
+
+        return {
+          courtNumber,
+          label: activeCourtLabels[courtNumber],
+          current: currentByCourt.get(courtNumber) ?? null,
+        }
+      }))
       setQueued(queuedRows.map(toDisplay))
 
       isFirstLoad.current = false
@@ -187,6 +212,5 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
     return () => { cancelled = true }
   }, [sessionIdParam, refreshKey])
 
-
-  return { court1Current, court2Current, queued, sessionId, sessionName, sessionDate, sessionStatus, isLoading, refresh }
+  return { courts, courtCount, queued, sessionId, sessionName, sessionDate, sessionStatus, isLoading, refresh }
 }

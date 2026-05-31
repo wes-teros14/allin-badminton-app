@@ -5,7 +5,8 @@ import { completedMatchUpdate, elapsedSecondsFromStartedAt, playingMatchUpdate }
 import { submitSplitResult, type SplitOutcome } from '@/lib/matchResults'
 
 interface Props {
-  courtNumber: 1 | 2
+  courtNumber: number
+  label: string
   data: CourtData
   sessionId: string | null
   isLoading: boolean
@@ -19,8 +20,7 @@ function formatElapsed(seconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, splitScoring }: Props) {
+export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refresh, splitScoring }: Props) {
   const { current } = data
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -105,7 +105,7 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, sp
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col p-8 gap-6 border-r border-border last:border-r-0 animate-pulse">
+      <div className="flex h-full flex-col rounded-xl bg-card p-8 gap-6 animate-pulse">
         <div className="h-6 w-24 bg-muted rounded" />
         <div className="flex-1 flex flex-col items-center justify-center gap-6">
           <div className="h-28 w-28 bg-muted rounded-lg" />
@@ -125,11 +125,11 @@ export function CourtCard({ courtNumber, data, sessionId, isLoading, refresh, sp
   }
 
   return (
-    <div className="flex-1 flex flex-col p-8 gap-5 border-r border-border last:border-r-0">
+    <div className="flex h-full flex-col rounded-xl bg-card p-8 gap-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold tracking-widest text-muted-foreground">
-          COURT {courtNumber}
+          {label.toUpperCase()}
         </h2>
         {current && (
           <div className="flex items-center gap-3">

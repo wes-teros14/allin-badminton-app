@@ -40,9 +40,6 @@ export function useAdminActions(onDone: () => void) {
     if (!upper) return
     setIsSaving(true)
     try {
-      // Use a large sentinel (9999) as temp position to avoid UNIQUE constraint on
-      // (session_id, queue_position). -1 risks colliding with a row left by a
-      // previously interrupted move.
       const { error: e1 } = await supabase.from('matches').update({ queue_position: 9999 }).eq('id', matchId)
       if (e1) { toast.error(e1.message); return }
       const { error: e2 } = await supabase.from('matches').update({ queue_position: currentPosition }).eq('id', upper.id)
@@ -60,7 +57,6 @@ export function useAdminActions(onDone: () => void) {
     if (!lower) return
     setIsSaving(true)
     try {
-      // Use 9999 as sentinel — see moveUp comment above.
       const { error: e1 } = await supabase.from('matches').update({ queue_position: 9999 }).eq('id', matchId)
       if (e1) { toast.error(e1.message); return }
       const { error: e2 } = await supabase.from('matches').update({ queue_position: currentPosition }).eq('id', lower.id)
@@ -75,7 +71,7 @@ export function useAdminActions(onDone: () => void) {
 
   async function markDone(
     matchId: string,
-    courtNumber: 1 | 2,
+    courtNumber: number,
     sessionId: string,
     winningPairIndex?: 1 | 2,
     startedAt?: string | null,
@@ -128,12 +124,27 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  async function promoteTocourt(matchId: string, courtNumber: 1 | 2) {
+  async function promoteTocourt(matchId: string, courtNumber: number) {
     setIsSaving(true)
     try {
       const { error } = await supabase
         .from('matches')
         .update(playingMatchUpdate(courtNumber))
+        .eq('id', matchId)
+
+      if (error) { toast.error(error.message); return }
+      onDone()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function moveToCourt(matchId: string, courtNumber: number) {
+    setIsSaving(true)
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .update({ court_number: courtNumber })
         .eq('id', matchId)
 
       if (error) { toast.error(error.message); return }
@@ -169,25 +180,28 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  async function swapCourts(match1Id: string, match2Id: string) {
+  async function swapCourts(
+    match1Id: string,
+    court1Number: number,
+    match2Id: string,
+    court2Number: number,
+  ) {
     setIsSaving(true)
     try {
       const { error: e1 } = await supabase.from('matches').update({ court_number: null }).eq('id', match1Id)
       if (e1) { toast.error(e1.message); return }
 
-      const { error: e2 } = await supabase.from('matches').update({ court_number: 1 }).eq('id', match2Id)
+      const { error: e2 } = await supabase.from('matches').update({ court_number: court1Number }).eq('id', match2Id)
       if (e2) {
-        // Rollback: restore match1's court number before bailing
-        await supabase.from('matches').update({ court_number: 2 }).eq('id', match1Id)
+        await supabase.from('matches').update({ court_number: court1Number }).eq('id', match1Id)
         toast.error(e2.message)
         return
       }
 
-      const { error: e3 } = await supabase.from('matches').update({ court_number: 2 }).eq('id', match1Id)
+      const { error: e3 } = await supabase.from('matches').update({ court_number: court2Number }).eq('id', match1Id)
       if (e3) {
-        // Rollback both assignments to their original courts
-        await supabase.from('matches').update({ court_number: 1 }).eq('id', match1Id)
-        await supabase.from('matches').update({ court_number: 2 }).eq('id', match2Id)
+        await supabase.from('matches').update({ court_number: court2Number }).eq('id', match1Id)
+        await supabase.from('matches').update({ court_number: court1Number }).eq('id', match2Id)
         toast.error(e3.message)
         return
       }
@@ -197,5 +211,5 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt }
+  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt }
 }
