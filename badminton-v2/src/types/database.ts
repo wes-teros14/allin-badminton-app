@@ -438,6 +438,7 @@ export type Database = {
           completed_at: string | null
           court_1_label: string
           court_2_label: string
+          court_count: number
           court_cost: number | null
           created_at: string
           created_by: string
@@ -460,6 +461,7 @@ export type Database = {
           completed_at?: string | null
           court_1_label?: string
           court_2_label?: string
+          court_count?: number
           court_cost?: number | null
           created_at?: string
           created_by: string
@@ -482,6 +484,7 @@ export type Database = {
           completed_at?: string | null
           court_1_label?: string
           court_2_label?: string
+          court_count?: number
           court_cost?: number | null
           created_at?: string
           created_by?: string

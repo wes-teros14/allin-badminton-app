@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { buildStartingCourtAssignments, normalizeCourtCount } from '@/lib/courts'
 import { playingMatchUpdate, queuedMatchUpdate } from '@/utils/matchTiming'
 
 type SessionStatus =
@@ -25,6 +26,7 @@ export interface Session {
   session_notes: string | null
   registration_opens_at: string | null
   split_match_scoring: boolean | null
+  court_count: number
 }
 
 export interface Invitation {
@@ -120,7 +122,7 @@ export function useSession(sessionId?: string): SessionState {
 
     const { data, error } = await supabase
       .from('sessions')
-      .insert({ name, date, created_by: user.id })
+      .insert({ name, date, created_by: user.id, court_count: 2 })
       .select()
       .single()
 
@@ -281,14 +283,16 @@ export function useSession(sessionId?: string): SessionState {
   async function startSession(): Promise<void> {
     if (!session) return
 
-    // Take first 2 queued matches and set them playing on court 1 & 2
+    const courtCount = normalizeCourtCount(session.court_count)
+
+    // Take the first N queued matches and set them playing on configured courts
     const { data: queued } = await supabase
       .from('matches')
       .select('id')
       .eq('session_id', session.id)
       .eq('status', 'queued')
       .order('queue_position')
-      .limit(2)
+      .limit(courtCount)
 
     if (!queued || queued.length === 0) {
       toast.error('No queued matches found')
@@ -296,8 +300,8 @@ export function useSession(sessionId?: string): SessionState {
     }
 
     const startedAt = new Date().toISOString()
-    const updates = (queued as Array<{ id: string }>).map((m, i) =>
-      supabase.from('matches').update(playingMatchUpdate((i + 1) as 1 | 2, startedAt)).eq('id', m.id)
+    const updates = buildStartingCourtAssignments(queued as Array<{ id: string }>, courtCount).map((assignment) =>
+      supabase.from('matches').update(playingMatchUpdate(assignment.courtNumber, startedAt)).eq('id', assignment.id)
     )
     await Promise.all(updates)
 

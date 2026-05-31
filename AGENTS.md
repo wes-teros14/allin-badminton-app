@@ -37,5 +37,5 @@ Keep secrets in local `.env` files and use `.env.example` as the shareable templ
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+shell commands, and other important information, read `specs/001-admin-court-count/plan.md`
 <!-- SPECKIT END -->

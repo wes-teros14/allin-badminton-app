@@ -1,8 +1,6 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find C:1Wesbadminton_v2 -type f \\\\\\(-name *.py -o -name *.js -o -name *.ts -o -name *.go -o -name *.java -o -name *.rb \\\\\\))",
-      "Bash(find C:1Wesbadminton_v2_bmadbmm -name *.md -type f)",
       "WebSearch",
       "Bash(npm create:*)",
       "Bash(npm install:*)",
@@ -16,13 +14,8 @@
       "Bash(npx shadcn:*)",
       "Read(//c//**)",
       "Read(//c/Users/MarkWesleyAncog/**)",
-      "Read(//c/1Wes/badminton_v2/badminton-v2/**)",
       "Bash(cd:*)",
-      "Bash(find /c/1Wes/badminton_v2/badminton-v2 -name *match_results* -type f)",
-      "Bash(find C:1Wesbadminton_v2badminton-v2 -path *.githubworkflows* -type f)",
       "Bash(grep:*)",
-      "Bash(find /c/1Wes/badminton_v2 -name *.sql)",
-      "Bash(find /c/1Wes/badminton_v2 -name *.sql -o -name migration*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
@@ -32,8 +25,6 @@
       "Bash(cmd.exe /c \"node --version\")",
       "Bash(cmd.exe /c \"npm --version\")",
       "Bash(cmd.exe /c \"where node & where npm\" 2>&1)",
-      "Bash(bash -x /c/1Wes/all-in-badminton-app/agent-os/scripts/project-install.sh)",
-      "Bash(bash /c/1Wes/all-in-badminton-app/agent-os/scripts/project-install.sh)",
       "Bash(curl:*)",
       "Bash(npm list:*)",
       "Bash(npx playwright-cli:*)",
@@ -62,10 +53,7 @@
       "Bash(./node_modules/.bin/supabase db:*)",
       "Bash(npx tsx:*)",
       "Bash(python3 -m json.tool)",
-      "Bash(node *)",
-      "Bash(rm -f \"C:/1Wes/all-in-badminton-app/.claude/cache/gsd-update-check.json\")",
-      "Bash(rm -f __TRACKED_VAR__/.claude/cache/gsd-update-check.json)",
-      "Bash(rm -f \"C:/1Wes/all-in-badminton-app/gsd-custom-files.json\")"
+      "Bash(node *)"
     ]
   },
   "enabledMcpjsonServers": [
@@ -98,6 +86,7 @@
   },
   "enabledPlugins": {
     "claude-mem@thedotmack": false,
-    "superpowers@claude-plugins-official": true
+    "superpowers@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true
   }
 }
