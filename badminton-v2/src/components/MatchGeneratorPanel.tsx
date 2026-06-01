@@ -64,7 +64,7 @@ const DEFAULTS: Settings = {
   idealRestGames: 2,
   earlyRestWindow: 20,
   numTrials: 2000,
-  numStarts: 30,
+  numStarts: 50,
   wishlistStr: '',
   streakWeight: DEFAULT_WEIGHTS.streakWeight,
   imbalancePenalty: DEFAULT_WEIGHTS.imbalancePenalty,
