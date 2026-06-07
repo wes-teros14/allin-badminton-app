@@ -14,6 +14,8 @@ export interface SessionPickerItem {
   session_notes: string | null
   registration_opens_at: string | null
   isRegistered: boolean
+  playerCount?: number
+  maxPlayers?: number | null
 }
 
 interface UsePlayerSessionsResult {
@@ -75,6 +77,51 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
         ...s,
         isRegistered: registeredIds.has(s.id),
       }))
+
+      const openItems = items.filter(s => s.status === 'registration_open')
+
+      if (openItems.length > 0) {
+        const openIds = openItems.map(s => s.id)
+
+        const [{ data: invitations }, { data: regRows }] = await Promise.all([
+          supabase
+            .from('session_invitations')
+            .select('session_id, max_players')
+            .in('session_id', openIds)
+            .eq('is_active', true),
+          supabase
+            .from('session_registrations')
+            .select('session_id')
+            .in('session_id', openIds),
+        ])
+
+        if (!cancelled) {
+          const invMap: Record<string, number | null> = {}
+          for (const inv of invitations ?? []) {
+            invMap[(inv as { session_id: string; max_players: number | null }).session_id] =
+              (inv as { session_id: string; max_players: number | null }).max_players
+          }
+
+          const countMap: Record<string, number> = {}
+          for (const reg of regRows ?? []) {
+            const sid = (reg as { session_id: string }).session_id
+            countMap[sid] = (countMap[sid] ?? 0) + 1
+          }
+
+          const enriched = items.map(s => {
+            if (s.status !== 'registration_open') return s
+            return {
+              ...s,
+              playerCount: countMap[s.id] ?? 0,
+              maxPlayers: s.id in invMap ? invMap[s.id] : null,
+            }
+          })
+
+          setSessions(enriched)
+          setIsLoading(false)
+          return
+        }
+      }
 
       setSessions(items)
       setIsLoading(false)
