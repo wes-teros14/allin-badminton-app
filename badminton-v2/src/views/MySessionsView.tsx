@@ -141,6 +141,14 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
           {s.session_notes}
         </p>
       )}
+
+      {s.status === 'registration_open' && s.playerCount !== undefined && (
+        <p className="mt-2 text-xs font-bold text-primary">
+          {s.maxPlayers != null
+            ? `${s.playerCount} / ${s.maxPlayers} registered`
+            : `${s.playerCount} registered`}
+        </p>
+      )}
     </Link>
   )
 }
