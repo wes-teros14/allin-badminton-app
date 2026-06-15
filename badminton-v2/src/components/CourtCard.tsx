@@ -24,7 +24,7 @@ function formatElapsed(seconds: number) {
 export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refresh, splitScoring }: Props) {
   const { current } = data
   const { role } = useAuth()
-  const isAdmin = role === 'admin'
+  const isAdmin = role === 'admin' || role === 'moderator'
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [elapsed, setElapsed] = useState(0)

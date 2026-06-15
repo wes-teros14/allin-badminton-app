@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 
-type Role = 'admin' | 'player' | null
+type Role = 'admin' | 'moderator' | 'player' | null
 
 interface AuthState {
   user: User | null
