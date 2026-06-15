@@ -36,7 +36,7 @@ export function TopNavBar() {
       label: 'Admin',
       href: '/admin',
       active: pathname.startsWith('/admin') || pathname.startsWith('/session'),
-      show: role === 'admin',
+      show: role === 'admin' || role === 'moderator',
       badge: false,
     },
     {

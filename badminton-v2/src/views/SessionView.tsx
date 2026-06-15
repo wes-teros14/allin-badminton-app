@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { useSession } from '@/hooks/useSession'
 import { useAdminSession } from '@/hooks/useAdminSession'
 import { useRealtime } from '@/hooks/useRealtime'
+import { useAuth } from '@/hooks/useAuth'
 import { RegistrationURLCard } from '@/components/RegistrationURLCard'
 import { RosterPanel } from '@/components/RosterPanel'
 import { MatchGeneratorPanel } from '@/components/MatchGeneratorPanel'
@@ -270,6 +271,8 @@ function SetupCard({
 
 export function SessionView() {
   const { sessionId } = useParams<{ sessionId: string }>()
+  const { role } = useAuth()
+  const isModerator = role === 'moderator'
   const {
     session, invitation, playerCount, isLoading,
     openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, unstartSession,
@@ -348,9 +351,29 @@ export function SessionView() {
       <div className="p-4 max-w-lg mx-auto space-y-4">
         <SessionStepper status={session.status} />
         <LiveSessionView sessionId={session.id} splitScoring={session.split_match_scoring ?? false} />
-        <Button variant="outline" onClick={unstartSession} className="w-full text-muted-foreground">
-          Back to Schedule
-        </Button>
+        {!isModerator && (
+          <Button variant="outline" onClick={unstartSession} className="w-full text-muted-foreground">
+            Back to Schedule
+          </Button>
+        )}
+      </div>
+    )
+  }
+
+  if (isModerator) {
+    return (
+      <div className="p-6 max-w-lg mx-auto space-y-4">
+        <BackToAdmin />
+        <SessionStepper status={session.status} />
+        <Card>
+          <CardContent className="pt-4 space-y-1">
+            <p className="font-semibold">{session.name}</p>
+            <p className="text-sm text-muted-foreground">
+              {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
+            </p>
+            <p className="text-sm text-muted-foreground pt-2">Actions are available once the session is Live.</p>
+          </CardContent>
+        </Card>
       </div>
     )
   }

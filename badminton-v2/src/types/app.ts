@@ -1,7 +1,7 @@
 // App-level domain types
 // These are hand-written (not generated); add types as features are implemented.
 
-export type UserRole = 'admin' | 'player'
+export type UserRole = 'admin' | 'moderator' | 'player'
 
 export type SessionStatus =
   | 'setup'
