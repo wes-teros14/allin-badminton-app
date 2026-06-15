@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import type { CourtData } from '@/hooks/useCourtState'
 import { completedMatchUpdate, elapsedSecondsFromStartedAt, playingMatchUpdate } from '@/utils/matchTiming'
 import { submitSplitResult, type SplitOutcome } from '@/lib/matchResults'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Props {
   courtNumber: number
@@ -22,6 +23,8 @@ function formatElapsed(seconds: number) {
 
 export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refresh, splitScoring }: Props) {
   const { current } = data
+  const { role } = useAuth()
+  const isAdmin = role === 'admin'
   const [confirmingFinish, setConfirmingFinish] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [elapsed, setElapsed] = useState(0)
@@ -145,7 +148,7 @@ export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refr
       </div>
 
       {/* Main content area */}
-      {confirmingFinish && current ? (
+      {isAdmin && confirmingFinish && current ? (
         /* Who Won — takes over the full middle area */
         <div className="flex-1 flex flex-col items-center justify-center gap-4 animate-[court-fade-in_0.3s_ease-out]">
           <p className="text-2xl font-bold uppercase tracking-widest text-[#FFB200]">Who won?</p>
@@ -219,13 +222,15 @@ export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refr
                     <p className="text-4xl leading-tight font-medium">{current.t2p1} &amp; {current.t2p2}</p>
                   </div>
 
-                  <button
-                    onClick={() => setConfirmingFinish(true)}
-                    disabled={isSaving}
-                    className="w-full py-4 rounded-lg bg-primary text-primary-foreground text-xl font-bold tracking-wide hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                  >
-                    Finish
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setConfirmingFinish(true)}
+                      disabled={isSaving}
+                      className="w-full py-4 rounded-lg bg-primary text-primary-foreground text-xl font-bold tracking-wide hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      Finish
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
