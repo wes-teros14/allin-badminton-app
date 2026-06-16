@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, type ReactNode } from 'react'
 import { useParams, Link } from 'react-router'
-import { Calendar, Clock, FileText, MapPin, Timer } from 'lucide-react'
+import { Calendar, Clock, FileText, MapPin, PhilippinePeso, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -105,7 +105,7 @@ function SessionSummary({
         <DetailItem icon={Calendar} iconClassName="text-[#D91656]">{formatSessionDate(date)}</DetailItem>
         {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#D91656]">{formattedTime}</DetailItem>}
         {duration && <DetailItem icon={Timer} iconClassName="text-[#D91656]">{duration} hrs</DetailItem>}
-        {price != null && <span>PHP {price}</span>}
+        {price != null && <DetailItem icon={PhilippinePeso} iconClassName="text-[#D91656]">{price}</DetailItem>}
       </p>
       {venue && (
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
