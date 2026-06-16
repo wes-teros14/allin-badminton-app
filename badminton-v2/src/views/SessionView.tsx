@@ -102,20 +102,20 @@ function SessionSummary({
     <div className="min-w-0">
       <h1 className="text-lg font-semibold text-primary">{name}</h1>
       <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-        <DetailItem icon={Calendar} iconClassName="text-[#D91656]">{formatSessionDate(date)}</DetailItem>
-        {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#D91656]">{formattedTime}</DetailItem>}
-        {duration && <DetailItem icon={Timer} iconClassName="text-[#D91656]">{duration} hrs</DetailItem>}
-        {price != null && <DetailItem icon={PhilippinePeso} iconClassName="text-[#D91656]">{price}</DetailItem>}
+        <DetailItem icon={Calendar} iconClassName="text-[#A84767]">{formatSessionDate(date)}</DetailItem>
+        {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#A84767]">{formattedTime}</DetailItem>}
+        {duration && <DetailItem icon={Timer} iconClassName="text-[#A84767]">{duration} hrs</DetailItem>}
+        {price != null && <DetailItem icon={PhilippinePeso} iconClassName="text-[#A84767]">{price}</DetailItem>}
       </p>
       {venue && (
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <MapPin className="h-4 w-4 shrink-0 text-[#A84767]" aria-hidden="true" />
           <span className="truncate">{venue}</span>
         </p>
       )}
       {notes && (
         <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground">
-          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#A84767]" aria-hidden="true" />
           <span>{notes}</span>
         </p>
       )}
