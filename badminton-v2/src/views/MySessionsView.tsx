@@ -137,29 +137,29 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
         </div>
 
         <p className="flex items-center gap-1.5 whitespace-nowrap text-sm font-normal text-muted-foreground">
-          <Calendar className="h-3.5 w-3.5 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-[#A84767]" aria-hidden="true" />
           <span>{formattedDate}</span>
         </p>
       </div>
 
       {(formattedTime || s.duration || s.price != null) && (
         <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#D91656]">{formattedTime}</DetailItem>}
-          {s.duration && <DetailItem icon={Timer} iconClassName="text-[#D91656]">{s.duration} hrs</DetailItem>}
-          {s.price != null && <DetailItem icon={PhilippinePeso} iconClassName="text-[#D91656]">{s.price}</DetailItem>}
+          {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#A84767]">{formattedTime}</DetailItem>}
+          {s.duration && <DetailItem icon={Timer} iconClassName="text-[#A84767]">{s.duration} hrs</DetailItem>}
+          {s.price != null && <DetailItem icon={PhilippinePeso} iconClassName="text-[#A84767]">{s.price}</DetailItem>}
         </p>
       )}
 
       {s.venue && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-[#A84767]" aria-hidden="true" />
           <span className="truncate">{s.venue}</span>
         </p>
       )}
 
       {s.session_notes && (
         <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-muted-foreground">
-          <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A84767]" aria-hidden="true" />
           <span className="line-clamp-2">{s.session_notes}</span>
         </p>
       )}
