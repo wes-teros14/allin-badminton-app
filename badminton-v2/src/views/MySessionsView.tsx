@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { MapPin } from 'lucide-react'
+import { Calendar, Clock, FileText, MapPin, Timer } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
@@ -8,6 +8,23 @@ import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
 const ACTIVE_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_open', 'registration_closed'])
 const SHOW_REGISTERED_PILL_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_closed'])
 const REGISTERED_BADGE_CLASS = 'border-green-500/30 bg-green-500/10 text-green-700'
+
+function DetailItem({
+  icon: Icon,
+  iconClassName,
+  children,
+}: {
+  icon: typeof Calendar
+  iconClassName: string
+  children: ReactNode
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <Icon className={`h-3.5 w-3.5 shrink-0 ${iconClassName}`} aria-hidden="true" />
+      <span className="truncate">{children}</span>
+    </span>
+  )
+}
 
 function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress') {
@@ -51,7 +68,7 @@ function statusBadge(s: SessionPickerItem) {
 
   if (s.status === 'registration_closed') {
     return {
-      label: 'Registration Closed',
+      label: 'Closed',
       className: 'border-border bg-secondary text-muted-foreground',
       accentClassName: 'bg-muted-foreground/50',
       isActive: true,
@@ -89,12 +106,6 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
     ? new Date(`1970-01-01T${s.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : null
 
-  const metaLine = [
-    formattedTime,
-    s.duration ? `${s.duration} hrs` : null,
-    s.price != null ? `PHP ${s.price}` : null,
-  ].filter(Boolean).join(' · ')
-
   return (
     <Link
       to={`/sessions/${s.id}`}
@@ -114,38 +125,42 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
           </p>
 
           <div className="flex shrink-0 flex-nowrap justify-end gap-1.5">
-            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
+            <span className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
               {badge.label}
             </span>
             {showRegisteredPill && (
-              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${REGISTERED_BADGE_CLASS}`}>
+              <span className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${REGISTERED_BADGE_CLASS}`}>
                 Registered
               </span>
             )}
           </div>
         </div>
 
-        <p className="whitespace-nowrap text-sm font-normal text-muted-foreground">
-          {formattedDate}
+        <p className="flex items-center gap-1.5 whitespace-nowrap text-sm font-normal text-muted-foreground">
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <span>{formattedDate}</span>
         </p>
       </div>
 
-      {metaLine && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          {metaLine}
+      {(formattedTime || s.duration || s.price != null) && (
+        <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#D91656]">{formattedTime}</DetailItem>}
+          {s.duration && <DetailItem icon={Timer} iconClassName="text-[#D91656]">{s.duration} hrs</DetailItem>}
+          {s.price != null && <span>PHP {s.price}</span>}
         </p>
       )}
 
       {s.venue && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-[#D91656]" aria-hidden="true" />
           <span className="truncate">{s.venue}</span>
         </p>
       )}
 
       {s.session_notes && (
-        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-          {s.session_notes}
+        <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-muted-foreground">
+          <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <span className="line-clamp-2">{s.session_notes}</span>
         </p>
       )}
 

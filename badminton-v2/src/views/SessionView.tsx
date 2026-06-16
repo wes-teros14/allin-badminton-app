@@ -1,6 +1,6 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, type ReactNode } from 'react'
 import { useParams, Link } from 'react-router'
-import { MapPin } from 'lucide-react'
+import { Calendar, Clock, FileText, MapPin, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -62,6 +62,23 @@ function formatSessionTime(time: string | null) {
     : null
 }
 
+function DetailItem({
+  icon: Icon,
+  iconClassName,
+  children,
+}: {
+  icon: typeof Calendar
+  iconClassName: string
+  children: ReactNode
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <Icon className={`h-4 w-4 shrink-0 ${iconClassName}`} aria-hidden="true" />
+      <span className="truncate">{children}</span>
+    </span>
+  )
+}
+
 function SessionSummary({
   name,
   date,
@@ -79,25 +96,28 @@ function SessionSummary({
   venue: string | null
   notes: string | null
 }) {
-  const metaLine = [
-    formatSessionDate(date),
-    formatSessionTime(time),
-    duration ? `${duration} hrs` : null,
-    price != null ? `PHP ${price}` : null,
-  ].filter(Boolean).join(' · ')
+  const formattedTime = formatSessionTime(time)
 
   return (
     <div className="min-w-0">
       <h1 className="text-lg font-semibold text-primary">{name}</h1>
-      <p className="text-sm text-muted-foreground">{metaLine}</p>
+      <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <DetailItem icon={Calendar} iconClassName="text-[#D91656]">{formatSessionDate(date)}</DetailItem>
+        {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#D91656]">{formattedTime}</DetailItem>}
+        {duration && <DetailItem icon={Timer} iconClassName="text-[#D91656]">{duration} hrs</DetailItem>}
+        {price != null && <span>PHP {price}</span>}
+      </p>
       {venue && (
         <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <MapPin className="h-4 w-4 shrink-0 text-[#D91656]" aria-hidden="true" />
           <span className="truncate">{venue}</span>
         </p>
       )}
       {notes && (
-        <p className="mt-1 text-sm text-muted-foreground">{notes}</p>
+        <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground">
+          <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[#D91656]" aria-hidden="true" />
+          <span>{notes}</span>
+        </p>
       )}
     </div>
   )
