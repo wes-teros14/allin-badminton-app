@@ -12,7 +12,7 @@ badminton-v2/.env.*
 npm-debug.log*
 
 # Temp files
-
+/temporary_files
 
 # Editor
 .vscode/*
