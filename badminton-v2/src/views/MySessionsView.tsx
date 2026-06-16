@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Calendar, Clock, FileText, MapPin, Timer } from 'lucide-react'
+import { Calendar, Clock, FileText, MapPin, PhilippinePeso, Timer } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
@@ -146,7 +146,7 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
         <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#D91656]">{formattedTime}</DetailItem>}
           {s.duration && <DetailItem icon={Timer} iconClassName="text-[#D91656]">{s.duration} hrs</DetailItem>}
-          {s.price != null && <span>PHP {s.price}</span>}
+          {s.price != null && <DetailItem icon={PhilippinePeso} iconClassName="text-[#D91656]">{s.price}</DetailItem>}
         </p>
       )}
 
