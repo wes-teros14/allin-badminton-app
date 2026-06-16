@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router'
+import { MapPin } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -46,6 +47,59 @@ function BackToAdmin() {
     <Link to="/admin" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
       Back to Admin
     </Link>
+  )
+}
+
+function formatSessionDate(date: string) {
+  return new Date(date + 'T00:00:00')
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    .replace(/^(\w{3})/, '$1.')
+}
+
+function formatSessionTime(time: string | null) {
+  return time
+    ? new Date(`1970-01-01T${time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    : null
+}
+
+function SessionSummary({
+  name,
+  date,
+  time,
+  duration,
+  price,
+  venue,
+  notes,
+}: {
+  name: string
+  date: string
+  time: string | null
+  duration: string | null
+  price: number | null
+  venue: string | null
+  notes: string | null
+}) {
+  const metaLine = [
+    formatSessionDate(date),
+    formatSessionTime(time),
+    duration ? `${duration} hrs` : null,
+    price != null ? `PHP ${price}` : null,
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <div className="min-w-0">
+      <h1 className="text-lg font-semibold text-primary">{name}</h1>
+      <p className="text-sm text-muted-foreground">{metaLine}</p>
+      {venue && (
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="truncate">{venue}</span>
+        </p>
+      )}
+      {notes && (
+        <p className="mt-1 text-sm text-muted-foreground">{notes}</p>
+      )}
+    </div>
   )
 }
 
@@ -338,7 +392,7 @@ export function SessionView() {
         <Card>
           <CardHeader><CardTitle>{session.name}</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
-            <p>{new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}</p>
+            <p>{formatSessionDate(session.date)}</p>
             <p className="text-muted-foreground">This session has been closed.</p>
           </CardContent>
         </Card>
@@ -367,10 +421,15 @@ export function SessionView() {
         <SessionStepper status={session.status} />
         <Card>
           <CardContent className="pt-4 space-y-1">
-            <p className="font-semibold">{session.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
-            </p>
+            <SessionSummary
+              name={session.name}
+              date={session.date}
+              time={session.time}
+              duration={session.duration}
+              price={session.price}
+              venue={session.venue}
+              notes={session.session_notes}
+            />
             <p className="text-sm text-muted-foreground pt-2">Actions are available once the session is Live.</p>
           </CardContent>
         </Card>
@@ -384,12 +443,15 @@ export function SessionView() {
         {session.status === 'setup' ? (
           <div />
         ) : (
-          <div>
-            <h1 className="text-lg font-semibold text-primary">{session.name}</h1>
-            <p className="text-sm text-muted-foreground">
-              {new Date(session.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')}
-            </p>
-          </div>
+          <SessionSummary
+            name={session.name}
+            date={session.date}
+            time={session.time}
+            duration={session.duration}
+            price={session.price}
+            venue={session.venue}
+            notes={session.session_notes}
+          />
         )}
         <BackToAdmin />
       </div>
