@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
+import { MapPin } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
@@ -92,7 +93,6 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
     formattedTime,
     s.duration ? `${s.duration} hrs` : null,
     s.price != null ? `PHP ${s.price}` : null,
-    s.venue || null,
   ].filter(Boolean).join(' · ')
 
   return (
@@ -133,6 +133,13 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
       {metaLine && (
         <p className="mt-2 text-xs text-muted-foreground">
           {metaLine}
+        </p>
+      )}
+
+      {s.venue && (
+        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+          <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">{s.venue}</span>
         </p>
       )}
 
