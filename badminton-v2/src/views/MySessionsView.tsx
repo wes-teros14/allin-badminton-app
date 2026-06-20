@@ -160,17 +160,17 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
         </p>
       )}
 
-      {s.isRegistered && s.paid !== null && (
-        <p className={`mt-2 flex items-center gap-1.5 text-xs font-medium ${paymentClassName}`}>
-          <WalletCards className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Payment: {s.paid ? 'Paid' : 'Unpaid'}</span>
-        </p>
-      )}
-
       {s.session_notes && (
         <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-muted-foreground">
           <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A84767]" aria-hidden="true" />
           <span className="line-clamp-2">{s.session_notes}</span>
+        </p>
+      )}
+
+      {s.isRegistered && s.paid !== null && (
+        <p className={`mt-2 flex items-center gap-1.5 text-xs font-medium ${paymentClassName}`}>
+          <WalletCards className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>Payment: {s.paid ? 'Paid' : 'Unpaid'}</span>
         </p>
       )}
 
