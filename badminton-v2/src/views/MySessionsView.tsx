@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Calendar, Clock, FileText, MapPin, PhilippinePeso, Timer } from 'lucide-react'
+import { Calendar, Clock, FileText, MapPin, PhilippinePeso, Timer, WalletCards } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
@@ -105,6 +105,9 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
   const formattedTime = s.time
     ? new Date(`1970-01-01T${s.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : null
+  const paymentClassName = s.paid
+    ? 'text-green-700'
+    : 'text-destructive'
 
   return (
     <Link
@@ -154,6 +157,13 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <MapPin className="h-3.5 w-3.5 shrink-0 text-[#A84767]" aria-hidden="true" />
           <span className="truncate">{s.venue}</span>
+        </p>
+      )}
+
+      {s.isRegistered && s.paid !== null && (
+        <p className={`mt-2 flex items-center gap-1.5 text-xs font-medium ${paymentClassName}`}>
+          <WalletCards className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>Payment: {s.paid ? 'Paid' : 'Unpaid'}</span>
         </p>
       )}
 
