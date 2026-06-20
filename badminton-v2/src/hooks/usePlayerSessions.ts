@@ -14,8 +14,25 @@ export interface SessionPickerItem {
   session_notes: string | null
   registration_opens_at: string | null
   isRegistered: boolean
+  paid: boolean | null
   playerCount?: number
   maxPlayers?: number | null
+}
+
+interface RegistrationSummary {
+  session_id: string
+  paid: boolean | null
+}
+
+type SessionRecord = Omit<SessionPickerItem, 'isRegistered' | 'paid' | 'playerCount' | 'maxPlayers'>
+
+export function buildRegistrationPaymentMap(
+  registrations: RegistrationSummary[]
+): Map<string, boolean> {
+  return new Map(registrations.map((registration) => [
+    registration.session_id,
+    registration.paid ?? false,
+  ]))
 }
 
 interface UsePlayerSessionsResult {
@@ -36,12 +53,14 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
 
     let cancelled = false
 
-    async function load() {
-      setIsLoading(true)
+    async function load(options?: { background?: boolean }) {
+      if (!options?.background) {
+        setIsLoading(true)
+      }
 
       // 1. Fetch registered session IDs + all registration_open/registration_closed sessions in parallel
       const [registrationsRes, openSessionsRes] = await Promise.all([
-        supabase.from('session_registrations').select('session_id').eq('player_id', playerId!),
+        supabase.from('session_registrations').select('session_id, paid').eq('player_id', playerId!),
         supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, price, session_notes, registration_opens_at')
           .in('status', ['registration_open', 'registration_closed']).order('date', { ascending: false }),
       ])
@@ -51,9 +70,12 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       const registeredIds = new Set(
         ((registrationsRes.data ?? []) as Array<{ session_id: string }>).map(r => r.session_id)
       )
+      const paidBySessionId = buildRegistrationPaymentMap(
+        (registrationsRes.data ?? []) as RegistrationSummary[]
+      )
 
       // 2. Fetch registered sessions (all statuses)
-      let registeredSessionData: Array<Omit<SessionPickerItem, 'isRegistered'>> = []
+      let registeredSessionData: SessionRecord[] = []
       if (registeredIds.size > 0) {
         const { data } = await supabase
           .from('sessions')
@@ -68,7 +90,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       if (cancelled) return
 
       // 3. Merge: registered sessions + open sessions the player hasn't registered for
-      const openSessions = (openSessionsRes.data ?? []) as unknown as Array<Omit<SessionPickerItem, 'isRegistered'>>
+      const openSessions = (openSessionsRes.data ?? []) as unknown as SessionRecord[]
       const seen = new Set(registeredSessionData.map(s => s.id))
       const unregisteredOpen = openSessions.filter(s => !seen.has(s.id))
       const rawItems = [...registeredSessionData, ...unregisteredOpen]
@@ -76,6 +98,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       const items: SessionPickerItem[] = rawItems.map(s => ({
         ...s,
         isRegistered: registeredIds.has(s.id),
+        paid: paidBySessionId.get(s.id) ?? null,
       }))
 
       const openItems = items.filter(s => s.status === 'registration_open')
@@ -128,7 +151,19 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
     }
 
     load()
-    return () => { cancelled = true }
+    const channel = supabase
+      .channel(`player-sessions:${playerId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'session_registrations', filter: `player_id=eq.${playerId}` },
+        () => { void load({ background: true }) }
+      )
+      .subscribe()
+
+    return () => {
+      cancelled = true
+      supabase.removeChannel(channel)
+    }
   }, [playerId])
 
   return { sessions, isLoading }
