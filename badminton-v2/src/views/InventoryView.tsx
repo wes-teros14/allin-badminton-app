@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -48,10 +48,45 @@ const addBatchSchema = z.object({
 type AddBatchFormInput = z.input<typeof addBatchSchema>
 type AddBatchFormOutput = z.output<typeof addBatchSchema>
 
+interface ArchiveButtonProps {
+  batchId: string
+  onArchive: (batchId: string) => Promise<void>
+}
+
+function ArchiveButton({ batchId, onArchive }: ArchiveButtonProps) {
+  const [isArchiving, setIsArchiving] = useState(false)
+  const mountedRef = useRef(true)
+
+  useEffect(() => () => {
+    mountedRef.current = false
+  }, [])
+
+  async function handleClick() {
+    setIsArchiving(true)
+    try {
+      await onArchive(batchId)
+    } finally {
+      if (mountedRef.current) {
+        setIsArchiving(false)
+      }
+    }
+  }
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      disabled={isArchiving}
+      onClick={() => void handleClick()}
+    >
+      {isArchiving ? 'Archiving...' : 'Archive'}
+    </Button>
+  )
+}
+
 export default function InventoryView() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [archivingId, setArchivingId] = useState<string | null>(null)
   const { batches, isLoading, totalStockRemaining, addBatch, archiveBatch } = useShuttleBatches()
 
   const form = useForm<AddBatchFormInput, unknown, AddBatchFormOutput>({
@@ -85,9 +120,7 @@ export default function InventoryView() {
   }
 
   async function handleArchive(batchId: string) {
-    setArchivingId(batchId)
     const result = await archiveBatch(batchId)
-    setArchivingId(null)
     if (result.error) {
       toast.error(result.error)
       return
@@ -180,14 +213,7 @@ export default function InventoryView() {
                     </TableCell>
                     <TableCell className="text-right">
                       {batch.shuttlesRemaining === 0 ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={archivingId === batch.id}
-                          onClick={() => handleArchive(batch.id)}
-                        >
-                          {archivingId === batch.id ? 'Archiving...' : 'Archive'}
-                        </Button>
+                        <ArchiveButton batchId={batch.id} onArchive={handleArchive} />
                       ) : null}
                     </TableCell>
                   </TableRow>
