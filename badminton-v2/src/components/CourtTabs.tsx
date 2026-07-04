@@ -14,6 +14,53 @@ function formatElapsed(seconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+// The "next game" after game N is normally N+1. Games 1 & 2 are the exception:
+// they start simultaneously (first round, all courts empty), so the game that
+// follows both of them is game 3.
+function nextGameNumber(gameNumber: number): number {
+  return gameNumber <= 2 ? 3 : gameNumber + 1
+}
+
+// A player is excluded as a sub for game N if they are: (1) scheduled in the next
+// game (see nextGameNumber — pulling them in would mean back-to-back games), or
+// (2) one of game N's own players (passed via excludeIds). Everyone else in the
+// roster is eligible.
+function getEligibleSubstitutes(
+  targetGameNumber: number,
+  allActiveMatches: AdminMatchDisplay[],
+  players: Array<{ id: string; displayName: string }>,
+  excludeIds: string[] = []
+): Array<{ id: string; displayName: string }> {
+  const busyPlayerIds = new Set<string>(excludeIds)
+
+  // scheduled in the next game
+  const nextGame = allActiveMatches.find((m) => m.gameNumber === nextGameNumber(targetGameNumber))
+  if (nextGame) {
+    for (const id of [nextGame.t1p1Id, nextGame.t1p2Id, nextGame.t2p1Id, nextGame.t2p2Id]) {
+      busyPlayerIds.add(id)
+    }
+  }
+
+  return players
+    .filter((p) => !busyPlayerIds.has(p.id))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName))
+}
+
+function SubsPanel({ eligible }: { eligible: Array<{ id: string; displayName: string }> }) {
+  return (
+    <div className="mt-2 rounded-md border border-border bg-muted/30 p-2 text-xs">
+      <p className="font-medium text-muted-foreground mb-1">
+        Eligible Substitutes ({eligible.length})
+      </p>
+      {eligible.length === 0 ? (
+        <p className="text-muted-foreground italic">No eligible substitutes right now</p>
+      ) : (
+        <p className="text-foreground">{eligible.map((p) => p.displayName).join(', ')}</p>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   courts: AdminCourtSlot[]
   queued: AdminMatchDisplay[]
@@ -38,6 +85,8 @@ function CourtCard({
   canEditLabel,
   onCourtLabelChange,
   onCourtLabelCommit,
+  subsList,
+  onToggleSubs,
 }: {
   court: AdminCourtSlot
   sessionId: string | null
@@ -53,6 +102,8 @@ function CourtCard({
   canEditLabel: boolean
   onCourtLabelChange: (courtNumber: number, label: string) => void
   onCourtLabelCommit: (courtNumber: number, label: string) => void
+  subsList: Array<{ id: string; displayName: string }> | null
+  onToggleSubs: () => void
 }) {
   const current = court.current
   const [elapsed, setElapsed] = useState(0)
@@ -91,10 +142,10 @@ function CourtCard({
             onCourtLabelCommit(court.courtNumber, label)
           }}
           aria-label={`Court ${court.courtNumber} label`}
-          className="mb-2 w-full max-w-[10rem] rounded bg-transparent px-0 py-0.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground outline-none transition-colors focus:bg-background focus:px-2 focus:text-foreground focus:ring-1 focus:ring-border"
+          className="mb-2 w-full max-w-[14rem] rounded bg-transparent px-0 py-0.5 text-lg font-bold uppercase tracking-widest text-muted-foreground outline-none transition-colors focus:bg-background focus:px-2 focus:text-foreground focus:ring-1 focus:ring-border"
         />
       ) : (
-        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">{courtLabel}</p>
+        <p className="mb-2 text-lg font-bold uppercase tracking-widest text-muted-foreground">{courtLabel}</p>
       )}
       {current ? (
         <div className="relative overflow-hidden rounded-xl border border-primary/30 bg-[var(--primary-subtle)] p-4 space-y-3">
@@ -181,13 +232,20 @@ function CourtCard({
                 <p className="text-xs text-muted-foreground my-0.5">vs</p>
                 <p className="text-sm font-medium text-primary">{current.t2p1} &amp; {current.t2p2}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setConfirmingFinish(true)}
                   disabled={isSaving || !sessionId}
                   className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   Finish
+                </button>
+                <button
+                  onClick={onToggleSubs}
+                  disabled={isSaving}
+                  className="px-3 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground disabled:opacity-50 transition-colors"
+                >
+                  Subs
                 </button>
                 <button
                   onClick={() => onEdit(current)}
@@ -197,6 +255,7 @@ function CourtCard({
                   Edit
                 </button>
               </div>
+              {subsList && <SubsPanel eligible={subsList} />}
             </>
           )}
         </div>
@@ -248,6 +307,12 @@ export function CourtTabs({ courts, queued, isLoading, sessionId, onDone, splitS
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditForm>({ t1p1Id: '', t1p2Id: '', t2p2Id: '', t2p1Id: '' })
   const [courtLabels, setCourtLabels] = useState<Record<number, string>>({})
+  const [subsForId, setSubsForId] = useState<string | null>(null)
+
+  const allActiveMatches: AdminMatchDisplay[] = [
+    ...courts.map((c) => c.current).filter((m): m is AdminMatchDisplay => m != null),
+    ...queued,
+  ]
 
   useEffect(() => {
     setCourtLabels(Object.fromEntries(courts.map((court) => [court.courtNumber, court.label])))
@@ -328,10 +393,7 @@ export function CourtTabs({ courts, queued, isLoading, sessionId, onDone, splitS
 
   return (
     <div className="space-y-6">
-      <div
-        className="grid gap-4"
-        style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(courts.length, 1), 2)}, minmax(0, 1fr))` }}
-      >
+      <div className={`grid gap-4 grid-cols-1 ${courts.length > 1 ? 'sm:grid-cols-2' : ''}`}>
         {courts.map((court, index) => {
           const previousCourt = index > 0 ? courts[index - 1] : null
           const nextCourt = index < courts.length - 1 ? courts[index + 1] : null
@@ -349,6 +411,17 @@ export function CourtTabs({ courts, queued, isLoading, sessionId, onDone, splitS
                 onCourtLabelCommit={handleCourtLabelCommit}
                 onMarkDone={markDone}
                 onEdit={startEdit}
+                subsList={
+                  court.current && subsForId === court.current.id
+                    ? getEligibleSubstitutes(court.current.gameNumber, allActiveMatches, players, [
+                        court.current.t1p1Id, court.current.t1p2Id, court.current.t2p1Id, court.current.t2p2Id,
+                      ])
+                    : null
+                }
+                onToggleSubs={() => {
+                  if (!court.current) return
+                  setSubsForId(subsForId === court.current.id ? null : court.current.id)
+                }}
                 canMoveUp={!!court.current}
                 canMoveDown={!!court.current}
                 onMoveUp={() => {
@@ -433,6 +506,9 @@ export function CourtTabs({ courts, queued, isLoading, sessionId, onDone, splitS
                         <p className="font-medium">{m.t1p1} &amp; {m.t1p2}</p>
                         <p className="text-muted-foreground text-xs mt-0.5 mb-0.5">vs</p>
                         <p className="font-medium">{m.t2p1} &amp; {m.t2p2}</p>
+                        {subsForId === m.id && (
+                          <SubsPanel eligible={getEligibleSubstitutes(m.gameNumber, allActiveMatches, players, [m.t1p1Id, m.t1p2Id, m.t2p1Id, m.t2p2Id])} />
+                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -454,6 +530,13 @@ export function CourtTabs({ courts, queued, isLoading, sessionId, onDone, splitS
                           className="px-3 py-2 text-sm rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           Down
+                        </button>
+                        <button
+                          onClick={() => setSubsForId(subsForId === m.id ? null : m.id)}
+                          disabled={isSaving}
+                          className="px-2 py-1 text-xs rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          Subs
                         </button>
                         <button
                           onClick={() => startEdit(m)}
