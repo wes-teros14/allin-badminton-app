@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { Info } from 'lucide-react'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { supabase } from '@/lib/supabase'
 import type { Json } from '@/types/database'
@@ -391,6 +392,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
                 value={settings.maxSpreadLimit}
                 min={0} max={9}
                 onChange={(v) => set('maxSpreadLimit', v)}
+                help="Max allowed spread between the highest and lowest player level in a single match (across all 4 players). Matches exceeding this count as a Skill Gap Violation."
               />
 
               <CheckField
@@ -564,8 +566,10 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
             {matches.length > 0 && (
               <div className="grid grid-cols-1 gap-4 text-xs">
                 <div>
-                  <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Player Participation</p>
-                  <ParticipationChart matches={matches} nameMap={nameMap} />
+                  <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                    Player Participation ({countParticipants(matches)}/{players.length})
+                  </p>
+                  <ParticipationChart matches={matches} nameMap={nameMap} allPlayerIds={players.map((p) => p.id)} />
                 </div>
                 <div>
                   <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Match Type Summary</p>
@@ -671,8 +675,10 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
               return (
                 <div className="grid grid-cols-1 gap-4 text-xs">
                   <div>
-                    <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Player Participation</p>
-                    <ParticipationChart matches={enrichedMatches} nameMap={nameMap} />
+                    <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      Player Participation ({countParticipants(enrichedMatches)}/{players.length})
+                    </p>
+                    <ParticipationChart matches={enrichedMatches} nameMap={nameMap} allPlayerIds={players.map((p) => p.id)} />
                   </div>
                   <div>
                     <p className="font-semibold mb-2 text-xs uppercase tracking-wide text-muted-foreground">Match Type Summary</p>
@@ -785,7 +791,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props)
 // ---------------------------------------------------------------------------
 
 function SliderField({
-  label, value, min, max, step = 1, disabled = false, onChange,
+  label, value, min, max, step = 1, disabled = false, help, onChange,
 }: {
   label: string
   value: number
@@ -793,12 +799,20 @@ function SliderField({
   max: number
   step?: number
   disabled?: boolean
+  help?: string
   onChange: (v: number) => void
 }) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <Label className={`text-xs ${disabled ? 'opacity-50' : ''}`}>{label}</Label>
+        <Label className={`flex items-center gap-1 text-xs ${disabled ? 'opacity-50' : ''}`}>
+          {label}
+          {help && (
+            <span title={help}>
+              <Info className="h-3 w-3 text-muted-foreground" />
+            </span>
+          )}
+        </Label>
         <span className={`text-xs text-muted-foreground ${disabled ? 'opacity-50' : ''}`}>{value}</span>
       </div>
       <input
@@ -872,13 +886,28 @@ function ScoringRow({ label, value }: { label: string; value: number }) {
   )
 }
 
+function countParticipants(matches: GeneratedMatch[]): number {
+  const ids = new Set<string>()
+  for (const m of matches) {
+    ids.add(m.team1Player1)
+    ids.add(m.team1Player2)
+    ids.add(m.team2Player1)
+    ids.add(m.team2Player2)
+  }
+  return ids.size
+}
+
 function ParticipationChart({
-  matches, nameMap,
+  matches, nameMap, allPlayerIds,
 }: {
   matches: GeneratedMatch[]
   nameMap: Map<string, string>
+  allPlayerIds?: string[]
 }) {
   const counts = new Map<string, number>()
+  for (const id of allPlayerIds ?? []) {
+    counts.set(id, 0)
+  }
   for (const m of matches) {
     for (const id of [m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2]) {
       counts.set(id, (counts.get(id) ?? 0) + 1)
@@ -893,14 +922,14 @@ function ParticipationChart({
     <div className="space-y-1">
       {entries.map(([id, count], i) => (
         <div key={id} className="flex items-center gap-2">
-          <span className="w-20 truncate text-right text-[11px] text-muted-foreground shrink-0">{nameMap.get(id) ?? id}</span>
+          <span className={`w-20 truncate text-right text-[11px] shrink-0 ${count === 0 ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>{nameMap.get(id) ?? id}</span>
           <div className="flex-1 bg-muted rounded h-4 overflow-hidden">
             <div
               className={`h-4 rounded ${colors[i % colors.length]}`}
               style={{ width: `${(count / max) * 100}%` }}
             />
           </div>
-          <span className="w-4 text-[11px] text-muted-foreground shrink-0">{count}</span>
+          <span className={`w-4 text-[11px] shrink-0 ${count === 0 ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>{count}</span>
         </div>
       ))}
     </div>
