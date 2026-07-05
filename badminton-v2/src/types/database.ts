@@ -613,6 +613,7 @@ export type Database = {
         }[]
       }
       reverse_session_stats: { Args: { p_session_id: string }; Returns: string }
+      unfinish_match: { Args: { p_match_id: string }; Returns: string }
     }
     Enums: {
       match_status: "queued" | "playing" | "complete"
