@@ -12,13 +12,19 @@ import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { supabase } from '@/lib/supabase'
 import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
+import { Avatar } from '@/components/Avatar'
+
+interface MatchPlayer {
+  name: string
+  avatarUrl: string | null
+}
 
 interface AllMatch {
   id: string
   gameNumber: number
   status: 'queued' | 'playing' | 'complete'
-  team1: string
-  team2: string
+  team1: MatchPlayer[]
+  team2: MatchPlayer[]
   players: string[]
 }
 
@@ -315,12 +321,16 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 
       const matchRows = rows as Array<{ id: string; queue_position: number; status: string; team1_player1_id: string; team1_player2_id: string; team2_player1_id: string; team2_player2_id: string }>
 
-      // Collect all player IDs and resolve names
+      // Collect all player IDs and resolve names + avatars
       const allIds = [...new Set(matchRows.flatMap(m => [m.team1_player1_id, m.team1_player2_id, m.team2_player1_id, m.team2_player2_id]))]
-      const { data: profiles } = await supabase.from('profiles').select('id, name_slug, nickname').in('id', allIds)
+      const { data: profiles } = await supabase.from('profiles').select('id, name_slug, nickname, avatar_url').in('id', allIds)
       if (cancelled) return
-      const nameMap = new Map(((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>).map(p => [p.id, p.nickname ?? p.name_slug]))
+      type ProfileRow = { id: string; name_slug: string; nickname: string | null; avatar_url: string | null }
+      const profileRows = (profiles ?? []) as ProfileRow[]
+      const nameMap = new Map(profileRows.map(p => [p.id, p.nickname ?? p.name_slug]))
+      const avatarMap = new Map(profileRows.map(p => [p.id, p.avatar_url]))
       const name = (id: string) => nameMap.get(id) ?? '?'
+      const player = (id: string): MatchPlayer => ({ name: name(id), avatarUrl: avatarMap.get(id) ?? null })
 
       const sortedNames = [...nameMap.values()].sort((a, b) => a.localeCompare(b))
       setPlayerNames(sortedNames)
@@ -334,8 +344,8 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
           id: m.id,
           gameNumber: m.queue_position,
           status: m.status as 'queued' | 'playing' | 'complete',
-          team1: `${p1} & ${p2}`,
-          team2: `${p3} & ${p4}`,
+          team1: [player(m.team1_player1_id), player(m.team1_player2_id)],
+          team2: [player(m.team2_player1_id), player(m.team2_player2_id)],
           players: [p1, p2, p3, p4],
         }
       }))
@@ -385,9 +395,21 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
                     {m.status === 'playing' && <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Playing</span>}
                     {m.status === 'complete' && <span className="text-[var(--success)] text-lg">✓</span>}
                   </div>
-                  <p className="text-sm text-foreground font-medium">{m.team1}</p>
+                  <div className="flex items-center gap-1.5 text-sm text-foreground font-medium">
+                    <Avatar url={m.team1[0].avatarUrl} name={m.team1[0].name} size={24} />
+                    <span>{m.team1[0].name}</span>
+                    <span>&amp;</span>
+                    <Avatar url={m.team1[1].avatarUrl} name={m.team1[1].name} size={24} />
+                    <span>{m.team1[1].name}</span>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-0.5 mb-0.5">vs</p>
-                  <p className="text-sm text-foreground font-medium">{m.team2}</p>
+                  <div className="flex items-center gap-1.5 text-sm text-foreground font-medium">
+                    <Avatar url={m.team2[0].avatarUrl} name={m.team2[0].name} size={24} />
+                    <span>{m.team2[0].name}</span>
+                    <span>&amp;</span>
+                    <Avatar url={m.team2[1].avatarUrl} name={m.team2[1].name} size={24} />
+                    <span>{m.team2[1].name}</span>
+                  </div>
                 </div>
               ))
           }
