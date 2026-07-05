@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { Avatar } from '@/components/Avatar'
+import { Camera } from 'lucide-react'
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -67,6 +69,36 @@ interface Award {
 
 interface NicknameRow {
   nickname: string | null
+  avatar_url: string | null
+}
+
+const MAX_AVATAR_DIM = 1024
+const MAX_AVATAR_BYTES = 1 * 1024 * 1024 // enforced after client-side resize/compression below
+const MAX_AVATAR_INPUT_BYTES = 20 * 1024 * 1024 // reject absurdly large originals before we even try to process them
+
+async function resizeImageFile(file: File, maxDim: number, maxBytes: number): Promise<Blob> {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
+  const width = Math.round(bitmap.width * scale)
+  const height = Math.round(bitmap.height * scale)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Your browser cannot process images')
+  ctx.drawImage(bitmap, 0, 0, width, height)
+
+  let quality = 0.92
+  let blob: Blob | null = null
+  for (let attempt = 0; attempt < 6; attempt++) {
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
+    if (!blob) throw new Error('Failed to process image')
+    if (blob.size <= maxBytes) break
+    quality -= 0.15
+  }
+  if (!blob) throw new Error('Failed to process image')
+  return blob
 }
 
 async function fetchAwards(userId: string): Promise<Award[]> {
@@ -136,6 +168,9 @@ export function ProfileView() {
   const [nickname, setNickname] = useState('')
   const [editingNickname, setEditingNickname] = useState(false)
   const [savingNickname, setSavingNickname] = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   const [cheerStats, setCheerStats] = useState<CheerStats | null>(null)
   const [awards, setAwards] = useState<Award[]>([])
 
@@ -144,8 +179,13 @@ export function ProfileView() {
 
   useEffect(() => {
     if (!user) return
-    supabase.from('profiles').select('nickname').eq('id', user.id).maybeSingle()
-      .then(({ data }) => { if (data) setNickname((data as NicknameRow).nickname ?? '') })
+    supabase.from('profiles').select('nickname, avatar_url').eq('id', user.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        const row = data as NicknameRow
+        setNickname(row.nickname ?? '')
+        setAvatarUrl(row.avatar_url)
+      })
   }, [user?.id])
 
   useEffect(() => {
@@ -176,6 +216,48 @@ export function ProfileView() {
     setSavingNickname(false)
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !user) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file')
+      return
+    }
+    if (file.size > MAX_AVATAR_INPUT_BYTES) {
+      toast.error('Image is too large')
+      return
+    }
+
+    setUploadingAvatar(true)
+    try {
+      const resized = await resizeImageFile(file, MAX_AVATAR_DIM, MAX_AVATAR_BYTES)
+
+      const path = `${user.id}/avatar`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, resized, { upsert: true, cacheControl: '3600', contentType: 'image/jpeg' })
+      if (uploadError) { toast.error(uploadError.message); return }
+
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(path)
+      const bustedUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: bustedUrl } as never)
+        .eq('id', user.id)
+      if (updateError) { toast.error(updateError.message); return }
+
+      setAvatarUrl(bustedUrl)
+      toast.success('Profile picture updated')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to process image')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   if (authLoading) return <div className="p-6">Loading…</div>
 
   if (!user) {
@@ -191,9 +273,30 @@ export function ProfileView() {
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-lg font-semibold">{displayName}</h1>
-        <p className="text-sm text-muted-foreground">{user.email}</p>
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          <Avatar url={avatarUrl} name={displayName} size={72} />
+          <button
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            title="Change profile picture"
+            className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow disabled:opacity-50 hover:bg-primary/90 transition-colors"
+          >
+            <Camera className="h-3.5 w-3.5" />
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold truncate">{displayName}</h1>
+          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+          {uploadingAvatar && <p className="text-xs text-muted-foreground mt-0.5">Uploading…</p>}
+        </div>
       </div>
 
       {/* Nickname */}

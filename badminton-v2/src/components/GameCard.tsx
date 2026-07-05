@@ -1,10 +1,14 @@
 import { StatusChip } from './StatusChip'
+import { Avatar } from './Avatar'
 
 interface Props {
   gameNumber: number
   partnerNameSlug: string
   opp1NameSlug: string
   opp2NameSlug: string
+  partnerAvatarUrl?: string | null
+  opp1AvatarUrl?: string | null
+  opp2AvatarUrl?: string | null
   status: 'queued' | 'playing' | 'complete'
   isNextUp: boolean
   isLoading?: boolean
@@ -17,6 +21,9 @@ export function GameCard({
   partnerNameSlug,
   opp1NameSlug,
   opp2NameSlug,
+  partnerAvatarUrl = null,
+  opp1AvatarUrl = null,
+  opp2AvatarUrl = null,
   status,
   isNextUp,
   isLoading,
@@ -67,12 +74,18 @@ export function GameCard({
           : <StatusChip status={chipStatus} />
         }
       </div>
-      <p className="text-sm text-foreground/80">
-        With: <span className="font-medium text-primary">{partnerNameSlug}</span>
-      </p>
-      <p className="text-sm text-muted-foreground mt-0.5">
-        vs <span className="text-primary">{opp1NameSlug}</span> &amp; <span className="text-primary">{opp2NameSlug}</span>
-      </p>
+      <div className="flex items-center gap-1.5 text-sm text-foreground/80">
+        With: <Avatar url={partnerAvatarUrl} name={partnerNameSlug} size={40} />
+        <span className="font-medium text-primary">{partnerNameSlug}</span>
+      </div>
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
+        vs
+        <Avatar url={opp1AvatarUrl} name={opp1NameSlug} size={40} />
+        <span className="text-primary">{opp1NameSlug}</span>
+        &amp;
+        <Avatar url={opp2AvatarUrl} name={opp2NameSlug} size={40} />
+        <span className="text-primary">{opp2NameSlug}</span>
+      </div>
     </div>
   )
 }
