@@ -26,6 +26,7 @@ interface UseAdminSessionResult {
   courts: AdminCourtSlot[]
   courtCount: number
   queued: AdminMatchDisplay[]
+  finished: AdminMatchDisplay[]
   sessionId: string | null
   sessionName: string
   sessionDate: string
@@ -52,6 +53,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
   const [courts, setCourts] = useState<AdminCourtSlot[]>([])
   const [courtCount, setCourtCount] = useState(DEFAULT_COURT_COUNT)
   const [queued, setQueued] = useState<AdminMatchDisplay[]>([])
+  const [finished, setFinished] = useState<AdminMatchDisplay[]>([])
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sessionName, setSessionName] = useState('')
   const [sessionDate, setSessionDate] = useState('')
@@ -87,6 +89,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
           setCourtCount(DEFAULT_COURT_COUNT)
           setCourts([])
           setQueued([])
+          setFinished([])
           isFirstLoad.current = false
           setIsLoading(false)
           return
@@ -114,6 +117,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
           setCourtCount(DEFAULT_COURT_COUNT)
           setCourts([])
           setQueued([])
+          setFinished([])
           isFirstLoad.current = false
           setIsLoading(false)
           return
@@ -148,6 +152,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
           current: null,
         })))
         setQueued([])
+        setFinished([])
         isFirstLoad.current = false
         setIsLoading(false)
         return
@@ -192,6 +197,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
       }
 
       const queuedRows = matchRows.filter((m) => m.status === 'queued')
+      const finishedRows = matchRows.filter((m) => m.status === 'complete')
 
       setCourts(Array.from({ length: activeCourtCount }, (_, index) => {
         const courtNumber = index + 1
@@ -203,6 +209,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
         }
       }))
       setQueued(queuedRows.map(toDisplay))
+      setFinished(finishedRows.map(toDisplay))
 
       isFirstLoad.current = false
       setIsLoading(false)
@@ -212,5 +219,5 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
     return () => { cancelled = true }
   }, [sessionIdParam, refreshKey])
 
-  return { courts, courtCount, queued, sessionId, sessionName, sessionDate, sessionStatus, isLoading, refresh }
+  return { courts, courtCount, queued, finished, sessionId, sessionName, sessionDate, sessionStatus, isLoading, refresh }
 }

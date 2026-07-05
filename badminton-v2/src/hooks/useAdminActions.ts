@@ -154,6 +154,18 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
+  async function unfinishMatch(matchId: string) {
+    setIsSaving(true)
+    try {
+      const { error } = await supabase.rpc('unfinish_match', { p_match_id: matchId })
+      if (error) { toast.error(error.message); return }
+      toast.success('Match un-finished')
+      onDone()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function demoteToQueue(matchId: string, sessionId: string) {
     setIsSaving(true)
     try {
@@ -211,5 +223,5 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt }
+  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt, unfinishMatch }
 }
