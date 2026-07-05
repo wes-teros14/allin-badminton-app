@@ -211,6 +211,9 @@ function ScheduleTab({
                 partnerNameSlug={m.partnerNameSlug}
                 opp1NameSlug={m.opp1NameSlug}
                 opp2NameSlug={m.opp2NameSlug}
+                partnerAvatarUrl={m.partnerAvatarUrl}
+                opp1AvatarUrl={m.opp1AvatarUrl}
+                opp2AvatarUrl={m.opp2AvatarUrl}
                 status={m.status}
                 isNextUp={i === firstQueuedIndex}
                 outcome={m.outcome}
