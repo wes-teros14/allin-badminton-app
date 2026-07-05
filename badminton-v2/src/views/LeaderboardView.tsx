@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
+import { Avatar } from '@/components/Avatar'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -8,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 interface LeaderboardEntry {
   playerId: string
   displayName: string
+  avatarUrl: string | null
   wins: number
   losses: number
   points: number
@@ -55,13 +57,13 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const [statsRes, profilesRes] = await Promise.all([
     supabase.from('player_stats').select('player_id, games_played, wins').gt('games_played', 0),
-    supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
+    supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
   ])
 
-  const nameMap = new Map(
-    ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map((p) => [p.id, p.nickname ?? p.name_slug])
-  )
+  type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
+  const profileRows = (profilesRes.data ?? []) as ProfileRow[]
+  const nameMap = new Map(profileRows.map((p) => [p.id, p.nickname ?? p.name_slug]))
+  const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
 
   return ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>)
     .filter((s) => nameMap.has(s.player_id))
@@ -70,6 +72,7 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
       return {
         playerId: s.player_id,
         displayName: nameMap.get(s.player_id)!,
+        avatarUrl: avatarMap.get(s.player_id) ?? null,
         wins: s.wins,
         losses,
         points: s.wins * 2 - losses,
@@ -130,6 +133,7 @@ function WinsLeaderboard() {
           <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
             {RANK_ICON(i)}
           </span>
+          <Avatar url={entry.avatarUrl} name={entry.displayName} size={28} />
           <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
           <div className="text-right shrink-0">
             <p className="text-sm font-bold text-primary">{entry.points} pts</p>
