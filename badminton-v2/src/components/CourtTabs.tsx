@@ -64,6 +64,7 @@ function SubsPanel({ eligible }: { eligible: Array<{ id: string; displayName: st
 interface Props {
   courts: AdminCourtSlot[]
   queued: AdminMatchDisplay[]
+  finished: AdminMatchDisplay[]
   isLoading: boolean
   sessionId: string | null
   onDone: () => void
@@ -301,13 +302,14 @@ function PlayerSelect({
   )
 }
 
-export function CourtTabs({ courts, queued, isLoading, sessionId, onDone, splitScoring }: Props) {
-  const { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt } = useAdminActions(onDone)
+export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDone, splitScoring }: Props) {
+  const { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt, unfinishMatch } = useAdminActions(onDone)
   const { players } = usePlayerList(sessionId ?? undefined)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditForm>({ t1p1Id: '', t1p2Id: '', t2p2Id: '', t2p1Id: '' })
   const [courtLabels, setCourtLabels] = useState<Record<number, string>>({})
   const [subsForId, setSubsForId] = useState<string | null>(null)
+  const [confirmingUnfinishId, setConfirmingUnfinishId] = useState<string | null>(null)
 
   const allActiveMatches: AdminMatchDisplay[] = [
     ...courts.map((c) => c.current).filter((m): m is AdminMatchDisplay => m != null),
@@ -554,6 +556,59 @@ export function CourtTabs({ courts, queued, isLoading, sessionId, onDone, splitS
           </div>
         )}
       </div>
+
+      {finished.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+            Finished
+          </p>
+          <div className="divide-y divide-border">
+            {finished.map((m) => (
+              <div key={m.id} className="py-3 opacity-60">
+                <div className="flex items-start gap-3">
+                  <span className="w-20 shrink-0 whitespace-nowrap text-lg font-bold text-muted-foreground">Game {m.gameNumber}</span>
+                  <div className="text-sm flex-1 min-w-0">
+                    <span className="inline-block mb-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-muted text-muted-foreground">
+                      Finished
+                    </span>
+                    <p className="font-medium">{m.t1p1} &amp; {m.t1p2}</p>
+                    <p className="text-muted-foreground text-xs mt-0.5 mb-0.5">vs</p>
+                    <p className="font-medium">{m.t2p1} &amp; {m.t2p2}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {confirmingUnfinishId === m.id ? (
+                      <>
+                        <button
+                          onClick={() => { void unfinishMatch(m.id); setConfirmingUnfinishId(null) }}
+                          disabled={isSaving}
+                          className="px-2 py-1 text-xs rounded border border-destructive text-destructive hover:bg-destructive/10 disabled:opacity-30"
+                        >
+                          Confirm?
+                        </button>
+                        <button
+                          onClick={() => setConfirmingUnfinishId(null)}
+                          disabled={isSaving}
+                          className="px-2 py-1 text-xs rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmingUnfinishId(m.id)}
+                        disabled={isSaving}
+                        className="px-2 py-1 text-xs rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-30"
+                      >
+                        Un-finish
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
