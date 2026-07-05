@@ -9,6 +9,7 @@ import { useRealtime } from '@/hooks/useRealtime'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
+import { Avatar } from '@/components/Avatar'
 
 // ---------------------------------------------------------------------------
 // Leaderboard helpers (mirrors TodayView logic, scoped to a single session)
@@ -16,6 +17,7 @@ import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 interface LeaderboardEntry {
   playerId: string
   displayName: string
+  avatarUrl: string | null
   wins: number
   games: number
   winRate: number
@@ -42,12 +44,12 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
   const playerIds = ((regsRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id)
   if (playerIds.length === 0) return []
 
-  const profilesRes = await supabase.from('profiles').select('id, nickname, name_slug').in('id', playerIds)
+  const profilesRes = await supabase.from('profiles').select('id, nickname, name_slug, avatar_url').in('id', playerIds)
 
-  const nameMap = new Map(
-    ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map((p) => [p.id, p.nickname ?? p.name_slug])
-  )
+  type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
+  const profileRows = (profilesRes.data ?? []) as ProfileRow[]
+  const nameMap = new Map(profileRows.map((p) => [p.id, p.nickname ?? p.name_slug]))
+  const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
 
   const statsMap = new Map<string, { wins: number; games: number }>(
     playerIds.map((id) => [id, { wins: 0, games: 0 }])
@@ -69,6 +71,7 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
     entries.push({
       playerId,
       displayName: nameMap.get(playerId) ?? playerId,
+      avatarUrl: avatarMap.get(playerId) ?? null,
       wins: s.wins,
       games: s.games,
       winRate,
@@ -271,6 +274,7 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
             {entries.map((entry, i) => (
               <div key={entry.playerId} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
                 <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">{RANK_ICON(i)}</span>
+                <Avatar url={entry.avatarUrl} name={entry.displayName} size={28} />
                 <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
