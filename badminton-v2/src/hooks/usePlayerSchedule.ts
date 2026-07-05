@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { sortMatchResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 
-const AVG_GAME_SECS = 11 * 60 // average game duration in seconds
-
 export interface PlayerMatch {
   id: string
   gameNumber: number
@@ -30,8 +28,6 @@ interface UsePlayerScheduleResult {
   sessionStatus: string | null
   isLoading: boolean
   notFound: boolean
-  gamesAhead: number | null
-  waitSeconds: number | null
   refresh: () => void
 }
 
@@ -57,13 +53,8 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
   const [sessionStatus, setSessionStatus] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [gamesAhead, setGamesAhead] = useState<number | null>(null)
-  const [waitSeconds, setWaitSeconds] = useState<number | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const isFirstLoad = useRef(true)
-  const earliestStartedAtRef = useRef<string | null>(null)
-  const staticExtraSecsRef = useRef<number>(0)
-  const waitTierRef = useRef<'none' | 'zero' | 'dynamic'>('none')
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
@@ -73,7 +64,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
     async function load() {
       if (isFirstLoad.current) setIsLoading(true)
       setNotFound(false)
-      setGamesAhead(null)
 
       // 1. Resolve nameSlug to player id
       const { data: profile } = await supabase
@@ -96,7 +86,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       // 2. Find active session (or use override)
       let sid: string
-      let sessionCourtCount = 2
 
       if (sessionIdOverride) {
         sid = sessionIdOverride
@@ -112,7 +101,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         setSessionTime(s.time)
         setSessionDuration(s.duration)
         setSessionStatus(s.status)
-        sessionCourtCount = s.court_count ?? 2
       } else {
         const { data: session } = await supabase
           .from('sessions')
@@ -139,7 +127,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         setSessionTime(s.time)
         setSessionDuration(s.duration)
         setSessionStatus(s.status)
-        sessionCourtCount = s.court_count ?? 2
         sid = s.id
       }
 
@@ -275,65 +262,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       setMatches(result)
 
-      // Wait time anchored to highest currently-playing game in the session
-      const firstQueuedMatch = result.find((match) => match.status === 'queued')
-      if (firstQueuedMatch) {
-        const yourGame = firstQueuedMatch.gameNumber
-
-        const { data: playingRows } = await supabase
-          .from('matches')
-          .select('queue_position, started_at')
-          .eq('session_id', sid)
-          .eq('status', 'playing')
-
-        if (cancelled) return
-
-        type PlayingRow = { queue_position: number; started_at: string | null }
-        const currentPlayingRows = (playingRows ?? []) as PlayingRow[]
-
-        const highestPlaying = currentPlayingRows.length > 0
-          ? Math.max(...currentPlayingRows.map((playingRow) => playingRow.queue_position))
-          : sessionCourtCount
-
-        const startedAts = currentPlayingRows
-          .map((playingRow) => playingRow.started_at)
-          .filter((startedAt): startedAt is string => startedAt !== null)
-          .sort()
-
-        const earliestStartedAt = startedAts[0] ?? null
-        const latestStartedAt = startedAts[startedAts.length - 1] ?? null
-
-        const gap = Math.max(0, yourGame - highestPlaying - 1)
-
-        const staticExtraSecs = yourGame > highestPlaying + 2
-          ? 6 * 60 * Math.ceil((yourGame - highestPlaying - 2) / 2)
-          : 0
-
-        // Next in queue: earliest started = which court frees soonest
-        // Further back: latest started = when the current rotation ends (the slower court)
-        const baseStartedAt = gap === 0 ? earliestStartedAt : latestStartedAt
-
-        earliestStartedAtRef.current = baseStartedAt
-        staticExtraSecsRef.current = staticExtraSecs
-        waitTierRef.current = yourGame <= highestPlaying ? 'zero' : 'dynamic'
-
-        const remainingSecs = baseStartedAt
-          ? Math.max(0, AVG_GAME_SECS - (Date.now() - new Date(baseStartedAt).getTime()) / 1000)
-          : AVG_GAME_SECS
-
-        setGamesAhead(gap)
-
-        if (yourGame <= highestPlaying) {
-          setWaitSeconds(0)
-        } else {
-          setWaitSeconds(Math.round(remainingSecs) + staticExtraSecs)
-        }
-      } else {
-        setGamesAhead(null)
-        setWaitSeconds(null)
-        waitTierRef.current = 'none'
-      }
-
       isFirstLoad.current = false
       setIsLoading(false)
     }
@@ -341,25 +269,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
     load()
     return () => { cancelled = true }
   }, [nameSlug, sessionIdOverride, refreshKey])
-
-  // Tick waitSeconds down every second using stored refs (no DB queries)
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (waitTierRef.current === 'none') return
-      if (waitTierRef.current === 'zero') {
-        setWaitSeconds(0)
-        return
-      }
-
-      const remainingSecs = earliestStartedAtRef.current
-        ? Math.max(0, AVG_GAME_SECS - (Date.now() - new Date(earliestStartedAtRef.current).getTime()) / 1000)
-        : AVG_GAME_SECS
-
-      setWaitSeconds(Math.round(remainingSecs) + staticExtraSecsRef.current)
-    }, 1000)
-
-    return () => clearInterval(id)
-  }, [])
 
   return {
     matches,
@@ -373,8 +282,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
     sessionStatus,
     isLoading,
     notFound,
-    gamesAhead,
-    waitSeconds,
     refresh,
   }
 }
