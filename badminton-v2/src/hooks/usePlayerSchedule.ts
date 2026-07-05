@@ -11,6 +11,9 @@ export interface PlayerMatch {
   partnerNameSlug: string
   opp1NameSlug: string
   opp2NameSlug: string
+  partnerAvatarUrl: string | null
+  opp1AvatarUrl: string | null
+  opp2AvatarUrl: string | null
   outcome: 'won' | 'lost' | 'draw' | null
   won: boolean | null
 }
@@ -167,16 +170,22 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, name_slug, nickname')
+        .select('id, name_slug, nickname, avatar_url')
         .in('id', allIds)
 
       if (cancelled) return
 
+      type ProfileRow = { id: string; name_slug: string; nickname: string | null; avatar_url: string | null }
       const nameMap = new Map(
-        ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
+        ((profiles ?? []) as ProfileRow[])
           .map((profileRow) => [profileRow.id, profileRow.nickname ?? profileRow.name_slug])
       )
+      const avatarMap = new Map(
+        ((profiles ?? []) as ProfileRow[])
+          .map((profileRow) => [profileRow.id, profileRow.avatar_url])
+      )
       const name = (id: string) => nameMap.get(id) ?? id
+      const avatar = (id: string) => avatarMap.get(id) ?? null
 
       // 5. Build PlayerMatch array
       const result: PlayerMatch[] = matchRows.map((match) => {
@@ -185,20 +194,23 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         let partnerNameSlug: string
         let opp1NameSlug: string
         let opp2NameSlug: string
+        let partnerId: string
+        let opp1Id: string
+        let opp2Id: string
 
         if (onTeam1) {
-          partnerNameSlug = name(
-            match.team1_player1_id === playerId ? match.team1_player2_id : match.team1_player1_id
-          )
-          opp1NameSlug = name(match.team2_player1_id)
-          opp2NameSlug = name(match.team2_player2_id)
+          partnerId = match.team1_player1_id === playerId ? match.team1_player2_id : match.team1_player1_id
+          opp1Id = match.team2_player1_id
+          opp2Id = match.team2_player2_id
         } else {
-          partnerNameSlug = name(
-            match.team2_player1_id === playerId ? match.team2_player2_id : match.team2_player1_id
-          )
-          opp1NameSlug = name(match.team1_player1_id)
-          opp2NameSlug = name(match.team1_player2_id)
+          partnerId = match.team2_player1_id === playerId ? match.team2_player2_id : match.team2_player1_id
+          opp1Id = match.team1_player1_id
+          opp2Id = match.team1_player2_id
         }
+
+        partnerNameSlug = name(partnerId)
+        opp1NameSlug = name(opp1Id)
+        opp2NameSlug = name(opp2Id)
 
         return {
           id: match.id,
@@ -207,6 +219,9 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
           partnerNameSlug,
           opp1NameSlug,
           opp2NameSlug,
+          partnerAvatarUrl: avatar(partnerId),
+          opp1AvatarUrl: avatar(opp1Id),
+          opp2AvatarUrl: avatar(opp2Id),
           outcome: null,
           won: null,
         }
