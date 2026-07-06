@@ -76,15 +76,21 @@ export function GameCard({
       </div>
       <div className="flex items-center gap-1.5 text-sm text-foreground/80">
         With: <Avatar url={partnerAvatarUrl} name={partnerNameSlug} size={40} />
-        <span className="font-medium text-primary">{partnerNameSlug}</span>
+        <span className="font-medium text-primary text-[21px]">{partnerNameSlug}</span>
       </div>
-      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
-        vs
-        <Avatar url={opp1AvatarUrl} name={opp1NameSlug} size={40} />
-        <span className="text-primary">{opp1NameSlug}</span>
-        &amp;
-        <Avatar url={opp2AvatarUrl} name={opp2NameSlug} size={40} />
-        <span className="text-primary">{opp2NameSlug}</span>
+      <div className="flex justify-center my-2">
+        <span className="text-[18px] font-black tracking-wide text-muted-foreground">VS</span>
+      </div>
+      <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <Avatar url={opp1AvatarUrl} name={opp1NameSlug} size={40} />
+          <span className="text-primary text-[21px]">{opp1NameSlug}</span>
+        </div>
+        <span>&amp;</span>
+        <div className="flex items-center gap-1.5">
+          <Avatar url={opp2AvatarUrl} name={opp2NameSlug} size={40} />
+          <span className="text-primary text-[21px]">{opp2NameSlug}</span>
+        </div>
       </div>
     </div>
   )
