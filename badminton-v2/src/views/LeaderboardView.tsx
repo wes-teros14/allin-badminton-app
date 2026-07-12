@@ -54,11 +54,24 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 // ---------------------------------------------------------------------------
 // Data fetchers
 // ---------------------------------------------------------------------------
+const RECENT_SESSIONS_WINDOW = 4
+
 async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
-  const [statsRes, profilesRes] = await Promise.all([
-    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', 4),
+  const [statsRes, profilesRes, recentSessionsRes] = await Promise.all([
+    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', 3),
     supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
+    supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
   ])
+
+  const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
+  const activePlayerIds = new Set<string>()
+  if (recentSessionIds.length > 0) {
+    const { data: registrations } = await supabase
+      .from('session_registrations')
+      .select('player_id')
+      .in('session_id', recentSessionIds)
+    for (const r of (registrations ?? []) as Array<{ player_id: string }>) activePlayerIds.add(r.player_id)
+  }
 
   type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
   const profileRows = (profilesRes.data ?? []) as ProfileRow[]
@@ -66,7 +79,7 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
 
   return ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number; sessions_attended: number }>)
-    .filter((s) => nameMap.has(s.player_id))
+    .filter((s) => nameMap.has(s.player_id) && activePlayerIds.has(s.player_id))
     .map((s) => {
       const losses = s.games_played - s.wins
       return {
@@ -142,7 +155,7 @@ function WinsLeaderboard() {
         </div>
       ))}
       <p className="text-xs text-muted-foreground text-center pt-2">
-        Ranked by win rate · min. 4 sessions played
+        Ranked by win rate · min. 3 sessions played · must be active in the last 4
       </p>
     </div>
   )
