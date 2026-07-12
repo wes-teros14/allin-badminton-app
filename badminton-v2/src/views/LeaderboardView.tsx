@@ -56,7 +56,7 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 // ---------------------------------------------------------------------------
 async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const [statsRes, profilesRes] = await Promise.all([
-    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', 3),
+    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', 4),
     supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
   ])
 
@@ -142,7 +142,7 @@ function WinsLeaderboard() {
         </div>
       ))}
       <p className="text-xs text-muted-foreground text-center pt-2">
-        Ranked by win rate · min. 3 sessions played
+        Ranked by win rate · min. 4 sessions played
       </p>
     </div>
   )
