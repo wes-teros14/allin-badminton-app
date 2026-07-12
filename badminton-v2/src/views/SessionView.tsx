@@ -497,7 +497,12 @@ export function SessionView() {
 
       {session.status === 'registration_open' && invitation && (
         <div className="space-y-4">
-          <RegistrationURLCard invitation={invitation} playerCount={playerCount} />
+          <RegistrationURLCard
+            invitation={invitation}
+            playerCount={playerCount}
+            sessionId={session.id}
+            courtCount={session.court_count ?? 2}
+          />
           <RosterPanel sessionId={session.id} />
           <Button
             variant={confirmingClose ? 'destructive' : 'outline'}
