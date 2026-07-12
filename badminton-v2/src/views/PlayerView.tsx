@@ -103,12 +103,12 @@ function PlayerCourtTabs({
                 {isPlaying && (
                   <p className="text-[0.65rem] font-bold uppercase tracking-widest text-red-500">Playing</p>
                 )}
-                <p className="whitespace-nowrap text-xl font-bold text-primary">Game {match.gameNumber}</p>
-                <p className="truncate text-xs font-medium text-primary">
+                <p className={`whitespace-nowrap text-xl font-bold ${isPlaying ? 'text-foreground' : 'text-primary'}`}>Game {match.gameNumber}</p>
+                <p className={`truncate text-xs font-medium ${isPlaying ? 'text-foreground' : 'text-primary'}`}>
                   {match.t1p1} &amp; {match.t1p2}
                 </p>
                 <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">vs</p>
-                <p className="truncate text-xs font-medium text-primary">
+                <p className={`truncate text-xs font-medium ${isPlaying ? 'text-foreground' : 'text-primary'}`}>
                   {match.t2p1} &amp; {match.t2p2}
                 </p>
               </div>
@@ -395,20 +395,26 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
                     {m.status === 'playing' && <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Playing</span>}
                     {m.status === 'complete' && <span className="text-[var(--success)] text-lg">✓</span>}
                   </div>
-                  <div className="flex items-center gap-1.5 text-sm text-foreground font-medium">
+                  <div
+                    className="grid items-center gap-1.5 text-sm text-foreground font-medium"
+                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 14px 24px minmax(0,1fr)' }}
+                  >
                     <Avatar url={m.team1[0].avatarUrl} name={m.team1[0].name} size={24} />
-                    <span>{m.team1[0].name}</span>
-                    <span>&amp;</span>
+                    <span className="truncate">{m.team1[0].name}</span>
+                    <span className="text-center">&amp;</span>
                     <Avatar url={m.team1[1].avatarUrl} name={m.team1[1].name} size={24} />
-                    <span>{m.team1[1].name}</span>
+                    <span className="truncate">{m.team1[1].name}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 mb-0.5">vs</p>
-                  <div className="flex items-center gap-1.5 text-sm text-foreground font-medium">
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-0.5 text-center">vs</p>
+                  <div
+                    className="grid items-center gap-1.5 text-sm text-foreground font-medium"
+                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 14px 24px minmax(0,1fr)' }}
+                  >
                     <Avatar url={m.team2[0].avatarUrl} name={m.team2[0].name} size={24} />
-                    <span>{m.team2[0].name}</span>
-                    <span>&amp;</span>
+                    <span className="truncate">{m.team2[0].name}</span>
+                    <span className="text-center">&amp;</span>
                     <Avatar url={m.team2[1].avatarUrl} name={m.team2[1].name} size={24} />
-                    <span>{m.team2[1].name}</span>
+                    <span className="truncate">{m.team2[1].name}</span>
                   </div>
                 </div>
               ))

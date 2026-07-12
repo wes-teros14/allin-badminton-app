@@ -171,9 +171,21 @@ export function useSession(sessionId?: string): SessionState {
   async function reopenRegistration(): Promise<void> {
     if (!session) return
 
+    const { data: latestInvitation, error: lookupError } = await supabase
+      .from('session_invitations')
+      .select('id')
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (lookupError) { toast.error(lookupError.message); return }
+    if (!latestInvitation) { toast.error('No invitation found to reopen'); return }
+
     const { data: inv, error: invError } = await supabase
       .from('session_invitations')
-      .insert({ session_id: session.id })
+      .update({ is_active: true })
+      .eq('id', (latestInvitation as { id: string }).id)
       .select()
       .single()
 
@@ -303,7 +315,12 @@ export function useSession(sessionId?: string): SessionState {
     const updates = buildStartingCourtAssignments(queued as Array<{ id: string }>, courtCount).map((assignment) =>
       supabase.from('matches').update(playingMatchUpdate(assignment.courtNumber, startedAt)).eq('id', assignment.id)
     )
-    await Promise.all(updates)
+    const results = await Promise.all(updates)
+    const failed = results.filter((r) => r.error)
+    if (failed.length > 0) {
+      toast.error(failed[0].error!.message)
+      return
+    }
 
     const { data: updated, error } = await supabase
       .from('sessions')
