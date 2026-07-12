@@ -74,23 +74,26 @@ export function GameCard({
           : <StatusChip status={chipStatus} />
         }
       </div>
-      <div className="flex items-center gap-1.5 text-sm text-foreground/80">
-        With: <Avatar url={partnerAvatarUrl} name={partnerNameSlug} size={40} />
-        <span className="font-medium text-primary text-[21px]">{partnerNameSlug}</span>
+      <p className="text-xs text-foreground/80 mb-1">With</p>
+      <div
+        className="grid items-center gap-1.5 text-sm text-foreground/80"
+        style={{ gridTemplateColumns: '40px minmax(0,1fr)' }}
+      >
+        <Avatar url={partnerAvatarUrl} name={partnerNameSlug} size={40} />
+        <span className={`truncate font-medium text-[21px] ${status === 'playing' ? 'text-foreground' : 'text-primary'}`}>{partnerNameSlug}</span>
       </div>
       <div className="flex justify-center my-2">
         <span className="text-[18px] font-black tracking-wide text-muted-foreground">VS</span>
       </div>
-      <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <Avatar url={opp1AvatarUrl} name={opp1NameSlug} size={40} />
-          <span className="text-primary text-[21px]">{opp1NameSlug}</span>
-        </div>
-        <span>&amp;</span>
-        <div className="flex items-center gap-1.5">
-          <Avatar url={opp2AvatarUrl} name={opp2NameSlug} size={40} />
-          <span className="text-primary text-[21px]">{opp2NameSlug}</span>
-        </div>
+      <div
+        className="grid items-center gap-1.5 text-sm text-muted-foreground"
+        style={{ gridTemplateColumns: '40px minmax(0,1fr) 20px 40px minmax(0,1fr)' }}
+      >
+        <Avatar url={opp1AvatarUrl} name={opp1NameSlug} size={40} />
+        <span className={`truncate text-[21px] ${status === 'playing' ? 'text-foreground' : 'text-primary'}`}>{opp1NameSlug}</span>
+        <span className="text-center">&amp;</span>
+        <Avatar url={opp2AvatarUrl} name={opp2NameSlug} size={40} />
+        <span className={`truncate text-[21px] ${status === 'playing' ? 'text-foreground' : 'text-primary'}`}>{opp2NameSlug}</span>
       </div>
     </div>
   )
