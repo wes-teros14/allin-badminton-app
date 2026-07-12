@@ -113,6 +113,8 @@
 
 - **`.kiosk-dark` is separate from shadcn's `.dark`**: Do not merge them. Kiosk dark mode is applied via explicit class on the KioskView root, not via `prefers-color-scheme`.
 
+- **Never paste the literal `SUPABASE_SERVICE_ROLE_KEY` value into a scratch script for manual/browser verification**: Ad-hoc Node scripts used to seed test data before a headed-Playwright check should load the key from `.env`/`.env.development` at runtime (same pattern as `tests/registration-limit.spec.ts` and `tests/admin-court-count.spec.ts`), not hardcode the string. Hardcoding it means the raw secret sits in a file on disk and flows through tool output/transcripts unnecessarily, even if the file is deleted afterward and never committed. No leak occurred when this happened (verified via `git log --all -S "<key>"` across all branches, plus a memory/plan-file search), but it was an avoidable practice gap.
+
 ---
 
 ## Vercel Environment Variables — Dev vs Prod Supabase
@@ -123,6 +125,15 @@
   2. Two Vercel projects existed (`all-in-badminton-app` and `allin-badminton-app`) — the wrong one was being used for production.
   **Fix**: In Vercel → Settings → Environment Variables, set **separate values per environment**: Production gets the prod Supabase URL + anon key, Preview/Development gets the dev Supabase URL + anon key. Also ensured the correct Vercel project is used for each deployment.
   **Rule**: When dev and prod Supabase projects are separated, **always** set environment-specific variables in Vercel — never share a single value across all environments.
+
+---
+
+## Leaderboard — Win% Ranking + Session-Eligibility Gate
+
+- **Symptom**: After changing the All-time Idols leaderboard to require `player_stats.sessions_attended >= 3` for eligibility, the board showed "No stats recorded yet" for everyone, even players with dozens of games played.
+  **Root cause**: Migration `030_sessions_attended_on_completion.sql` switched the counter to increment only when a session transitions to `status = 'complete'`, but — unlike migration `013` which backfilled on creation — it never backfilled `sessions_attended` for sessions that were *already* complete when it ran. The column had been silently stuck near 0 for every player since that migration shipped; a new eligibility check finally made the gap visible.
+  **Fix**: Added migration `071_backfill_sessions_attended.sql`, which recomputes `sessions_attended` for every player from `session_registrations` joined to `sessions WHERE status = 'complete'` (idempotent, safe to rerun). Applied directly to the dev Supabase project via a throwaway service-role script since no Supabase CLI project link exists locally; **still needs to be run against the prod Supabase project** (SQL editor or `supabase db push` once linked) — no prod credentials are available in this environment.
+  **Rule**: Any migration that changes *when* or *how* a running counter/aggregate is maintained must also backfill from source-of-truth data for rows that predate the change — otherwise the column silently diverges from reality until something (like a new eligibility check) finally surfaces it.
 
 ---
 
