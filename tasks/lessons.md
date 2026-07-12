@@ -131,3 +131,31 @@
 - **Symptom**: Live session's Today tab leaderboard broken when a second session (test seed) existed simultaneously.
   **Root cause**: `useActiveSession()` used `LIMIT 1` with `ORDER BY date DESC` — when multiple active sessions exist, it picks whichever has the most recent date, which may be the wrong session. The leaderboard then showed data for the unintended session.
   **Fix**: Renamed to `useActiveSessions()`, returns all active sessions as an array. TodayView shows a pill selector when multiple sessions exist so the user can switch between them. TopNavBar shows Today tab if any active session exists.
+
+---
+
+## Court Count — Editable During Registration Open
+
+- **Symptom**: Admin could only set the number of courts (`sessions.court_count`) once, during the Setup phase (`SetupCard`), before registration opens. There was no way to adjust it later based on actual registrant turnout, even though the value already drove all court-card rendering dynamically (`lib/courts.ts`, `CourtTabs`, `useAdminSession`, `useCourtState`, LiveBoard).
+  **Root cause**: `court_count` was only exposed as an editable input in `SetupCard`; `RegistrationURLCard` (the Registration Open screen) only exposed the registrant `max_players` limit ("Set Limit").
+  **Fix**: Added a second Input + Button row ("# of courts" / "Set Courts") directly below the existing "Set Limit" row in `RegistrationURLCard.tsx`, updating `sessions.court_count` on save with the same validation rule as `SetupCard` (whole number ≥ 1). `SessionView.tsx` now passes `sessionId` and `courtCount` props through.
+  **Note**: No changes were needed downstream — court-card rendering was already fully dynamic per `court_count`; this only added a second, later opportunity to set it. Verified live in a real browser (headed Playwright + seeded test data): setting the value to 4 on the Registration Open screen persisted through reload and correctly rendered 4 court cards (2 playing, 2 "No match playing") once the session went live.
+
+---
+
+## Court Count > 2 — Stale DB Check Constraint Silently Blocked Court 3+
+
+- **Symptom**: With `court_count` set above 2, (a) clicking "Up" to promote a queued match onto court 3 threw `new row for relation "matches" violates check constraint "matches_court_number_check"`, and (b) starting a session with 3+ configured courts only filled courts 1–2 from the queue — courts 3+ silently stayed empty ("No match playing") with no visible error.
+  **Root cause**: `matches.court_number` still had `CHECK (court_number IN (1, 2))` from migration `007_match_results_and_court.sql`, written before court count was configurable. Migration `066_add_court_count_to_sessions.sql` added `sessions.court_count` but never updated this constraint. Every write of `court_number > 2` was rejected at the DB level. `startSession()` in `useSession.ts` fired its per-court `matches` updates via `Promise.all(...)` without checking each result's `error` field, so the court-3+ rejections were silently swallowed — the match just stayed `queued` with no toast, making the failure look like a missing feature rather than an error.
+  **Fix**: Migration `070_widen_matches_court_number_check.sql` drops and recreates the constraint as `CHECK (court_number IS NULL OR court_number >= 1)`, matching the simple-range style already used elsewhere (e.g. `sessions_court_count_positive`). App code already bounds real assignments to each session's configured `court_count`, so the DB doesn't need to know the per-session limit. Also hardened `startSession()` to inspect each `Promise.all` result's `error` and `toast.error(...)` on the first failure instead of swallowing it.
+  **Rule**: When a DB check constraint encodes a value that later becomes admin-configurable (e.g. "always 2 courts" → `court_count`), grep migrations for every hardcoded reference to the old fixed value — a new settings column alone doesn't relax constraints written against the old assumption. Also: never fire multiple Supabase writes via bare `Promise.all` without inspecting each `{ error }` — partial failures go completely silent otherwise.
+  **Environment note**: This project's Supabase CLI isn't logged in in this environment (`supabase login` / `SUPABASE_ACCESS_TOKEN` unset), so `supabase db push` can't apply migrations here — matches the existing Windows CLI workaround in this file. The migration SQL was applied manually via the Supabase Dashboard SQL Editor, then verified live in a real browser.
+
+---
+
+## Registration Limit Reset on Reopen Registration
+
+- **Symptom**: Setting a registrant limit ("Set Limit"), closing registration, then clicking "Reopen Registration" silently reverted the limit back to "No limit".
+  **Root cause**: `max_players` lives on the `session_invitations` row (`035_add_max_players_to_invitations.sql`, nullable, `DEFAULT NULL`), not on `sessions`. `reopenRegistration()` in `useSession.ts` always `insert()`-ed a brand-new `session_invitations` row with no `max_players` passed, defaulting to `NULL`. The old row (with the real limit) was left behind, inactive and forgotten — and by the time reopen ran, `closeRegistration()` had already cleared the in-memory `invitation` state to `null`, so there was nothing to carry the value forward from either.
+  **Fix**: `reopenRegistration()` no longer inserts a new invitation row. It looks up the most recent `session_invitations` row for the session (`order('created_at', {ascending:false}).limit(1)`) and reactivates it (`update({ is_active: true })` by `id`), instead of creating a fresh one. Same row ⇒ `max_players` (and the registration link/token itself) survive close→reopen cycles automatically. No DB migration needed — pure application-logic fix.
+  **Rule**: When "reopening"/"reactivating" something re-inserts a new row instead of flipping a status flag on the existing one, any other column on that row that isn't explicitly carried forward gets silently reset to its default. Prefer reactivating the existing row over recreating it unless there's a specific reason to mint a new identity (e.g. security-rotated tokens) — ask before assuming insert-new is intended.
