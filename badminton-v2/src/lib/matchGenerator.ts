@@ -226,7 +226,7 @@ function buildAssignment(
       for (const id of group) remaining.set(id, remaining.get(id)! - 1)
       prevMatchPlayers.clear()
       for (const id of group) prevMatchPlayers.add(id)
-    } else if (allowRelaxSpread && candidates.length >= 4) {
+    } else if (candidates.length >= 4) {
       const fallback = candidates.slice(0, 4)
       schedule.push(fallback)
       for (const id of fallback) remaining.set(id, remaining.get(id)! - 1)

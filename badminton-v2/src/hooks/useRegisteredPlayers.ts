@@ -42,7 +42,7 @@ export function buildRegisteredPlayers(
   })
 }
 
-export function useRegisteredPlayers(sessionId: string | undefined): RegisteredPlayersState {
+export function useRegisteredPlayers(sessionId: string | undefined, refreshKey?: number): RegisteredPlayersState {
   const [players, setPlayers] = useState<PlayerInput[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -119,7 +119,7 @@ export function useRegisteredPlayers(sessionId: string | undefined): RegisteredP
       isActive = false
       supabase.removeChannel(channel)
     }
-  }, [sessionId])
+  }, [sessionId, refreshKey])
 
   return { players, isLoading }
 }

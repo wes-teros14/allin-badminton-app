@@ -36,7 +36,7 @@ interface RosterState {
   updatePaid: (registrationId: string, paid: boolean) => Promise<void>
 }
 
-export function useRoster(sessionId: string | undefined): RosterState {
+export function useRoster(sessionId: string | undefined, onChange?: () => void): RosterState {
   const [players, setPlayers] = useState<RosterPlayer[]>([])
   const [unregisteredPlayers, setUnregisteredPlayers] = useState<UnregisteredPlayer[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -115,13 +115,15 @@ export function useRoster(sessionId: string | undefined): RosterState {
     if (!sessionId) return
     const { error } = await supabase.from('session_registrations').insert({ session_id: sessionId, player_id: playerId, source: 'admin' })
     if (error) { toast.error(error.message); return }
-    fetchRoster()
+    await fetchRoster()
+    onChange?.()
   }
 
   async function removePlayer(registrationId: string) {
     const { error } = await supabase.from('session_registrations').delete().eq('id', registrationId)
     if (error) { toast.error(error.message); return }
-    fetchRoster()
+    await fetchRoster()
+    onChange?.()
   }
 
   // Writes session-specific gender/level override (does NOT touch profiles)
@@ -132,6 +134,7 @@ export function useRoster(sessionId: string | undefined): RosterState {
       .eq('id', registrationId)
     if (error) { toast.error(error.message); return }
     setPlayers((prev) => prev.map((p) => p.registrationId === registrationId ? { ...p, gender, level } : p))
+    onChange?.()
   }
 
   async function updatePaid(registrationId: string, paid: boolean) {
