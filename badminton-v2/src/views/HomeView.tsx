@@ -126,7 +126,7 @@ export function HomeView() {
   function registerWithGoogle() {
     supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${import.meta.env.VITE_APP_URL ?? window.location.origin}/` },
+      options: { redirectTo: `${window.location.origin}/` },
     })
   }
 
