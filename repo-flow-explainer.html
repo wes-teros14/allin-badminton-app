@@ -1,0 +1,1400 @@
+<title>Badminton V2 -- Repo Flow Explainer</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-alt: #f4f5f7;
+    --bg-code: #f0f2f5;
+    --border: #d7dbe0;
+    --text: #1b1f24;
+    --text-dim: #5b6572;
+    --accent: #2563eb;
+    --accent-dim: #e7edfd;
+    --green: #1a7f37;
+    --green-bg: #e9f7ee;
+    --red: #cf222e;
+    --red-bg: #fdeeee;
+    --amber: #9a6700;
+    --amber-bg: #fff6e0;
+    --magenta: #99348e;
+    --magenta-bg: #fbe9f9;
+    --gray: #57606a;
+    --gray-bg: #eceef1;
+    --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a;
+    --bg-alt: #1b1e24;
+    --bg-code: #1f232a;
+    --border: #30343c;
+    --text: #e6e8eb;
+    --text-dim: #9aa2ad;
+    --accent: #7ea6ff;
+    --accent-dim: #1a2740;
+    --green: #5fd489;
+    --green-bg: #14261c;
+    --red: #ff7b72;
+    --red-bg: #2b1717;
+    --amber: #e3b341;
+    --amber-bg: #2b2312;
+    --magenta: #e29be0;
+    --magenta-bg: #2b1a2a;
+    --gray: #9aa2ad;
+    --gray-bg: #22262d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a;
+      --bg-alt: #1b1e24;
+      --bg-code: #1f232a;
+      --border: #30343c;
+      --text: #e6e8eb;
+      --text-dim: #9aa2ad;
+      --accent: #7ea6ff;
+      --accent-dim: #1a2740;
+      --green: #5fd489;
+      --green-bg: #14261c;
+      --red: #ff7b72;
+      --red-bg: #2b1717;
+      --amber: #e3b341;
+      --amber-bg: #2b2312;
+      --magenta: #e29be0;
+      --magenta-bg: #2b1a2a;
+      --gray: #9aa2ad;
+      --gray-bg: #22262d;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+    font-size: 15.5px;
+  }
+  a { color: var(--accent); }
+  code, .mono, .path, .fn, pre {
+    font-family: var(--mono);
+  }
+  code, .path, .fn {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.05em 0.35em;
+    font-size: 0.88em;
+    white-space: nowrap;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 270px minmax(0, 1fr);
+    min-height: 100vh;
+  }
+
+  nav.sidebar {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    background: var(--bg-alt);
+    padding: 20px 14px 40px;
+  }
+  nav.sidebar h1 {
+    font-size: 15px;
+    margin: 0 0 2px 4px;
+  }
+  nav.sidebar .meta {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin: 0 0 18px 4px;
+  }
+  nav.sidebar .meta code { white-space: normal; }
+  nav.sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  nav.sidebar li a {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 13.5px;
+  }
+  nav.sidebar li a:hover { background: var(--accent-dim); }
+  nav.sidebar li.active > a { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+  nav.sidebar ul ul { margin-left: 10px; border-left: 1px solid var(--border); }
+  nav.sidebar ul ul a { font-size: 12.5px; color: var(--text-dim); }
+
+  main {
+    padding: 40px clamp(20px, 4vw, 64px) 120px;
+    max-width: 1000px;
+  }
+  section { margin-bottom: 64px; scroll-margin-top: 16px; }
+  section h2 {
+    font-size: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    margin-top: 0;
+  }
+  section h3 {
+    font-size: 17px;
+    margin-top: 32px;
+  }
+
+  .lede {
+    font-size: 17px;
+    color: var(--text-dim);
+  }
+
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+  .badge {
+    display: inline-block;
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+  }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-dim);
+    padding: 10px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout.warn { border-left-color: var(--amber); background: var(--amber-bg); }
+  .callout.unverified { border-left-color: var(--gray); background: var(--gray-bg); }
+  .callout.fixed { border-left-color: var(--green); background: var(--green-bg); }
+  .callout strong { display: inline-block; margin-bottom: 2px; }
+
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 8px 0 16px;
+  }
+  .snippet-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 18px 0 2px;
+  }
+  .snippet-note {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+    margin: 0 0 4px;
+  }
+
+  /* Diagram */
+  .diagram-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; padding: 18px; background: var(--bg-alt); }
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 760px;
+  }
+  .lane { display: flex; align-items: stretch; gap: 10px; }
+  .lane-label {
+    width: 110px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .lane-nodes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .node {
+    border: 1.5px solid var(--border);
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12.5px;
+    cursor: pointer;
+    min-width: 110px;
+    text-align: center;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+    position: relative;
+  }
+  .node:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); }
+  .node .node-fn { display: block; font-family: var(--mono); font-size: 10.5px; color: var(--accent); margin-top: 3px; }
+  .node.active { border-color: var(--accent); background: var(--accent-dim); box-shadow: 0 0 0 3px var(--accent-dim); }
+  .node.branch { border-style: dashed; }
+  .arrow { color: var(--text-dim); font-size: 16px; flex-shrink: 0; }
+  .diagram-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  button.ctrl {
+    font-family: var(--sans);
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button.ctrl:hover { opacity: 0.9; }
+  button.ctrl.secondary { background: var(--bg-code); color: var(--text); border: 1px solid var(--border); }
+  .step-caption {
+    font-size: 13.5px;
+    color: var(--text-dim);
+    min-height: 20px;
+  }
+  .step-caption strong { color: var(--text); }
+
+  /* Function reference */
+  details.fn-ref {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 10px 0;
+    background: var(--bg-alt);
+  }
+  details.fn-ref summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font-weight: 600;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  details.fn-ref summary::-webkit-details-marker { display: none; }
+  details.fn-ref summary::after {
+    content: "+";
+    font-weight: 400;
+    color: var(--text-dim);
+    font-size: 18px;
+  }
+  details.fn-ref[open] summary::after { content: "\2212"; }
+  details.fn-ref .fn-body { padding: 0 16px 16px; }
+  details.fn-ref .fn-loc { font-size: 12px; color: var(--text-dim); font-weight: 400; }
+  .fn-field { margin: 10px 0; }
+  .fn-field .fn-field-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-dim); margin-bottom: 3px; }
+
+  .toc-jump { font-size: 12px; }
+
+  footer.doc-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 18px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+  }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.sidebar { position: static; height: auto; }
+  }
+</style>
+
+<div class="layout">
+  <nav class="sidebar">
+    <h1>Badminton V2</h1>
+    <p class="meta">Repo flow explainer<br>commit <code>ac45b2a</code> &middot; generated 2026-07-20</p>
+    <ul>
+      <li><a href="#overview">1. Overview</a></li>
+      <li><a href="#architecture">2. Architecture diagram</a></li>
+      <li><a href="#walkthrough">3. Process flow walkthrough</a>
+        <ul>
+          <li><a href="#flow-main">Session lifecycle</a></li>
+          <li><a href="#flow-async">Live sync &amp; stats aggregation</a></li>
+        </ul>
+      </li>
+      <li><a href="#data-model">4. Data model</a></li>
+      <li><a href="#functions">5. Key functions reference</a></li>
+      <li><a href="#gotchas">6. Gotchas / non-obvious info</a></li>
+      <li><a href="#changes">7. If I wanted to change...</a></li>
+      <li><a href="#glossary">8. Glossary</a></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <section id="overview">
+      <h2>1. Overview</h2>
+      <p class="lede">
+        A club-management web app for a recurring badminton session: an admin sets up a session, players
+        register, the admin generates a fair doubles match schedule (an in-browser optimizer, no server-side
+        job), the group plays through the queue court-by-court with live cross-device sync, and results feed
+        an all-time leaderboard. There is no custom backend process &mdash; <a href="https://supabase.com">Supabase</a>
+        (Postgres + Row Level Security + Realtime + a handful of SQL trigger functions) is the entire server
+        side; the React app talks to it directly via <span class="path">@supabase/supabase-js</span>.
+      </p>
+
+      <div class="badge-row">
+        <span class="badge">React 19.2</span>
+        <span class="badge">TypeScript</span>
+        <span class="badge">Vite 8 (rolldown)</span>
+        <span class="badge">react-router 7.13</span>
+        <span class="badge">@supabase/supabase-js 2.99</span>
+        <span class="badge">Tailwind CSS 4.2</span>
+        <span class="badge">Zod 4 + react-hook-form 7</span>
+        <span class="badge">Vitest 2 (unit)</span>
+        <span class="badge">Playwright 1.58 (e2e)</span>
+        <span class="badge">Supabase CLI (migrations)</span>
+      </div>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:-6px">
+        Versions are the caret ranges from <span class="path">package.json</span> (repo root of the app is
+        <span class="path">badminton-v2/</span>, the rest of this document's paths are relative to that folder).
+      </p>
+
+      <h3>How to run it locally</h3>
+      <pre>cd badminton-v2
+npm install
+
+# .env holds shared, non-secret defaults; .env.development / .env.production
+# hold the actual Supabase URL + anon key for each environment (see .env.example)
+cp .env.example .env.development   # then fill in VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+
+npm run dev              # Vite dev server, http://localhost:5173, loads .env.development
+npm run build             # tsc -b && vite build
+npm run test:unit         # Vitest
+npm run test:e2e          # Playwright
+npm run seed               # scripts/seed-test-users.ts -- creates dev test accounts (needs SUPABASE_SERVICE_ROLE_KEY)
+npm run supabase:link:dev  # links the Supabase CLI to the dev project, for `supabase db push` etc.</pre>
+      <p style="font-size:13px;color:var(--text-dim)">
+        Commands from <span class="path">package.json:6-16</span> and <span class="path">.env.example</span>.
+        In dev mode only (<code>import.meta.env.DEV</code>), a floating <strong>DEV</strong> button renders in
+        the bottom-right corner (<span class="fn">DevLoginPanel</span>,
+        <span class="path">src/components/DevLoginPanel.tsx:40</span>) that signs in as any seeded test account
+        via <code>supabase.auth.signInWithPassword</code>
+        (<span class="path">src/components/DevLoginPanel.tsx:53</span>) instead of the production Google OAuth
+        flow &mdash; this is the fastest way to reach any role (admin, moderator, player) while developing.
+      </p>
+
+      <div class="callout">
+        <strong>Coverage note</strong>
+        Read in full and traced by hand: the router (<span class="path">src/main.tsx</span>,
+        <span class="path">src/App.tsx</span>), the session-lifecycle state machine
+        (<span class="path">src/hooks/useSession.ts</span>), the roster/match-generation panels and hooks
+        (<span class="path">src/components/RosterPanel.tsx</span>,
+        <span class="path">src/components/MatchGeneratorPanel.tsx</span>,
+        <span class="path">src/hooks/useRoster.ts</span>,
+        <span class="path">src/hooks/useRegisteredPlayers.ts</span>,
+        <span class="path">src/lib/matchGenerator.ts</span>), the live-session board
+        (<span class="path">src/hooks/useRealtime.ts</span>,
+        <span class="path">src/hooks/useAdminSession.ts</span>,
+        <span class="path">src/hooks/useAdminActions.ts</span>,
+        <span class="path">src/components/CourtTabs.tsx</span>), the leaderboard query
+        (<span class="path">src/views/LeaderboardView.tsx</span>), auth
+        (<span class="path">src/contexts/AuthContext.tsx</span>), and the stats-related SQL migrations. This
+        depth comes from having just debugged and fixed two real issues in this exact flow (roster overrides
+        not reaching the match generator live, and the generator silently returning an empty schedule) plus
+        answering a question about the leaderboard's ranking rules, all verified live in a real browser this
+        session &mdash; not a cold read.
+        <br><br>
+        Skimmed only (file list read, not traced call-by-call): the other 13 views under
+        <span class="path">src/views/</span> (finance, inventory, players admin, cheers/awards leaderboard
+        tabs, profile, the player-facing schedule/today views) and their supporting hooks. These are noted in
+        the architecture diagram and briefly described, not walked through line by line.
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2>2. Architecture diagram</h2>
+      <p>
+        No backend server process exists in this repo &mdash; the "layers" below are the React app, the
+        client-side session-lifecycle state, and Supabase itself (Postgres + RLS + Realtime + trigger
+        functions), which every layer above it talks to directly. Click any node to jump to its entry in the
+        <a href="#functions">function reference</a> (if it has one); use Play to animate one session moving
+        through its whole lifecycle, stage by stage.
+      </p>
+
+      <div class="diagram-controls">
+        <button class="ctrl" id="play-btn" onclick="playTrace()">&#9654; Play trace</button>
+        <button class="ctrl secondary" onclick="resetTrace()">Reset</button>
+        <span class="step-caption" id="step-caption">Click Play to animate one session through its full lifecycle, or click any node directly.</span>
+      </div>
+
+      <div class="diagram-wrap">
+        <div class="diagram" id="diagram">
+
+          <div class="lane">
+            <div class="lane-label">Entry / routes</div>
+            <div class="lane-nodes">
+              <div class="node" data-step="0" title="src/main.tsx">main.tsx<span class="node-fn">BrowserRouter</span></div>
+              <span class="arrow">&rarr;</span>
+              <div class="node" data-step="0" data-jump="fn-app" title="src/App.tsx">App.tsx<span class="node-fn">15 lazy routes</span></div>
+              <span class="arrow">&rarr;</span>
+              <div class="node" data-step="0" title="src/views/SessionView.tsx">SessionView<span class="node-fn">/session/:sessionId</span></div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">Lifecycle state</div>
+            <div class="lane-nodes">
+              <div class="node" data-step="1" data-jump="fn-usesession-reg" title="src/hooks/useSession.ts">useSession()<span class="node-fn">sessions.status</span></div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">Stages</div>
+            <div class="lane-nodes">
+              <div class="node" data-step="2">1. setup<span class="node-fn">SetupCard</span></div>
+              <span class="arrow">&rarr;</span>
+              <div class="node" data-step="3">2. registration_open<span class="node-fn">RegistrationURLCard</span></div>
+              <span class="arrow">&rarr;</span>
+              <div class="node branch" data-step="4" data-jump="fn-roster-hooks">3. registration_closed<span class="node-fn">RosterPanel + MatchGeneratorPanel</span></div>
+              <span class="arrow">&rarr;</span>
+              <div class="node" data-step="5">4. schedule_locked<span class="node-fn">matches inserted</span></div>
+              <span class="arrow">&rarr;</span>
+              <div class="node" data-step="6" data-jump="fn-realtime">5. in_progress<span class="node-fn">CourtTabs, live</span></div>
+              <span class="arrow">&rarr;</span>
+              <div class="node" data-step="7">6. complete<span class="node-fn">read-only</span></div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">Match engine</div>
+            <div class="lane-nodes">
+              <div class="node branch" data-step="4" data-jump="fn-generate">generateScheduleOptimized()<span class="node-fn">src/lib/matchGenerator.ts</span></div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">Supabase</div>
+            <div class="lane-nodes">
+              <div class="node" data-step="8" title="Postgres">Postgres + RLS<span class="node-fn">sessions, matches, ...</span></div>
+              <div class="node" data-step="8" data-jump="fn-realtime">Realtime<span class="node-fn">postgres_changes</span></div>
+              <div class="node" data-step="8" data-jump="fn-stats-trigger">Trigger functions<span class="node-fn">player_stats, sessions_attended</span></div>
+            </div>
+          </div>
+
+          <div class="lane">
+            <div class="lane-label">Downstream</div>
+            <div class="lane-nodes">
+              <div class="node" data-step="9" data-jump="fn-leaderboard">All-time Leaderboard<span class="node-fn">LeaderboardView.tsx</span></div>
+              <div class="node" data-step="9">LiveBoardView, TodayView<span class="node-fn">read-only spectator views</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <p style="font-size:13px;color:var(--text-dim);margin-top:10px">
+        Skimmed, not shown as their own lanes: <span class="path">src/views/PlayersView.tsx</span> (profile
+        admin), <span class="path">InventoryView.tsx</span>/<span class="path">useShuttleBatches.ts</span>
+        (shuttle stock), <span class="path">FinanceView.tsx</span>/<span class="path">FinanceDetailView.tsx</span>
+        (per-session cost splitting), and the cheers/awards leaderboard tabs
+        (<span class="path">fetchCheerLeaderboard</span>/<span class="path">fetchAwardsLeaderboard</span> in
+        <span class="path">LeaderboardView.tsx</span>) &mdash; each is a fairly self-contained
+        Supabase-query-plus-view pair, not wired into the session lifecycle itself.
+      </p>
+    </section>
+
+    <section id="walkthrough">
+      <h2>3. Process flow walkthrough</h2>
+
+      <h3 id="flow-main">Session lifecycle: setup &rarr; registration &rarr; schedule &rarr; live play &rarr; complete</h3>
+      <p>
+        <span class="path">sessions.status</span> is the state machine (defined in
+        <span class="fn">SessionStatus</span>, <span class="path">src/hooks/useSession.ts:7-13</span>): a
+        strict enum of six values. Every transition is a plain, unguarded (no DB constraint enforcing legal
+        transitions) function in <span class="fn">useSession()</span>
+        (<span class="path">src/hooks/useSession.ts:64-366</span>), called from button handlers in
+        <span class="fn">SessionView</span> (<span class="path">src/views/SessionView.tsx:347-566</span>),
+        which renders a completely different panel per status value
+        (<span class="path">src/views/SessionView.tsx:487-563</span>).
+      </p>
+      <ol>
+        <li>
+          <strong>setup.</strong> <span class="fn">SetupCard</span>
+          (<span class="path">src/views/SessionView.tsx:172-345</span>) collects name/date/venue/price/court
+          count. Clicking confirm calls <span class="fn">openRegistration()</span>
+          (<span class="path">src/hooks/useSession.ts:139-169</span>), which inserts a
+          <span class="path">session_invitations</span> row (the shareable registration link's token doubles
+          as that row's primary key) then flips <span class="path">sessions.status</span> to
+          <code>registration_open</code>.
+        </li>
+        <li>
+          <strong>registration_open.</strong> <span class="fn">RegistrationURLCard</span> shows the
+          shareable link and lets the admin set a player cap and court count; players self-register via
+          <span class="path">src/views/RegisterView.tsx</span> (skimmed). <span class="fn">RosterPanel</span>
+          (non-editable mode, <span class="path">src/views/SessionView.tsx:511</span>) lists who has joined.
+          <span class="fn">closeRegistration()</span> (<span class="path">src/hooks/useSession.ts:207-236</span>)
+          deactivates the invitation and moves to <code>registration_closed</code>. Re-opening later
+          (<span class="fn">reopenRegistration()</span>, <span class="path">src/hooks/useSession.ts:171-205</span>)
+          reactivates the <em>same</em> invitation row rather than creating a new one &mdash; see the
+          <a href="#gotchas">gotchas</a> section for why that distinction was a real bug once.
+        </li>
+        <li>
+          <strong>registration_closed &mdash; roster overrides + schedule generation (branch point, most
+          non-obvious stage).</strong> Two sibling panels render together here:
+          <span class="fn">RosterPanel</span> (editable,
+          <span class="path">src/views/SessionView.tsx:524</span>) and <span class="fn">MatchGeneratorPanel</span>
+          (<span class="path">src/views/SessionView.tsx:525</span>). Each owns its own independent copy of the
+          player list via two separate hooks &mdash; <span class="fn">useRoster()</span>
+          (<span class="path">src/hooks/useRoster.ts:39-149</span>) and
+          <span class="fn">useRegisteredPlayers()</span>
+          (<span class="path">src/hooks/useRegisteredPlayers.ts:45-125</span>) &mdash; there is no shared
+          client-side cache anywhere in this app (no React Query, no Zustand, no Context store for this data;
+          confirmed absent from <span class="path">package.json</span>). Per-session gender/level overrides
+          are edited here (<span class="fn">updateSessionOverride</span>,
+          <span class="path">src/hooks/useRoster.ts:130-138</span>, writes to
+          <span class="path">session_registrations.gender/level</span> &mdash; never touches
+          <span class="path">profiles</span>). <strong>This used to only reach the match generator after a
+          full page refresh</strong> (both hooks' Realtime channels subscribed to a table that was never
+          added to the Realtime publication); <span class="path">SessionView.tsx:362</span> now holds a
+          <code>rosterVersion</code> counter, bumped by <span class="path">RosterPanel</span>'s
+          <code>onRosterChange</code> callback and threaded into
+          <span class="fn">useRegisteredPlayers(sessionId, rosterVersion)</span>
+          (<span class="path">src/components/MatchGeneratorPanel.tsx:93</span>) so a roster edit now forces an
+          immediate refetch. See the <a href="#gotchas">gotchas</a> section for the full story and why this
+          approach was chosen over fixing Realtime. Clicking Generate calls
+          <span class="fn">handleGenerate()</span>
+          (<span class="path">src/components/MatchGeneratorPanel.tsx:211-287</span>), which validates every
+          player has a level (and gender, unless gender rules are disabled) then calls
+          <span class="fn">generateScheduleOptimized()</span>
+          (<span class="path">src/lib/matchGenerator.ts:745-820</span>, called at
+          <span class="path">src/components/MatchGeneratorPanel.tsx:269</span>) &mdash; a pure, synchronous,
+          in-browser simulated-annealing optimizer (see the <a href="#functions">function reference</a> for
+          how it works and the empty-schedule bug it used to have). The result previews in the same panel;
+          <strong>Save &amp; Lock</strong> calls <span class="fn">lockSchedule()</span>
+          (<span class="path">src/hooks/useSession.ts:238-272</span>), which bulk-inserts every match row
+          (<span class="path">queue_position</span> = array index + 1) and moves to
+          <code>schedule_locked</code>. <span class="fn">unlockSchedule()</span>
+          (<span class="path">src/hooks/useSession.ts:274-293</span>) is the reverse: deletes every match row
+          for the session and returns to <code>registration_closed</code>.
+        </li>
+        <li>
+          <strong>schedule_locked.</strong> <span class="fn">MatchGeneratorPanel</span>, re-rendered read-mostly
+          (loads the locked matches via <span class="path">src/components/MatchGeneratorPanel.tsx:109-144</span>,
+          keyed on <code>sessionStatus === 'schedule_locked'</code>), lets the admin swap two players in a
+          still-<code>queued</code> match (<span class="fn">handleEditSave</span>,
+          <span class="path">src/components/MatchGeneratorPanel.tsx:294-324</span>) before play starts.
+          <span class="fn">startSession()</span> (<span class="path">src/hooks/useSession.ts:295-334</span>)
+          takes the first <em>N</em> queued matches (N = configured court count, via
+          <span class="fn">normalizeCourtCount</span>, <span class="path">src/lib/courts.ts:13-16</span>),
+          assigns each a court number via <span class="fn">buildStartingCourtAssignments</span>
+          (<span class="path">src/lib/courts.ts:73-78</span>) and a <code>started_at</code> timestamp, flips
+          each to <code>playing</code>, then moves the session to <code>in_progress</code>.
+        </li>
+        <li>
+          <strong>in_progress &mdash; live play.</strong> <span class="fn">LiveSessionView</span>
+          (<span class="path">src/views/SessionView.tsx:126-170</span>) replaces the whole page with
+          <span class="fn">CourtTabs</span> (<span class="path">src/components/CourtTabs.tsx:305-...</span>),
+          fed by <span class="fn">useAdminSession()</span>
+          (<span class="path">src/hooks/useAdminSession.ts:52-223</span>) and kept live by
+          <span class="fn">useRealtime()</span> (<span class="path">src/hooks/useRealtime.ts:11-91</span>) &mdash;
+          this is the genuinely asynchronous part of the app and gets its own walkthrough below. Finishing a
+          match and auto-promoting the next queued one onto the freed court both happen inside one function,
+          <span class="fn">markDone()</span> (<span class="path">src/hooks/useAdminActions.ts:72-125</span>).
+          <span class="fn">unstartSession()</span>
+          (<span class="path">src/hooks/useSession.ts:336-351</span>) is the admin's undo: reverts every
+          <code>playing</code>/<code>queued</code> match back to <code>queued</code> with cleared court
+          numbers, back to <code>schedule_locked</code>.
+        </li>
+        <li>
+          <strong>complete.</strong> <span class="fn">closeSession()</span>
+          (<span class="path">src/hooks/useSession.ts:353-363</span>) sets
+          <code>status = 'complete'</code> and <code>completed_at = now()</code>. This single UPDATE is also
+          the trigger for the sessions-attended count update described in the next flow &mdash; nothing else
+          in the client fires as a result of reaching this state; <span class="path">SessionView.tsx:413-427</span>
+          then just renders a static "This session has been closed" card.
+        </li>
+      </ol>
+
+      <h3 id="flow-async">Live sync &amp; stats aggregation (server-driven, not client-triggered)</h3>
+      <p>
+        Two separate mechanisms, both entirely inside Supabase, run independently of which client made the
+        original write:
+      </p>
+      <p><strong>(a) Cross-device Realtime sync during live play.</strong></p>
+      <ol>
+        <li>
+          Any admin device (or the read-only <span class="path">LiveBoardView</span> /
+          <span class="path">TodayView</span> spectator pages, skimmed) opens
+          <span class="fn">useRealtime(sessionId, onUpdate, channelPrefix)</span>
+          (<span class="path">src/hooks/useRealtime.ts:11-91</span>), which subscribes to Postgres change
+          events on three tables: <code>matches</code> filtered by <code>session_id</code>, all of
+          <code>match_results</code>, and <code>sessions</code> filtered by <code>id</code>
+          (<span class="path">src/hooks/useRealtime.ts:28-64</span>).
+        </li>
+        <li>
+          Any write to those tables from <em>any</em> connected client &mdash; another admin's device
+          finishing a match, a substitute being swapped in &mdash; broadcasts a <code>postgres_changes</code>
+          event to every subscriber, which calls the passed-in <code>onUpdate</code> callback
+          (here, <span class="fn">refresh</span> from <span class="fn">useAdminSession</span>) to refetch.
+        </li>
+        <li>
+          The hook also tracks its own subscription health as <code>connected</code> /
+          <code>reconnecting</code> / <code>disconnected</code>
+          (<span class="path">src/hooks/useRealtime.ts:65-83</span>), surfaced to the admin via
+          <span class="fn">LiveIndicator</span> (<span class="path">src/components/LiveIndicator.tsx</span>,
+          skimmed) so a dropped WebSocket connection is visible rather than silently stale.
+        </li>
+      </ol>
+      <p><strong>(b) DB-trigger-driven stats aggregation.</strong> Entirely SQL, invisible from any client
+        code &mdash; this is why the client never writes to <span class="path">player_stats</span> or
+        <span class="path">player_pair_stats</span> directly (both are read-only to clients, per their RLS
+        grants).</p>
+      <ol>
+        <li>
+          <span class="fn">markDone()</span> inserts one row into <span class="path">match_results</span>
+          (<span class="path">src/hooks/useAdminActions.ts:96-100</span>). That single INSERT, from whichever
+          admin device happened to click Done, fires <span class="fn">update_player_stats_on_result()</span>
+          (<span class="path">supabase/migrations/013_player_stats_tables.sql:68-131</span>, trigger
+          <code>on_match_result_insert</code> at line 134), which looks up the four players on that match,
+          increments <code>games_played</code>/<code>wins</code> for all four in <code>player_stats</code>,
+          and increments <code>wins_together</code> / <code>losses_against</code> for every pairing in
+          <code>player_pair_stats</code> &mdash; one write becomes up to 4 + 2 + 4 = 10 upserts, all inside the
+          same trigger transaction.
+        </li>
+        <li>
+          Separately, <span class="fn">closeSession()</span>'s UPDATE to <code>sessions.status = 'complete'</code>
+          fires <span class="fn">increment_sessions_attended_on_complete()</span>
+          (<span class="path">supabase/migrations/030_sessions_attended_on_completion.sql:12-31</span>,
+          trigger <code>on_session_complete</code> at line 34), which increments
+          <code>player_stats.sessions_attended</code> for every player who was registered for that session.
+          This trigger <em>replaced</em> an earlier version that incremented on registration instead of on
+          completion (see the <a href="#gotchas">gotchas</a> section for the backfill bug this transition
+          caused).
+        </li>
+        <li>
+          Both tables feed <span class="fn">fetchAllTimeLeaderboard()</span>
+          (<span class="path">src/views/LeaderboardView.tsx:59-96</span>), which is a pure client-side read
+          against the already-aggregated numbers &mdash; no computation happens in the browser beyond the
+          eligibility filter and sort (see the function reference).
+        </li>
+      </ol>
+      <p style="font-size:13px;color:var(--text-dim)">
+        No queues, cron jobs, or webhooks exist in the current app. An email-notification system built on
+        <code>pg_cron</code> + <code>pg_net</code> (migrations 045-049: payment-confirmed, session-full, and
+        schedule-ready triggers, plus two scheduled reminder cron jobs) was built and then fully reverted in
+        <span class="path">supabase/migrations/050_rollback_email_system.sql</span> &mdash; it does not exist
+        in the current schema; unverified why it was rolled back (no comment in that migration beyond
+        "Rollback: remove all email notification infrastructure").
+      </p>
+    </section>
+
+    <section id="data-model">
+      <h2>4. Data model</h2>
+      <p>
+        Postgres via Supabase, RLS on every table. No ORM &mdash; every query in the client is a
+        <span class="path">@supabase/supabase-js</span> query-builder call against these tables directly;
+        <span class="path">src/types/database.ts</span> hand-maintains the TypeScript <code>Database</code>
+        type (not generated in this repo's scripts). 72 migration files exist
+        (<span class="path">supabase/migrations/001</span> through <span class="path">072</span>); the table
+        below reflects each table's current shape as pieced together from the migrations that created and
+        later altered it, not a fresh <code>supabase db pull</code>.
+      </p>
+      <table>
+        <tr><th>Table</th><th>Key columns</th><th>Owning writers</th></tr>
+        <tr>
+          <td><strong>sessions</strong></td>
+          <td><code>id, name, date, status</code> (enum: setup/registration_open/registration_closed/schedule_locked/in_progress/complete), <code>court_count, court_1_label, court_2_label, split_match_scoring, completed_at</code></td>
+          <td>Every transition function in <span class="path">src/hooks/useSession.ts</span> (creation: <span class="path">src/hooks/useSession.ts:123-127</span>); court labels via <span class="path">src/components/CourtTabs.tsx:331-334</span></td>
+        </tr>
+        <tr>
+          <td><strong>session_invitations</strong></td>
+          <td><code>id</code> (the shareable link token itself), <code>session_id, is_active, max_players</code></td>
+          <td><span class="fn">openRegistration</span>/<span class="fn">reopenRegistration</span>/<span class="fn">closeRegistration</span> (<span class="path">src/hooks/useSession.ts:139-236</span>)</td>
+        </tr>
+        <tr>
+          <td><strong>session_registrations</strong></td>
+          <td><code>id, session_id, player_id, gender, level</code> (session-scoped overrides, <code>NULL</code> = fall back to the player's <span class="path">profiles</span> value), <code>paid, source</code></td>
+          <td>Self-registration (<span class="path">RegisterView.tsx</span>, skimmed) and admin add/remove/override in <span class="path">src/hooks/useRoster.ts:114-147</span></td>
+        </tr>
+        <tr>
+          <td><strong>matches</strong></td>
+          <td><code>id, session_id, queue_position, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, status</code> (enum: queued/playing/complete), <code>court_number, started_at, duration_seconds</code></td>
+          <td>Bulk insert on lock (<span class="path">src/hooks/useSession.ts:238-272</span>); status transitions via <span class="path">src/utils/matchTiming.ts:10-30</span> from <span class="path">src/hooks/useAdminActions.ts</span> and <span class="path">src/hooks/useSession.ts:295-351</span></td>
+        </tr>
+        <tr>
+          <td><strong>match_results</strong></td>
+          <td><code>match_id, winning_pair_index</code> (1 or 2), <code>game_number</code></td>
+          <td>Only writer: <span class="fn">markDone</span> (<span class="path">src/hooks/useAdminActions.ts:96-100</span>) and its split-scoring counterpart <span class="fn">submitSplitResult</span> (skimmed)</td>
+        </tr>
+        <tr>
+          <td><strong>player_stats</strong></td>
+          <td><code>player_id, sessions_attended, games_played, wins</code></td>
+          <td>Read-only to clients (RLS grants: <span class="path">supabase/migrations/013_player_stats_tables.sql:59-61</span>). Only writers are the two SQL trigger functions in the async flow above</td>
+        </tr>
+        <tr>
+          <td><strong>player_pair_stats</strong></td>
+          <td><code>player_id, other_player_id, wins_together, losses_against</code> (one directed row per ordered pair)</td>
+          <td>Same as <code>player_stats</code> &mdash; only <span class="fn">update_player_stats_on_result</span> writes it</td>
+        </tr>
+        <tr>
+          <td><strong>profiles</strong></td>
+          <td><code>id</code> (= <code>auth.users.id</code>), <code>name_slug, nickname, gender, level, avatar_url, role</code> (admin/moderator/player), <code>is_active</code></td>
+          <td>Google OAuth sign-up trigger (skimmed, migration 001) creates the row; admin edits via <span class="path">PlayersView.tsx</span> (skimmed). This is each player's <em>default</em> gender/level &mdash; <code>session_registrations</code> can override either per session</td>
+        </tr>
+      </table>
+      <p style="font-size:13px;color:var(--text-dim)">
+        Not detailed above (skimmed): <code>player_cheer_stats</code> / cheer tables (migrations 022-036, the
+        "cheers" leaderboard tab), <code>shuttle_batches</code> / <code>shuttle_usage</code> (inventory), and
+        the finance-related columns on <code>sessions</code> (<code>price</code>,
+        <code>personal_share_override</code>) consumed by <span class="path">get_session_finance</span>
+        (a Postgres function, migrations 058/060, not read).
+      </p>
+    </section>
+
+    <section id="functions">
+      <h2>5. Key functions reference</h2>
+      <p>Click to expand. Ordered to match the flows above.</p>
+
+      <details class="fn-ref" id="fn-app">
+        <summary>App() routing table <span class="fn-loc">src/App.tsx:48-89</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            Declares all 15 lazy-loaded views under <code>&lt;Routes&gt;</code>. Player-facing routes are
+            wrapped in <span class="fn">PlayerLayout</span> (top nav bar); admin-only routes
+            (<code>/admin</code>, <code>/session/:sessionId</code>, <code>/players</code>,
+            <code>/inventory</code>, <code>/finance</code>) are additionally wrapped in
+            <span class="fn">AdminRoute</span> (<span class="path">src/App.tsx:10-30</span>), which redirects
+            unauthenticated users to a Google sign-in button and non-admin/moderator users to <code>/</code>.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            No props &mdash; reads route params and <span class="fn">useAuth()</span> internally. Renders the
+            matched view inside a <code>&lt;Suspense&gt;</code> fallback.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="path">src/main.tsx</span>, inside <code>&lt;BrowserRouter&gt;</code></div>
+          <div class="fn-field"><div class="fn-field-label">Calls</div>
+            <span class="fn">useAuth()</span> (<span class="path">src/contexts/AuthContext.tsx:76-82</span>);
+            every lazily-imported view module</div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            Lazy-loading every view keeps the initial bundle to just the shell + whichever single view is
+            actually needed; the admin/player split at the route level (rather than inside each view) means
+            an unauthorized visit never even downloads the admin view's code.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-usesession-reg">
+        <summary>useSession() -- registration transitions <span class="fn-loc">src/hooks/useSession.ts:139-236</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            <span class="fn">openRegistration</span> (139-169) inserts a fresh <code>session_invitations</code>
+            row then sets status. <span class="fn">reopenRegistration</span> (171-205) instead looks up the
+            <em>most recent existing</em> invitation row and flips <code>is_active</code> back to true &mdash;
+            deliberately not symmetric with <code>openRegistration</code>, see the gotchas entry on why.
+            <span class="fn">closeRegistration</span> (207-236) deactivates the invitation and sets status to
+            <code>registration_closed</code>.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            No arguments (read <code>session</code>/<code>invitation</code> from the hook's own state); all
+            three are <code>void</code>-returning, updating hook state as a side effect, with
+            <span class="fn">toast.error</span> on any Supabase error.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="path">src/views/SessionView.tsx</span> button handlers (<code>onConfirm</code> at
+            line 499, <code>handleCloseRegistration</code>, the Reopen Registration button at line 539)</div>
+          <div class="fn-field"><div class="fn-field-label">Calls</div>
+            <span class="path">supabase.from('session_invitations'/'sessions')</span> directly &mdash; no
+            further app-code calls</div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            Keeping the registration link's identity (its <code>id</code>, which <em>is</em> the shareable
+            URL token) stable across a close/reopen cycle matters because the link may already be shared;
+            minting a new one on reopen would silently break every copy of the old link still in
+            circulation.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-roster-hooks">
+        <summary>useRoster() + useRegisteredPlayers() -- roster sync <span class="fn-loc">src/hooks/useRoster.ts:39-149, src/hooks/useRegisteredPlayers.ts:45-125</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            Two independent data-fetching hooks over the same underlying table
+            (<code>session_registrations</code> joined to <code>profiles</code>), shaped differently for
+            their two consumers: <span class="fn">useRoster</span> returns admin-editing-shaped
+            <code>RosterPlayer[]</code> (with <code>registrationId</code>, <code>paid</code>) plus mutators
+            <span class="fn">addPlayer</span>/<span class="fn">removePlayer</span>/<span class="fn">updateSessionOverride</span>/<span class="fn">updatePaid</span>
+            (114-147); <span class="fn">useRegisteredPlayers</span> returns match-engine-shaped
+            <code>PlayerInput[]</code> via the pure helper <span class="fn">buildRegisteredPlayers</span>
+            (<span class="path">src/hooks/useRegisteredPlayers.ts:27-43</span>). Both also open a Realtime
+            channel on <code>session_registrations</code>, but see the gotchas section &mdash; those channels
+            never actually deliver events.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            <span class="fn">useRoster(sessionId, onChange?)</span> &mdash; the optional
+            <code>onChange</code> callback (added as this session's fix) fires after every successful
+            <span class="fn">addPlayer</span>/<span class="fn">removePlayer</span>/<span class="fn">updateSessionOverride</span>.
+            <span class="fn">useRegisteredPlayers(sessionId, refreshKey?)</span> &mdash; changing
+            <code>refreshKey</code> forces its fetch <code>useEffect</code> to re-run
+            (<span class="path">src/hooks/useRegisteredPlayers.ts:122</span>, dependency array
+            <code>[sessionId, refreshKey]</code>).
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="path">src/components/RosterPanel.tsx:27-29</span> and
+            <span class="path">src/components/MatchGeneratorPanel.tsx:93</span> respectively, both rendered as
+            siblings by <span class="path">src/views/SessionView.tsx:524-525</span>, which owns the
+            <code>rosterVersion</code> counter (line 362) that connects <code>onChange</code> on one side to
+            <code>refreshKey</code> on the other.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            This app has no shared client-side data cache of any kind, so any two components reading the
+            same table independently will drift unless something explicitly re-synchronizes them. This
+            <code>onChange</code> &rarr; <code>rosterVersion</code> &rarr; <code>refreshKey</code> wiring is
+            that explicit resync, chosen over fixing the dead Realtime channel because it works regardless of
+            whether Realtime's publication config is ever correct, and this exact class of bug (a table
+            missing from the Realtime publication) had already silently broken a different feature once
+            before (<span class="path">supabase/migrations/041_notifications_realtime.sql</span>'s comment).
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-generate">
+        <summary>generateScheduleOptimized() -- match engine entry <span class="fn-loc">src/lib/matchGenerator.ts:745-820</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            Multi-start simulated annealing: for <code>numStarts</code> (default 15, UI default 50) restarts,
+            builds a fresh initial assignment via <span class="fn">buildAssignment</span> (784-787, with
+            <code>allowRelaxSpread=false</code>) then improves it for <code>numTrials</code> (UI default 2000)
+            iterations via <span class="fn">optimizeAssignment</span> (790-794), keeping whichever start
+            scored highest across all restarts. Fully synchronous, runs entirely in the browser's main thread
+            &mdash; <span class="path">src/components/MatchGeneratorPanel.tsx:238</span> wraps the call in a
+            <code>setTimeout(..., 50)</code> purely so React can paint the loading spinner first.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            In: <code>PlayerInput[]</code> plus <code>OptimizeOptions</code> (match count, max spread, gender
+            rules, scoring weights, wishlist pairs, rest-spacing settings). Out:
+            <code>{ matches: GeneratedMatch[], audit: AuditData, decisions: MatchDecision[] }</code> &mdash;
+            <code>audit</code> drives every metric shown in the UI (Optimizer Score, Skill Gap Violations,
+            etc., <span class="path">src/components/MatchGeneratorPanel.tsx:528-541</span>).
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="fn">handleGenerate()</span>, <span class="path">src/components/MatchGeneratorPanel.tsx:211-287</span>
+            (call site line 269)</div>
+          <div class="fn-field"><div class="fn-field-label">Calls</div>
+            <span class="fn">buildAssignment</span> (matchGenerator.ts:180),
+            <span class="fn">optimizeAssignment</span> (matchGenerator.ts:437),
+            <span class="fn">assignmentToMatches</span> (matchGenerator.ts:363),
+            <span class="fn">evaluateSessionScore</span> (matchGenerator.ts:498)
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            Doubles scheduling has competing goals (even game counts, skill-balanced teams, gender-composition
+            rules, minimal repeat partnerships, rest spacing) that don't have one obvious greedy solution;
+            simulated annealing lets one weighted scoring function (<span class="fn">evaluateSessionScore</span>)
+            trade those goals off against each other and searches many random restarts for a good combination
+            instead of hand-coding a scheduling algorithm.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-build-assignment">
+        <summary>buildAssignment() + findValidGroup() / pickGroup() <span class="fn-loc">src/lib/matchGenerator.ts:180-239, 245-271, 277-304</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            Greedily builds one full round of matches: each iteration picks the 4 candidates with the most
+            remaining games owed (ties broken by who didn't just play, then a pre-shuffle), and calls
+            <span class="fn">findValidGroup</span> (245-271) to pick a spread/gender-valid foursome from them
+            via progressive relaxation &mdash; try strict spread+gender, then spread-only, and (only if
+            <code>allowRelaxSpread</code> is true) relax spread too. <span class="fn">pickGroup</span>
+            (277-304) does the actual exhaustive search over the top-16 candidates by need.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            In: candidate player IDs, level/gender maps, match count, spread limit, gender-rules flag,
+            <code>allowRelaxSpread</code>. Out: <code>string[][]</code>, one array of 4 player IDs per match
+            &mdash; as of this session's fix, always exactly <code>numMatches</code> long (see below).
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="fn">generateSchedule</span> (matchGenerator.ts:674, single-pass API,
+            <code>allowRelaxSpread</code> defaults <code>true</code>) and
+            <span class="fn">generateScheduleOptimized</span> (matchGenerator.ts:784, SA's Phase 1 seed,
+            explicitly passes <code>false</code>)</div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists / recent fix</div>
+            <strong>Bug fixed this session:</strong> when <code>allowRelaxSpread=false</code> (the SA seed
+            call) and no 4-player group anywhere satisfied the spread limit, the old fallback
+            (<code>candidates.slice(0, 4)</code>) was gated behind <code>allowRelaxSpread</code> too &mdash;
+            so that match slot was silently skipped entirely. With a roster whose levels made every possible
+            foursome exceed the UI's default "Max Skill Gap" of 2, <em>every</em> slot got skipped,
+            <span class="fn">buildAssignment</span> returned <code>[]</code>, and the whole generator produced
+            a 0-score, 0-match, no-error result &mdash; indistinguishable from the button doing nothing. The
+            fix (<span class="path">src/lib/matchGenerator.ts:229</span>) removed the
+            <code>allowRelaxSpread &amp;&amp;</code> guard from that fallback, so a slot is always filled with
+            the best-available four candidates; the SA phase and the audit then surface the real constraint
+            violation ("Skill Gap Violations: N") instead of the generator going silent.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-optimize">
+        <summary>optimizeAssignment() -- simulated annealing <span class="fn-loc">src/lib/matchGenerator.ts:437-493</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            Standard SA loop: starting temperature 500 cooling geometrically to 1 over <code>numTrials</code>
+            steps (462-465). Each step mutates the current assignment &mdash; 80% of the time a
+            <span class="fn">mutateCrossSwap</span> (391-420, swaps one player between two matches, rejected
+            if either resulting group would exceed the spread limit), else a
+            <span class="fn">mutateRowSwap</span> (425-432, just reorders two matches, for streak/rest
+            optimization) &mdash; and accepts the move if it scores better, or with declining probability
+            (<code>Math.exp(delta / temperature)</code>) if it scores worse. Tracks the best-ever assignment
+            seen across the whole run.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            In: an initial assignment plus every scoring/constraint parameter. Out:
+            <code>{ assignment, audit }</code> for the best assignment found.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="fn">generateScheduleOptimized</span> (matchGenerator.ts:790), once per start</div>
+          <div class="fn-field"><div class="fn-field-label">Calls</div>
+            <span class="fn">assignmentToMatches</span> + <span class="fn">evaluateSessionScore</span> (via
+            the local <code>scoreAssignment</code> closure, 451-455), on every trial</div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            <span class="fn">buildAssignment</span>'s greedy pass gets participation counts right by
+            construction but has no sense of overall schedule quality (streaks, repeat partners, rest
+            spacing); SA is the mechanism that improves those without breaking the participation-count
+            guarantee the greedy pass already established.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-mark-done">
+        <summary>markDone() <span class="fn-loc">src/hooks/useAdminActions.ts:72-125</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            The single function behind "finish this match": marks the match <code>complete</code> (guarded by
+            <code>.eq('status', 'playing')</code> so a double-click or two admins clicking at once can't
+            double-process it &mdash; the second call's update matches zero rows and short-circuits at line
+            90), records the result (<span class="fn">submitSplitResult</span> for split scoring, or a plain
+            <code>match_results</code> insert otherwise), then looks up the next <code>queued</code> match by
+            <code>queue_position</code> and promotes it onto the just-freed court.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            In: <code>matchId, courtNumber, sessionId</code>, optional <code>winningPairIndex</code> /
+            <code>startedAt</code> / <code>splitOutcome</code>. Side effects only (DB writes,
+            <code>toast.error</code> on failure, <code>onDone()</code> callback on success); no return value.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="path">src/components/CourtTabs.tsx</span> (via <span class="fn">CourtCard</span>'s
+            <code>onMarkDone</code> prop, wired at <span class="path">src/components/CourtTabs.tsx:414</span>)</div>
+          <div class="fn-field"><div class="fn-field-label">Calls</div>
+            <span class="path">supabase.from('matches'/'match_results')</span> directly; indirectly fires the
+            <span class="fn">update_player_stats_on_result</span> SQL trigger (see the async flow above)</div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            Combining "finish" and "promote next" into one function means a freed court is never left idle
+            waiting for a second admin action &mdash; the queue drains itself automatically as long as
+            there's anything left in it.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-realtime">
+        <summary>useRealtime() <span class="fn-loc">src/hooks/useRealtime.ts:11-91</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            Opens one Supabase Realtime channel per (sessionId, channelPrefix) pair, subscribed to
+            <code>postgres_changes</code> on <code>matches</code> (filtered by session), all of
+            <code>match_results</code> (unfiltered &mdash; every session's results broadcast to every open
+            channel, filtered client-side by whatever <code>onUpdate</code> chooses to do), and
+            <code>sessions</code> (filtered by id). Also tracks connection status.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            In: <code>sessionId</code>, an <code>onUpdate</code> callback, an optional channel-name prefix
+            (defaults <code>'live-board'</code>, but <span class="fn">LiveSessionView</span> passes
+            <code>'session'</code> so its channel name doesn't collide with a same-session LiveBoard tab
+            open in another window). Out: <code>{ status, refresh }</code>.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="path">src/views/SessionView.tsx:129</span> (admin live view),
+            <span class="path">LiveBoardView.tsx</span> and <span class="path">TodayView.tsx</span> (both
+            skimmed, spectator views using the default <code>'live-board'</code> prefix)</div>
+          <div class="fn-field"><div class="fn-field-label">Calls</div>
+            <span class="path">supabase.channel(...).on('postgres_changes', ...).subscribe(...)</span>
+            directly &mdash; this table set (<code>matches</code>, <code>match_results</code>,
+            <code>sessions</code>) <em>is</em> correctly registered in the Realtime publication
+            (<span class="path">supabase/migrations/010_realtime_replica_identity.sql</span>,
+            <span class="path">064_add_sessions_and_results_to_realtime.sql</span>) &mdash; contrast with
+            <code>session_registrations</code>, which is not (see gotchas).
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            Live play is the one part of this app where multiple people (an admin on a laptop, a spectator
+            on the LiveBoard TV display, players checking <code>/today</code> on their phones) are expected to
+            be looking at the same session simultaneously; this is the only place actual push-based sync is
+            load-bearing rather than a nice-to-have.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-stats-trigger">
+        <summary>update_player_stats_on_result() (SQL) <span class="fn-loc">supabase/migrations/013_player_stats_tables.sql:68-131</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            <code>AFTER INSERT ON match_results</code> trigger. Looks up the 4 players on the referenced
+            match, determines winners/losers from <code>winning_pair_index</code>, then upserts
+            <code>player_stats.games_played</code>/<code>wins</code> for all 4 and
+            <code>player_pair_stats.wins_together</code>/<code>losses_against</code> for every winner-loser
+            and winner-winner pairing (both directions stored separately, so this is a directed graph, not an
+            undirected one).
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            Standard Postgres trigger signature (<code>NEW</code> row = the inserted
+            <code>match_results</code> row). No return value visible to callers; <code>SECURITY DEFINER</code>
+            so it can write tables the inserting client role can't write directly (client grants on
+            <code>player_stats</code>/<code>player_pair_stats</code> are SELECT-only).
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            Postgres itself, on every <code>match_results</code> insert &mdash; currently only
+            <span class="fn">markDone</span> and <span class="fn">submitSplitResult</span> insert there</div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            Doing this aggregation as a trigger rather than client-side means it happens exactly once per
+            result no matter which client (or how many concurrent admin devices) recorded it, and the
+            leaderboard never depends on the client staying online long enough to finish a multi-step
+            aggregation.
+          </div>
+        </div>
+      </details>
+
+      <details class="fn-ref" id="fn-leaderboard">
+        <summary>fetchAllTimeLeaderboard() <span class="fn-loc">src/views/LeaderboardView.tsx:59-96</span></summary>
+        <div class="fn-body">
+          <div class="fn-field"><div class="fn-field-label">What it does</div>
+            Reads <code>player_stats</code> filtered to <code>games_played &gt; 0 AND sessions_attended &gt;= 3</code>,
+            separately reads the 4 most recently <code>complete</code> sessions
+            (<code>RECENT_SESSIONS_WINDOW = 4</code>, line 57) and everyone registered in any of them, then
+            keeps only players who satisfy <em>both</em> the lifetime-sessions gate and the recent-activity
+            gate, sorted by win rate (ties broken by raw win count), top 10.
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Inputs / outputs</div>
+            No arguments. Out: <code>LeaderboardEntry[]</code> (<code>playerId, displayName, avatarUrl, wins,
+            losses, winRate</code>).
+          </div>
+          <div class="fn-field"><div class="fn-field-label">Called by</div>
+            <span class="fn">WinsLeaderboard</span> (<span class="path">src/views/LeaderboardView.tsx:122-162</span>),
+            the "Mga Lodi" tab of <span class="fn">LeaderboardView</span></div>
+          <div class="fn-field"><div class="fn-field-label">Calls</div>
+            Three parallel Supabase queries (<code>player_stats</code>, <code>profiles</code>,
+            <code>sessions</code>), then one more sequential query against
+            <code>session_registrations</code> once the recent session IDs are known</div>
+          <div class="fn-field"><div class="fn-field-label">Why it exists</div>
+            Two real tuning problems, each fixed with its own gate: ranking by raw win rate alone let a
+            player with a tiny sample (e.g. 1 win, 0 losses) outrank regulars, hence the
+            <code>sessions_attended &gt;= 3</code> minimum; and a player with a great historical win rate who
+            stopped attending would otherwise sit at the top indefinitely, hence the separate
+            "registered in one of the last 4 completed sessions" recency gate layered on top. The caption
+            string on line 145 ("Ranked by win rate &middot; min. 3 sessions played &middot; must be active in
+            the last 4") is this function's two filters spelled out for the reader.
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <section id="gotchas">
+      <h2>6. Gotchas / non-obvious info</h2>
+
+      <div class="callout fixed">
+        <strong>Fixed this session: <code>session_registrations</code> was never added to the Supabase Realtime publication.</strong>
+        Both <span class="fn">useRoster</span> and <span class="fn">useRegisteredPlayers</span> open a
+        <code>postgres_changes</code> subscription on that table (<span class="path">src/hooks/useRoster.ts:104-112</span>,
+        <span class="path">src/hooks/useRegisteredPlayers.ts:109-116</span>), but Realtime only broadcasts
+        events for tables explicitly added via <code>ALTER PUBLICATION supabase_realtime ADD TABLE ...</code>
+        &mdash; and no migration ever did that for this table (grep across
+        <span class="path">supabase/migrations/*.sql</span> for
+        <code>ADD TABLE public.session_registrations</code> turns up nothing before this session's own
+        <span class="path">supabase/migrations/072_session_registrations_realtime.sql</span>, still unapplied
+        to the linked DEV database as of this writing &mdash; see below). This exact class of bug already
+        happened once before for a different table
+        (<span class="path">supabase/migrations/041_notifications_realtime.sql</span>'s own comment: "was
+        never added to the publication, so postgres_changes events were never broadcast"). The actual fix
+        applied does not depend on that migration ever landing &mdash; see the
+        <span class="fn">useRoster</span> function reference entry above.
+      </div>
+
+      <div class="callout fixed">
+        <strong>Fixed this session: match generation could silently return an empty schedule with no error.</strong>
+        See the <span class="fn">buildAssignment</span> function reference entry for the mechanism. The
+        practical symptom was "the Generate Schedule button clicks but nothing happens" with the UI's own
+        default settings (Max Skill Gap = 2) against a roster whose levels made every possible foursome
+        exceed that limit.
+      </div>
+
+      <div class="callout warn">
+        <strong>The linked Supabase DEV project's migration history table is corrupted, independent of any app bug.</strong>
+        <code>supabase_migrations.schema_migrations</code> on the DEV project (ref
+        <code>tsvetqzkullivprbjtli</code>, the one <span class="path">.env.development</span> actually points
+        <code>npm run dev</code> at) has duplicate malformed rows for migration versions 037-044 &mdash; the
+        full filename stem stored as the version (e.g. <code>037_profiles_authenticated_read_all</code>)
+        alongside a separate clean <code>037</code> row. This blocks <code>supabase db push</code> outright,
+        and <code>supabase migration repair</code>'s own version-argument parser rejects non-numeric strings,
+        so it can't be used to clean the malformed rows either. Confirmed (via direct REST queries against
+        columns known to be added by later migrations) that the actual Postgres schema is fully up to date
+        through migration 069 despite the history table disagreeing &mdash; this is a bookkeeping-table
+        problem, not a real schema drift. Needs direct SQL access (Supabase Dashboard &rarr; SQL Editor, or
+        psql with the DB password) to resolve; not resolved as of this document.
+      </div>
+
+      <div class="callout warn">
+        <strong>Two separate Supabase projects exist (DEV and PROD) with different migration histories, easy to link to the wrong one.</strong>
+        <span class="path">.env.development</span> points at ref <code>tsvetqzkullivprbjtli</code> ("DEV",
+        Tokyo); <span class="path">package.json</span>'s <code>supabase:link:prod</code> script points at
+        <code>ensdfitpeyreunihkqkh</code> ("PROD", Singapore) &mdash; and the Supabase CLI's <em>default</em>
+        linked project (whatever <code>supabase link</code> was last run against, tracked in
+        <span class="path">supabase/.temp/project-ref</span>, which is committed to git in this repo) does not
+        automatically match whichever one you mean to work against. Confirmed this session: PROD's migration
+        history was found 25 commits' worth of migrations behind DEV's local files.
+      </div>
+
+      <div class="callout warn">
+        <strong><span class="fn">onAuthStateChange</span>'s callback must stay synchronous.</strong>
+        The comment at <span class="path">src/contexts/AuthContext.tsx:41</span> is explicit: "Callback must
+        be synchronous &mdash; do NOT make it async." Role lookup is deliberately done in a second, separate
+        <code>useEffect</code> (<span class="path">src/contexts/AuthContext.tsx:57-67</span>) triggered off
+        the user-state change instead of being awaited inside the auth callback itself, specifically so the
+        Supabase client has the session JWT persisted before that role query fires. Unverified from this repo
+        alone whether an async callback here would deadlock or just race (the comment doesn't say which), but
+        the pattern is deliberate, not accidental.
+      </div>
+
+      <div class="callout warn">
+        <strong><span class="path">match_status</span> enum values are <code>queued</code> / <code>playing</code> / <code>complete</code> -- not <code>completed</code>.</strong>
+        Defined once in <span class="path">supabase/migrations/005_create_matches.sql:6</span> and referenced
+        consistently as literal string constants throughout the client
+        (<span class="path">src/utils/matchTiming.ts:11,16,27</span>,
+        <span class="path">src/hooks/useAdminActions.ts:86</span>) &mdash; there is no shared TypeScript enum
+        type for it, so a typo'd <code>'completed'</code> anywhere would fail silently (matching zero rows)
+        rather than a compile error.
+      </div>
+
+      <div class="callout">
+        <strong><code>sessions_attended</code> changed what event increments it, and the old data needed a separate backfill.</strong>
+        Originally incremented on <em>registration</em> (<span class="path">013_player_stats_tables.sql:142-159</span>);
+        <span class="path">030_sessions_attended_on_completion.sql</span> switched it to increment only when
+        a session's status transitions to <code>complete</code> instead &mdash; but that migration only
+        installed the new trigger going forward, it never recomputed players whose sessions were already
+        complete before the switch, leaving them under-counted until
+        <span class="path">supabase/migrations/071_backfill_sessions_attended.sql</span> (idempotent
+        recompute from source-of-truth join data) ran. General pattern worth remembering: swapping which
+        event a counter trigger fires on does not retroactively fix counts for events that already happened
+        under the old trigger.
+      </div>
+
+      <div class="callout">
+        <strong>The email-notification system (migrations 045-049) is fully reverted; do not assume it's live.</strong>
+        <span class="path">supabase/migrations/050_rollback_email_system.sql</span> drops every trigger,
+        trigger function, cron job, and table that infrastructure created. If a future task references
+        "session reminder emails" or similar, that feature does not currently exist in this schema.
+      </div>
+
+      <div class="callout unverified">
+        <strong>Unverified / not traced in this pass.</strong>
+        (1) The exact RLS policy set on every table beyond the handful actually read
+        (<span class="path">player_stats</span>/<span class="path">player_pair_stats</span>,
+        <span class="path">matches</span>) &mdash; policies were spot-checked, not exhaustively enumerated
+        across all 72 migrations. (2) Whether <span class="fn">promoteTocourt</span> /
+        <span class="fn">moveToCourt</span> / <span class="fn">swapCourts</span>
+        (<span class="path">src/hooks/useAdminActions.ts:127-227</span>) have the same double-click race
+        protection <span class="fn">markDone</span> has (its <code>.eq('status', 'playing')</code> guard) --
+        not individually re-read for this document. (3) The split-scoring path
+        (<span class="fn">submitSplitResult</span>, referenced but not opened) and its interaction with
+        <span class="fn">update_player_stats_on_result</span>. (4) Why the email system was rolled back &mdash;
+        no comment beyond "Rollback: remove all email notification infrastructure" in the migration itself.
+      </div>
+    </section>
+
+    <section id="changes">
+      <h2>7. If I wanted to change...</h2>
+
+      <h3>...tune the match-generation algorithm (weights, spread limit, participation targets)</h3>
+      <ol>
+        <li>Every tunable is a UI slider in <span class="fn">MatchGeneratorPanel</span>'s settings panel
+          (<span class="path">src/components/MatchGeneratorPanel.tsx:352-503</span>) with a live default in
+          <code>DEFAULTS</code> (<span class="path">src/components/MatchGeneratorPanel.tsx:60-82</span>) and
+          <code>DEFAULT_WEIGHTS</code> (<span class="path">src/lib/matchGenerator.ts:92-104</span>) &mdash;
+          change the default there, not just in the UI, if the change should persist across sessions.</li>
+        <li>If changing how a constraint is enforced (not just its weight), it's in
+          <span class="fn">evaluateSessionScore</span> (<span class="path">src/lib/matchGenerator.ts:498-663</span>)
+          for soft (scored) constraints, or <span class="fn">findValidGroup</span>/<span class="fn">pickGroup</span>
+          (<span class="path">src/lib/matchGenerator.ts:245-304</span>) for hard constraints checked during
+          assignment building.</li>
+        <li>Re-test against a roster with a genuinely wide level spread, not just a tight one &mdash; that's
+          exactly the case that exposed this session's empty-schedule bug, and it's the case most likely to
+          expose a similar all-slots-skipped regression in the future.</li>
+      </ol>
+
+      <h3>...add a new session status / lifecycle stage</h3>
+      <ol>
+        <li>Extend the <code>SessionStatus</code> union (<span class="path">src/hooks/useSession.ts:7-13</span>)
+          and add a new transition function alongside the existing ones, following their exact pattern
+          (update <code>sessions.status</code>, handle the Supabase error, update local hook state).</li>
+        <li>Add a matching status branch to <span class="fn">SessionView</span>'s render tree
+          (<span class="path">src/views/SessionView.tsx:487-563</span>) and a step to
+          <span class="fn">SessionStepper</span> (<span class="path">src/views/SessionView.tsx:25-44</span>,
+          also update <code>STATUS_STEP</code> at the top of the file).</li>
+        <li>Check every other place that switches on <code>session.status</code> by string literal &mdash;
+          there's no shared exhaustiveness check, so a new status is easy to silently fall through
+          somewhere unrelated (e.g. <span class="path">useRealtime</span>'s channel-prefix logic, or anything
+          gating on <code>=== 'registration_closed'</code> like <span class="path">MatchGeneratorPanel.tsx:157</span>).</li>
+      </ol>
+
+      <h3>...change what counts toward the All-time Leaderboard eligibility</h3>
+      <ol>
+        <li><span class="fn">fetchAllTimeLeaderboard</span> (<span class="path">src/views/LeaderboardView.tsx:59-96</span>)
+          is the single place both gates live &mdash; the sessions-attended minimum (line 61) and the
+          recency window (<code>RECENT_SESSIONS_WINDOW</code>, line 57).</li>
+        <li>Update the caption string (<span class="path">src/views/LeaderboardView.tsx:145</span>) to match
+          &mdash; it's a plain hardcoded string describing the two filters, not derived from the constants.</li>
+        <li>If the change affects <em>lifetime</em> counts rather than just the query's filter (e.g. changing
+          what counts as a "session attended"), it belongs in the trigger functions instead (migrations 013,
+          030) and needs a new backfill migration for existing data, following the pattern in
+          <span class="path">071_backfill_sessions_attended.sql</span>.</li>
+      </ol>
+
+      <h3>...add a new live-session admin action (beyond the existing move/swap/substitute/finish set)</h3>
+      <ol>
+        <li>New mutators belong in <span class="fn">useAdminActions</span>
+          (<span class="path">src/hooks/useAdminActions.ts:15-227</span>), following the existing
+          pattern: set <code>isSaving</code>, do the Supabase write(s), call <code>onDone()</code> on
+          success, <code>toast.error</code> on failure.</li>
+        <li>Wire the new action into <span class="fn">CourtCard</span>
+          (<span class="fn">CourtCard</span>, <span class="path">src/components/CourtTabs.tsx:74-268</span>) or the queued-match list
+          rendering further down the same file, matching how <code>onMarkDone</code>/<code>onEdit</code> are
+          passed down today.</li>
+        <li>If the action changes anything Realtime already tracks (<code>matches</code>,
+          <code>match_results</code>, <code>sessions</code>), no extra wiring is needed for cross-device sync
+          &mdash; it's already covered by <span class="fn">useRealtime</span>. If it touches
+          <code>session_registrations</code> instead, remember that table's Realtime channel is currently
+          dead (see gotchas) and route the update through the <code>rosterVersion</code>-style explicit
+          resync pattern instead.</li>
+      </ol>
+
+      <h3>...add a new per-session admin setting (like court count or split scoring)</h3>
+      <ol>
+        <li>Add the column to <span class="path">sessions</span> via a new migration, following
+          <span class="path">supabase/migrations/066_add_court_count_to_sessions.sql</span>'s shape as a
+          template.</li>
+        <li>Add it to the <span class="fn">Session</span> interface
+          (<span class="path">src/hooks/useSession.ts:15-30</span>) and thread it through
+          <span class="fn">SetupCard</span> (<span class="path">src/views/SessionView.tsx:172-345</span>) if
+          it should be set at creation time, or a dedicated update handler in
+          <span class="path">SessionView.tsx</span> (following the existing
+          <code>handleSplitScoringChange</code> pattern) if it should be editable later.</li>
+      </ol>
+    </section>
+
+    <section id="glossary">
+      <h2>8. Glossary</h2>
+      <table>
+        <tr><td><strong>Session</strong></td><td>One scheduled club meetup, the top-level entity everything else hangs off of. Progresses through 6 statuses (<span class="fn">SessionStatus</span>, <span class="path">src/hooks/useSession.ts:7-13</span>).</td></tr>
+        <tr><td><strong>Roster override</strong></td><td>A session-scoped gender/level value on <code>session_registrations</code> that takes precedence over a player's default <code>profiles.gender</code>/<code>profiles.level</code> for that one session only &mdash; used e.g. when someone's actual skill that day differs from their usual rating.</td></tr>
+        <tr><td><strong>Queue position</strong></td><td><code>matches.queue_position</code> &mdash; the fixed play order within a session, assigned once at schedule-lock time and never renumbered afterward (courts are assigned dynamically from whichever match is next-queued, not by editing this field).</td></tr>
+        <tr><td><strong>Court number</strong></td><td><code>matches.court_number</code> &mdash; which physical court a <code>playing</code> match is on; <code>NULL</code> for <code>queued</code>/<code>complete</code> matches. Distinct from <code>queue_position</code>.</td></tr>
+        <tr><td><strong>Skill gap / spread</strong></td><td>The max-minus-min player level within one 4-player match (<span class="fn">getSpread</span>, <span class="path">src/lib/matchGenerator.ts:164-167</span>); "Max Skill Gap per Match" in the UI is the hard limit on this value.</td></tr>
+        <tr><td><strong>Simulated annealing (SA)</strong></td><td>The optimization technique in <span class="fn">optimizeAssignment</span>: accept better moves always, worse moves with a probability that shrinks as a "temperature" parameter cools over the run &mdash; lets the search escape local optima early and converge late.</td></tr>
+        <tr><td><strong>Assignment (matrix)</strong></td><td>The intermediate <code>string[][]</code> representation used during generation &mdash; one array of exactly 4 player IDs per match, before team-splitting (<span class="fn">formTeams</span>) or level/type computation happens.</td></tr>
+        <tr><td><strong>Realtime publication</strong></td><td>A Postgres/Supabase configuration list of which tables broadcast <code>postgres_changes</code> events at all; a table missing from it means any client subscription to it silently never fires, with no error anywhere.</td></tr>
+        <tr><td><strong>rosterVersion / refreshKey</strong></td><td>This session's fix: a plain incrementing counter passed as a React prop specifically to force a dependent <code>useEffect</code> to re-run, used here to resync two sibling components that don't share a data cache.</td></tr>
+        <tr><td><strong>Mga Lodi</strong></td><td>Tagalog slang roughly meaning "the greats/legends" &mdash; the label on the win-rate All-time Leaderboard tab (<span class="path">src/views/LeaderboardView.tsx</span>), as opposed to the separate Cheers and Awards tabs.</td></tr>
+        <tr><td><strong>Split scoring</strong></td><td>A per-session toggle (<code>sessions.split_match_scoring</code>) whose downstream result-recording path (<span class="fn">submitSplitResult</span>) was not traced in this pass &mdash; noted here, not explained.</td></tr>
+      </table>
+    </section>
+
+    <footer class="doc-footer">
+      Generated by reading the repository at commit <code>ac45b2a</code> on 2026-07-20. Line numbers are
+      accurate as of that commit and will drift as the code changes &mdash; re-run against the current
+      <code>git rev-parse --short HEAD</code> if this document is consulted later.
+    </footer>
+
+  </main>
+</div>
+
+<script>
+  // --- Sidebar active-section highlighting ---
+  (function () {
+    var sections = Array.prototype.slice.call(document.querySelectorAll("main section"));
+    var links = Array.prototype.slice.call(document.querySelectorAll("nav.sidebar a"));
+    function linkFor(id) {
+      return links.find(function (a) { return a.getAttribute("href") === "#" + id; });
+    }
+    function onScroll() {
+      var scrollPos = window.scrollY + 100;
+      var current = sections[0];
+      sections.forEach(function (s) {
+        if (s.offsetTop <= scrollPos) current = s;
+      });
+      links.forEach(function (a) { a.parentElement.classList.remove("active"); });
+      var link = linkFor(current.id);
+      if (link) link.parentElement.classList.add("active");
+    }
+    document.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  })();
+
+  // --- Diagram: click-to-jump ---
+  document.querySelectorAll(".node[data-jump]").forEach(function (node) {
+    node.addEventListener("click", function () {
+      var target = document.getElementById(node.getAttribute("data-jump"));
+      if (!target) return;
+      target.setAttribute("open", "");
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.style.boxShadow = "0 0 0 3px var(--accent)";
+      setTimeout(function () { target.style.boxShadow = ""; }, 1200);
+    });
+  });
+
+  // --- Diagram: animated trace through the session lifecycle ---
+  var traceSteps = [
+    { step: 0, caption: "An admin opens /session/:sessionId -- SessionView renders a different panel per sessions.status." },
+    { step: 1, caption: "useSession() owns the whole lifecycle: one transition function per status change, each a plain Supabase update." },
+    { step: 2, caption: "<strong>setup</strong> -- SetupCard collects name/date/venue/price/court count, then openRegistration()." },
+    { step: 3, caption: "<strong>registration_open</strong> -- players self-register via the shared link; RosterPanel shows who's joined." },
+    { step: 4, caption: "<strong>registration_closed</strong> -- RosterPanel (overrides) and MatchGeneratorPanel (generateScheduleOptimized) run as independent siblings, resynced via rosterVersion." },
+    { step: 5, caption: "Save & Lock bulk-inserts every match row and moves to <strong>schedule_locked</strong>." },
+    { step: 6, caption: "Start Session assigns the first N queued matches to courts and moves to <strong>in_progress</strong> -- now genuinely live: useRealtime keeps every connected device in sync as markDone() finishes matches and auto-promotes the next one." },
+    { step: 7, caption: "closeSession() sets status = 'complete' -- this single UPDATE also fires the sessions_attended trigger." },
+    { step: 8, caption: "Throughout live play, every match_results insert fires a Postgres trigger that updates player_stats and player_pair_stats -- entirely server-side, invisible to the client." },
+    { step: 9, caption: "Those aggregated numbers feed the All-time Leaderboard's two eligibility gates: 3+ lifetime sessions, active in the last 4 completed ones." }
+  ];
+  var traceIndex = -1;
+  var traceTimer = null;
+
+  function clearActive() {
+    document.querySelectorAll(".node.active").forEach(function (n) { n.classList.remove("active"); });
+  }
+
+  function showStep(i) {
+    clearActive();
+    var s = traceSteps[i];
+    document.querySelectorAll('.node[data-step="' + s.step + '"]').forEach(function (n) {
+      n.classList.add("active");
+      n.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+    document.getElementById("step-caption").innerHTML = "<strong>Step " + (i + 1) + "/" + traceSteps.length + ":</strong> " + s.caption;
+  }
+
+  function playTrace() {
+    if (traceTimer) { clearInterval(traceTimer); traceTimer = null; }
+    traceIndex = -1;
+    var btn = document.getElementById("play-btn");
+    btn.disabled = true;
+    btn.textContent = "Playing...";
+    traceTimer = setInterval(function () {
+      traceIndex++;
+      if (traceIndex >= traceSteps.length) {
+        clearInterval(traceTimer);
+        traceTimer = null;
+        btn.disabled = false;
+        btn.textContent = "▶ Play trace";
+        return;
+      }
+      showStep(traceIndex);
+    }, 1600);
+  }
+
+  function resetTrace() {
+    if (traceTimer) { clearInterval(traceTimer); traceTimer = null; }
+    traceIndex = -1;
+    clearActive();
+    document.getElementById("play-btn").disabled = false;
+    document.getElementById("play-btn").textContent = "▶ Play trace";
+    document.getElementById("step-caption").textContent = "Click Play to animate one session through its full lifecycle, or click any node directly.";
+  }
+</script>
