@@ -19,13 +19,14 @@ interface Props {
   sessionId: string
   editable?: boolean
   paymentOnly?: boolean
+  onRosterChange?: () => void
 }
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-export function RosterPanel({ sessionId, editable = false, paymentOnly = false }: Props) {
+export function RosterPanel({ sessionId, editable = false, paymentOnly = false, onRosterChange }: Props) {
   const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, updatePaid } =
-    useRoster(sessionId)
+    useRoster(sessionId, onRosterChange)
   const [open, setOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)

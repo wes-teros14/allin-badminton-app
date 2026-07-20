@@ -77,3 +77,7 @@ Maintained by the tech-writer agent (see `_bmad/_memory/tech-writer-sidecar/docu
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
 <!-- SPECKIT END -->
+
+
+## Testing on localhost
+- there is dev only button at the lower right where you can login as admin

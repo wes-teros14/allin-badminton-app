@@ -141,6 +141,9 @@ function WinsLeaderboard() {
     <p className="text-muted-foreground text-sm">No stats recorded yet.</p>
   ) : (
     <div className="space-y-2">
+      <p className="text-xs text-muted-foreground text-center pb-1">
+        Ranked by win rate · min. 3 sessions played · must be active in the last 4
+      </p>
       {entries.map((entry, i) => (
         <div key={entry.playerId} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
           <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
@@ -154,9 +157,6 @@ function WinsLeaderboard() {
           </div>
         </div>
       ))}
-      <p className="text-xs text-muted-foreground text-center pt-2">
-        Ranked by win rate · min. 3 sessions played · must be active in the last 4
-      </p>
     </div>
   )
 }

@@ -356,6 +356,11 @@ export function SessionView() {
   const [confirmingClose, setConfirmingClose] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Bumped whenever RosterPanel mutates the roster, so MatchGeneratorPanel
+  // (a sibling with its own independent player-fetching hook) refetches
+  // immediately instead of only picking up changes on next page load.
+  const [rosterVersion, setRosterVersion] = useState(0)
+
   const [splitScoring, setSplitScoring] = useState(session?.split_match_scoring ?? false)
   const [splitSaving, setSplitSaving] = useState(false)
 
@@ -516,8 +521,8 @@ export function SessionView() {
 
       {session.status === 'registration_closed' && (
         <div className="space-y-4">
-          <RosterPanel sessionId={session.id} editable />
-          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} />
+          <RosterPanel sessionId={session.id} editable onRosterChange={() => setRosterVersion((v) => v + 1)} />
+          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} rosterVersion={rosterVersion} />
           <div className="flex items-center gap-2">
             <input
               type="checkbox"

@@ -28,6 +28,7 @@ interface Props {
   sessionId: string
   sessionStatus?: string
   onLock?: (matches: GeneratedMatch[]) => Promise<boolean>
+  rosterVersion?: number
 }
 
 interface Settings {
@@ -88,8 +89,8 @@ export function buildRosterVersion(players: Array<{ id: string; gender: 'M' | 'F
     .join('|')
 }
 
-export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock }: Props) {
-  const { players, isLoading } = useRegisteredPlayers(sessionId)
+export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVersion }: Props) {
+  const { players, isLoading } = useRegisteredPlayers(sessionId, rosterVersion)
   const [stage, setStage] = useState<'idle' | 'generating' | 'preview' | 'locking' | 'locked'>('idle')
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [matches, setMatches] = useState<GeneratedMatch[]>([])
