@@ -397,7 +397,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
                   </div>
                   <div
                     className="grid items-center gap-1.5 text-sm text-foreground font-medium"
-                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 14px 24px minmax(0,1fr)' }}
+                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 24px 24px minmax(0,1fr)' }}
                   >
                     <Avatar url={m.team1[0].avatarUrl} name={m.team1[0].name} size={24} />
                     <span className="truncate">{m.team1[0].name}</span>
@@ -408,7 +408,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
                   <p className="text-xs text-muted-foreground mt-0.5 mb-0.5 text-center">vs</p>
                   <div
                     className="grid items-center gap-1.5 text-sm text-foreground font-medium"
-                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 14px 24px minmax(0,1fr)' }}
+                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 24px 24px minmax(0,1fr)' }}
                   >
                     <Avatar url={m.team2[0].avatarUrl} name={m.team2[0].name} size={24} />
                     <span className="truncate">{m.team2[0].name}</span>
