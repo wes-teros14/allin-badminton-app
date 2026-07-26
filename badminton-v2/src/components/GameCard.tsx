@@ -87,7 +87,7 @@ export function GameCard({
       </div>
       <div
         className="grid items-center gap-1.5 text-sm text-muted-foreground"
-        style={{ gridTemplateColumns: '40px minmax(0,1fr) 20px 40px minmax(0,1fr)' }}
+        style={{ gridTemplateColumns: '40px minmax(0,1fr) 32px 40px minmax(0,1fr)' }}
       >
         <Avatar url={opp1AvatarUrl} name={opp1NameSlug} size={40} />
         <span className={`truncate text-[21px] ${status === 'playing' ? 'text-foreground' : 'text-primary'}`}>{opp1NameSlug}</span>
