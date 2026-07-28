@@ -5,11 +5,24 @@ import { computeStatsFromResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
+import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { Avatar } from '@/components/Avatar'
+
+export function shouldShowPaymentInfo({
+  isRegistered,
+  paid,
+  hasPaymentInfo,
+}: {
+  isRegistered: boolean
+  paid: boolean | null
+  hasPaymentInfo: boolean
+}): boolean {
+  return isRegistered && paid !== true && hasPaymentInfo
+}
 
 // ---------------------------------------------------------------------------
 // Leaderboard helpers (mirrors TodayView logic, scoped to a single session)
@@ -92,6 +105,7 @@ function ScheduleTab({
   sessionStatus,
   isRegistered,
   isRegistering,
+  paid,
   sessionPrice,
   sessionNotes,
   registrationOpensAt,
@@ -102,6 +116,7 @@ function ScheduleTab({
   sessionStatus: string | null
   isRegistered: boolean
   isRegistering: boolean
+  paid: boolean | null
   sessionPrice: number | null
   sessionNotes: string | null
   registrationOpensAt: string | null
@@ -109,6 +124,16 @@ function ScheduleTab({
 }) {
   const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, refresh } = usePlayerSchedule(nameSlug, sessionId)
   const { status } = useRealtime(resolvedId, refresh)
+  const { phoneNumber, qrCodeUrl } = usePaymentSettings()
+  const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
+  const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, hasPaymentInfo })
+
+  function handleCopyPhone() {
+    if (!phoneNumber) return
+    navigator.clipboard.writeText(phoneNumber)
+      .then(() => toast.success('Phone number copied'))
+      .catch(() => toast.error('Could not copy — please copy it manually'))
+  }
 
   const firstQueuedIndex = matches.findIndex((m) => m.status === 'queued')
   const playingMatch = matches.find((m) => m.status === 'playing')
@@ -135,13 +160,46 @@ function ScheduleTab({
         />
       )}
 
+      {/* Payment info banner — shown whenever registered + unpaid + configured,
+          regardless of session status (a player may still owe payment after
+          registration closes, schedule locks, or the session starts) */}
+      {isRegistered && showPaymentInfo && (
+        <div className="max-w-sm mx-auto px-4 mt-3">
+          <div className="px-4 py-4 rounded-xl border border-primary/20 bg-primary/10 space-y-3">
+            <p className="text-sm font-semibold text-foreground">You&apos;re registered! GCash payment details below:</p>
+            {phoneNumber && (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-card border border-border">
+                <span className="text-sm font-medium">{phoneNumber}</span>
+                <button
+                  onClick={handleCopyPhone}
+                  className="text-xs font-semibold text-primary hover:underline shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
+            )}
+            {qrCodeUrl && (
+              <img
+                src={qrCodeUrl}
+                alt="Payment QR code"
+                className="w-40 h-40 object-contain rounded-lg border border-border mx-auto"
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">Once sent, please send the screenshot to the Facebook group chat. Thanks!</p>
+          </div>
+        </div>
+      )}
+
       {/* Registration banner */}
       {sessionStatus === 'registration_open' && (
         <div className="max-w-sm mx-auto px-4 mt-3">
           {isRegistered ? (
-            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
-              ✅ You&apos;re registered!
-            </div>
+            !showPaymentInfo && (
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
+                ✅ You&apos;re registered!
+              </div>
+            )
           ) : (() => {
             const opensLater = registrationOpensAt && new Date(registrationOpensAt) > new Date()
             const opensLabel = opensLater
@@ -303,6 +361,7 @@ export function SessionPlayerDetailView() {
 
   const [isRegistered, setIsRegistered] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
+  const [paid, setPaid] = useState<boolean | null>(null)
   const [sessionStatus, setSessionStatus] = useState<string | null>(null)
   const [sessionPrice, setSessionPrice] = useState<number | null>(null)
   const [sessionNotes, setSessionNotes] = useState<string | null>(null)
@@ -321,14 +380,16 @@ export function SessionPlayerDetailView() {
     if (!sessionId || !user) return
     Promise.all([
       supabase.from('sessions').select('status, price, session_notes, registration_opens_at').eq('id', sessionId).maybeSingle(),
-      supabase.from('session_registrations').select('player_id').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
+      supabase.from('session_registrations').select('player_id, paid').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
     ]).then(([sessionRes, regRes]) => {
       const s = sessionRes.data as { status: string; price: number | null; session_notes: string | null; registration_opens_at: string | null } | null
+      const r = regRes.data as { player_id: string; paid: boolean | null } | null
       setSessionStatus(s?.status ?? null)
       setSessionPrice(s?.price ?? null)
       setSessionNotes(s?.session_notes ?? null)
       setRegistrationOpensAt(s?.registration_opens_at ?? null)
-      setIsRegistered(regRes.data != null)
+      setIsRegistered(r != null)
+      setPaid(r?.paid ?? null)
     })
   }, [sessionId, user])
 
@@ -388,6 +449,7 @@ export function SessionPlayerDetailView() {
             sessionStatus={sessionStatus}
             isRegistered={isRegistered}
             isRegistering={isRegistering}
+            paid={paid}
             sessionPrice={sessionPrice}
             sessionNotes={sessionNotes}
             registrationOpensAt={registrationOpensAt}
