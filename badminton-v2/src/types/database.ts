@@ -237,6 +237,30 @@ export type Database = {
           },
         ]
       }
+      payment_settings: {
+        Row: {
+          id: number
+          phone_number: string | null
+          qr_code_url: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          phone_number?: string | null
+          qr_code_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          phone_number?: string | null
+          qr_code_url?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       player_cheer_stats: {
         Row: {
           cheers_given: number

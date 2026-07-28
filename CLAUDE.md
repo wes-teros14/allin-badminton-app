@@ -76,7 +76,7 @@ Maintained by the tech-writer agent (see `_bmad/_memory/tech-writer-sidecar/docu
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/002-reorder-session-cards/plan.md`.
+at `specs/003-registration-payment-qr/plan.md`.
 <!-- SPECKIT END -->
 
 
