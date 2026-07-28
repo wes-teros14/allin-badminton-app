@@ -60,6 +60,13 @@ export function TopNavBar() {
       show: role === 'admin',
       badge: false,
     },
+    {
+      label: 'Payment Settings',
+      href: '/payment-settings',
+      active: pathname.startsWith('/payment-settings'),
+      show: role === 'admin',
+      badge: false,
+    },
   ]
 
   return (
