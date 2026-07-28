@@ -26,6 +26,15 @@ function DetailItem({
   )
 }
 
+export function compareSessionsByScheduledDate(a: SessionPickerItem, b: SessionPickerItem): number {
+  const dateCompare = a.date.localeCompare(b.date)
+  if (dateCompare !== 0) return dateCompare
+  if (a.time === b.time) return 0
+  if (a.time === null) return 1
+  if (b.time === null) return -1
+  return a.time.localeCompare(b.time)
+}
+
 function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress') {
     return {
@@ -194,7 +203,7 @@ export function MySessionsView() {
 
   const activeSessions = sessions
     .filter((s) => ACTIVE_STATUSES.has(s.status))
-    .sort((a, b) => b.date.localeCompare(a.date))
+    .sort(compareSessionsByScheduledDate)
 
   const pastSessions = sessions
     .filter((s) => !ACTIVE_STATUSES.has(s.status))
