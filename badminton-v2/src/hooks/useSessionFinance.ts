@@ -59,6 +59,7 @@ export interface SessionFinanceData {
   isLoading: boolean
   fetchError: string | null
   isSavingUsage: boolean
+  isClearingUsage: boolean
   isSavingAllocationMode: boolean
   isSavingCourtCost: boolean
   isSavingPersonalShare: boolean
@@ -66,6 +67,7 @@ export interface SessionFinanceData {
   availableManualBatches: ManualBatchOption[]
   logUsage: (totalShuttles: number) => Promise<{ error: string | null }>
   saveUsageAllocation: (input: SaveUsageInput) => Promise<{ error: string | null }>
+  clearUsage: () => Promise<{ error: string | null }>
   saveAllocationMode: (mode: AllocationMode) => Promise<{ error: string | null }>
   saveCourtCost: (amount: number) => Promise<{ error: string | null }>
   savePersonalShare: (amount: number | null) => Promise<{ error: string | null }>
@@ -320,6 +322,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
   const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [isSavingUsage, setIsSavingUsage] = useState(false)
+  const [isClearingUsage, setIsClearingUsage] = useState(false)
   const [isSavingAllocationMode, setIsSavingAllocationMode] = useState(false)
   const [isSavingCourtCost, setIsSavingCourtCost] = useState(false)
   const [isSavingPersonalShare, setIsSavingPersonalShare] = useState(false)
@@ -497,6 +500,24 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     return { error: null }
   }, [user, sessionId, batchesForAllocation, fetchAll, hasLoadedOnce])
 
+  const clearUsage = useCallback(async (): Promise<{ error: string | null }> => {
+    if (!user) return { error: 'Not authenticated' }
+    setIsClearingUsage(true)
+
+    const { error: deleteErr } = await supabase
+      .from('shuttle_usage')
+      .delete()
+      .eq('session_id', sessionId)
+    if (deleteErr) {
+      setIsClearingUsage(false)
+      return { error: deleteErr.message }
+    }
+
+    await fetchAll({ background: hasLoadedOnce })
+    setIsClearingUsage(false)
+    return { error: null }
+  }, [user, sessionId, fetchAll, hasLoadedOnce])
+
   const logUsage = useCallback(async (totalShuttles: number): Promise<{ error: string | null }> => (
     saveUsageAllocation({
       allocationMode: 'auto',
@@ -574,6 +595,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     isLoading,
     fetchError,
     isSavingUsage,
+    isClearingUsage,
     isSavingAllocationMode,
     isSavingCourtCost,
     isSavingPersonalShare,
@@ -581,6 +603,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     availableManualBatches: buildManualBatchOptions(batchesForAllocation),
     logUsage,
     saveUsageAllocation,
+    clearUsage,
     saveAllocationMode,
     saveCourtCost,
     savePersonalShare,

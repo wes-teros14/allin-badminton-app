@@ -53,6 +53,14 @@ export default function FinanceDetailView() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [manualRows, setManualRows] = useState<UsageAllocation[]>([])
   const previousModeRef = useRef<AllocationMode | null>(null)
+  const [clearArmed, setClearArmed] = useState(false)
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (clearTimerRef.current) {
+      clearTimeout(clearTimerRef.current)
+    }
+  }, [])
 
   const usageForm = useForm<UsageFormOutput>({
     resolver: zodResolver(usageSchema),
@@ -163,6 +171,30 @@ export default function FinanceDetailView() {
       toast.success('Your share cleared.')
       personalShareForm.reset({ personalShare: 0 })
     }
+  }
+
+  const handleClearUsageClick = async () => {
+    if (!clearArmed) {
+      if (clearTimerRef.current) {
+        clearTimeout(clearTimerRef.current)
+      }
+      setClearArmed(true)
+      clearTimerRef.current = setTimeout(() => setClearArmed(false), 3000)
+      return
+    }
+
+    if (clearTimerRef.current) {
+      clearTimeout(clearTimerRef.current)
+    }
+    setClearArmed(false)
+
+    const { error } = await finance.clearUsage()
+    if (error) {
+      toast.error('Failed to clear usage. Try again.')
+      return
+    }
+    toast.success('Shuttle usage cleared.')
+    usageForm.reset()
   }
 
   const handleModeChange = async (mode: AllocationMode) => {
@@ -361,9 +393,19 @@ export default function FinanceDetailView() {
                         </p>
                       )}
                     </div>
-                    <Button type="submit" disabled={finance.isSavingUsage}>
-                      {finance.isSavingUsage ? 'Saving...' : hasUsage ? 'Update Usage' : 'Save Usage'}
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button type="submit" disabled={finance.isSavingUsage}>
+                        {finance.isSavingUsage ? 'Saving...' : hasUsage ? 'Update Usage' : 'Save Usage'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={clearArmed ? 'destructive' : 'outline'}
+                        disabled={finance.isClearingUsage || finance.isSavingUsage || !hasUsage}
+                        onClick={() => void handleClearUsageClick()}
+                      >
+                        {finance.isClearingUsage ? 'Clearing...' : clearArmed ? 'Sure?' : 'Clear Usage'}
+                      </Button>
+                    </div>
                   </form>
                   {allocationTable}
                 </>
@@ -390,6 +432,14 @@ export default function FinanceDetailView() {
                         onClick={() => void handleManualSave()}
                       >
                         {finance.isSavingUsage ? 'Saving...' : 'Save Allocation'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={clearArmed ? 'destructive' : 'outline'}
+                        disabled={finance.isClearingUsage || finance.isSavingUsage || !hasUsage}
+                        onClick={() => void handleClearUsageClick()}
+                      >
+                        {finance.isClearingUsage ? 'Clearing...' : clearArmed ? 'Sure?' : 'Clear Usage'}
                       </Button>
                     </div>
                   </div>
