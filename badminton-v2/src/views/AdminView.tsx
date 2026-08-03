@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
 import { useSessionList } from '@/hooks/useSessionList'
 import type { Session } from '@/hooks/useSession'
+import { compareSessionsByScheduledDate } from '@/views/MySessionsView'
 
 const STATUS_LABELS: Record<string, string> = {
   setup: 'Setup',
@@ -135,8 +136,12 @@ export function AdminView() {
     navigate(`/session/${(data as { id: string }).id}`)
   }
 
-  const activeSessions = sessions.filter((s) => s.status !== 'complete')
-  const pastSessions = sessions.filter((s) => s.status === 'complete')
+  const activeSessions = sessions
+    .filter((s) => s.status !== 'complete')
+    .sort(compareSessionsByScheduledDate)
+  const pastSessions = sessions
+    .filter((s) => s.status === 'complete')
+    .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
