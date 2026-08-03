@@ -26,7 +26,7 @@ function DetailItem({
   )
 }
 
-export function compareSessionsByScheduledDate(a: SessionPickerItem, b: SessionPickerItem): number {
+export function compareSessionsByScheduledDate(a: { date: string; time: string | null }, b: { date: string; time: string | null }): number {
   const dateCompare = a.date.localeCompare(b.date)
   if (dateCompare !== 0) return dateCompare
   if (a.time === b.time) return 0
