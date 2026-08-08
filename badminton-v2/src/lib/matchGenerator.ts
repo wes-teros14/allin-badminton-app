@@ -46,7 +46,7 @@ export interface GenerateOptions {
 
 export interface ScoreWeights {
   streakWeight: number          // default: 1000
-  imbalancePenalty: number      // default: 100
+  imbalancePenalty: number      // default: 300
   wishlistReward: number        // default: 500
   repeatPartnerPenalty: number  // default: 200
   fairnessWeight: number       // default: 5000
@@ -91,7 +91,7 @@ export interface OptimizeOptions extends GenerateOptions {
 
 export const DEFAULT_WEIGHTS: ScoreWeights = {
   streakWeight: 1000,
-  imbalancePenalty: 30,
+  imbalancePenalty: 300,
   wishlistReward: 200,
   repeatPartnerPenalty: 150,
   fairnessWeight: 5000,
