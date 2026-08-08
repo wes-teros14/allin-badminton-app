@@ -590,6 +590,16 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
               </div>
             )}
 
+            {/* Partner Pairing Summary */}
+            {matches.length > 0 && (
+              <details className="rounded-md border p-2 text-xs">
+                <summary className="cursor-pointer font-semibold select-none">Partner Pairing Summary ▼</summary>
+                <div className="mt-2 max-h-48 overflow-y-auto">
+                  <PartnerPairChart matches={matches} nameMap={nameMap} />
+                </div>
+              </details>
+            )}
+
             {/* Match Breakdown */}
             {matches.length > 0 && (
               <details className="rounded-md border p-2 text-xs">
@@ -699,6 +709,16 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                 </div>
               )
             })()}
+
+            {/* Partner Pairing Summary */}
+            {matches.length > 0 && (
+              <details className="rounded-md border p-2 text-xs">
+                <summary className="cursor-pointer font-semibold select-none">Partner Pairing Summary ▼</summary>
+                <div className="mt-2 max-h-48 overflow-y-auto">
+                  <PartnerPairChart matches={matches} nameMap={nameMap} />
+                </div>
+              </details>
+            )}
 
             {(() => {
               const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
@@ -965,6 +985,46 @@ function MatchTypeChart({ matches }: { matches: GeneratedMatch[] }) {
           <span className="w-4 text-[11px] text-muted-foreground shrink-0">{count}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+function PartnerPairChart({
+  matches, nameMap,
+}: {
+  matches: GeneratedMatch[]
+  nameMap: Map<string, string>
+}) {
+  const counts = new Map<string, number>()
+  for (const m of matches) {
+    for (const pair of [[m.team1Player1, m.team1Player2], [m.team2Player1, m.team2Player2]]) {
+      const key = [...pair].sort().join('|')
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+  }
+  const entries = [...counts.entries()].sort((a, b) => b[1] - a[1])
+  const max = Math.max(...entries.map(([, c]) => c), 1)
+  return (
+    <div className="space-y-1">
+      {entries.map(([key, count]) => {
+        const [id1, id2] = key.split('|')
+        const label = `${nameMap.get(id1) ?? id1} & ${nameMap.get(id2) ?? id2}`
+        const isHigh = count >= max / 2
+        return (
+          <div key={key} className="flex items-center gap-2">
+            <span className={`w-40 truncate text-right text-[11px] shrink-0 ${isHigh ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`} title={label}>
+              {label}
+            </span>
+            <div className="flex-1 bg-muted rounded h-4 overflow-hidden">
+              <div
+                className={`h-4 rounded ${isHigh ? 'bg-orange-500' : 'bg-slate-400'}`}
+                style={{ width: `${(count / max) * 100}%` }}
+              />
+            </div>
+            <span className={`w-4 text-[11px] shrink-0 ${isHigh ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`}>{count}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
