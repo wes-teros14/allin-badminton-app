@@ -1009,7 +1009,7 @@ function PartnerPairChart({
       {entries.map(([key, count]) => {
         const [id1, id2] = key.split('|')
         const label = `${nameMap.get(id1) ?? id1} & ${nameMap.get(id2) ?? id2}`
-        const isHigh = count >= max / 2
+        const isHigh = count > 1 && count >= max / 2
         return (
           <div key={key} className="flex items-center gap-2">
             <span className={`w-40 truncate text-right text-[11px] shrink-0 ${isHigh ? 'text-orange-500 font-semibold' : 'text-muted-foreground'}`} title={label}>
