@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 export interface ProfileStats {
   sessionsAttended: number
@@ -81,7 +82,7 @@ export function useProfileStats(userId: string | undefined) {
           .select('id, name_slug, nickname')
           .in('id', allIds)
         for (const p of (profiles ?? []) as ProfileNameRow[]) {
-          nameMap.set(p.id, p.nickname ?? p.name_slug)
+          nameMap.set(p.id, formatDisplayName(p.nickname, p.name_slug))
         }
       }
 

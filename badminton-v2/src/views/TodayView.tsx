@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { computeStatsFromResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 
 interface LeaderboardEntry {
@@ -44,7 +45,7 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
 
   const nameMap = new Map(
     ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map((p) => [p.id, p.nickname ?? p.name_slug])
+      .map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
   const careerMap = new Map(

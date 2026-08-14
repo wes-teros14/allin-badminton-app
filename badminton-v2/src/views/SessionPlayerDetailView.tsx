@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router'
 import { toast } from 'sonner'
 import { computeStatsFromResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
@@ -61,7 +62,7 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
 
   type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
   const profileRows = (profilesRes.data ?? []) as ProfileRow[]
-  const nameMap = new Map(profileRows.map((p) => [p.id, p.nickname ?? p.name_slug]))
+  const nameMap = new Map(profileRows.map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
   const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
 
   const statsMap = new Map<string, { wins: number; games: number }>(

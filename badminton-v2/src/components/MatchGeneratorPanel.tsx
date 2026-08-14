@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { Info } from 'lucide-react'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 import type { Json } from '@/types/database'
 import {
   generateScheduleOptimized,
@@ -327,7 +328,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
     setEditingGameNumber(null)
   }
 
-  const nameMap = new Map(players.map((p) => [p.id, p.nickname ?? p.nameSlug]))
+  const nameMap = new Map(players.map((p) => [p.id, formatDisplayName(p.nickname, p.nameSlug)]))
   const name = (id: string) => nameMap.get(id) ?? id
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading players…</div>
@@ -746,7 +747,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                                   >
                                     <option value="">— P{si + 1} —</option>
                                     {players.map((p) => (
-                                      <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+                                      <option key={p.id} value={p.id}>{formatDisplayName(p.nickname, p.nameSlug)}</option>
                                     ))}
                                   </select>
                                 ))}
@@ -763,7 +764,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                                   >
                                     <option value="">— P{si + 1} —</option>
                                     {players.map((p) => (
-                                      <option key={p.id} value={p.id}>{p.nickname ?? p.nameSlug}</option>
+                                      <option key={p.id} value={p.id}>{formatDisplayName(p.nickname, p.nameSlug)}</option>
                                     ))}
                                   </select>
                                 ))}
@@ -936,17 +937,14 @@ function ParticipationChart({
   }
   const entries = [...counts.entries()].sort((a, b) => b[1] - a[1])
   const max = Math.max(...entries.map(([, c]) => c), 1)
-  const colors = ['bg-red-500','bg-blue-500','bg-green-500','bg-yellow-400','bg-purple-500',
-                  'bg-orange-500','bg-teal-500','bg-pink-500','bg-lime-500','bg-cyan-500',
-                  'bg-rose-600','bg-indigo-500','bg-amber-500','bg-emerald-500','bg-fuchsia-500','bg-sky-500']
   return (
     <div className="space-y-1">
-      {entries.map(([id, count], i) => (
+      {entries.map(([id, count]) => (
         <div key={id} className="flex items-center gap-2">
           <span className={`w-20 truncate text-right text-[11px] shrink-0 ${count === 0 ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>{nameMap.get(id) ?? id}</span>
           <div className="flex-1 bg-muted rounded h-4 overflow-hidden">
             <div
-              className={`h-4 rounded ${colors[i % colors.length]}`}
+              className={`h-4 rounded ${count === 0 ? 'bg-red-500' : 'bg-primary'}`}
               style={{ width: `${(count / max) * 100}%` }}
             />
           </div>

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useSessionList } from '@/hooks/useSessionList'
 import type { Session } from '@/hooks/useSession'
 import { compareSessionsByScheduledDate } from '@/views/MySessionsView'
+import { sessionStatusPillClassName } from '@/lib/sessionStatusStyle'
 
 const STATUS_LABELS: Record<string, string> = {
   setup: 'Setup',
@@ -15,15 +16,6 @@ const STATUS_LABELS: Record<string, string> = {
   schedule_locked: 'Schedule Locked',
   in_progress: 'Playing',
   complete: 'Complete',
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  setup: 'text-muted-foreground',
-  registration_open: 'text-[#EB5B00]',
-  registration_closed: 'text-[#FFB200]',
-  schedule_locked: 'text-[#FFB200]',
-  in_progress: 'text-[#D91656] font-bold',
-  complete: 'text-muted-foreground',
 }
 
 function SessionCard({ session, onClose, onDelete }: { session: Session; onClose: () => void; onDelete: () => void }) {
@@ -90,9 +82,11 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
               {session.session_notes && <span>{session.session_notes}</span>}
             </p>
           )}
-          <p className={`text-xs font-medium mt-0.5 ${STATUS_COLORS[session.status] ?? 'text-muted-foreground'}`}>
+          <span
+            className={`inline-block mt-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${sessionStatusPillClassName(session.status)}`}
+          >
             {STATUS_LABELS[session.status] ?? session.status}
-          </p>
+          </span>
         </div>
         <div className="flex gap-2 shrink-0">
           {session.status === 'in_progress' && (
