@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
+import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useNotifications } from '@/contexts/NotificationContext'
 import ppLogo from '@/assets/pp-logo.jpeg'
@@ -7,10 +9,11 @@ export function TopNavBar() {
   const { user, role } = useAuth()
   const { pathname } = useLocation()
   const { unreadCount } = useNotifications()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   if (!user) return null
 
-  const tabs = [
+  const primaryTabs = [
     {
       label: 'Sessions',
       href: '/sessions',
@@ -32,6 +35,9 @@ export function TopNavBar() {
       show: true,
       badge: unreadCount > 0,
     },
+  ]
+
+  const adminTabs = [
     {
       label: 'Admin',
       href: '/admin',
@@ -69,29 +75,72 @@ export function TopNavBar() {
     },
   ]
 
+  const visibleAdminTabs = adminTabs.filter((tab) => tab.show)
+  const hasAdminTabs = visibleAdminTabs.length > 0
+
+  const renderTab = (tab: (typeof primaryTabs)[number], onClick?: () => void) => (
+    <Link
+      key={tab.href}
+      to={tab.href}
+      onClick={onClick}
+      className={`relative text-sm font-medium transition-opacity shrink-0 ${
+        tab.active
+          ? 'border-b-2 border-white pb-0.5'
+          : 'opacity-70 hover:opacity-100'
+      }`}
+    >
+      {tab.label}
+      {tab.badge && (
+        <span className="absolute -top-1 -right-2 w-2 h-2 bg-[#FEFE6A] rounded-full" />
+      )}
+    </Link>
+  )
+
+  const renderMenuItem = (tab: (typeof adminTabs)[number], onClick: () => void) => (
+    <Link
+      key={tab.href}
+      to={tab.href}
+      onClick={onClick}
+      className={`relative text-sm font-medium px-4 py-3 min-h-[48px] flex items-center transition-colors ${
+        tab.active ? 'bg-white/15' : 'opacity-80 hover:opacity-100 hover:bg-white/10'
+      }`}
+    >
+      {tab.label}
+      {tab.badge && (
+        <span className="absolute top-1/2 -translate-y-1/2 right-4 w-2 h-2 bg-[#FEFE6A] rounded-full" />
+      )}
+    </Link>
+  )
+
   return (
-    <nav className="bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
+    <nav className="relative bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
       <Link to="/" className="shrink-0">
         <img src={ppLogo} alt="PP" className="w-8 h-8 rounded-full object-cover" />
       </Link>
-      <div className="flex items-center gap-6 overflow-x-auto whitespace-nowrap [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-      {tabs.filter((tab) => tab.show).map((tab) => (
-        <Link
-          key={tab.href}
-          to={tab.href}
-          className={`relative text-sm font-medium transition-opacity shrink-0 ${
-            tab.active
-              ? 'border-b-2 border-white pb-0.5'
-              : 'opacity-70 hover:opacity-100'
-          }`}
-        >
-          {tab.label}
-          {tab.badge && (
-            <span className="absolute -top-1 -right-2 w-2 h-2 bg-[#FEFE6A] rounded-full" />
-          )}
-        </Link>
-      ))}
+      <div className="flex items-center gap-6 flex-1 min-w-0">
+        {primaryTabs.filter((tab) => tab.show).map((tab) => renderTab(tab))}
+        {hasAdminTabs && (
+          <div className="hidden md:flex items-center gap-6">
+            {visibleAdminTabs.map((tab) => renderTab(tab))}
+          </div>
+        )}
       </div>
+      {hasAdminTabs && (
+        <button
+          type="button"
+          aria-label={menuOpen ? 'Close admin menu' : 'Open admin menu'}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((open) => !open)}
+          className="md:hidden shrink-0 p-1 -mr-1"
+        >
+          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
+      )}
+      {hasAdminTabs && menuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 bg-primary text-primary-foreground border-t border-white/20 flex flex-col py-1 shadow-lg z-50">
+          {visibleAdminTabs.map((tab) => renderMenuItem(tab, () => setMenuOpen(false)))}
+        </div>
+      )}
     </nav>
   )
 }

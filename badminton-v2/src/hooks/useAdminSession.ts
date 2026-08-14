@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { buildCourtLabels, normalizeCourtCount } from '@/lib/courts'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 export interface AdminMatchDisplay {
   id: string
@@ -172,7 +173,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
       const nameMap = new Map(
         ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
-          .map((p) => [p.id, p.nickname ?? p.name_slug])
+          .map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)])
       )
       const name = (id: string) => nameMap.get(id) ?? id
 

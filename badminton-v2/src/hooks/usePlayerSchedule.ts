@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { sortMatchResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 export interface PlayerMatch {
   id: string
@@ -82,7 +83,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
       const p = profile as { id: string; name_slug: string; nickname: string | null }
       const playerId = p.id
-      setPlayerDisplayName(p.nickname ?? p.name_slug)
+      setPlayerDisplayName(formatDisplayName(p.nickname, p.name_slug))
 
       // 2. Find active session (or use override)
       let sid: string
@@ -165,7 +166,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
       type ProfileRow = { id: string; name_slug: string; nickname: string | null; avatar_url: string | null }
       const nameMap = new Map(
         ((profiles ?? []) as ProfileRow[])
-          .map((profileRow) => [profileRow.id, profileRow.nickname ?? profileRow.name_slug])
+          .map((profileRow) => [profileRow.id, formatDisplayName(profileRow.nickname, profileRow.name_slug)])
       )
       const avatarMap = new Map(
         ((profiles ?? []) as ProfileRow[])

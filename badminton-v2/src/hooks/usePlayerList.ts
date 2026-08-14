@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 interface PlayerEntry {
   id: string
@@ -101,7 +102,7 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
       if (cancelled) return
 
       const sorted = ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
-        .map((p) => ({ id: p.id, nameSlug: p.name_slug, displayName: p.nickname ?? p.name_slug }))
+        .map((p) => ({ id: p.id, nameSlug: p.name_slug, displayName: formatDisplayName(p.nickname, p.name_slug) }))
         .sort((a, b) => a.displayName.localeCompare(b.displayName))
 
       setPlayers(sorted)

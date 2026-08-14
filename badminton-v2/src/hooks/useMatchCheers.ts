@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 import type { CheerType } from '@/types/app'
 
 export interface MatchCheerPlayer {
@@ -101,7 +102,7 @@ export function useMatchCheers(sessionId: string | string[] | undefined): UseMat
           .select('id, nickname, name_slug')
           .in('id', Array.from(playerIdSet))
         for (const p of (profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>) {
-          nameMap.set(p.id, p.nickname ?? p.name_slug)
+          nameMap.set(p.id, formatDisplayName(p.nickname, p.name_slug))
         }
       }
 

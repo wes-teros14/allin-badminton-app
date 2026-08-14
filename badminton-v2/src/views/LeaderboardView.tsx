@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 import { Avatar } from '@/components/Avatar'
 
 // ---------------------------------------------------------------------------
@@ -75,7 +76,7 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
 
   type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
   const profileRows = (profilesRes.data ?? []) as ProfileRow[]
-  const nameMap = new Map(profileRows.map((p) => [p.id, p.nickname ?? p.name_slug]))
+  const nameMap = new Map(profileRows.map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
   const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
 
   return ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number; sessions_attended: number }>)
@@ -103,7 +104,7 @@ async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
 
   const nameMap = new Map(
     ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map(p => [p.id, p.nickname ?? p.name_slug])
+      .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
   const CHEER_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
@@ -255,7 +256,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
 
   const nameMap = new Map(
     ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map(p => [p.id, p.nickname ?? p.name_slug])
+      .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
   const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
@@ -267,7 +268,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   if (earlyBirdPlayerId && !earlyBirdName) {
     const pRes = await supabase.from('profiles').select('nickname, name_slug').eq('id', earlyBirdPlayerId).maybeSingle()
     const p = pRes.data as { nickname: string | null; name_slug: string } | null
-    earlyBirdName = p ? (p.nickname ?? p.name_slug) : null
+    earlyBirdName = p ? formatDisplayName(p.nickname, p.name_slug) : null
   }
   const cheerTimestamps = (cheerTimestampsRes.data ?? []) as Array<{ receiver_id: string; giver_id: string; created_at: string }>
 

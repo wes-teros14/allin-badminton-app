@@ -11,6 +11,7 @@ import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { supabase } from '@/lib/supabase'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
 import { Avatar } from '@/components/Avatar'
 
@@ -327,7 +328,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
       if (cancelled) return
       type ProfileRow = { id: string; name_slug: string; nickname: string | null; avatar_url: string | null }
       const profileRows = (profiles ?? []) as ProfileRow[]
-      const nameMap = new Map(profileRows.map(p => [p.id, p.nickname ?? p.name_slug]))
+      const nameMap = new Map(profileRows.map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
       const avatarMap = new Map(profileRows.map(p => [p.id, p.avatar_url]))
       const name = (id: string) => nameMap.get(id) ?? '?'
       const player = (id: string): MatchPlayer => ({ name: name(id), avatarUrl: avatarMap.get(id) ?? null })

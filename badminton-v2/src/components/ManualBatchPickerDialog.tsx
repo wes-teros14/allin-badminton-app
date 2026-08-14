@@ -81,8 +81,10 @@ export function ManualBatchPickerDialog({
                     <TableHead>Brand</TableHead>
                     <TableHead className="text-center whitespace-normal w-24">Shuttles Left</TableHead>
                     <TableHead className="text-right">Cost/Tube</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
+                    <TableHead className="hidden sm:table-cell">Notes</TableHead>
+                    <TableHead className="text-right sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.4)]">
+                      Action
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -95,10 +97,10 @@ export function ManualBatchPickerDialog({
                         <TableCell className="text-sm">{batch.brand}</TableCell>
                         <TableCell className="text-center text-sm">{batch.shuttlesRemaining}</TableCell>
                         <TableCell className="text-right text-sm">{formatPeso(batch.costPerTube)}</TableCell>
-                        <TableCell className="max-w-[220px] whitespace-normal text-sm text-muted-foreground">
+                        <TableCell className="hidden sm:table-cell max-w-[220px] whitespace-normal text-sm text-muted-foreground">
                           {batch.notes ?? '-'}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right sticky right-0 bg-background shadow-[-8px_0_8px_-8px_rgba(0,0,0,0.4)]">
                           <Button
                             type="button"
                             size="sm"

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRoster } from '@/hooks/useRoster'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 
 function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -66,7 +67,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
               <ul className="space-y-2">
                 {players.map((player) => (
                   <li key={player.registrationId} className="flex items-center gap-2 text-sm rounded-md border px-3 py-2">
-                    <span className="flex-1 truncate font-medium">{player.nickname ?? player.nameSlug}</span>
+                    <span className="flex-1 truncate font-medium">{formatDisplayName(player.nickname, player.nameSlug)}</span>
                     <div className="flex rounded overflow-hidden border text-xs shrink-0">
                       {([true, false] as const).map((p) => (
                         <button
@@ -110,7 +111,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
           <ul>
             {players.map((player) => (
               <li key={player.registrationId} className="flex items-center gap-2 text-xs border-b last:border-0 py-1">
-                <span className="flex-1 truncate font-medium min-w-0">{player.nickname ?? player.nameSlug}</span>
+                <span className="flex-1 truncate font-medium min-w-0">{formatDisplayName(player.nickname, player.nameSlug)}</span>
 
                 {!editable && player.gender && (
                   <span className="text-muted-foreground shrink-0">{player.gender}</span>
@@ -181,11 +182,11 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
                 </div>
                 <ul className="space-y-1 mt-1 max-h-48 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
                   {unregisteredPlayers.filter((p) => {
-                    const name = (p.nickname ?? p.nameSlug).toLowerCase()
+                    const name = formatDisplayName(p.nickname, p.nameSlug).toLowerCase()
                     return name.includes(addSearch.toLowerCase())
                   }).map((player) => (
                     <li key={player.id} className="flex items-center justify-between text-sm">
-                      <span>{player.nickname ?? player.nameSlug}</span>
+                      <span>{formatDisplayName(player.nickname, player.nameSlug)}</span>
                       <Button variant="ghost" size="sm" onClick={() => addPlayer(player.id)}>Add</Button>
                     </li>
                   ))}
