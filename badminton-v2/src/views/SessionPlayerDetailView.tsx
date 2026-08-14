@@ -260,6 +260,12 @@ function ScheduleTab({
           ? Array.from({ length: 3 }).map((_, i) => (
               <GameCard key={i} gameNumber={0} partnerNameSlug="" opp1NameSlug="" opp2NameSlug="" status="queued" isNextUp={false} isLoading />
             ))
+          : matches.length === 0
+          ? (
+              <div className="text-center py-10 text-sm text-muted-foreground">
+                No games scheduled for you in this session yet.
+              </div>
+            )
           : matches.map((m, i) => (
               <GameCard
                 key={m.id}
