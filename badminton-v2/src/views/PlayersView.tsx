@@ -29,10 +29,6 @@ function genderLabel(gender: 'M' | 'F' | null) {
   return 'Unspecified'
 }
 
-function statusBadgeVariant(isActive: boolean) {
-  return isActive ? 'default' : 'outline'
-}
-
 function NicknameCell({
   id,
   initial,
@@ -68,7 +64,7 @@ function NicknameCell({
         onBlur={handleBlur}
         placeholder="Add nickname"
         disabled={saving}
-        className="h-8 min-w-0 bg-background text-sm"
+        className="h-8 min-w-0 text-sm"
       />
       <p className="min-h-4 text-[11px] text-muted-foreground">
         {saving ? 'Saving...' : saved ? 'Saved' : dirty ? 'Save on blur' : '\u00A0'}
@@ -159,14 +155,9 @@ function PlayerCard({
       )}
     >
       <CardContent className="space-y-4 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <p className="truncate text-sm font-semibold text-foreground">{player.nameSlug}</p>
-            <p className="truncate text-sm text-muted-foreground">{player.email ?? 'No email'}</p>
-          </div>
-          <Badge variant={statusBadgeVariant(player.isActive)}>
-            {player.isActive ? 'Active' : 'Inactive'}
-          </Badge>
+        <div className="min-w-0 space-y-1">
+          <p className="truncate text-sm font-semibold text-foreground">{player.nameSlug}</p>
+          <p className="truncate text-sm text-muted-foreground">{player.email ?? 'No email'}</p>
         </div>
 
         <NicknameCell
@@ -366,14 +357,9 @@ export function PlayersView() {
                         )}
                       >
                         <TableCell className="py-3">
-                          <div className="space-y-1">
-                            <p className="max-w-[180px] truncate font-medium text-foreground">
-                              {player.nameSlug}
-                            </p>
-                            <Badge variant={statusBadgeVariant(player.isActive)}>
-                              {player.isActive ? 'Active roster' : 'Inactive roster'}
-                            </Badge>
-                          </div>
+                          <p className="max-w-[180px] truncate font-medium text-foreground">
+                            {player.nameSlug}
+                          </p>
                         </TableCell>
                         <TableCell className="max-w-[220px] py-3 text-muted-foreground">
                           <span className="block truncate">{player.email ?? 'No email'}</span>

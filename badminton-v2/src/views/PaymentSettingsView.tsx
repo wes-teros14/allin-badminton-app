@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,6 +15,7 @@ export function PaymentSettingsView() {
   const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!isLoading) {
@@ -118,10 +119,22 @@ export function PaymentSettingsView() {
               No QR code uploaded
             </div>
           )}
-          <label className="block">
-            <span className="sr-only">Upload QR code image</span>
-            <input type="file" accept="image/*" onChange={handleFileChange} className="text-sm" />
-          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="sr-only"
+            aria-label="Upload QR code image"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {qrPreviewUrl ? 'Change QR code image' : 'Upload QR code image'}
+          </Button>
         </CardContent>
       </Card>
 

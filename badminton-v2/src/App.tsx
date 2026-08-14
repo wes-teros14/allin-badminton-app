@@ -49,7 +49,7 @@ const LeaderboardView          = lazy(() => import('@/views/LeaderboardView'))
 function App() {
   return (
     <AuthProvider>
-    <Toaster position="top-center" offset={52} style={{ fontSize: '1rem' }} />
+    <Toaster position="top-center" offset={64} style={{ fontSize: '1rem' }} />
     <DevLoginPanel />
     <Suspense fallback={<div>Loading…</div>}>
       <Routes>
