@@ -131,9 +131,9 @@ export function TopNavBar() {
           aria-label={menuOpen ? 'Close admin menu' : 'Open admin menu'}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
-          className="md:hidden shrink-0 p-1 -mr-1"
+          className="md:hidden shrink-0 p-1.5 -mr-1.5"
         >
-          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {menuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
         </button>
       )}
       {hasAdminTabs && menuOpen && (
