@@ -234,7 +234,10 @@ export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refr
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground text-lg mt-auto mb-auto">Waiting for next game</p>
+              <div className="flex-1 flex flex-col items-center justify-center gap-2">
+                <p className="game-hero text-muted-foreground/40" aria-hidden="true">&mdash;</p>
+                <p className="text-muted-foreground text-lg">Waiting for next game</p>
+              </div>
             )}
           </div>
         </>
