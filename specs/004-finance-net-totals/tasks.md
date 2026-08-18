@@ -102,9 +102,9 @@ All runtime code lives under `badminton-v2/` per Constitution Principle I. Paths
 **Purpose**: Verification, regression protection, and the honest validation report Constitution V requires
 
 - [X] T021 [P] Create `badminton-v2/tests/finance-totals.spec.ts` asserting that after signing in as admin and navigating to `/finance`, both `All Sessions` and `Completed` captions render in the heading area with peso-formatted values (SC-001)
-- [ ] ⏸ DEFERRED — T022 Run `npx playwright test tests/finance-allocation-regression.spec.ts` from `badminton-v2/` to confirm the recreated RPC caused no regression on the finance detail surface, discharging contract check C-6 and the Constitution III cross-surface obligation
-- [ ] ⏸ DEFERRED — T023 [P] Manually verify at a ~360px viewport that the "Finance" heading and both totals render with no clipped or truncated characters, wrapping if needed (SC-004, FR-011)
-- [ ] ⏸ DEFERRED — T024 [P] Manually verify the All Sessions total equals the sum of the visible Net Cash cells on a real data set, using the dev-only admin login button at lower right on localhost (SC-002)
+- [X] T022 Run `npx playwright test tests/finance-allocation-regression.spec.ts` from `badminton-v2/` to confirm the recreated RPC caused no regression on the finance detail surface, discharging contract check C-6 and the Constitution III cross-surface obligation
+- [X] T023 [P] Manually verify at a ~360px viewport that the "Finance" heading and both totals render with no clipped or truncated characters, wrapping if needed (SC-004, FR-011)
+- [X] T024 [P] Manually verify the All Sessions total equals the sum of the visible Net Cash cells on a real data set, using the dev-only admin login button at lower right on localhost (SC-002)
 - [X] T025 Verify no existing Finance page behavior changed: all five table columns, row ordering, row navigation to `/finance/:sessionId`, the empty state, and the error toast (FR-013, SC-006)
 - [X] T026 Run `npm run lint` from `badminton-v2/` and resolve any new violations introduced by this feature
 - [X] T027 Add an entry to `tasks/lessons.md` recording that `get_session_finance` had no `status` column and required migration `074` to expose it, per the project's Bug & Resolution Log rule in `CLAUDE.md`
@@ -203,21 +203,16 @@ Note: parallelism here is modest by nature. This is a five-file feature with a s
 
 ---
 
-## Deferral Notes
+## Verification Notes (deferrals now resolved)
 
-**T022, T023, T024 are deferred — they all require migration `074` to be applied to a live Supabase project, which has not been done.**
+Migration `074` was applied to **both dev and prod** by the user on 2026-08-18. T022, T023, and T024 were then executed and all passed.
 
-The migration file is committed but **not applied to any database**. Until it is:
+**T022 - cross-surface regression (contract check C-6)**: `finance-allocation-regression.spec.ts` 2/2 passed against the migrated dev database, confirming the recreated RPC left the finance detail surface unaffected.
 
-- `get_session_finance` returns no `status` key, so `row.status` is `undefined`
-- `summarizeFinanceTotals` filters on `status === 'complete'`, which matches nothing
-- **All Sessions** still computes correctly; **Completed** renders `₱0.00` regardless of real data
+**T023 - 360px viewport (SC-004, FR-011)**: measured at 360x740. Page horizontal overflow `0px`; `scrollWidth - clientWidth` is `0` for the heading, both captions, and both values. The padded content box spans x=24 to x=336, and the `Completed` value ends at exactly x=336.0 - flush right-aligned inside the padding, not overflowing. Both totals render level with the "Finance" heading without wrapping at this width.
 
-This is graceful degradation, not a crash — but the Completed total is wrong until the migration lands.
+**T024 - reconciliation (SC-002)**: verified against 6 real dev rows. Five rows at PHP 0.00 and one (`Test Session 1`) at -PHP 40.67; All Sessions renders -PHP 40.67, matching the column sum exactly. Now asserted automatically by the SC-002 test in `finance-totals.spec.ts`.
 
-Applying it was deliberately not attempted because:
+**Defect found and fixed in the E2E suite itself**: the SC-002 reconciliation test originally waited only on the `All Sessions` caption before counting `tbody tr`. That caption renders immediately while the table is still a loading skeleton, so the count returned `0` and `test.skip` silently disabled the assertion - a test that would have skipped itself forever while appearing to pass. Fixed by waiting for the total to render a peso value and for the table (or empty state) to be visible before counting. All 3 specs now pass with the reconciliation actually executing.
 
-1. The Supabase CLI is currently linked to the **production** project (`ensdfitpeyreunihkqkh` in `supabase/.temp/project-ref`), not dev. Running `supabase db push` here would target prod.
-2. `tasks/lessons.md` documents that the dev project's `supabase_migrations.schema_migrations` table has corrupted duplicate rows for versions 037–044 that **block `supabase db push`** and cannot be fixed via `supabase migration repair`. Migration `070` is still unapplied for this reason.
-
-**Action required by a human**: link to the intended project, resolve the known migration-history corruption, apply `074`, then run T022–T024.
+**Pre-existing, not introduced, not fixed**: the finance table itself overflows at 360px (measured width 404px against a 360px viewport, clipped inside its Card). This predates the feature, is outside its scope, and FR-013 forbids changing existing table behavior.

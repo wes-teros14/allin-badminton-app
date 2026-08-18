@@ -62,7 +62,15 @@ test('all-sessions total equals the sum of the Net Cash column (SC-002)', async 
   await signInAsAdmin(page)
   await page.goto('/finance')
 
-  await expect(page.getByText('All Sessions', { exact: true })).toBeVisible({ timeout: 15000 })
+  // Wait for the fetch to settle, not just for the caption: the label renders
+  // immediately while the table is still a skeleton, so counting rows too early
+  // finds zero and silently skips the whole assertion.
+  await expect(page.getByText('All Sessions', { exact: true }).locator('~ p'))
+    .toHaveText(/₱/, { timeout: 15000 })
+
+  const table = page.locator('table')
+  const emptyState = page.getByText('No sessions yet')
+  await expect(table.or(emptyState).first()).toBeVisible({ timeout: 15000 })
 
   const rows = page.locator('tbody tr')
   const rowCount = await rows.count()
