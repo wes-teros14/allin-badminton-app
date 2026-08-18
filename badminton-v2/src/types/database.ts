@@ -634,6 +634,7 @@ export type Database = {
           session_id: string
           shuttle_allocation_mode: Database["public"]["Enums"]["shuttle_allocation_mode"]
           shuttle_cost: number
+          status: Database["public"]["Enums"]["session_status"]
           total_cost: number
           total_count: number
           total_shuttles_logged: number
