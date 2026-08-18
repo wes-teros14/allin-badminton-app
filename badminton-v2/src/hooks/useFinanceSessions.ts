@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import type { SessionStatus } from '@/types/app'
 
 export interface FinanceSessionRow {
   sessionId: string
@@ -13,13 +14,39 @@ export interface FinanceSessionRow {
   profit: number
   paidCount: number
   totalCount: number
+  status: SessionStatus
+}
+
+export interface FinanceTotals {
+  allSessions: number
+  completed: number
 }
 
 interface FinanceSessionsState {
   sessions: FinanceSessionRow[]
+  totals: FinanceTotals
   isLoading: boolean
   fetchError: string | null
   refetch: () => Promise<void>
+}
+
+/**
+ * Sums the per-session net (`profit`, i.e. profit after personal share — the
+ * value rendered in the Net Cash column) across all sessions, and separately
+ * across completed sessions only.
+ *
+ * Rounds once at the end of each reduce: NUMERIC(10,2) arrives as a JS float,
+ * and accumulating many of them drifts (e.g. 4199.999999999999). Matches the
+ * money convention in calculateProfitAfterPersonalShare.
+ */
+export function summarizeFinanceTotals(sessions: FinanceSessionRow[]): FinanceTotals {
+  const sum = (rows: FinanceSessionRow[]) =>
+    Number(rows.reduce((acc, row) => acc + row.profit, 0).toFixed(2))
+
+  return {
+    allSessions: sum(sessions),
+    completed: sum(sessions.filter((s) => s.status === 'complete')),
+  }
 }
 
 export function useFinanceSessions(): FinanceSessionsState {
@@ -50,6 +77,7 @@ export function useFinanceSessions(): FinanceSessionsState {
       profit: Number(row.profit_after_personal_share ?? row.profit),
       paidCount: Number(row.paid_count),
       totalCount: Number(row.total_count),
+      status: row.status,
     })))
     setIsLoading(false)
   }, [])
@@ -58,5 +86,7 @@ export function useFinanceSessions(): FinanceSessionsState {
     fetchAll()
   }, [fetchAll])
 
-  return { sessions, isLoading, fetchError, refetch: fetchAll }
+  const totals = useMemo(() => summarizeFinanceTotals(sessions), [sessions])
+
+  return { sessions, totals, isLoading, fetchError, refetch: fetchAll }
 }
