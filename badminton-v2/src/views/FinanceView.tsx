@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/table'
 
 export default function FinanceView() {
-  const { sessions, isLoading, fetchError } = useFinanceSessions()
+  const { sessions, totals, isLoading, fetchError } = useFinanceSessions()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -22,10 +22,38 @@ export default function FinanceView() {
       year: 'numeric', month: 'short', day: 'numeric',
     })
 
+  // Three display states. On fetch failure the hook leaves sessions empty and
+  // clears isLoading, so rendering the raw total would show a confident ₱0.00
+  // that reads as "exactly break-even" rather than "data did not load".
+  const renderTotal = (label: string, value: number) => (
+    <div className="text-right">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      {isLoading ? (
+        <div className="h-5 w-20 bg-muted rounded animate-pulse ml-auto" />
+      ) : fetchError ? (
+        <p className="text-sm font-medium text-muted-foreground" aria-label={`${label} unavailable`}>
+          &mdash;
+        </p>
+      ) : (
+        <p
+          className={`text-sm font-medium tabular-nums ${
+            value >= 0 ? 'text-green-500' : 'text-destructive'
+          }`}
+        >
+          {formatPeso(value)}
+        </p>
+      )}
+    </div>
+  )
+
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h1 className="text-lg font-semibold text-primary">Finance</h1>
+        <div className="flex items-center gap-4">
+          {renderTotal('All Sessions', totals.allSessions)}
+          {renderTotal('Completed', totals.completed)}
+        </div>
       </div>
 
       <Card>
