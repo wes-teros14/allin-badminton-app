@@ -187,7 +187,7 @@ function ScheduleTab({
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
               />
             )}
-            <p className="text-xs text-muted-foreground">Once sent, please send the screenshot to the Facebook group chat. Thanks!</p>
+            <p className="text-xs text-muted-foreground">Once sent, please send the screenshot to the GC or PM me — I don&apos;t monitor GCash directly. Thanks!</p>
           </div>
         </div>
       )}
