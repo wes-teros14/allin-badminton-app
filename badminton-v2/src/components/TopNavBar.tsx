@@ -22,7 +22,7 @@ export function TopNavBar() {
       badge: false,
     },
     {
-      label: 'All-time Idols',
+      label: 'Leaderboard',
       href: '/leaderboard',
       active: pathname.startsWith('/leaderboard'),
       show: true,
