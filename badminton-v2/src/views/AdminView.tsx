@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
+import { RECEIPTS_BUCKET } from '@/lib/receipts'
 import { useSessionList } from '@/hooks/useSessionList'
 import type { Session } from '@/hooks/useSession'
 import { compareSessionsByScheduledDate } from '@/views/MySessionsView'
@@ -53,6 +54,28 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
 
   async function handleDelete() {
     setDeleting(true)
+
+    // Deleting the session cascades its session_receipts rows away, and those
+    // rows hold storage_path — the only record of where each receipt image
+    // lives. A DB cascade cannot reach into Storage, so the objects must go
+    // first or they are stranded in the bucket permanently (FR-031).
+    const { data: receiptRows, error: receiptError } = await supabase
+      .from('session_receipts')
+      .select('storage_path')
+      .eq('session_id', session.id)
+
+    if (receiptError) { toast.error(receiptError.message); setDeleting(false); return }
+
+    const paths = ((receiptRows ?? []) as { storage_path: string }[]).map((r) => r.storage_path)
+    if (paths.length > 0) {
+      const { error: storageError } = await supabase.storage.from(RECEIPTS_BUCKET).remove(paths)
+      if (storageError) {
+        toast.error(`Could not remove this session's receipt images: ${storageError.message}`)
+        setDeleting(false)
+        return
+      }
+    }
+
     const { error } = await supabase.from('sessions').delete().eq('id', session.id)
     if (error) toast.error(error.message)
     else onDelete()
