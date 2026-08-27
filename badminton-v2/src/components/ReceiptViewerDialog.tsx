@@ -28,6 +28,10 @@ interface Props {
 export function ReceiptViewerDialog({ open, onOpenChange, playerName, receipts, onDismiss }: Props) {
   const [urls, setUrls] = useState<Record<string, string | null>>({})
   const [isSigning, setIsSigning] = useState(false)
+  // An image can legitimately be missing: maintenance deletes the storage
+  // object before the row (see supabase/maintenance/receipts-cleanup.sql), so
+  // there is a window where the row still exists and the file does not.
+  const [failed, setFailed] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     if (!open || receipts.length === 0) return
@@ -82,13 +86,20 @@ export function ReceiptViewerDialog({ open, onOpenChange, playerName, receipts, 
                 )}
               </div>
 
-              {urls[r.id] ? (
+              {failed[r.id] ? (
+                <div className="w-full h-24 rounded border border-border bg-muted flex items-center justify-center">
+                  <span className="text-xs text-muted-foreground">
+                    Image removed — the note and timestamp below are still on record
+                  </span>
+                </div>
+              ) : urls[r.id] ? (
                 // Full size so the transaction amount and reference are readable.
                 <a href={urls[r.id] ?? undefined} target="_blank" rel="noopener noreferrer" className="block">
                   <img
                     src={urls[r.id] ?? undefined}
                     alt={`Receipt submitted by ${playerName}`}
                     className="w-full max-h-80 object-contain rounded border border-border bg-muted"
+                    onError={() => setFailed((f) => ({ ...f, [r.id]: true }))}
                   />
                 </a>
               ) : (

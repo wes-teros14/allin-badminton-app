@@ -46,6 +46,10 @@ function SubmittedReceipts({
   onRemove: (receipt: SessionReceipt) => void
 }) {
   const [urls, setUrls] = useState<Record<string, string | null>>({})
+  // An image can legitimately be missing: maintenance deletes the storage
+  // object before the row (see supabase/maintenance/receipts-cleanup.sql), so
+  // there is a window where the row still exists and the file does not.
+  const [failed, setFailed] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let cancelled = false
@@ -66,12 +70,17 @@ function SubmittedReceipts({
     <ul className="space-y-2">
       {receipts.map((r) => (
         <li key={r.id} className="flex items-start gap-2 px-2 py-2 rounded-lg bg-card border border-border">
-          {urls[r.id] ? (
+          {failed[r.id] ? (
+            <div className="w-12 h-12 rounded border border-border bg-muted flex items-center justify-center shrink-0">
+              <span className="text-[9px] text-muted-foreground text-center leading-tight px-0.5">image<br />removed</span>
+            </div>
+          ) : urls[r.id] ? (
             <a href={urls[r.id] ?? undefined} target="_blank" rel="noopener noreferrer" className="shrink-0">
               <img
                 src={urls[r.id] ?? undefined}
                 alt="Submitted receipt"
                 className="w-12 h-12 object-cover rounded border border-border"
+                onError={() => setFailed((f) => ({ ...f, [r.id]: true }))}
               />
             </a>
           ) : (
