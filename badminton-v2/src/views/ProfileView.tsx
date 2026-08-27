@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
+import { resizeImageFile } from '@/lib/imageResize'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
 import { Camera } from 'lucide-react'
@@ -75,31 +76,6 @@ interface NicknameRow {
 const MAX_AVATAR_DIM = 1024
 const MAX_AVATAR_BYTES = 1 * 1024 * 1024 // enforced after client-side resize/compression below
 const MAX_AVATAR_INPUT_BYTES = 20 * 1024 * 1024 // reject absurdly large originals before we even try to process them
-
-async function resizeImageFile(file: File, maxDim: number, maxBytes: number): Promise<Blob> {
-  const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
-  const width = Math.round(bitmap.width * scale)
-  const height = Math.round(bitmap.height * scale)
-
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Your browser cannot process images')
-  ctx.drawImage(bitmap, 0, 0, width, height)
-
-  let quality = 0.92
-  let blob: Blob | null = null
-  for (let attempt = 0; attempt < 6; attempt++) {
-    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality))
-    if (!blob) throw new Error('Failed to process image')
-    if (blob.size <= maxBytes) break
-    quality -= 0.15
-  }
-  if (!blob) throw new Error('Failed to process image')
-  return blob
-}
 
 async function fetchAwards(userId: string): Promise<Award[]> {
   const latestSessionRes = await supabase

@@ -2,7 +2,10 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRoster } from '@/hooks/useRoster'
+import { useAuth } from '@/hooks/useAuth'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { derivePaymentState } from '@/lib/paymentState'
+import { ReceiptViewerDialog } from '@/components/ReceiptViewerDialog'
 
 function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
@@ -26,13 +29,21 @@ interface Props {
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export function RosterPanel({ sessionId, editable = false, paymentOnly = false, onRosterChange }: Props) {
-  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, updatePaid } =
+  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, updatePaid, receiptsFor, dismissReceipt } =
     useRoster(sessionId, onRosterChange)
+  const { role } = useAuth()
   const [open, setOpen] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
   const [addSearch, setAddSearch] = useState('')
+  const [viewingPlayerId, setViewingPlayerId] = useState<string | null>(null)
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Defence in depth. RLS is the real enforcement — a moderator's SELECT on
+  // session_receipts returns nothing and their createSignedUrl is refused —
+  // but AdminRoute (src/App.tsx:28) admits moderators to /finance, so without
+  // this they would see a permanently empty, broken-looking receipt column.
+  const canViewReceipts = role === 'admin'
 
   function handleRemoveClick(registrationId: string) {
     if (pendingRemove !== registrationId) {
@@ -49,13 +60,19 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading roster…</div>
 
   if (paymentOnly) {
-    const paidCount = players.filter((p) => p.paid).length
-    const unpaidCount = players.filter((p) => !p.paid).length
+    // Derived, never stored — `paid` stays the sole input to revenue.
+    const states = players.map((p) => derivePaymentState({ paid: p.paid, activeReceiptCount: p.activeReceiptCount }))
+    const paidCount = states.filter((s) => s === 'paid').length
+    const submittedCount = states.filter((s) => s === 'submitted').length
+    const unpaidCount = states.filter((s) => s === 'unpaid').length
+
+    const viewingPlayer = viewingPlayerId ? players.find((p) => p.playerId === viewingPlayerId) ?? null : null
+
     return (
       <Card>
         <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
           <CardTitle className="flex items-center justify-between text-sm font-semibold">
-            <span>Payment Status — {paidCount} paid · {unpaidCount} unpaid</span>
+            <span>Payment Status — {paidCount} paid · {submittedCount} awaiting · {unpaidCount} unpaid</span>
             <span className="text-muted-foreground">{open ? '▲' : '▼'}</span>
           </CardTitle>
         </CardHeader>
@@ -65,29 +82,68 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
               <p className="text-sm text-muted-foreground">No players registered.</p>
             ) : (
               <ul className="space-y-2">
-                {players.map((player) => (
-                  <li key={player.registrationId} className="flex items-center gap-2 text-sm rounded-md border px-3 py-2">
-                    <span className="flex-1 truncate font-medium">{formatDisplayName(player.nickname, player.nameSlug)}</span>
-                    <div className="flex rounded overflow-hidden border text-xs shrink-0">
-                      {([true, false] as const).map((p) => (
+                {players.map((player, i) => {
+                  const state = states[i]
+                  return (
+                    <li key={player.registrationId} className="flex items-center gap-2 text-sm rounded-md border px-3 py-2">
+                      <span
+                        aria-label={state}
+                        title={state === 'submitted' ? 'Awaiting confirmation' : state === 'paid' ? 'Paid' : 'Unpaid'}
+                        className={`w-2 h-2 rounded-full shrink-0 ${
+                          state === 'paid' ? 'bg-green-600' : state === 'submitted' ? 'bg-amber-500' : 'bg-destructive'
+                        }`}
+                      />
+                      <span className="flex-1 truncate font-medium">{formatDisplayName(player.nickname, player.nameSlug)}</span>
+
+                      {/* Per-player receipt link (FR-022) */}
+                      {canViewReceipts && (
+                        player.totalReceiptCount > 0 ? (
+                          <button
+                            onClick={() => setViewingPlayerId(player.playerId)}
+                            className="text-xs font-semibold text-primary hover:underline shrink-0"
+                          >
+                            {player.totalReceiptCount} receipt{player.totalReceiptCount === 1 ? '' : 's'} ›
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground shrink-0">no receipt</span>
+                        )
+                      )}
+
+                      <div className="flex rounded overflow-hidden border text-xs shrink-0">
                         <button
-                          key={String(p)}
-                          onClick={() => updatePaid(player.registrationId, p)}
+                          onClick={() => updatePaid(player.registrationId, false)}
                           className={`px-2 py-1 transition-colors ${
-                            player.paid === p
-                              ? p ? 'bg-green-600 text-white' : 'bg-destructive text-white'
-                              : 'bg-background text-muted-foreground hover:bg-muted'
+                            player.paid ? 'bg-background text-muted-foreground hover:bg-muted' : 'bg-destructive text-white'
                           }`}
                         >
-                          {p ? 'Paid' : 'Unpaid'}
+                          Unpaid
                         </button>
-                      ))}
-                    </div>
-                  </li>
-                ))}
+                        {/* Explicit confirm — the ONLY way to reach green (FR-018) */}
+                        <button
+                          onClick={() => updatePaid(player.registrationId, true)}
+                          className={`px-2 py-1 transition-colors ${
+                            player.paid ? 'bg-green-600 text-white' : 'bg-background text-muted-foreground hover:bg-muted'
+                          }`}
+                        >
+                          {player.paid ? 'Paid' : 'Confirm'}
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </CardContent>
+        )}
+
+        {canViewReceipts && viewingPlayer && (
+          <ReceiptViewerDialog
+            open
+            onOpenChange={(next) => { if (!next) setViewingPlayerId(null) }}
+            playerName={formatDisplayName(viewingPlayer.nickname, viewingPlayer.nameSlug)}
+            receipts={receiptsFor(viewingPlayer.playerId)}
+            onDismiss={(receiptId) => { void dismissReceipt(receiptId) }}
+          />
         )}
       </Card>
     )
