@@ -460,6 +460,57 @@ export type Database = {
           },
         ]
       }
+      session_receipts: {
+        Row: {
+          dismissed_at: string | null
+          dismissed_by: string | null
+          id: string
+          note: string | null
+          player_id: string
+          registration_id: string
+          session_id: string
+          storage_path: string
+          uploaded_at: string
+        }
+        Insert: {
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          note?: string | null
+          player_id: string
+          registration_id: string
+          session_id: string
+          storage_path: string
+          uploaded_at?: string
+        }
+        Update: {
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          note?: string | null
+          player_id?: string
+          registration_id?: string
+          session_id?: string
+          storage_path?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_receipts_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "session_registrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_receipts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           completed_at: string | null
