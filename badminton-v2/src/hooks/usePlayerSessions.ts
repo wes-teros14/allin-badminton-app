@@ -15,6 +15,12 @@ export interface SessionPickerItem {
   registration_opens_at: string | null
   isRegistered: boolean
   paid: boolean | null
+  /**
+   * Non-dismissed receipts this player submitted for the session. Feeds
+   * derivePaymentState so the sessions list shows the same three states as the
+   * session card and the admin panel (FR-020).
+   */
+  activeReceiptCount: number
   playerCount?: number
   maxPlayers?: number | null
 }
@@ -24,7 +30,24 @@ interface RegistrationSummary {
   paid: boolean | null
 }
 
-type SessionRecord = Omit<SessionPickerItem, 'isRegistered' | 'paid' | 'playerCount' | 'maxPlayers'>
+type SessionRecord = Omit<SessionPickerItem, 'isRegistered' | 'paid' | 'activeReceiptCount' | 'playerCount' | 'maxPlayers'>
+
+/**
+ * Active receipts per session for one player. Dismissed receipts are excluded
+ * here exactly as they are in useRoster and useSessionReceipts — if any of the
+ * three diverged, a dismissed receipt would show orange on one surface and red
+ * on another.
+ */
+export function buildActiveReceiptCountMap(
+  receipts: Array<{ session_id: string; dismissed_at: string | null }>
+): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const r of receipts) {
+    if (r.dismissed_at !== null) continue
+    counts.set(r.session_id, (counts.get(r.session_id) ?? 0) + 1)
+  }
+  return counts
+}
 
 export function buildRegistrationPaymentMap(
   registrations: RegistrationSummary[]
@@ -59,13 +82,18 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       }
 
       // 1. Fetch registered session IDs + all registration_open/registration_closed sessions in parallel
-      const [registrationsRes, openSessionsRes] = await Promise.all([
+      const [registrationsRes, openSessionsRes, receiptsRes] = await Promise.all([
         supabase.from('session_registrations').select('session_id, paid').eq('player_id', playerId!),
         supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, price, session_notes, registration_opens_at')
           .in('status', ['registration_open', 'registration_closed']).order('date', { ascending: false }),
+        supabase.from('session_receipts').select('session_id, dismissed_at').eq('player_id', playerId!),
       ])
 
       if (cancelled) return
+
+      const activeReceiptsBySessionId = buildActiveReceiptCountMap(
+        (receiptsRes.data ?? []) as Array<{ session_id: string; dismissed_at: string | null }>
+      )
 
       const registeredIds = new Set(
         ((registrationsRes.data ?? []) as Array<{ session_id: string }>).map(r => r.session_id)
@@ -99,6 +127,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
         ...s,
         isRegistered: registeredIds.has(s.id),
         paid: paidBySessionId.get(s.id) ?? null,
+        activeReceiptCount: activeReceiptsBySessionId.get(s.id) ?? 0,
       }))
 
       const openItems = items.filter(s => s.status === 'registration_open')
