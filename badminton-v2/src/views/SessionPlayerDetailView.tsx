@@ -273,7 +273,7 @@ function ScheduleTab({
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
               />
             )}
-            <p className="text-xs text-muted-foreground">Once sent, please upload the receipt below — or send it to the GC or PM me. I don&apos;t monitor GCash directly. Thanks!</p>
+            <p className="text-xs text-muted-foreground">Once sent, please upload your receipt below so I can confirm it. I don&apos;t monitor GCash directly.</p>
 
             {/* Receipt upload — one combined action for image + note */}
             <div className="pt-1 border-t border-primary/20 space-y-2">
