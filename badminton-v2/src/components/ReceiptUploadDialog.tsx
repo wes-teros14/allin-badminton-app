@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Camera, X } from 'lucide-react'
+import { Image as ImageIcon, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -86,7 +86,7 @@ export function ReceiptUploadDialog({ open, onOpenChange, onSubmit, isUploading,
           <DialogTitle>Add receipt + note</DialogTitle>
           <DialogDescription>
             Attach your GCash screenshot. The note is optional — use it for things like
-            &ldquo;partial 200&rdquo; or a reference number.
+            &ldquo;partial&rdquo; or &ldquo;for 2 persons&rdquo;.
           </DialogDescription>
         </DialogHeader>
 
@@ -100,7 +100,7 @@ export function ReceiptUploadDialog({ open, onOpenChange, onSubmit, isUploading,
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Image picker — capture allows the phone camera directly */}
+            {/* Image picker — native chooser, so the gallery stays available */}
             <div>
               {previewUrl ? (
                 <div className="relative">
@@ -126,16 +126,23 @@ export function ReceiptUploadDialog({ open, onOpenChange, onSubmit, isUploading,
                   disabled={isUploading}
                   className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/50 transition-colors disabled:opacity-50"
                 >
-                  <Camera className="w-6 h-6 text-muted-foreground" />
-                  <span className="text-sm font-medium">Choose or take a photo</span>
+                  <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                  <span className="text-sm font-medium">Choose a photo</span>
                   <span className="text-xs text-muted-foreground">Screenshot of your GCash payment</span>
                 </button>
               )}
+              {/*
+                No `capture` attribute on purpose. Setting capture="environment"
+                makes mobile browsers open the camera DIRECTLY and suppress the
+                gallery entirely — useless here, since a GCash receipt is a
+                screenshot already sitting in the photo roll, not something you
+                photograph. Without it the native picker offers gallery, files,
+                and the camera if they actually want it.
+              */}
               <input
                 ref={inputRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -156,7 +163,7 @@ export function ReceiptUploadDialog({ open, onOpenChange, onSubmit, isUploading,
                 maxLength={MAX_RECEIPT_NOTE_LENGTH}
                 onChange={(e) => setNote(e.target.value)}
                 disabled={isUploading}
-                placeholder="e.g. partial 200, ref 8842"
+                placeholder="e.g. partial, or for 2 persons"
                 className="w-full text-sm rounded-lg border border-input bg-background px-3 py-2 focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
               />
             </div>
