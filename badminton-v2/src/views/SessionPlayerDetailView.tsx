@@ -1,16 +1,21 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router'
 import { toast } from 'sonner'
+import { Paperclip, Trash2 } from 'lucide-react'
 import { computeStatsFromResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { derivePaymentState } from '@/lib/paymentState'
+import { MAX_RECEIPTS_PER_SESSION } from '@/lib/receipts'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
+import { useSessionReceipts, signReceiptUrls, type SessionReceipt } from '@/hooks/useSessionReceipts'
 import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
+import { ReceiptUploadDialog } from '@/components/ReceiptUploadDialog'
 import { Avatar } from '@/components/Avatar'
 
 export function shouldShowPaymentInfo({
@@ -23,6 +28,87 @@ export function shouldShowPaymentInfo({
   hasPaymentInfo: boolean
 }): boolean {
   return isRegistered && paid !== true && hasPaymentInfo
+}
+
+// ---------------------------------------------------------------------------
+// Submitted receipts strip (player's own, inside the payment banner)
+//
+// The `receipts` bucket is private, so thumbnails render through
+// short-lived signed URLs minted on demand -- never getPublicUrl().
+// ---------------------------------------------------------------------------
+function SubmittedReceipts({
+  receipts,
+  canRemove,
+  onRemove,
+}: {
+  receipts: SessionReceipt[]
+  canRemove: boolean
+  onRemove: (receipt: SessionReceipt) => void
+}) {
+  const [urls, setUrls] = useState<Record<string, string | null>>({})
+  // An image can legitimately be missing: maintenance deletes the storage
+  // object before the row (see supabase/maintenance/receipts-cleanup.sql), so
+  // there is a window where the row still exists and the file does not.
+  const [failed, setFailed] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    const paths = receipts.map((r) => r.storagePath)
+    if (paths.length === 0) { setUrls({}); return }
+    signReceiptUrls(paths).then((signed) => {
+      if (cancelled) return
+      const next: Record<string, string | null> = {}
+      receipts.forEach((r, i) => { next[r.id] = signed[i] })
+      setUrls(next)
+    })
+    return () => { cancelled = true }
+  }, [receipts])
+
+  if (receipts.length === 0) return null
+
+  return (
+    <ul className="space-y-2">
+      {receipts.map((r) => (
+        <li key={r.id} className="flex items-start gap-2 px-2 py-2 rounded-lg bg-card border border-border">
+          {failed[r.id] ? (
+            <div className="w-12 h-12 rounded border border-border bg-muted flex items-center justify-center shrink-0">
+              <span className="text-[9px] text-muted-foreground text-center leading-tight px-0.5">image<br />removed</span>
+            </div>
+          ) : urls[r.id] ? (
+            <a href={urls[r.id] ?? undefined} target="_blank" rel="noopener noreferrer" className="shrink-0">
+              <img
+                src={urls[r.id] ?? undefined}
+                alt="Submitted receipt"
+                className="w-12 h-12 object-cover rounded border border-border"
+                onError={() => setFailed((f) => ({ ...f, [r.id]: true }))}
+              />
+            </a>
+          ) : (
+            <div className="w-12 h-12 rounded border border-border bg-muted animate-pulse shrink-0" />
+          )}
+          <div className="flex-1 min-w-0">
+            {r.note
+              ? <p className="text-xs text-foreground break-words">{r.note}</p>
+              : <p className="text-xs text-muted-foreground italic">No note</p>}
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {new Date(r.uploadedAt).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true,
+              })}
+            </p>
+          </div>
+          {canRemove && (
+            <button
+              onClick={() => onRemove(r)}
+              aria-label="Remove receipt"
+              className="shrink-0 p-1 rounded text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -103,6 +189,7 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 function ScheduleTab({
   nameSlug,
   sessionId,
+  playerId,
   sessionStatus,
   isRegistered,
   isRegistering,
@@ -114,6 +201,7 @@ function ScheduleTab({
 }: {
   nameSlug: string
   sessionId: string
+  playerId: string | undefined
   sessionStatus: string | null
   isRegistered: boolean
   isRegistering: boolean
@@ -128,6 +216,13 @@ function ScheduleTab({
   const { phoneNumber, qrCodeUrl } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
   const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, hasPaymentInfo })
+
+  const { receipts, activeReceiptCount, isUploading, uploadReceipt, deleteReceipt } =
+    useSessionReceipts(isRegistered ? sessionId : undefined, isRegistered ? playerId : undefined)
+  const [uploadOpen, setUploadOpen] = useState(false)
+
+  // Derived, never stored -- `paid` remains the sole input to revenue.
+  const paymentState = derivePaymentState({ paid, activeReceiptCount })
 
   function handleCopyPhone() {
     if (!phoneNumber) return
@@ -187,8 +282,46 @@ function ScheduleTab({
                 onError={(e) => { e.currentTarget.style.display = 'none' }}
               />
             )}
-            <p className="text-xs text-muted-foreground">Once sent, please send the screenshot to the GC or PM me — I don&apos;t monitor GCash directly. Thanks!</p>
+            <p className="text-xs text-muted-foreground">Once sent, please upload your receipt below so I can confirm it. I don&apos;t monitor GCash directly.</p>
+
+            {/* Receipt upload — one combined action for image + note */}
+            <div className="pt-1 border-t border-primary/20 space-y-2">
+              {paymentState === 'submitted' && (
+                <p className="text-xs font-semibold text-amber-600 dark:text-amber-500">
+                  🟠 Receipt submitted — awaiting confirmation
+                </p>
+              )}
+
+              <SubmittedReceipts
+                receipts={receipts}
+                canRemove={paid !== true}
+                onRemove={(r) => { void deleteReceipt(r) }}
+              />
+
+              <button
+                onClick={() => setUploadOpen(true)}
+                disabled={isUploading}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <Paperclip className="w-4 h-4" />
+                {receipts.length > 0 ? 'Add another receipt' : 'Add receipt + note'}
+              </button>
+
+              {receipts.length > 0 && receipts.length < MAX_RECEIPTS_PER_SESSION && (
+                <p className="text-[11px] text-center text-muted-foreground">
+                  {receipts.length} of {MAX_RECEIPTS_PER_SESSION} submitted
+                </p>
+              )}
+            </div>
           </div>
+
+          <ReceiptUploadDialog
+            open={uploadOpen}
+            onOpenChange={setUploadOpen}
+            onSubmit={uploadReceipt}
+            isUploading={isUploading}
+            currentCount={activeReceiptCount}
+          />
         </div>
       )}
 
@@ -400,6 +533,33 @@ export function SessionPlayerDetailView() {
     })
   }, [sessionId, user])
 
+  // When an admin confirms payment, the player's card should follow without a
+  // manual reload. session_registrations is already in the realtime publication
+  // (072), and RLS scopes the event to this player's own row.
+  useEffect(() => {
+    if (!sessionId || !user) return
+    const channel = supabase
+      .channel(`my-registration:${sessionId}:${user.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'session_registrations',
+        filter: `session_id=eq.${sessionId}`,
+      }, () => {
+        supabase
+          .from('session_registrations')
+          .select('player_id, paid')
+          .eq('session_id', sessionId)
+          .eq('player_id', user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            const r = data as { player_id: string; paid: boolean | null } | null
+            setIsRegistered(r != null)
+            setPaid(r?.paid ?? null)
+          })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [sessionId, user])
+
   async function handleRegister() {
     if (!sessionId || !user || isRegistering) return
     setIsRegistering(true)
@@ -453,6 +613,7 @@ export function SessionPlayerDetailView() {
           <ScheduleTab
             nameSlug={nameSlug}
             sessionId={sessionId}
+            playerId={user?.id}
             sessionStatus={sessionStatus}
             isRegistered={isRegistered}
             isRegistering={isRegistering}
