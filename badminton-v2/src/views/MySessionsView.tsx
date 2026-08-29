@@ -4,6 +4,7 @@ import { Calendar, Clock, FileText, MapPin, PhilippinePeso, Timer, WalletCards }
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import type { SessionPickerItem } from '@/hooks/usePlayerSessions'
+import { derivePaymentState, PAYMENT_STATE_LABEL } from '@/lib/paymentState'
 
 const ACTIVE_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_open', 'registration_closed'])
 const SHOW_REGISTERED_PILL_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_closed'])
@@ -114,8 +115,12 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
   const formattedTime = s.time
     ? new Date(`1970-01-01T${s.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
     : null
-  const paymentClassName = s.paid
-    ? 'text-green-700'
+  // Same derivation as the session card and the admin payment panel — all three
+  // surfaces read from one helper so they cannot drift (FR-020).
+  const paymentState = derivePaymentState({ paid: s.paid, activeReceiptCount: s.activeReceiptCount })
+  const paymentClassName =
+    paymentState === 'paid' ? 'text-green-700'
+    : paymentState === 'submitted' ? 'text-amber-600 dark:text-amber-500'
     : 'text-destructive'
 
   return (
@@ -179,7 +184,7 @@ function SessionRow({ s, index }: { s: SessionPickerItem; index: number }) {
       {s.isRegistered && s.paid !== null && (
         <p className={`mt-2 flex items-center gap-1.5 text-xs font-medium ${paymentClassName}`}>
           <WalletCards className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Payment: {s.paid ? 'Paid' : 'Unpaid'}</span>
+          <span>Payment: {PAYMENT_STATE_LABEL[paymentState]}</span>
         </p>
       )}
 
