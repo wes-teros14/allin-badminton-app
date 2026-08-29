@@ -61,9 +61,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       if (!data || data.length === 0) return
 
-      const rows = data as Array<{ type: string; title: string; body: string | null }>
+      const rows = data as Array<{ type: string; title: string; body: string | null; related_id: string | null }>
       const cheers = rows.filter(n => n.type === 'cheer')
       const awards = rows.filter(n => n.type === 'award')
+      // Admin-only: a player uploaded a payment receipt (migration 078)
+      const receipts = rows.filter(n => n.type === 'receipt')
 
       // Mark all as read immediately so they don't reappear on refresh
       await supabase
@@ -98,6 +100,29 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             action: { label: 'View', onClick: () => navigateRef.current('/leaderboard?tab=awards') },
           })
         }
+
+        // Receipts: batched, since a full session can produce ~16 at once and
+        // sixteen stacked toasts would bury everything else.
+        if (receipts.length === 1) {
+          const r = receipts[0]
+          toast(`🧾 ${r.body} uploaded a payment receipt`, {
+            duration: 20000,
+            closeButton: true,
+            action: r.related_id
+              ? { label: 'Review', onClick: () => navigateRef.current(`/finance/${r.related_id}`) }
+              : undefined,
+          })
+        } else if (receipts.length > 1) {
+          const sessionId = receipts[0].related_id
+          const sameSession = receipts.every(r => r.related_id === sessionId)
+          toast(`🧾 ${receipts.length} payment receipts uploaded`, {
+            duration: 20000,
+            closeButton: true,
+            action: sameSession && sessionId
+              ? { label: 'Review', onClick: () => navigateRef.current(`/finance/${sessionId}`) }
+              : undefined,
+          })
+        }
       }, 500)
     }
 
@@ -116,10 +141,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         table: 'notifications',
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
-        const n = payload.new as { type: string; title: string; body: string | null }
+        const n = payload.new as { type: string; title: string; body: string | null; related_id: string | null }
         setUnreadCount(c => c + 1)
 
-        if (n.type === 'cheer') {
+        if (n.type === 'receipt') {
+          // Admin-only (migration 078 targets role = 'admin'). title is the
+          // session name, body the player who uploaded.
+          toast(`🧾 ${n.body} uploaded a payment receipt`, {
+            duration: 20000,
+            closeButton: true,
+            description: n.title,
+            action: n.related_id
+              ? { label: 'Review', onClick: () => navigateRef.current(`/finance/${n.related_id}`) }
+              : undefined,
+          })
+        } else if (n.type === 'cheer') {
           const emoji = CHEER_EMOJI[n.title] ?? '🏸'
           toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 20000, closeButton: true })
         } else if (n.type === 'award') {

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRoster } from '@/hooks/useRoster'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDisplayName } from '@/lib/formatDisplayName'
-import { derivePaymentState } from '@/lib/paymentState'
+import { derivePaymentState, type PaymentState } from '@/lib/paymentState'
 import { ReceiptViewerDialog } from '@/components/ReceiptViewerDialog'
 
 function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -66,6 +66,13 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
     const submittedCount = states.filter((s) => s === 'submitted').length
     const unpaidCount = states.filter((s) => s === 'unpaid').length
 
+    // Awaiting first — those are the rows that need a decision. Sort is stable,
+    // so players keep their roster order within each group.
+    const ORDER: Record<PaymentState, number> = { submitted: 0, paid: 1, unpaid: 2 }
+    const rows = players
+      .map((player, i) => ({ player, state: states[i] }))
+      .sort((a, b) => ORDER[a.state] - ORDER[b.state])
+
     const viewingPlayer = viewingPlayerId ? players.find((p) => p.playerId === viewingPlayerId) ?? null : null
 
     return (
@@ -82,8 +89,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
               <p className="text-sm text-muted-foreground">No players registered.</p>
             ) : (
               <ul className="space-y-2">
-                {players.map((player, i) => {
-                  const state = states[i]
+                {rows.map(({ player, state }) => {
                   return (
                     <li key={player.registrationId} className="flex items-center gap-2 text-sm rounded-md border px-3 py-2">
                       <span
