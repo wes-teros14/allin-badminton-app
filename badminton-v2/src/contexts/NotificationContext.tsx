@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
+import { formatSessionStamp } from '@/lib/sessionStamp'
 
 interface NotificationState {
   unreadCount: number
@@ -36,6 +37,79 @@ function cheerLabel(slug: string): string {
   return CHEER_LABEL[slug] ?? slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
+interface NotificationRow {
+  type: string
+  title: string
+  body: string | null
+  related_id: string | null
+}
+
+/**
+ * "<session name> · <session date>" for each session id, keyed by id.
+ *
+ * A receipt notification carries the session NAME in `title` but no date, and
+ * a player can hold registrations for two open sessions at once -- so the name
+ * alone is not always enough to tell an admin where to look. The date comes
+ * from `sessions`, which every admin can already read.
+ *
+ * A failed or empty lookup yields an empty map on purpose: the caller then
+ * falls back to the name already on the notification row, so the toast is
+ * never worse than it was before.
+ */
+async function fetchSessionStamps(ids: Array<string | null>): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))]
+  if (unique.length === 0) return new Map()
+
+  const { data, error } = await supabase.from('sessions').select('id, name, date').in('id', unique)
+  if (error || !data) return new Map()
+
+  const stamps = new Map<string, string>()
+  for (const s of data as Array<{ id: string; name: string | null; date: string | null }>) {
+    const stamp = formatSessionStamp(s.name, s.date)
+    if (stamp) stamps.set(s.id, stamp)
+  }
+  return stamps
+}
+
+/**
+ * Admin-only receipt toast (migration 078). One toast for the whole batch,
+ * since a full session can produce ~16 uploads at once and sixteen stacked
+ * toasts would bury everything else.
+ *
+ * Shared by the on-mount backlog and the realtime listener so the two can not
+ * drift -- the backlog path previously showed no session at all.
+ */
+function showReceiptToast(
+  receipts: NotificationRow[],
+  stamps: Map<string, string>,
+  navigateTo: (path: string) => void,
+) {
+  if (receipts.length === 0) return
+
+  const sessionId = receipts[0].related_id
+  const sameSession = receipts.every(r => r.related_id === sessionId)
+
+  // Only meaningful when every receipt in the batch is for one session;
+  // a mixed batch names none of them rather than naming the wrong one.
+  const description = sameSession
+    ? (sessionId ? stamps.get(sessionId) : undefined) ?? (receipts[0].title || undefined)
+    : undefined
+
+  toast(
+    receipts.length === 1
+      ? `🧾 ${receipts[0].body} uploaded a payment receipt`
+      : `🧾 ${receipts.length} payment receipts uploaded`,
+    {
+      duration: 20000,
+      closeButton: true,
+      description,
+      action: sameSession && sessionId
+        ? { label: 'Review', onClick: () => navigateTo(`/finance/${sessionId}`) }
+        : undefined,
+    },
+  )
+}
+
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -61,7 +135,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       if (!data || data.length === 0) return
 
-      const rows = data as Array<{ type: string; title: string; body: string | null; related_id: string | null }>
+      const rows = data as NotificationRow[]
       const cheers = rows.filter(n => n.type === 'cheer')
       const awards = rows.filter(n => n.type === 'award')
       // Admin-only: a player uploaded a payment receipt (migration 078)
@@ -74,6 +148,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         .eq('user_id', user!.id)
         .is('read_at', null)
       setUnreadCount(0)
+
+      // Resolved before the toasts fire; no-ops (and costs nothing) when the
+      // backlog holds no receipts.
+      const receiptStamps = await fetchSessionStamps(receipts.map(r => r.related_id))
 
       setTimeout(() => {
         // Show each cheer individually with full detail
@@ -101,28 +179,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           })
         }
 
-        // Receipts: batched, since a full session can produce ~16 at once and
-        // sixteen stacked toasts would bury everything else.
-        if (receipts.length === 1) {
-          const r = receipts[0]
-          toast(`🧾 ${r.body} uploaded a payment receipt`, {
-            duration: 20000,
-            closeButton: true,
-            action: r.related_id
-              ? { label: 'Review', onClick: () => navigateRef.current(`/finance/${r.related_id}`) }
-              : undefined,
-          })
-        } else if (receipts.length > 1) {
-          const sessionId = receipts[0].related_id
-          const sameSession = receipts.every(r => r.related_id === sessionId)
-          toast(`🧾 ${receipts.length} payment receipts uploaded`, {
-            duration: 20000,
-            closeButton: true,
-            action: sameSession && sessionId
-              ? { label: 'Review', onClick: () => navigateRef.current(`/finance/${sessionId}`) }
-              : undefined,
-          })
-        }
+        showReceiptToast(receipts, receiptStamps, path => navigateRef.current(path))
       }, 500)
     }
 
@@ -141,19 +198,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         table: 'notifications',
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
-        const n = payload.new as { type: string; title: string; body: string | null; related_id: string | null }
+        const n = payload.new as NotificationRow
         setUnreadCount(c => c + 1)
 
         if (n.type === 'receipt') {
-          // Admin-only (migration 078 targets role = 'admin'). title is the
-          // session name, body the player who uploaded.
-          toast(`🧾 ${n.body} uploaded a payment receipt`, {
-            duration: 20000,
-            closeButton: true,
-            description: n.title,
-            action: n.related_id
-              ? { label: 'Review', onClick: () => navigateRef.current(`/finance/${n.related_id}`) }
-              : undefined,
+          // The session date needs one round trip, so the toast lands a moment
+          // after the row does. Worth it: without the date, two open sessions
+          // are indistinguishable to the admin reading this.
+          void fetchSessionStamps([n.related_id]).then(stamps => {
+            showReceiptToast([n], stamps, path => navigateRef.current(path))
           })
         } else if (n.type === 'cheer') {
           const emoji = CHEER_EMOJI[n.title] ?? '🏸'
