@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { buildStartingCourtAssignments, normalizeCourtCount } from '@/lib/courts'
 import { playingMatchUpdate, queuedMatchUpdate } from '@/utils/matchTiming'
+import { validateSchedulePlayers } from '@/lib/matchPlayers'
 
 type SessionStatus =
   | 'setup'
@@ -237,6 +238,14 @@ export function useSession(sessionId?: string): SessionState {
 
   async function lockSchedule(matches: MatchInput[]): Promise<boolean> {
     if (!session) return false
+
+    // Never write a match with a repeated player — the DB rejects it anyway
+    // (matches_distinct_players_check), this just names the offending game.
+    const validation = validateSchedulePlayers(matches)
+    if (!validation.ok) {
+      toast.error(validation.message)
+      return false
+    }
 
     // 1. Bulk insert all matches with sequential queue_position
     const insertData = matches.map((m, i) => ({
