@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { buildCourtLabels, normalizeCourtCount } from '@/lib/courts'
-import { formatDisplayName } from '@/lib/formatDisplayName'
+import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 
 export interface AdminMatchDisplay {
   id: string
@@ -171,9 +171,11 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
 
       if (cancelled) return
 
-      const nameMap = new Map(
+      // Qualify shared nicknames — "Alexis & Alexis" on a court card is
+      // otherwise indistinguishable from the same player entered twice.
+      const nameMap = disambiguateDisplayNames(
         ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
-          .map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)])
+          .map((p) => ({ id: p.id, nameSlug: p.name_slug, displayName: formatDisplayName(p.nickname, p.name_slug) }))
       )
       const name = (id: string) => nameMap.get(id) ?? id
 

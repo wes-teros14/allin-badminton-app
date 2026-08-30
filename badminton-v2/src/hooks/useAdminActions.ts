@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { completedMatchUpdate, playingMatchUpdate, queuedMatchUpdate } from '@/utils/matchTiming'
 import type { AdminMatchDisplay } from './useAdminSession'
 import { submitSplitResult, type SplitOutcome } from '@/lib/matchResults'
+import { validateMatchPlayers } from '@/lib/matchPlayers'
 
 interface EditIds {
   t1p1Id: string
@@ -16,6 +17,10 @@ export function useAdminActions(onDone: () => void) {
   const [isSaving, setIsSaving] = useState(false)
 
   async function editMatch(matchId: string, ids: EditIds) {
+    // Last stop before the write: the four slots must be four different players.
+    const validation = validateMatchPlayers([ids.t1p1Id, ids.t1p2Id, ids.t2p1Id, ids.t2p2Id])
+    if (!validation.ok) { toast.error(validation.message); return }
+
     setIsSaving(true)
     try {
       const { error } = await supabase
