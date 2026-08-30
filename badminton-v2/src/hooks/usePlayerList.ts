@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { formatDisplayName } from '@/lib/formatDisplayName'
+import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 
 interface PlayerEntry {
   id: string
@@ -101,8 +101,14 @@ export function usePlayerList(sessionIdParam?: string): UsePlayerListResult {
 
       if (cancelled) return
 
-      const sorted = ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
+      const entries = ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
         .map((p) => ({ id: p.id, nameSlug: p.name_slug, displayName: formatDisplayName(p.nickname, p.name_slug) }))
+
+      // Two players can share a nickname; qualify the clashes so the edit
+      // dropdowns never show the same label twice.
+      const labels = disambiguateDisplayNames(entries)
+      const sorted = entries
+        .map((p) => ({ ...p, displayName: labels.get(p.id) ?? p.displayName }))
         .sort((a, b) => a.displayName.localeCompare(b.displayName))
 
       setPlayers(sorted)

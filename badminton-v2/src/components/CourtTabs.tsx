@@ -8,6 +8,7 @@ import { defaultCourtLabel, findFirstOpenCourtNumber } from '@/lib/courts'
 import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
 import type { SplitOutcome } from '@/lib/matchResults'
 import { getEligibleSubstitutes } from '@/lib/substitutes'
+import { validateMatchPlayers } from '@/lib/matchPlayers'
 
 function formatElapsed(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -249,12 +250,15 @@ function PlayerSelect({
   players,
   disabled,
   placeholder,
+  takenIds = [],
 }: {
   value: string
   onChange: (id: string) => void
   players: Array<{ id: string; displayName: string }>
   disabled?: boolean
   placeholder: string
+  /** Players already in one of this match's other three slots. */
+  takenIds?: string[]
 }) {
   return (
     <select
@@ -264,9 +268,14 @@ function PlayerSelect({
       className="border border-border rounded px-2 py-1 text-sm w-full bg-background text-foreground"
     >
       <option value="">{placeholder}</option>
-      {players.map((p) => (
-        <option key={p.id} value={p.id}>{p.displayName}</option>
-      ))}
+      {players.map((p) => {
+        const taken = p.id !== value && takenIds.includes(p.id)
+        return (
+          <option key={p.id} value={p.id} disabled={taken}>
+            {taken ? `${p.displayName} — already in this match` : p.displayName}
+          </option>
+        )
+      })}
     </select>
   )
 }
@@ -322,22 +331,31 @@ export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDo
     if (!editForm.t1p1Id || !editForm.t1p2Id || !editForm.t2p1Id || !editForm.t2p2Id) {
       return
     }
+    const validation = validateMatchPlayers(
+      [editForm.t1p1Id, editForm.t1p2Id, editForm.t2p1Id, editForm.t2p2Id],
+      (id) => players.find((p) => p.id === id)?.displayName ?? 'This player',
+    )
+    if (!validation.ok) {
+      toast.error(validation.message)
+      return
+    }
     await editMatch(matchId, editForm)
     setEditingId(null)
     onDone()
   }
 
   function EditFormInline({ matchId }: { matchId: string }) {
+    const chosenIds = [editForm.t1p1Id, editForm.t1p2Id, editForm.t2p1Id, editForm.t2p2Id].filter(Boolean)
     return (
       <div className="space-y-2 mt-3">
         <div className="flex gap-2">
-          <PlayerSelect value={editForm.t1p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 1" />
-          <PlayerSelect value={editForm.t1p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 2" />
+          <PlayerSelect value={editForm.t1p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 1" takenIds={chosenIds} />
+          <PlayerSelect value={editForm.t1p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 2" takenIds={chosenIds} />
         </div>
         <p className="text-xs text-muted-foreground text-center">vs</p>
         <div className="flex gap-2">
-          <PlayerSelect value={editForm.t2p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 3" />
-          <PlayerSelect value={editForm.t2p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 4" />
+          <PlayerSelect value={editForm.t2p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 3" takenIds={chosenIds} />
+          <PlayerSelect value={editForm.t2p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 4" takenIds={chosenIds} />
         </div>
         <div className="flex gap-2">
           <button onClick={() => handleSave(matchId)} disabled={isSaving || !editForm.t1p1Id || !editForm.t1p2Id || !editForm.t2p1Id || !editForm.t2p2Id} className="flex-1 py-1.5 rounded bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save</button>

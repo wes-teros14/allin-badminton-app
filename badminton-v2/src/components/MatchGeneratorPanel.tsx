@@ -7,7 +7,8 @@ import { toast } from 'sonner'
 import { Info } from 'lucide-react'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { supabase } from '@/lib/supabase'
-import { formatDisplayName } from '@/lib/formatDisplayName'
+import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
+import { validateMatchPlayers } from '@/lib/matchPlayers'
 import type { Json } from '@/types/database'
 import {
   generateScheduleOptimized,
@@ -298,6 +299,12 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
     const meta = lockedMatchMeta[idx]
     if (!meta) { toast.error('Match metadata not loaded — please refresh'); return }
 
+    const validation = validateMatchPlayers(
+      [editForm.t1p1, editForm.t1p2, editForm.t2p1, editForm.t2p2],
+      (id) => nameMap.get(id) ?? 'This player',
+    )
+    if (!validation.ok) { toast.error(validation.message); return }
+
     const { error } = await supabase
       .from('matches')
       .update({
@@ -328,7 +335,11 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
     setEditingGameNumber(null)
   }
 
-  const nameMap = new Map(players.map((p) => [p.id, formatDisplayName(p.nickname, p.nameSlug)]))
+  // Qualify players who share a nickname, so "Alexis & Alexis" in the preview
+  // always means two different people and never reads as a duplicate.
+  const nameMap = disambiguateDisplayNames(
+    players.map((p) => ({ id: p.id, nameSlug: p.nameSlug, displayName: formatDisplayName(p.nickname, p.nameSlug) }))
+  )
   const name = (id: string) => nameMap.get(id) ?? id
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading players…</div>
@@ -729,6 +740,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                     const meta = lockedMatchMeta[idx]
                     const isQueued = !meta || meta.status === 'queued'
                     const isEditing = editingGameNumber === m.gameNumber
+                    const chosenIds = [editForm.t1p1, editForm.t1p2, editForm.t2p1, editForm.t2p2].filter(Boolean)
                     const matchType = computeMatchType(m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2, genderMap)
                     return (
                       <li key={m.gameNumber} className="py-1.5 border-b last:border-0">
@@ -746,9 +758,14 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                                     className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
                                   >
                                     <option value="">— P{si + 1} —</option>
-                                    {players.map((p) => (
-                                      <option key={p.id} value={p.id}>{formatDisplayName(p.nickname, p.nameSlug)}</option>
-                                    ))}
+                                    {players.map((p) => {
+                                      const taken = p.id !== editForm[key] && chosenIds.includes(p.id)
+                                      return (
+                                        <option key={p.id} value={p.id} disabled={taken}>
+                                          {taken ? `${name(p.id)} — already in this match` : name(p.id)}
+                                        </option>
+                                      )
+                                    })}
                                   </select>
                                 ))}
                               </div>
@@ -763,9 +780,14 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                                     className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
                                   >
                                     <option value="">— P{si + 1} —</option>
-                                    {players.map((p) => (
-                                      <option key={p.id} value={p.id}>{formatDisplayName(p.nickname, p.nameSlug)}</option>
-                                    ))}
+                                    {players.map((p) => {
+                                      const taken = p.id !== editForm[key] && chosenIds.includes(p.id)
+                                      return (
+                                        <option key={p.id} value={p.id} disabled={taken}>
+                                          {taken ? `${name(p.id)} — already in this match` : name(p.id)}
+                                        </option>
+                                      )
+                                    })}
                                   </select>
                                 ))}
                               </div>
