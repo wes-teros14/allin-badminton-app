@@ -129,9 +129,12 @@ A player wants to settle a debate in the group chat and shares a link that opens
 
 **Ranking and presentation**
 
-- **FR-015**: Eligible partnerships MUST be ranked by win rate descending, with total wins descending as the first tiebreaker.
+- **FR-015**: Eligible partnerships MUST be ordered by win rate descending, with total wins descending as the first tiebreaker.
+- **FR-015a**: Partnerships showing the same win rate MUST share a rank. The record does not separate them — a board that prints the same percentage twice and ranks them apart contradicts what the reader sees.
+- **FR-015b**: Ranks MUST be numbered densely: the rank after a shared one is the next number, not a skip (1, 1, 2 — not 1, 1, 3).
+- **FR-015c**: A shared rank MUST be displayed once for the group rather than repeated on each row, with the tied rows visually bound together.
 - **FR-016**: Ranking MUST be deterministic — two loads of the same underlying data MUST produce the same order, including for partnerships tied on both win rate and wins.
-- **FR-017**: The board MUST show at most the top ten partnerships.
+- **FR-017**: The board MUST show ten partnerships, extended as needed so that a tie group straddling the tenth place is kept whole rather than split.
 - **FR-018**: Each row MUST show the rank position, both players' identities including their photos, the pair's win rate, and the pair's win–loss record.
 - **FR-019**: Player names MUST be presented using the same naming rule as every other leaderboard, so a player reads identically across tabs.
 - **FR-020**: Rows MUST remain legible on a phone-width screen when both players have long names.
