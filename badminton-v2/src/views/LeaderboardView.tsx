@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
-import { formatDisplayName } from '@/lib/formatDisplayName'
+import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
+import { rankPairs, tallyPairs } from '@/lib/pairStats'
+import type { PairTallyMatch } from '@/lib/pairStats'
 import { Avatar } from '@/components/Avatar'
 
 // ---------------------------------------------------------------------------
@@ -41,7 +43,22 @@ interface CheerStatsRow {
   solid_effort_received: number
 }
 
-type Tab = 'wins' | 'cheers' | 'awards'
+interface PairLeaderboardPlayer {
+  id: string
+  displayName: string
+  avatarUrl: string | null
+}
+
+interface PairLeaderboardEntry {
+  key: string
+  players: [PairLeaderboardPlayer, PairLeaderboardPlayer]
+  wins: number
+  losses: number
+  games: number
+  winRate: number
+}
+
+type Tab = 'wins' | 'cheers' | 'awards' | 'pairs'
 
 interface AwardEntry {
   emoji: string
@@ -117,6 +134,113 @@ async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
     }))
 }
 
+// --- Partnership board -----------------------------------------------------
+
+const MIN_GAMES_TOGETHER = 6
+const MATCH_PAGE_SIZE = 1000
+
+/**
+ * `sessions!inner(id)` carries no filter today. It is here so that the planned
+ * yearly season/archive rule is a single added `.eq('sessions.…', …)` condition
+ * rather than a new embed and a re-shaped row type. Do not remove it as unused.
+ */
+const PAIR_MATCH_SELECT =
+  'team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index, game_number), sessions!inner(id)'
+
+/**
+ * Every other query in this app is session-scoped or over a small table, so none
+ * of them can reach the server's row cap. This one can — a year of play is around
+ * a thousand matches — and an uncapped read would come back silently truncated,
+ * producing a board that looks right and is wrong. Hence paging, plus the exact
+ * count cross-check below.
+ */
+async function fetchCompletedMatchesForPairs(): Promise<PairTallyMatch[]> {
+  const rows: PairTallyMatch[] = []
+
+  for (let offset = 0; ; offset += MATCH_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('matches')
+      .select(PAIR_MATCH_SELECT)
+      .eq('status', 'complete')
+      .order('id', { ascending: true })
+      .range(offset, offset + MATCH_PAGE_SIZE - 1)
+
+    if (error) throw error
+
+    const page = (data ?? []) as unknown as PairTallyMatch[]
+    rows.push(...page)
+    if (page.length < MATCH_PAGE_SIZE) break
+  }
+
+  const { count, error: countError } = await supabase
+    .from('matches')
+    .select('id, sessions!inner(id)', { count: 'exact', head: true })
+    .eq('status', 'complete')
+
+  if (countError) throw countError
+  if (typeof count === 'number' && count !== rows.length) {
+    throw new Error(
+      `Pair leaderboard read is incomplete: fetched ${rows.length} of ${count} completed matches. ` +
+        'Refusing to render a partially counted board.',
+    )
+  }
+
+  return rows
+}
+
+async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
+  const [matches, profilesRes, recentSessionsRes] = await Promise.all([
+    fetchCompletedMatchesForPairs(),
+    supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
+    supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
+  ])
+
+  const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
+  const activePlayerIds = new Set<string>()
+  if (recentSessionIds.length > 0) {
+    const { data: registrations } = await supabase
+      .from('session_registrations')
+      .select('player_id')
+      .in('session_id', recentSessionIds)
+    for (const r of (registrations ?? []) as Array<{ player_id: string }>) activePlayerIds.add(r.player_id)
+  }
+
+  type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
+  const profileRows = (profilesRes.data ?? []) as ProfileRow[]
+  const profileById = new Map(profileRows.map((p) => [p.id, p]))
+
+  // Two different players can both be nicknamed "Alexis". On a pair row that
+  // would render as "Alexis & Alexis" — the exact string that signalled the
+  // duplicate-player bug migration 079 was written to stop.
+  const labels = disambiguateDisplayNames(
+    profileRows.map((p) => ({
+      id: p.id,
+      nameSlug: p.name_slug,
+      displayName: formatDisplayName(p.nickname, p.name_slug),
+    })),
+  )
+
+  const ranked = rankPairs(tallyPairs(matches), {
+    minGames: MIN_GAMES_TOGETHER,
+    isEligiblePlayer: (id) => profileById.has(id) && activePlayerIds.has(id),
+  })
+
+  const toPlayer = (id: string): PairLeaderboardPlayer => ({
+    id,
+    displayName: labels.get(id) ?? id,
+    avatarUrl: profileById.get(id)?.avatar_url ?? null,
+  })
+
+  return ranked.map((pair) => ({
+    key: pair.key,
+    players: [toPlayer(pair.playerA), toPlayer(pair.playerB)],
+    wins: pair.wins,
+    losses: pair.losses,
+    games: pair.games,
+    winRate: pair.winRate,
+  }))
+}
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -152,6 +276,69 @@ function WinsLeaderboard() {
           </span>
           <Avatar url={entry.avatarUrl} name={entry.displayName} size={28} />
           <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
+          <div className="text-right shrink-0">
+            <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
+            <p className="text-xs text-muted-foreground">{entry.wins}W {entry.losses}L</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PairsLeaderboard() {
+  const [entries, setEntries] = useState<PairLeaderboardEntry[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      setEntries(await fetchPairLeaderboard())
+    } catch (error) {
+      // A truncated or failed read must never render as a plausible board.
+      console.error('[pair leaderboard] failed to load', error)
+      setEntries([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  return isLoading ? (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
+      ))}
+    </div>
+  ) : entries.length === 0 ? (
+    <p className="text-muted-foreground text-sm">
+      No partnership has reached {MIN_GAMES_TOGETHER} games together yet.
+    </p>
+  ) : (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground text-center pb-1">
+        Ranked by win rate · min. {MIN_GAMES_TOGETHER} games together · both active in the last {RECENT_SESSIONS_WINDOW}
+      </p>
+      {entries.map((entry, i) => (
+        <div key={entry.key} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
+          <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
+            {RANK_ICON(i)}
+          </span>
+          <div className="flex shrink-0 -space-x-2">
+            {entry.players.map((player) => (
+              <Avatar
+                key={player.id}
+                url={player.avatarUrl}
+                name={player.displayName}
+                size={28}
+                className="ring-2 ring-card"
+              />
+            ))}
+          </div>
+          <span className="flex-1 min-w-0 font-medium text-sm line-clamp-2">
+            {entry.players[0].displayName} &amp; {entry.players[1].displayName}
+          </span>
           <div className="text-right shrink-0">
             <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
             <p className="text-xs text-muted-foreground">{entry.wins}W {entry.losses}L</p>
@@ -388,7 +575,7 @@ export function LeaderboardView() {
 
       {/* Tab switcher */}
       <div className="flex gap-1 mb-6">
-        {(['wins', 'cheers', 'awards'] as Tab[]).map((t) => (
+        {(['wins', 'cheers', 'awards', 'pairs'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -398,7 +585,7 @@ export function LeaderboardView() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'wins' ? 'Mga Lodi' : t === 'cheers' ? 'Cheers' : 'Awards'}
+            {t === 'wins' ? 'Mga Lodi' : t === 'cheers' ? 'Cheers' : t === 'awards' ? 'Awards' : 'Tambalan'}
           </button>
         ))}
       </div>
@@ -406,6 +593,7 @@ export function LeaderboardView() {
       {tab === 'wins' && <WinsLeaderboard />}
       {tab === 'cheers' && <CheersLeaderboard />}
       {tab === 'awards' && <AwardsLeaderboard />}
+      {tab === 'pairs' && <PairsLeaderboard />}
     </div>
   )
 }
