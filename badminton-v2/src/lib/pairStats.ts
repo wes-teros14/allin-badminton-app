@@ -119,6 +119,11 @@ export function tallyPairs(matches: readonly PairTallyMatch[]): Map<string, Pair
 
 export interface RankedPair extends PairTally {
   winRate: number
+  /**
+   * Dense rank: pairs showing the same win rate share a rank, and the next
+   * distinct rate takes the next number — 1, 1, 2, not 1, 1, 3.
+   */
+  rank: number
 }
 
 export interface RankPairsOptions {
@@ -126,6 +131,11 @@ export interface RankPairsOptions {
   minGames?: number
   /** Both players must pass this for the pair to be ranked. */
   isEligiblePlayer?: (playerId: string) => boolean
+  /**
+   * Rows to show. A tie group straddling the cut is kept whole rather than
+   * split, so the list can run past this — pairs with identical results are
+   * never separated by the boundary.
+   */
   limit?: number
 }
 
@@ -138,12 +148,17 @@ export const DEFAULT_MIN_GAMES_TOGETHER = 3
 export const DEFAULT_PAIR_LIMIT = 10
 
 /**
- * Applies eligibility and ordering to raw tallies.
+ * Applies eligibility, ordering, and ranking to raw tallies.
  *
  * Kept separate from tallyPairs so the threshold can be tuned or tested without
- * touching the counting. Ordering is win rate, then wins, then the pair key —
- * the key tiebreak makes the result a property of the data rather than of the
- * order rows happened to arrive in.
+ * touching the counting.
+ *
+ * Rank is shared by win rate — the number the row actually shows. Two pairs both
+ * reading 67% get the same rank even when one is 6W 3L and the other 2W 1L,
+ * because a board that prints the same number twice and then ranks them apart
+ * looks broken to the person reading it. Wins still order the rows *within* a
+ * shared rank, and the pair key settles what is left, so the sequence is a
+ * property of the data rather than of the order rows arrived in.
  */
 export function rankPairs(
   tallies: Map<string, PairTally> | readonly PairTally[],
@@ -157,7 +172,7 @@ export function rankPairs(
 
   const source = tallies instanceof Map ? [...tallies.values()] : tallies
 
-  return source
+  const ordered = source
     .filter(
       (tally) =>
         tally.playerA !== tally.playerB &&
@@ -170,5 +185,45 @@ export function rankPairs(
       winRate: tally.games > 0 ? Math.round((tally.wins / tally.games) * 100) : 0,
     }))
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.key.localeCompare(b.key))
-    .slice(0, limit)
+
+  let rank = 0
+  let previousRate: number | null = null
+  const ranked: RankedPair[] = ordered.map((pair) => {
+    if (pair.winRate !== previousRate) {
+      rank++
+      previousRate = pair.winRate
+    }
+    return { ...pair, rank }
+  })
+
+  if (ranked.length <= limit) return ranked
+
+  // Keep the group that straddles the cut whole. Dropping half of a set of
+  // identical records would look arbitrary to the pairs who fell off.
+  const rankAtCut = ranked[limit - 1].rank
+  return ranked.filter((pair) => pair.rank <= rankAtCut)
+}
+
+export interface RankGroup<T extends { rank: number } = RankedPair> {
+  rank: number
+  pairs: T[]
+}
+
+/**
+ * Collapses ranked pairs into one entry per shared rank, so the view can draw
+ * the rank once for a tie group instead of repeating it on every row.
+ *
+ * Generic over anything carrying a rank, so the view can group its own
+ * display-ready rows without converting back to the tally shape.
+ */
+export function groupByRank<T extends { rank: number }>(ranked: readonly T[]): RankGroup<T>[] {
+  const groups: RankGroup<T>[] = []
+
+  for (const pair of ranked) {
+    const current = groups[groups.length - 1]
+    if (current && current.rank === pair.rank) current.pairs.push(pair)
+    else groups.push({ rank: pair.rank, pairs: [pair] })
+  }
+
+  return groups
 }
