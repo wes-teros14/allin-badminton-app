@@ -37,7 +37,7 @@ All three reads issue in parallel via `Promise.all`, as the existing fetchers do
 1. Page through matches, accumulating rows.
 2. `tallyPairs(rows)` → `Map<string, PairTally>`.
 3. Build the eligible-player set: present in the active-profiles result **and** present in the recent-registrations set.
-4. `rankPairs(tallies, { minGames: 6, limit: 10, isEligiblePlayer })`.
+4. `rankPairs(tallies, { minGames: 3, limit: 10, isEligiblePlayer })`.
 5. Resolve labels for the players appearing in the ranked pairs through `disambiguateDisplayNames()` — **not** bare `formatDisplayName()`. Two real players can share a nickname, and on a pair row that renders as "Alexis & Alexis", which is indistinguishable from the duplicate-player data bug migration `079` was written to stop (research R4).
 6. Attach `avatar_url` per player and return.
 
@@ -64,14 +64,14 @@ A `PairsLeaderboard()` component beside the existing `WinsLeaderboard()`, reusin
 - **Row**: `RANK_ICON(i)` → both avatars → both names → right-aligned `{winRate}%` with `{wins}W {losses}L` beneath, in the same type sizes and card styling the player rows use.
 - **Avatars**: two `<Avatar>` at the player board's size, overlapped slightly with a negative margin and a ring so they read as one unit rather than two list items. The pair, not each player, is the row's subject.
 - **Names**: joined with `&`. Must stay legible at phone width with two long names — truncate the name block as a whole rather than letting it push the win rate off the row (FR-020).
-- **Caption**: same placement and styling as the player board's, stating ranking basis and both eligibility rules, e.g. *"Ranked by win rate · min. 6 games together · both players active in the last 4 sessions"* (FR-021).
+- **Caption**: same placement and styling as the player board's, stating ranking basis and both eligibility rules, e.g. *"Ranked by win rate · min. 3 games together · both players active in the last 4 sessions"* (FR-021).
 - **Loading**: the existing skeleton treatment, sized for the taller pair row (FR-022).
 - **Empty**: a plain message in the muted style used by `WinsLeaderboard`'s "No stats recorded yet." (FR-022).
 
 ## Tab wiring
 
 - Extend the `Tab` union with a fourth value and add it to the tab-switcher array; the existing `?tab=` handling via `useSearchParams` then covers FR-002 with no extra code.
-- The label follows the playful naming of "Mga Lodi" rather than a literal English word. Suggested: **"Tambalan"**. Cosmetic — settle it with the organiser at implementation time.
+- The label follows the playful naming of "Mga Lodi" rather than a literal English word. Settled with the organiser: **"Partners"**.
 - The three existing tabs' code paths must not be edited (FR-003).
 
 ## Failure behaviour
