@@ -37,5 +37,5 @@ Keep secrets in local `.env` files and use `.env.example` as the shareable templ
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read `specs/005-payment-receipt-upload/plan.md`
+shell commands, and other important information, read `specs/006-pair-winrate-leaderboard/plan.md`
 <!-- SPECKIT END -->
