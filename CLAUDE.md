@@ -76,7 +76,7 @@ Maintained by the tech-writer agent (see `_bmad/_memory/tech-writer-sidecar/docu
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at `specs/005-payment-receipt-upload/plan.md`.
+at `specs/006-pair-winrate-leaderboard/plan.md`.
 <!-- SPECKIT END -->
 
 
