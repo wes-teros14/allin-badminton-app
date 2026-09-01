@@ -134,7 +134,7 @@ A player wants to settle a debate in the group chat and shares a link that opens
 - **FR-015b**: Ranks MUST be numbered densely: the rank after a shared one is the next number, not a skip (1, 1, 2 — not 1, 1, 3).
 - **FR-015c**: A shared rank MUST be displayed once for the group rather than repeated on each row, with the tied rows visually bound together.
 - **FR-016**: Ranking MUST be deterministic — two loads of the same underlying data MUST produce the same order, including for partnerships tied on both win rate and wins.
-- **FR-017**: The board MUST show ten partnerships, extended as needed so that a tie group straddling the tenth place is kept whole rather than split.
+- **FR-017**: The board MUST show the top ten **places**, not the top ten rows. Because places are shared by ties, the number of rows varies — seven partnerships tied for first still leave nine further places to show. A place is therefore never split by the cut.
 - **FR-018**: Each row MUST show the rank position, both players' identities including their photos, the pair's win rate, and the pair's win–loss record.
 - **FR-019**: Player names MUST be presented using the same naming rule as every other leaderboard, so a player reads identically across tabs.
 - **FR-020**: Rows MUST remain legible on a phone-width screen when both players have long names.
