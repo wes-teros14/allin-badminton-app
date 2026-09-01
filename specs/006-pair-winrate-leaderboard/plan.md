@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add a fourth tab to the All-time Leaderboard ranking two-player partnerships by win rate — `Sim & Wes — 100% · 9W 0L` — with a 6-games-together floor and the same recent-activity rule the player board already applies.
+Add a fourth tab to the All-time Leaderboard ranking two-player partnerships by win rate — `Sim & Wes — 100% · 9W 0L` — with a 3-games-together floor and the same recent-activity rule the player board already applies.
 
 The board is **derived on read** from `matches` and their nested `match_results`, not from the trigger-maintained counter tables. That choice is forced rather than stylistic: `player_pair_stats.wins_together` already holds partner wins, but its companion `losses_against` counts losses *to an opponent*, not losses *beside a partner*, and partner losses cannot be reconstructed from it. Sourcing from the counters would have meant a new column, a trigger change, and edits to both stat-reversal functions. Deriving from match records needs none of that — no migration, no RLS change, and no possibility of corrupting numbers players already see.
 

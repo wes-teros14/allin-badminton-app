@@ -45,7 +45,7 @@ A player opens the All-time Leaderboard and taps the partnership tab. They see a
 
 **Acceptance Scenarios**:
 
-1. **Given** several partnerships have played 6 or more games together, **When** a player opens the partnership tab, **Then** the qualifying partnerships appear ordered from highest win rate to lowest, capped at ten rows.
+1. **Given** several partnerships have played 3 or more games together, **When** a player opens the partnership tab, **Then** the qualifying partnerships appear ordered from highest win rate to lowest, capped at ten rows.
 2. **Given** a partnership has won 9 of 9 recorded games together, **When** the board is displayed, **Then** that pair shows "100%" and "9W 0L".
 3. **Given** two players have partnered in both directions across different matches (once listed first, once listed second), **When** the board is displayed, **Then** they appear as a single combined entry, not two separate rows.
 4. **Given** two partnerships have the same win rate, **When** the board is displayed, **Then** the one with more wins is ranked higher.
@@ -63,7 +63,7 @@ A player looks for their own duo, doesn't find it, and reads the caption above t
 
 **Acceptance Scenarios**:
 
-1. **Given** a partnership has played fewer than 6 games together, **When** the board is displayed, **Then** that partnership does not appear regardless of its win rate.
+1. **Given** a partnership has played fewer than 3 games together, **When** the board is displayed, **Then** that partnership does not appear regardless of its win rate.
 2. **Given** a partnership qualifies on games played but one of the two players has not registered for any of the last 4 completed sessions, **When** the board is displayed, **Then** that partnership does not appear.
 3. **Given** any partnership list is displayed, **When** a player reads the area above the list, **Then** a caption states the ranking basis, the minimum games-together requirement, and the recent-activity requirement.
 4. **Given** no partnership meets the eligibility rules, **When** a player opens the tab, **Then** a plain explanatory message is shown instead of an empty list.
@@ -123,7 +123,7 @@ A player wants to settle a debate in the group chat and shares a link that opens
 
 **Eligibility**
 
-- **FR-012**: A partnership MUST have played at least 6 games together to appear on the board.
+- **FR-012**: A partnership MUST have played at least 3 games together to appear on the board.
 - **FR-013**: Both players in a partnership MUST have registered for at least one of the 4 most recent completed sessions for that partnership to appear.
 - **FR-014**: Both players MUST have an active profile for the partnership to appear.
 
@@ -158,7 +158,7 @@ A player wants to settle a debate in the group chat and shares a link that opens
 
 - **SC-001**: A player can go from opening the leaderboard to reading the top partnerships in a single tap.
 - **SC-002**: The partnership list finishes loading within 2 seconds on a typical mobile connection, for a full club history of at least 2,000 recorded games.
-- **SC-003**: 100% of listed partnerships meet both eligibility rules — no listed pair has fewer than 6 games together, and no listed pair contains a player absent from the last 4 completed sessions.
+- **SC-003**: 100% of listed partnerships meet both eligibility rules — no listed pair has fewer than 3 games together, and no listed pair contains a player absent from the last 4 completed sessions.
 - **SC-004**: For any spot-checked partnership, the displayed wins and losses match a manual count of that pair's results across past sessions exactly.
 - **SC-005**: A match scored as a 1-1 split contributes exactly one win and one loss to each of the two partnerships involved.
 - **SC-006**: The Mga Lodi, Cheers, and Awards tabs display identical values before and after this feature ships, verified by comparing all three tabs against a pre-change capture.
@@ -167,7 +167,7 @@ A player wants to settle a debate in the group chat and shares a link that opens
 
 ## Assumptions
 
-- **Minimum 6 games together** was chosen by the organiser as the eligibility floor. It is a tuning value, expected to be revisited once the real distribution of games-per-pair is visible.
+- **Minimum 3 games together** was chosen by the organiser as the eligibility floor. It is a tuning value, expected to be revisited once the real distribution of games-per-pair is visible.
 - **Top ten and the 4-session activity window** mirror the existing player win-rate board rather than introducing new numbers, so the two boards feel like one system.
 - **Both players must satisfy the activity rule** — a partnership where one member has stopped attending is treated as inactive, not as a historical record.
 - **Games from a session still in progress count immediately**, matching how the existing all-time player board already behaves as results are recorded. The activity window itself is measured only over completed sessions, again matching the existing board.
