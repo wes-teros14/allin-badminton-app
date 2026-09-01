@@ -71,7 +71,7 @@ Single-app SPA under `badminton-v2/` (Constitution Principle I). Runtime source 
 
 ### Implementation for User Story 1
 
-- [X] T012 [US1] Implement `rankPairs(tallies, options)` in `badminton-v2/src/lib/pairStats.ts` per `contracts/pair-tally.md` — `minGames` (default 6), `isEligiblePlayer` predicate, `limit` (default 10), and the three-level sort
+- [X] T012 [US1] Implement `rankPairs(tallies, options)` in `badminton-v2/src/lib/pairStats.ts` per `contracts/pair-tally.md` — `minGames` (default 3), `isEligiblePlayer` predicate, `limit` (default 10), and the three-level sort
 - [X] T013 [US1] Add `fetchPairLeaderboard()` to `badminton-v2/src/views/LeaderboardView.tsx` — the paginated `matches` read with the nested `match_results` embed and the `sessions!inner(id)` join, filtered `status = 'complete'`, ordered by `id`, looping `.range()` in pages of 1000 until a short page returns (research R2, `contracts/pair-leaderboard-read.md`)
 - [X] T014 [US1] Add the pagination correctness guard to `fetchPairLeaderboard()` in `badminton-v2/src/views/LeaderboardView.tsx`: issue the same filter with `{ count: 'exact', head: true }` and fail loudly if the total disagrees with the rows accumulated — a truncated read renders a plausible but wrong board, so this must not be swallowed
 - [X] T015 [US1] Add a comment above the `sessions!inner(id)` embed in `badminton-v2/src/views/LeaderboardView.tsx` recording that it exists so a future season/archive rule is a single added `.eq('sessions.…', …)` condition, and must not be removed as unused (FR-025, research R3)
@@ -127,8 +127,8 @@ Single-app SPA under `badminton-v2/` (Constitution Principle I). Runtime source 
 - [X] T031 [P] Spot-check one listed partnership against real session history by hand; the displayed W/L must match exactly (SC-004)
 - [X] T032 [P] Verify pagination actually paged: temporarily set the page size to 2, reload, and confirm the totals are unchanged (research R2, `quickstart.md` step 3)
 - [X] T033 [P] Check phone-width rendering with the two longest names in the roster — the win rate must stay on the row (FR-020)
-- [ ] T034 Report the real games-per-pair distribution to the organiser and confirm whether 6 is the right floor; the match generator's `repeatPartnerPenalty: 150` rotates partners deliberately, so the threshold was set without sight of the data and is a single constant to change (spec Assumptions)
-- [ ] T035 Confirm the tab's display label with the organiser (working suggestion: "Tambalan", following the playful naming of "Mga Lodi") and apply it in `badminton-v2/src/views/LeaderboardView.tsx`
+- [X] T034 Games-per-pair distribution reported (dev DB: max 4 games/pair, 0 pairs at the 3-game floor); organiser will verify against production and tune the constant there. Original note: the match generator's `repeatPartnerPenalty: 150` rotates partners deliberately, so the threshold was set without sight of the data and is a single constant to change (spec Assumptions)
+- [X] T035 Tab label confirmed by the organiser as "Partners" and applied in `badminton-v2/src/views/LeaderboardView.tsx`
 - [X] T036 Run `cd badminton-v2 && npm run lint`, `npm run test:unit`, and `npm run test:e2e -- pair-leaderboard.spec.ts`; report what passed by name and name any pre-existing unrelated failures explicitly rather than implying a green suite (Constitution Principle V)
 - [X] T037 Run `graphify update .` from the repository root to refresh the knowledge graph after the source changes
 - [X] T038 [P] Add an entry to `tasks/lessons.md` recording the pagination gotcha — that this is the first query in the app to cross the server row cap, that no `.range()` call existed anywhere before it, and that the failure mode is silent truncation rather than an error (project CLAUDE.md logging rule)

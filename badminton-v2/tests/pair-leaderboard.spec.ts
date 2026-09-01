@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /**
- * Browser coverage for the partnership (Tambalan) tab on the All-time Leaderboard.
+ * Browser coverage for the partnership (Partners) tab on the All-time Leaderboard.
  *
  * Deliberately read-only. Seeding six games for a pair would mean inserting
  * match_results, and that fires the on_match_result_insert trigger — writing to
@@ -15,7 +15,7 @@ import { expect, test, type Page } from '@playwright/test'
  * either a ranked list or its explanatory empty state — never a broken one.
  */
 
-const PAIRS_TAB = 'Tambalan'
+const PAIRS_TAB = 'Partners'
 
 async function openDevPanel(page: Page) {
   const devBtn = page.getByRole('button', { name: 'DEV' })

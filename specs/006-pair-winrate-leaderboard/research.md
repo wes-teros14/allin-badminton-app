@@ -123,7 +123,7 @@ The key is used rather than the display name because names are mutable free text
 - split scoring: a match with two result rows scored 1-1 yields exactly 1W and 1L for each pair (SC-005)
 - a match with no result rows contributes nothing (FR-009)
 - self-pair rows are discarded (R5)
-- the 6-game threshold excludes a 5-game pair and admits a 6-game pair (FR-012)
+- the 3-game threshold excludes a 2-game pair and admits a 3-game pair (FR-012)
 - ranking: win rate, then wins, then the deterministic key tiebreak (FR-015, FR-016)
 - win rate rounding matches the existing board's `Math.round(wins / games * 100)`
 
@@ -135,6 +135,6 @@ The key is used rather than the display name because names are mutable free text
 
 ## R9. Rounding and the zero-games case
 
-**Decision**: `Math.round(wins / games * 100)`, identical to `fetchAllTimeLeaderboard()`. Pairs with zero games cannot reach the display path because the 6-game threshold (FR-012) excludes them, but the tally function guards the division anyway so it is safe to call in isolation from tests.
+**Decision**: `Math.round(wins / games * 100)`, identical to `fetchAllTimeLeaderboard()`. Pairs with zero games cannot reach the display path because the 3-game threshold (FR-012) excludes them, but the tally function guards the division anyway so it is safe to call in isolation from tests.
 
 **Rationale**: A second rounding rule would make the pair board disagree with the player board on the same underlying arithmetic — a Principle III divergence, and the kind players notice immediately.

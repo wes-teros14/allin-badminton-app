@@ -58,7 +58,7 @@ interface PairLeaderboardEntry {
   winRate: number
 }
 
-type Tab = 'wins' | 'cheers' | 'awards' | 'pairs'
+type Tab = 'wins' | 'pairs' | 'cheers' | 'awards'
 
 interface AwardEntry {
   emoji: string
@@ -136,7 +136,7 @@ async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
 
 // --- Partnership board -----------------------------------------------------
 
-const MIN_GAMES_TOGETHER = 6
+const MIN_GAMES_TOGETHER = 3
 const MATCH_PAGE_SIZE = 1000
 
 /**
@@ -575,7 +575,7 @@ export function LeaderboardView() {
 
       {/* Tab switcher */}
       <div className="flex gap-1 mb-6">
-        {(['wins', 'cheers', 'awards', 'pairs'] as Tab[]).map((t) => (
+        {(['wins', 'pairs', 'cheers', 'awards'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -585,7 +585,7 @@ export function LeaderboardView() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'wins' ? 'Mga Lodi' : t === 'cheers' ? 'Cheers' : t === 'awards' ? 'Awards' : 'Tambalan'}
+            {t === 'wins' ? 'Mga Lodi' : t === 'cheers' ? 'Cheers' : t === 'awards' ? 'Awards' : 'Partners'}
           </button>
         ))}
       </div>
