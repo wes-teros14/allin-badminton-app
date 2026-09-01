@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
-import { rankPairs, tallyPairs } from '@/lib/pairStats'
+import { groupByRank, rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTallyMatch } from '@/lib/pairStats'
 import { Avatar } from '@/components/Avatar'
 
@@ -50,6 +50,7 @@ interface PairLeaderboardPlayer {
 }
 
 interface PairLeaderboardEntry {
+  rank: number
   key: string
   players: [PairLeaderboardPlayer, PairLeaderboardPlayer]
   wins: number
@@ -232,6 +233,7 @@ async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
   })
 
   return ranked.map((pair) => ({
+    rank: pair.rank,
     key: pair.key,
     players: [toPlayer(pair.playerA), toPlayer(pair.playerB)],
     wins: pair.wins,
@@ -320,32 +322,64 @@ function PairsLeaderboard() {
       <p className="text-xs text-muted-foreground text-center pb-1">
         Ranked by win rate · min. {MIN_GAMES_TOGETHER} games together · both active in the last {RECENT_SESSIONS_WINDOW}
       </p>
-      {entries.map((entry, i) => (
-        <div key={entry.key} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-          <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
-            {RANK_ICON(i)}
-          </span>
-          <div className="flex shrink-0 -space-x-2">
-            {entry.players.map((player) => (
-              <Avatar
-                key={player.id}
-                url={player.avatarUrl}
-                name={player.displayName}
-                size={28}
-                className="ring-2 ring-card"
-              />
-            ))}
+      {groupByRank(entries).map((group) =>
+        group.pairs.length === 1 ? (
+          <div key={group.rank} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
+            <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
+              {RANK_ICON(group.rank - 1)}
+            </span>
+            <PairRowBody entry={group.pairs[0]} />
           </div>
-          <span className="flex-1 min-w-0 font-medium text-sm line-clamp-2">
-            {entry.players[0].displayName} &amp; {entry.players[1].displayName}
-          </span>
-          <div className="text-right shrink-0">
-            <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
-            <p className="text-xs text-muted-foreground">{entry.wins}W {entry.losses}L</p>
+        ) : (
+          // Tied pairs share one rank, drawn once for the group and bound by a
+          // rule down the side, so five identical records don't read as five
+          // separate placings.
+          <div
+            key={group.rank}
+            className="flex items-stretch gap-2"
+            aria-label={`Rank ${group.rank}, ${group.pairs.length} partnerships tied`}
+          >
+            <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0 pt-3">
+              {RANK_ICON(group.rank - 1)}
+            </span>
+            <span className="w-0.5 shrink-0 rounded-full bg-border" aria-hidden="true" />
+            <div className="flex-1 min-w-0 space-y-2">
+              {group.pairs.map((entry) => (
+                <div key={entry.key} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
+                  <PairRowBody entry={entry} />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ),
+      )}
     </div>
+  )
+}
+
+/** Everything on a partnership row except the rank cell, which the group owns. */
+function PairRowBody({ entry }: { entry: PairLeaderboardEntry }) {
+  return (
+    <>
+      <div className="flex shrink-0 -space-x-2">
+        {entry.players.map((player) => (
+          <Avatar
+            key={player.id}
+            url={player.avatarUrl}
+            name={player.displayName}
+            size={28}
+            className="ring-2 ring-card"
+          />
+        ))}
+      </div>
+      <span className="flex-1 min-w-0 font-medium text-sm line-clamp-2">
+        {entry.players[0].displayName} &amp; {entry.players[1].displayName}
+      </span>
+      <div className="text-right shrink-0">
+        <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
+        <p className="text-xs text-muted-foreground">{entry.wins}W {entry.losses}L</p>
+      </div>
+    </>
   )
 }
 
