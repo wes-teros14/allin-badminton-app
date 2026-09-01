@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { DEFAULT_MIN_GAMES_TOGETHER, pairKey, rankPairs, tallyPairs } from '@/lib/pairStats'
+import { DEFAULT_MIN_GAMES_TOGETHER, groupByRank, pairKey, rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTally, PairTallyMatch } from '@/lib/pairStats'
 
 // pairStats reuses sortMatchResults, and matchResults.ts constructs the Supabase
@@ -224,9 +224,12 @@ describe('rankPairs presentation', () => {
     expect(Number.isNaN(ranked[0].winRate)).toBe(false)
   })
 
-  it('returns at most the limit (FR-017)', () => {
-    const many = Array.from({ length: 25 }, (_, i) => tally(`p${i}`, `q${i}`, 6 + i, 1))
+  it('returns at most the limit when no tie straddles the cut (FR-017)', () => {
+    // Distinct win rates throughout (91%, 83%, 77% …), so every rank is its own
+    // group and the cut lands cleanly. Straddling groups are covered separately.
+    const many = Array.from({ length: 15 }, (_, i) => tally(`p${i}`, `q${i}`, 10, i + 1))
 
+    expect(new Set(many.map((t) => Math.round((t.wins / t.games) * 100))).size).toBe(15)
     expect(rankPairs(many)).toHaveLength(10)
     expect(rankPairs(many, { limit: 3 })).toHaveLength(3)
   })
@@ -274,5 +277,93 @@ describe('rankPairs eligibility', () => {
     )
 
     expect(ranked.map((r) => r.key)).toEqual([pairKey(A, B)])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Ties — dense ranking shared on the displayed win rate
+// ---------------------------------------------------------------------------
+describe('rankPairs ties', () => {
+  it('gives pairs with the same win rate the same rank', () => {
+    const ranked = rankPairs([tally(A, B, 2, 1), tally(C, D, 2, 1)])
+
+    expect(ranked.map((r) => r.rank)).toEqual([1, 1])
+  })
+
+  it('ties on the displayed rate even when the records differ', () => {
+    // 6W 3L and 2W 1L both show 67%. The board prints one number, so it ranks
+    // them as one — but the bigger record still lists first.
+    const ranked = rankPairs([tally(C, D, 2, 1), tally(A, B, 6, 3)])
+
+    expect(ranked.map((r) => [r.wins, r.losses, r.winRate, r.rank])).toEqual([
+      [6, 3, 67, 1],
+      [2, 1, 67, 1],
+    ])
+  })
+
+  it('numbers densely — the rank after a tie is the next number, not a skip', () => {
+    const ranked = rankPairs([
+      tally(A, B, 3, 1), // 75%
+      tally(C, D, 2, 1), // 67%
+      tally(A, C, 2, 1), // 67%
+      tally(B, D, 2, 1), // 67%
+      tally(A, D, 1, 2), // 33%
+    ])
+
+    expect(ranked.map((r) => r.rank)).toEqual([1, 2, 2, 2, 3])
+  })
+
+  it('still orders tied rows by wins, then by key, so the sequence is stable', () => {
+    const first = rankPairs([tally(A, B, 2, 1), tally(C, D, 4, 2), tally(A, C, 2, 1)])
+    const shuffled = rankPairs([tally(A, C, 2, 1), tally(A, B, 2, 1), tally(C, D, 4, 2)])
+
+    expect(first.map((r) => r.key)).toEqual(shuffled.map((r) => r.key))
+    expect(first[0].wins).toBe(4) // biggest record leads its own tie group
+    expect(first.every((r) => r.rank === 1)).toBe(true)
+  })
+
+  it('keeps a tie group whole when it straddles the limit', () => {
+    // Four pairs share 33%; the tenth row lands in the middle of them.
+    const pairs = [
+      ...Array.from({ length: 8 }, (_, i) => tally(`hi${i}`, `lo${i}`, 9 - i, 1)),
+      tally('t1', 'u1', 1, 2),
+      tally('t2', 'u2', 1, 2),
+      tally('t3', 'u3', 1, 2),
+      tally('t4', 'u4', 1, 2),
+    ]
+
+    const ranked = rankPairs(pairs)
+
+    expect(ranked).toHaveLength(12)
+    expect(ranked.filter((r) => r.winRate === 33)).toHaveLength(4)
+  })
+
+  it('still cuts at the limit when the boundary falls between groups', () => {
+    const pairs = Array.from({ length: 14 }, (_, i) => tally(`hi${i}`, `lo${i}`, 20 - i, 1))
+
+    expect(rankPairs(pairs)).toHaveLength(10)
+  })
+})
+
+describe('groupByRank', () => {
+  it('collapses shared ranks into one group each', () => {
+    const groups = groupByRank(rankPairs([
+      tally(A, B, 3, 1), // 75%
+      tally(C, D, 2, 1), // 67%
+      tally(A, C, 2, 1), // 67%
+    ]))
+
+    expect(groups.map((g) => [g.rank, g.pairs.length])).toEqual([[1, 1], [2, 2]])
+  })
+
+  it('returns nothing for an empty board', () => {
+    expect(groupByRank([])).toEqual([])
+  })
+
+  it('preserves the ranked order across and within groups', () => {
+    const ranked = rankPairs([tally(A, B, 3, 1), tally(C, D, 2, 1), tally(A, C, 2, 1)])
+
+    expect(groupByRank(ranked).flatMap((g) => g.pairs.map((p) => p.key)))
+      .toEqual(ranked.map((p) => p.key))
   })
 })

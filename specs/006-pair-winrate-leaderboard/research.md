@@ -94,7 +94,7 @@ The guard is two lines and removes an entire class of nonsense row. Constitution
 
 ## R6. Deterministic ordering
 
-**Decision**: Sort by win rate descending, then wins descending, then by the pair key (the two ids sorted and joined) ascending.
+**Decision**: Order by win rate descending, then wins descending, then by the pair key (the two ids sorted and joined) ascending. Rank is then assigned densely on the displayed win rate, so equal percentages share a rank and wins only order rows *within* it.
 
 **Rationale**: FR-016 requires identical ordering across loads of identical data. Win rate and wins alone do not guarantee it — `Array.prototype.sort` is stable in modern engines, but the *input* order is whatever the paginated query returned, which is stable only because R2 orders by `id`. Relying on that coupling is fragile: change the query order and the board silently starts reshuffling ties. Sorting on the pair key makes the final order a property of the data, independent of fetch order.
 
