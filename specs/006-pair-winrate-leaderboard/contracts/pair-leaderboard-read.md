@@ -61,7 +61,8 @@ interface PairLeaderboardEntry {
 
 A `PairsLeaderboard()` component beside the existing `WinsLeaderboard()`, reusing its visual language exactly (Constitution UI Rules — preserve the established pattern):
 
-- **Row**: `RANK_ICON(i)` → both avatars → both names → right-aligned `{winRate}%` with `{wins}W {losses}L` beneath, in the same type sizes and card styling the player rows use.
+- **Row**: `RANK_ICON(rank - 1)` → both avatars → both names → right-aligned `{winRate}%` with `{wins}W {losses}L` beneath, in the same type sizes and card styling the player rows use. The glyph keys off *rank*, not row index, so tied pairs show the same medal.
+- **Tie group**: pairs sharing a rank render under one rank cell with a vertical rule binding them, rather than repeating the glyph per row. A group of one renders as an ordinary row.
 - **Avatars**: two `<Avatar>` at the player board's size, overlapped slightly with a negative margin and a ring so they read as one unit rather than two list items. The pair, not each player, is the row's subject.
 - **Names**: joined with `&`. Must stay legible at phone width with two long names — truncate the name block as a whole rather than letting it push the win rate off the row (FR-020).
 - **Caption**: same placement and styling as the player board's, stating ranking basis and both eligibility rules, e.g. *"Ranked by win rate · min. 3 games together · both players active in the last 4 sessions"* (FR-021).
