@@ -132,11 +132,11 @@ export interface RankPairsOptions {
   /** Both players must pass this for the pair to be ranked. */
   isEligiblePlayer?: (playerId: string) => boolean
   /**
-   * Rows to show. A tie group straddling the cut is kept whole rather than
-   * split, so the list can run past this — pairs with identical results are
-   * never separated by the boundary.
+   * How many *places* to show, not how many rows. Seven pairs sharing first
+   * place is one place, so the board runs to whatever row count the top ten
+   * placings happen to need. A place is therefore never split by the cut.
    */
-  limit?: number
+  maxRank?: number
 }
 
 /**
@@ -145,7 +145,9 @@ export interface RankPairsOptions {
  * 12-3 one, which reads as broken rather than intentional.
  */
 export const DEFAULT_MIN_GAMES_TOGETHER = 3
-export const DEFAULT_PAIR_LIMIT = 10
+
+/** Ten *places*, not ten rows — ties make the two differ. */
+export const DEFAULT_PAIR_MAX_RANK = 10
 
 /**
  * Applies eligibility, ordering, and ranking to raw tallies.
@@ -167,7 +169,7 @@ export function rankPairs(
   const {
     minGames = DEFAULT_MIN_GAMES_TOGETHER,
     isEligiblePlayer = () => true,
-    limit = DEFAULT_PAIR_LIMIT,
+    maxRank = DEFAULT_PAIR_MAX_RANK,
   } = options
 
   const source = tallies instanceof Map ? [...tallies.values()] : tallies
@@ -196,12 +198,10 @@ export function rankPairs(
     return { ...pair, rank }
   })
 
-  if (ranked.length <= limit) return ranked
-
-  // Keep the group that straddles the cut whole. Dropping half of a set of
-  // identical records would look arbitrary to the pairs who fell off.
-  const rankAtCut = ranked[limit - 1].rank
-  return ranked.filter((pair) => pair.rank <= rankAtCut)
+  // Cut on place, not row count: "top ten" means the ten best placings, however
+  // many pairs those hold. Seven partnerships tied for first still leave nine
+  // more places to show.
+  return ranked.filter((pair) => pair.rank <= maxRank)
 }
 
 export interface RankGroup<T extends { rank: number } = RankedPair> {

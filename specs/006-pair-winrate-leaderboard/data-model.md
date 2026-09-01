@@ -74,7 +74,7 @@ Applied in this order. Order matters: eligibility runs on complete tallies, so a
 | 4 | Require **both** players present in `profiles` with `is_active = true` | FR-014 |
 | 5 | Order: `winRate` desc → `wins` desc → `key` asc | FR-015, FR-016 |
 | 6 | Assign dense ranks — equal `winRate` shares a rank, next distinct rate takes the next number | FR-015a, FR-015b |
-| 7 | Take 10 rows, extending to keep a straddling tie group whole | FR-017 |
+| 7 | Keep every pair placed 10th or better — places, not rows, so ties never split | FR-017 |
 
 Rules 3 and 4 reuse the exact queries `fetchAllTimeLeaderboard()` already runs (`RECENT_SESSIONS_WINDOW = 4`, `sessions.status = 'complete'`, `profiles.is_active = true`), so the two boards agree on who counts as an active player.
 
