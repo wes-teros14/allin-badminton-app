@@ -224,14 +224,14 @@ describe('rankPairs presentation', () => {
     expect(Number.isNaN(ranked[0].winRate)).toBe(false)
   })
 
-  it('returns at most the limit when no tie straddles the cut (FR-017)', () => {
-    // Distinct win rates throughout (91%, 83%, 77% …), so every rank is its own
-    // group and the cut lands cleanly. Straddling groups are covered separately.
+  it('shows ten places — one row each when nothing is tied (FR-017)', () => {
+    // Distinct win rates throughout (91%, 83%, 77% …), so every place holds
+    // exactly one pair and ten places happen to mean ten rows.
     const many = Array.from({ length: 15 }, (_, i) => tally(`p${i}`, `q${i}`, 10, i + 1))
 
     expect(new Set(many.map((t) => Math.round((t.wins / t.games) * 100))).size).toBe(15)
     expect(rankPairs(many)).toHaveLength(10)
-    expect(rankPairs(many, { limit: 3 })).toHaveLength(3)
+    expect(rankPairs(many, { maxRank: 3 })).toHaveLength(3)
   })
 
   it('carries wins, losses and games through unchanged', () => {
@@ -322,26 +322,41 @@ describe('rankPairs ties', () => {
     expect(first.every((r) => r.rank === 1)).toBe(true)
   })
 
-  it('keeps a tie group whole when it straddles the limit', () => {
-    // Four pairs share 33%; the tenth row lands in the middle of them.
+  it('runs past ten rows when places are shared — ten places, not ten rows', () => {
+    // Seven pairs tied for first, then nine more distinct rates behind them.
+    // "Top ten" means ten placings, so all seven of first place are shown.
     const pairs = [
-      ...Array.from({ length: 8 }, (_, i) => tally(`hi${i}`, `lo${i}`, 9 - i, 1)),
-      tally('t1', 'u1', 1, 2),
-      tally('t2', 'u2', 1, 2),
-      tally('t3', 'u3', 1, 2),
-      tally('t4', 'u4', 1, 2),
+      ...Array.from({ length: 7 }, (_, i) => tally(`w${i}`, `x${i}`, 4, 0)),
+      ...Array.from({ length: 9 }, (_, i) => tally(`y${i}`, `z${i}`, 10, i + 1)),
     ]
 
     const ranked = rankPairs(pairs)
 
-    expect(ranked).toHaveLength(12)
-    expect(ranked.filter((r) => r.winRate === 33)).toHaveLength(4)
+    expect(ranked.filter((r) => r.rank === 1)).toHaveLength(7)
+    expect(Math.max(...ranked.map((r) => r.rank))).toBe(10)
+    expect(ranked.length).toBeGreaterThan(10)
   })
 
-  it('still cuts at the limit when the boundary falls between groups', () => {
-    const pairs = Array.from({ length: 14 }, (_, i) => tally(`hi${i}`, `lo${i}`, 20 - i, 1))
+  it('never shows a place beyond the cut, however many rows that is', () => {
+    const pairs = Array.from({ length: 14 }, (_, i) => tally(`hi${i}`, `lo${i}`, 10, i + 1))
 
-    expect(rankPairs(pairs)).toHaveLength(10)
+    const ranked = rankPairs(pairs)
+
+    expect(new Set(ranked.map((r) => r.rank)).size).toBe(10)
+    expect(ranked.every((r) => r.rank <= 10)).toBe(true)
+  })
+
+  it('a tie can never be split across the cut', () => {
+    // Ten distinct rates, then a five-way tie sitting exactly on tenth place.
+    const pairs = [
+      ...Array.from({ length: 9 }, (_, i) => tally(`a${i}`, `b${i}`, 10, i + 1)),
+      ...Array.from({ length: 5 }, (_, i) => tally(`c${i}`, `d${i}`, 1, 4)),
+    ]
+
+    const ranked = rankPairs(pairs)
+    const lastPlace = ranked.filter((r) => r.rank === 10)
+
+    expect(lastPlace).toHaveLength(5)
   })
 })
 

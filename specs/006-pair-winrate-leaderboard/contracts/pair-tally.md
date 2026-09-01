@@ -68,7 +68,7 @@ Applies the eligibility floor and the ordering. Kept separate from `tallyPairs` 
 - `winRate` is `Math.round(wins / games * 100)`; a tally with `games === 0` yields `0` rather than `NaN` (research R9)
 - Orders by `winRate` descending, then `wins` descending, then `key` ascending (FR-015, FR-016)
 - Assigns a dense `rank`: equal `winRate` shares a rank, and the next distinct rate takes the next number (FR-015a, FR-015b)
-- Returns `options.limit` entries (default 10), extended so a tie group straddling the cut is kept whole (FR-017)
+- Returns every pair ranked at or above `options.maxRank` (default 10) — a cut on *places*, so the row count varies with how many ties there are and a place can never be split (FR-017)
 - `groupByRank(ranked)` collapses the result into one group per shared rank, so the view draws the rank once (FR-015c)
 - Given identical input, returns an identically ordered array every time — no dependence on input order
 
