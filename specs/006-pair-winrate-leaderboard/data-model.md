@@ -69,7 +69,7 @@ Applied in this order. Order matters: eligibility runs on complete tallies, so a
 | # | Rule | Source |
 |---|------|--------|
 | 1 | Discard pairs whose two ids are equal | research R5 |
-| 2 | Require `games >= 6` | FR-012 |
+| 2 | Require `games >= 3` | FR-012 |
 | 3 | Require **both** players registered in ≥ 1 of the 4 most recent **completed** sessions | FR-013 |
 | 4 | Require **both** players present in `profiles` with `is_active = true` | FR-014 |
 | 5 | Sort: `winRate` desc → `wins` desc → `key` asc | FR-015, FR-016 |
