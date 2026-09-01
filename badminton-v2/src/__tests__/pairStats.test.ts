@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { pairKey, rankPairs, tallyPairs } from '@/lib/pairStats'
+import { DEFAULT_MIN_GAMES_TOGETHER, pairKey, rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTally, PairTallyMatch } from '@/lib/pairStats'
 
 // pairStats reuses sortMatchResults, and matchResults.ts constructs the Supabase
@@ -235,5 +235,44 @@ describe('rankPairs presentation', () => {
     const ranked = rankPairs([tally(A, B, 7, 2)])
 
     expect(ranked[0]).toMatchObject({ wins: 7, losses: 2, games: 9 })
+  })
+})
+
+describe('rankPairs eligibility', () => {
+  it('excludes a pair below the games floor and admits one that meets it (FR-012)', () => {
+    const below = tally(A, B, 2, 0) // 100%, but only 2 games together
+    const meets = tally(C, D, 2, 1) // 67% over 3 games
+
+    const ranked = rankPairs([below, meets])
+
+    expect(ranked.map((r) => r.key)).toEqual([pairKey(C, D)])
+  })
+
+  it('defaults the floor to DEFAULT_MIN_GAMES_TOGETHER', () => {
+    const atFloor = tally(A, B, DEFAULT_MIN_GAMES_TOGETHER, 0)
+    const belowFloor = tally(C, D, DEFAULT_MIN_GAMES_TOGETHER - 1, 0)
+
+    const ranked = rankPairs([atFloor, belowFloor])
+
+    expect(ranked.map((r) => r.key)).toEqual([pairKey(A, B)])
+  })
+
+  it('excludes a qualifying pair when either player is ineligible (FR-013, FR-014)', () => {
+    const pair = tally(A, B, 5, 1)
+
+    expect(rankPairs([pair], { isEligiblePlayer: () => true })).toHaveLength(1)
+    expect(rankPairs([pair], { isEligiblePlayer: (id) => id !== A })).toHaveLength(0)
+    expect(rankPairs([pair], { isEligiblePlayer: (id) => id !== B })).toHaveLength(0)
+    expect(rankPairs([pair], { isEligiblePlayer: () => false })).toHaveLength(0)
+  })
+
+  it('keeps a pair only when BOTH players pass, across a mixed set', () => {
+    const eligibleIds = new Set([A, B])
+    const ranked = rankPairs(
+      [tally(A, B, 4, 0), tally(A, C, 4, 0), tally(C, D, 4, 0)],
+      { isEligiblePlayer: (id) => eligibleIds.has(id) },
+    )
+
+    expect(ranked.map((r) => r.key)).toEqual([pairKey(A, B)])
   })
 })

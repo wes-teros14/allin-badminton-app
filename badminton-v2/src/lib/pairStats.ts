@@ -134,7 +134,7 @@ export interface RankPairsOptions {
  * pairs have very few games together. Without a floor a 2-0 duo outranks a
  * 12-3 one, which reads as broken rather than intentional.
  */
-export const DEFAULT_MIN_GAMES_TOGETHER = 6
+export const DEFAULT_MIN_GAMES_TOGETHER = 3
 export const DEFAULT_PAIR_LIMIT = 10
 
 /**
