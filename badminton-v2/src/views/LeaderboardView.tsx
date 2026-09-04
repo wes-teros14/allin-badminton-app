@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
+import { assignDenseRanks, cutToPlaces, groupByRank } from '@/lib/denseRank'
+import type { RankGroup } from '@/lib/denseRank'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
-import { groupByRank, rankPairs, tallyPairs } from '@/lib/pairStats'
+import { rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTallyMatch } from '@/lib/pairStats'
 import { Avatar } from '@/components/Avatar'
 
@@ -10,6 +12,7 @@ import { Avatar } from '@/components/Avatar'
 // Types
 // ---------------------------------------------------------------------------
 interface LeaderboardEntry {
+  rank: number
   playerId: string
   displayName: string
   avatarUrl: string | null
@@ -68,16 +71,46 @@ interface AwardEntry {
   value: number
 }
 
+/** Still used by the Cheers lists, which are top-five counts rather than places. */
 const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
+
+// ---------------------------------------------------------------------------
+// Ranked board presentation
+// ---------------------------------------------------------------------------
+/** Places 1-3 get a medal; every place below gets a numbered chip. */
+const PODIUM_PLACES = 3
+/** Ten *places*, not ten rows — a tie makes the two differ. */
+const MAX_PLACES = 10
+
+const MEDALS = ['🥇', '🥈', '🥉'] as const
+const ORDINALS = ['1st', '2nd', '3rd'] as const
+/**
+ * First place borrows `--gold`, the same token the award toast uses, so the two
+ * golds in the app cannot drift. Silver and bronze have no tokens; palette
+ * values are used rather than inventing two more. Bronze is amber-700 (brown)
+ * rather than an orange — an orange wash on a dark card reads as the
+ * destructive red.
+ */
+const PODIUM_TINT = [
+  'border-gold bg-gold/[0.07]',
+  'border-zinc-400/60 bg-zinc-400/[0.07]',
+  'border-amber-700/60 bg-amber-700/[0.09]',
+] as const
 
 // ---------------------------------------------------------------------------
 // Data fetchers
 // ---------------------------------------------------------------------------
 const RECENT_SESSIONS_WINDOW = 4
+/**
+ * Sessions a player must have attended to appear on any board. On the
+ * partnership board *both* partners must clear it, so one regular carrying a
+ * newcomer through three games together cannot mint a top-ten pairing.
+ */
+const MIN_SESSIONS_PLAYED = 3
 
 async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const [statsRes, profilesRes, recentSessionsRes] = await Promise.all([
-    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', 3),
+    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', MIN_SESSIONS_PLAYED),
     supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
   ])
@@ -97,21 +130,23 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const nameMap = new Map(profileRows.map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
   const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
 
-  return ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number; sessions_attended: number }>)
+  const ordered = ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number; sessions_attended: number }>)
     .filter((s) => nameMap.has(s.player_id) && activePlayerIds.has(s.player_id))
-    .map((s) => {
-      const losses = s.games_played - s.wins
-      return {
-        playerId: s.player_id,
-        displayName: nameMap.get(s.player_id)!,
-        avatarUrl: avatarMap.get(s.player_id) ?? null,
-        wins: s.wins,
-        losses,
-        winRate: Math.round((s.wins / s.games_played) * 100),
-      }
-    })
-    .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
-    .slice(0, 10)
+    .map((s) => ({
+      playerId: s.player_id,
+      displayName: nameMap.get(s.player_id)!,
+      avatarUrl: avatarMap.get(s.player_id) ?? null,
+      wins: s.wins,
+      losses: s.games_played - s.wins,
+      winRate: Math.round((s.wins / s.games_played) * 100),
+    }))
+    // The player id settles what wins do not, so the sequence is a property of
+    // the data rather than of the order Supabase happened to return rows in.
+    .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.playerId.localeCompare(b.playerId))
+
+  // Shared rank by win rate, matching the partnership board: two players both
+  // reading 67% take the same place, and the cut counts places not rows.
+  return cutToPlaces(assignDenseRanks(ordered, (entry) => entry.winRate), MAX_PLACES)
 }
 
 async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
@@ -190,11 +225,18 @@ async function fetchCompletedMatchesForPairs(): Promise<PairTallyMatch[]> {
 }
 
 async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
-  const [matches, profilesRes, recentSessionsRes] = await Promise.all([
+  const [matches, profilesRes, recentSessionsRes, seasonedRes] = await Promise.all([
     fetchCompletedMatchesForPairs(),
     supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
+    // Same floor the individual board applies, read from the same column, so
+    // "3+ sessions played" cannot come to mean two different things.
+    supabase.from('player_stats').select('player_id').gte('sessions_attended', MIN_SESSIONS_PLAYED),
   ])
+
+  const seasonedPlayerIds = new Set(
+    ((seasonedRes.data ?? []) as Array<{ player_id: string }>).map((s) => s.player_id),
+  )
 
   const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
   const activePlayerIds = new Set<string>()
@@ -221,9 +263,13 @@ async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
     })),
   )
 
+  // rankPairs applies this to *both* players, so a pairing needs two qualifying
+  // partners — not one regular plus whoever they happened to play beside.
   const ranked = rankPairs(tallyPairs(matches), {
     minGames: MIN_GAMES_TOGETHER,
-    isEligiblePlayer: (id) => profileById.has(id) && activePlayerIds.has(id),
+    maxRank: MAX_PLACES,
+    isEligiblePlayer: (id) =>
+      profileById.has(id) && activePlayerIds.has(id) && seasonedPlayerIds.has(id),
   })
 
   const toPlayer = (id: string): PairLeaderboardPlayer => ({
@@ -246,6 +292,147 @@ async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+/**
+ * One place on a board: a marker (medal or numbered chip) beside either a
+ * single row or, when a place is shared, a stack of rows under a "3 tied"
+ * caption.
+ *
+ * The marker column is a fixed width whether the place is tied or not. That is
+ * the whole point of drawing both cases through one component — the previous
+ * code put the rank inside the card for an untied place and outside it for a
+ * tied one, so the rank column did not line up down the board.
+ */
+function RankPlace<T>({
+  group,
+  marker,
+  frameClassName,
+  tiedNoun,
+  renderRow,
+  keyOf,
+}: {
+  group: RankGroup<T>
+  marker: ReactNode
+  frameClassName: string
+  /** Plural noun for the tie group's screen-reader label. */
+  tiedNoun: string
+  renderRow: (item: T) => ReactNode
+  keyOf: (item: T) => string
+}) {
+  const isTie = group.items.length > 1
+
+  return (
+    <div
+      className={`flex gap-3 bg-card ${isTie ? 'items-start p-2.5' : 'items-center py-2.5 pl-2.5 pr-3.5'} ${frameClassName}`}
+      aria-label={isTie ? `Rank ${group.rank}, ${group.items.length} ${tiedNoun} tied` : undefined}
+    >
+      {marker}
+
+      {isTie ? (
+        <div className="min-w-0 flex-1">
+          <p className="border-b border-border px-1 pb-1.5 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+            {group.items.length} tied
+          </p>
+          {group.items.map((item, i) => (
+            <div
+              key={keyOf(item)}
+              className={`flex items-center gap-3 px-1 py-2 ${i > 0 ? 'border-t border-border' : ''}`}
+            >
+              {renderRow(item)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        renderRow(group.items[0])
+      )}
+    </div>
+  )
+}
+
+/**
+ * A whole board: medal podium for places 1-3, a labelled divider, then numbered
+ * chips for every place below. Both the individual and the partnership board
+ * render through this, so their rank columns cannot drift apart again.
+ */
+function RankedBoard<T extends { rank: number }>({
+  entries,
+  renderRow,
+  keyOf,
+  tiedNoun,
+}: {
+  entries: readonly T[]
+  renderRow: (item: T, variant: 'podium' | 'list') => ReactNode
+  keyOf: (item: T) => string
+  tiedNoun: string
+}) {
+  const groups = groupByRank(entries)
+  const podium = groups.filter((g) => g.rank <= PODIUM_PLACES)
+  const rest = groups.filter((g) => g.rank > PODIUM_PLACES)
+  // Named from the places actually on screen, not from MAX_PLACES — a board
+  // holding six places must not advertise a tenth that isn't there.
+  const restLabel =
+    rest.length === 0 ? null
+    : rest[0].rank === rest[rest.length - 1].rank ? `Place ${rest[0].rank}`
+    : `Places ${rest[0].rank}–${rest[rest.length - 1].rank}`
+
+  return (
+    <div className="space-y-2">
+      {podium.map((group) => (
+        <RankPlace
+          key={group.rank}
+          group={group}
+          tiedNoun={tiedNoun}
+          keyOf={keyOf}
+          renderRow={(item) => renderRow(item, 'podium')}
+          frameClassName={`rounded-2xl border ${PODIUM_TINT[group.rank - 1]}`}
+          marker={
+            <span className="flex w-9 shrink-0 flex-col items-center gap-0.5 pt-0.5">
+              <span className="text-[25px] leading-none" aria-hidden="true">
+                {MEDALS[group.rank - 1]}
+              </span>
+              <span className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                {ORDINALS[group.rank - 1]}
+              </span>
+            </span>
+          }
+        />
+      ))}
+
+      {restLabel && (
+        <p className="flex items-center gap-2 pt-2 text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
+          {restLabel}
+          <span className="h-px flex-1 bg-border" aria-hidden="true" />
+        </p>
+      )}
+
+      {rest.map((group) => (
+        <RankPlace
+          key={group.rank}
+          group={group}
+          tiedNoun={tiedNoun}
+          keyOf={keyOf}
+          renderRow={(item) => renderRow(item, 'list')}
+          frameClassName="rounded-xl border border-border"
+          marker={
+            <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-secondary text-[15px] font-bold tabular-nums text-foreground">
+              {group.rank}
+            </span>
+          }
+        />
+      ))}
+    </div>
+  )
+}
+
+function BoardSkeleton({ height }: { height: string }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className={`${height} rounded-xl bg-muted animate-pulse`} />
+      ))}
+    </div>
+  )
+}
+
 function WinsLeaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -259,31 +446,20 @@ function WinsLeaderboard() {
   useEffect(() => { load() }, [load])
 
   return isLoading ? (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
-      ))}
-    </div>
+    <BoardSkeleton height="h-14" />
   ) : entries.length === 0 ? (
     <p className="text-muted-foreground text-sm">No stats recorded yet.</p>
   ) : (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground text-center pb-1">
-        Ranked by win rate · min. 3 sessions played · must be active in the last 4
+        Ranked by win rate · min. {MIN_SESSIONS_PLAYED} sessions played · must be active in the last {RECENT_SESSIONS_WINDOW}
       </p>
-      {entries.map((entry, i) => (
-        <div key={entry.playerId} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-          <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
-            {RANK_ICON(i)}
-          </span>
-          <Avatar url={entry.avatarUrl} name={entry.displayName} size={28} />
-          <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
-          <div className="text-right shrink-0">
-            <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
-            <p className="text-xs text-muted-foreground">{entry.wins}W {entry.losses}L</p>
-          </div>
-        </div>
-      ))}
+      <RankedBoard
+        entries={entries}
+        tiedNoun="players"
+        keyOf={(entry) => entry.playerId}
+        renderRow={(entry, variant) => <PlayerRowBody entry={entry} variant={variant} />}
+      />
     </div>
   )
 }
@@ -308,57 +484,44 @@ function PairsLeaderboard() {
   useEffect(() => { load() }, [load])
 
   return isLoading ? (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
-      ))}
-    </div>
+    <BoardSkeleton height="h-16" />
   ) : entries.length === 0 ? (
     <p className="text-muted-foreground text-sm">
-      No partnership has reached {MIN_GAMES_TOGETHER} games together yet.
+      No partnership qualifies yet — both players need {MIN_SESSIONS_PLAYED} sessions played,
+      and {MIN_GAMES_TOGETHER} games together.
     </p>
   ) : (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground text-center pb-1">
-        Ranked by win rate · min. {MIN_GAMES_TOGETHER} games together · both active in the last {RECENT_SESSIONS_WINDOW}
+        Ranked by win rate · min. {MIN_GAMES_TOGETHER} games together · both with {MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
       </p>
-      {groupByRank(entries).map((group) =>
-        group.pairs.length === 1 ? (
-          <div key={group.rank} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-            <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
-              {RANK_ICON(group.rank - 1)}
-            </span>
-            <PairRowBody entry={group.pairs[0]} />
-          </div>
-        ) : (
-          // Tied pairs share one rank, drawn once for the group and bound by a
-          // rule down the side, so five identical records don't read as five
-          // separate placings.
-          <div
-            key={group.rank}
-            className="flex items-stretch gap-2"
-            aria-label={`Rank ${group.rank}, ${group.pairs.length} partnerships tied`}
-          >
-            <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0 pt-3">
-              {RANK_ICON(group.rank - 1)}
-            </span>
-            <span className="w-0.5 shrink-0 rounded-full bg-border" aria-hidden="true" />
-            <div className="flex-1 min-w-0 space-y-2">
-              {group.pairs.map((entry) => (
-                <div key={entry.key} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-                  <PairRowBody entry={entry} />
-                </div>
-              ))}
-            </div>
-          </div>
-        ),
-      )}
+      <RankedBoard
+        entries={entries}
+        tiedNoun="partnerships"
+        keyOf={(entry) => entry.key}
+        renderRow={(entry, variant) => <PairRowBody entry={entry} variant={variant} />}
+      />
     </div>
   )
 }
 
-/** Everything on a partnership row except the rank cell, which the group owns. */
-function PairRowBody({ entry }: { entry: PairLeaderboardEntry }) {
+/** Everything on an individual row except the marker, which the place owns. */
+function PlayerRowBody({ entry, variant }: { entry: LeaderboardEntry; variant: 'podium' | 'list' }) {
+  const podium = variant === 'podium'
+  return (
+    <>
+      <Avatar url={entry.avatarUrl} name={entry.displayName} size={podium ? 32 : 28} />
+      <span className={`flex-1 min-w-0 truncate ${podium ? 'text-[15px] font-semibold' : 'text-sm font-medium'}`}>
+        {entry.displayName}
+      </span>
+      <RowStat winRate={entry.winRate} wins={entry.wins} losses={entry.losses} podium={podium} />
+    </>
+  )
+}
+
+/** Everything on a partnership row except the marker, which the place owns. */
+function PairRowBody({ entry, variant }: { entry: PairLeaderboardEntry; variant: 'podium' | 'list' }) {
+  const podium = variant === 'podium'
   return (
     <>
       <div className="flex shrink-0 -space-x-2">
@@ -367,19 +530,35 @@ function PairRowBody({ entry }: { entry: PairLeaderboardEntry }) {
             key={player.id}
             url={player.avatarUrl}
             name={player.displayName}
-            size={28}
+            size={podium ? 32 : 28}
             className="ring-2 ring-card"
           />
         ))}
       </div>
-      <span className="flex-1 min-w-0 font-medium text-sm line-clamp-2">
+      <span className={`flex-1 min-w-0 line-clamp-2 ${podium ? 'text-[15px] font-semibold' : 'text-sm font-medium'}`}>
         {entry.players[0].displayName} &amp; {entry.players[1].displayName}
       </span>
-      <div className="text-right shrink-0">
-        <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
-        <p className="text-xs text-muted-foreground">{entry.wins}W {entry.losses}L</p>
-      </div>
+      <RowStat winRate={entry.winRate} wins={entry.wins} losses={entry.losses} podium={podium} />
     </>
+  )
+}
+
+function RowStat({
+  winRate,
+  wins,
+  losses,
+  podium,
+}: {
+  winRate: number
+  wins: number
+  losses: number
+  podium: boolean
+}) {
+  return (
+    <div className="text-right shrink-0">
+      <p className={`font-bold text-primary tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>{winRate}%</p>
+      <p className="text-xs text-muted-foreground tabular-nums">{wins}W {losses}L</p>
+    </div>
   )
 }
 

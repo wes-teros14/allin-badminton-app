@@ -137,6 +137,7 @@
     --color-primary-pressed: var(--primary-pressed);
     --color-primary-subtle: var(--primary-subtle);
     --color-success: var(--success);
+    --color-gold: var(--gold);
     --color-muted-surface: var(--muted-surface);
     --color-surface: var(--surface);
 }

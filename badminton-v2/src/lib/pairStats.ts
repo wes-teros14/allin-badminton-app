@@ -10,6 +10,7 @@
  * Everything here is pure: match rows in, tallies out. No Supabase, no React.
  */
 
+import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { sortMatchResults } from '@/lib/matchResults'
 
 /**
@@ -188,42 +189,5 @@ export function rankPairs(
     }))
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.key.localeCompare(b.key))
 
-  let rank = 0
-  let previousRate: number | null = null
-  const ranked: RankedPair[] = ordered.map((pair) => {
-    if (pair.winRate !== previousRate) {
-      rank++
-      previousRate = pair.winRate
-    }
-    return { ...pair, rank }
-  })
-
-  // Cut on place, not row count: "top ten" means the ten best placings, however
-  // many pairs those hold. Seven partnerships tied for first still leave nine
-  // more places to show.
-  return ranked.filter((pair) => pair.rank <= maxRank)
-}
-
-export interface RankGroup<T extends { rank: number } = RankedPair> {
-  rank: number
-  pairs: T[]
-}
-
-/**
- * Collapses ranked pairs into one entry per shared rank, so the view can draw
- * the rank once for a tie group instead of repeating it on every row.
- *
- * Generic over anything carrying a rank, so the view can group its own
- * display-ready rows without converting back to the tally shape.
- */
-export function groupByRank<T extends { rank: number }>(ranked: readonly T[]): RankGroup<T>[] {
-  const groups: RankGroup<T>[] = []
-
-  for (const pair of ranked) {
-    const current = groups[groups.length - 1]
-    if (current && current.rank === pair.rank) current.pairs.push(pair)
-    else groups.push({ rank: pair.rank, pairs: [pair] })
-  }
-
-  return groups
+  return cutToPlaces(assignDenseRanks(ordered, (pair) => pair.winRate), maxRank)
 }
