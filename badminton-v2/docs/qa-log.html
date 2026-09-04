@@ -78,6 +78,7 @@
     <ol>
       <li><a href="#routing">Routing &amp; role gating</a></li>
       <li><a href="#session-cards">Session cards</a></li>
+      <li><a href="#leaderboard">Leaderboard</a></li>
     </ol>
   </nav>
 
@@ -160,6 +161,88 @@
       <code>in_progress</code>, <code>schedule_locked</code> and <code>registration_closed</code> sessions.
       With a long status label like “Registration Open” and a long session name, that row is already
       near its width limit, so a third control there squeezes or wraps on a phone.
+    </p>
+  </div>
+
+  <h2 class="topic" id="leaderboard">Leaderboard</h2>
+
+  <div class="qa">
+    <p class="q">Why is it hard to see each rank on the Partners board?</p>
+    <p class="a">
+      Five things stack up, and the first is a real layout defect rather than a styling preference:
+      <strong>the rank column doesn’t line up.</strong> An untied place renders the rank
+      <em>inside</em> the bordered card, after its <code>px-4</code>
+      (<code>LeaderboardView.tsx:327</code>); a tied place renders it <em>outside</em>, to the left of
+      the cards (<code>:337-345</code>). So ranks sit about 16 px apart horizontally on the same
+      board and the cards themselves start at two different x-positions — there is no column to run
+      your eye down.
+    </p>
+    <p class="a">
+      The rest: rank is drawn in <code>text-muted-foreground</code> while the win rate gets
+      <code>text-primary</code> and bold, so the value that establishes ordering is the quietest
+      thing on the row; <code>RANK_ICON</code> returns 🥇🥈🥉 then bare digits, and colour emoji
+      beside a grey glyph share no weight, size or baseline, so places 4–10 read as absent rather
+      than lower; the cell is <code>text-sm w-5</code> — 14 px in 20 px — with no
+      <code>tabular-nums</code>, so “10” and “4” don’t centre alike; and a tie group’s single rank
+      glyph is top-aligned beside a 2 px rule with nothing stating how many are tied.
+    </p>
+    <p class="a">
+      None of this is a data problem. <code>rankPairs</code> and <code>groupByRank</code> compute
+      dense ranks correctly and cut on places rather than rows — the numbers are right, only the
+      drawing is wrong.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why do the top three places get a different treatment from places 4 and below?</p>
+    <p class="a">
+      Deliberate, and it needs the divider to stay legible. The medals are worth keeping where they
+      mean something, but mixing them with plain digits in one continuous list is what made the
+      lower places disappear. So places 1–3 became a podium — medal, ordinal label, tinted border —
+      and every place below is one consistent 34 px numbered chip, with a “Places 4–10” heading
+      between them so the change of visual language reads as intentional.
+    </p>
+    <p class="a">
+      A tied place keeps the same 34 px chip as every other row and states “3 tied” in words above
+      its rows; only the card grows. Keeping the chip width fixed is the point — it is what stops
+      the original misalignment coming back.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Mga Lodi ranks players 1, 2, 3 down the list.”</p>
+    <p>
+      It did, and that was wrong. <code>fetchAllTimeLeaderboard</code> numbered rows by
+      <em>array index</em> and cut with <code>.slice(0, 10)</code> — ten rows, not ten places. So two
+      players both reading 67% would have been shown as separate places, and once the medal podium
+      landed, one of them would have taken 🥈 purely for sorting later. The partnership board had
+      never worked that way; only this one did.
+    </p>
+    <p>
+      Both boards now share <code>src/lib/denseRank.ts</code>: equal rates take the same place, the
+      next distinct rate takes the next number (1, 1, 2 — not 1, 1, 3), and the cut counts
+      <strong>places, not rows</strong>, so a board can show twelve rows across ten places. Sorting
+      also gained a final tiebreak on player id, so the order no longer depends on what order
+      Supabase returned the rows in.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does a partnership need both players to have 3+ sessions played?</p>
+    <p class="a">
+      Because “3 games together” alone was cheap to reach. A regular who plays every week could
+      partner a first-timer for three games, win two, and put a 67% pairing into the top ten built
+      almost entirely from one player’s form. The individual board had always required 3 sessions
+      attended; the partnership board required only recent activity — one registration in the last
+      four completed sessions.
+    </p>
+    <p class="a">
+      Both boards now read the floor from the same <code>player_stats.sessions_attended</code>
+      column via one <code>MIN_SESSIONS_PLAYED</code> constant, and <code>rankPairs</code> applies
+      its eligibility predicate to <em>both</em> partners — so a pairing needs two qualifying
+      players, not one. Recorded as FR-014a in
+      <code>specs/006-pair-winrate-leaderboard/spec.md</code>.
     </p>
   </div>
 
