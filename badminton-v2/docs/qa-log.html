@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>All-In Badminton — Q&amp;A log</title>
+<style>
+  :root {
+    --bg: #FAF9FB;
+    --card: #FFFFFF;
+    --ink: #18181B;
+    --dim: #52525B;
+    --primary: #6F3E87;
+    --border: #E4E4E7;
+    --amber-bg: #FFFBEB;
+    --amber-border: #F59E0B;
+    --amber-ink: #78350F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px 24px 96px; background: var(--bg); color: var(--ink);
+    font: 400 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 32px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 36px; color: var(--dim); font-size: 15px; }
+  nav {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 22px; margin-bottom: 40px;
+  }
+  nav h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  nav ol { margin: 0; padding-left: 20px; }
+  nav li { margin: 4px 0; }
+  nav a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--border); }
+  nav a:hover { color: var(--primary); border-color: var(--primary); }
+  h2.topic {
+    margin: 44px 0 18px; padding-bottom: 8px; font-size: 22px; letter-spacing: -0.01em;
+    border-bottom: 2px solid var(--primary);
+  }
+  .qa {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 22px; margin-bottom: 16px;
+  }
+  .qa .q { margin: 0 0 10px; font-size: 17px; font-weight: 700; letter-spacing: -0.005em; }
+  .qa .a { margin: 0 0 10px; color: var(--dim); font-size: 15px; }
+  .qa .a:last-child { margin-bottom: 0; }
+  .qa code, nav code {
+    font: 500 13.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #F4F4F6; border: 1px solid var(--border); padding: 2px 5px; border-radius: 5px;
+  }
+  .correction {
+    background: var(--amber-bg); border: 1px solid var(--border);
+    border-left: 4px solid var(--amber-border); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 16px; color: var(--amber-ink);
+  }
+  .correction .label {
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .correction .q { margin: 0 0 8px; font-size: 17px; font-weight: 700; }
+  .correction p { margin: 0 0 8px; font-size: 15px; }
+  .correction p:last-child { margin-bottom: 0; }
+  .correction code { background: rgba(120, 53, 15, .08); border-color: rgba(120, 53, 15, .2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>All-In Badminton — Q&amp;A log</h1>
+  <p class="sub">
+    Explanations of how this project works, grouped by topic rather than by date. Corrections to
+    earlier answers are marked in amber — those are the entries worth re-reading.
+  </p>
+
+  <nav>
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#routing">Routing &amp; role gating</a></li>
+      <li><a href="#session-cards">Session cards</a></li>
+    </ol>
+  </nav>
+
+  <h2 class="topic" id="routing">Routing &amp; role gating</h2>
+
+  <div class="qa">
+    <p class="q">Which route is the admin page for one session, and who can reach it?</p>
+    <p class="a">
+      <code>/session/:sessionId</code> → <code>SessionView</code>. It is not the same route as the
+      player-facing <code>/sessions/:sessionId</code> (<code>SessionPlayerDetailView</code>) — note the
+      singular vs plural. All the admin routes sit behind <code>AdminRoute</code> in
+      <code>src/App.tsx:10</code>, which reads <code>role</code> from <code>AuthContext</code> and
+      redirects to <code>/</code> unless the role is <code>admin</code> or <code>moderator</code>.
+    </p>
+    <p class="a">
+      So any admin shortcut placed on a player screen only needs to check the same two roles —
+      the route itself is already protected, and the check is just there to avoid showing a
+      dead-end button to players.
+    </p>
+  </div>
+
+  <h2 class="topic" id="session-cards">Session cards</h2>
+
+  <div class="qa">
+    <p class="q">Why can’t an admin button just be dropped inside a session card on <code>/sessions</code>?</p>
+    <p class="a">
+      Because the entire card is one anchor. <code>SessionRow</code> in
+      <code>src/views/MySessionsView.tsx:126</code> returns a single
+      <code>&lt;Link to={`/sessions/${s.id}`}&gt;</code> wrapping every line of card content, and HTML
+      does not allow an anchor inside an anchor — React will render it, but the nested link’s
+      behaviour and keyboard focus order are undefined.
+    </p>
+    <p class="a">
+      Two legal ways out: make the admin control a <code>&lt;button&gt;</code> that calls
+      <code>navigate('/session/' + s.id)</code> and calls <code>stopPropagation()</code> so the click
+      never reaches the card, or lift it out of the link entirely — wrap the card in a
+      <code>relative</code> container and absolutely position the admin control as a sibling of the
+      <code>&lt;Link&gt;</code>. The second is cleaner: no event plumbing, and the tab order comes out right
+      on its own.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Which sessions actually appear on <code>/sessions</code>, and does the admin shortcut cover all of them?</p>
+    <p class="a">
+      <code>usePlayerSessions</code> returns two groups merged together: every session you hold a
+      registration for, in any status, plus every session whose status is
+      <code>registration_open</code> or <code>registration_closed</code> whether you are registered or
+      not. Nothing else.
+    </p>
+    <p class="a">
+      So the admin shortcut reaches a session in <code>setup</code>, <code>schedule_locked</code>,
+      <code>in_progress</code> or <code>complete</code> only if you are registered in it. A brand-new
+      session sitting in <code>setup</code> that you haven’t registered for will not show on
+      <code>/sessions</code> at all — that one still needs <code>/admin</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does the header row of a session card have a negative right margin?</p>
+    <p class="a">
+      The admin shortcut is absolutely positioned in the card’s bottom-right corner, so the card
+      carries <code>pr-16</code> instead of <code>pr-4</code> to keep long venue and note text from
+      running underneath it. But container padding is charged to every row, and the top row’s status
+      pills are <code>shrink-0 flex-nowrap</code> — so all 48 px came out of the session name and titles
+      started wrapping to two lines for admins only.
+    </p>
+    <p class="a">
+      The header row gets <code>-mr-12</code> when <code>isAdmin</code>, which exactly cancels the
+      difference. The name and pills keep the width they have with no shortcut, and every row below
+      the header keeps the gutter the button needs.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does the badge row limit what can go in the top-right of a card?</p>
+    <p class="a">
+      The list is rendered inside <code>max-w-sm</code> (384 px) and the badge row already holds up to
+      two pills — the status badge plus a separate “Registered” pill for
+      <code>in_progress</code>, <code>schedule_locked</code> and <code>registration_closed</code> sessions.
+      With a long status label like “Registration Open” and a long session name, that row is already
+      near its width limit, so a third control there squeezes or wraps on a phone.
+    </p>
+  </div>
+
+</div>
+</body>
+</html>
