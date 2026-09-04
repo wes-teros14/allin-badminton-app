@@ -126,6 +126,7 @@ A player wants to settle a debate in the group chat and shares a link that opens
 - **FR-012**: A partnership MUST have played at least 3 games together to appear on the board.
 - **FR-013**: Both players in a partnership MUST have registered for at least one of the 4 most recent completed sessions for that partnership to appear.
 - **FR-014**: Both players MUST have an active profile for the partnership to appear.
+- **FR-014a**: Both players MUST have attended at least 3 sessions — the same floor the individual board applies, read from the same `player_stats.sessions_attended` column — for the partnership to appear. One regular carrying a newcomer through three games together must not mint a top-ten pairing.
 
 **Ranking and presentation**
 
