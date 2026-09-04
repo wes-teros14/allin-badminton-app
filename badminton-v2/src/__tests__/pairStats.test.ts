@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { DEFAULT_MIN_GAMES_TOGETHER, groupByRank, pairKey, rankPairs, tallyPairs } from '@/lib/pairStats'
+import { DEFAULT_MIN_GAMES_TOGETHER, pairKey, rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTally, PairTallyMatch } from '@/lib/pairStats'
 
 // pairStats reuses sortMatchResults, and matchResults.ts constructs the Supabase
@@ -360,25 +360,3 @@ describe('rankPairs ties', () => {
   })
 })
 
-describe('groupByRank', () => {
-  it('collapses shared ranks into one group each', () => {
-    const groups = groupByRank(rankPairs([
-      tally(A, B, 3, 1), // 75%
-      tally(C, D, 2, 1), // 67%
-      tally(A, C, 2, 1), // 67%
-    ]))
-
-    expect(groups.map((g) => [g.rank, g.pairs.length])).toEqual([[1, 1], [2, 2]])
-  })
-
-  it('returns nothing for an empty board', () => {
-    expect(groupByRank([])).toEqual([])
-  })
-
-  it('preserves the ranked order across and within groups', () => {
-    const ranked = rankPairs([tally(A, B, 3, 1), tally(C, D, 2, 1), tally(A, C, 2, 1)])
-
-    expect(groupByRank(ranked).flatMap((g) => g.pairs.map((p) => p.key)))
-      .toEqual(ranked.map((p) => p.key))
-  })
-})
