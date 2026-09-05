@@ -819,6 +819,54 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“All Matches is admin-only.”</p>
+    <p>
+      It never was. The route sits in the plain <code>PlayerLayout</code> block
+      (<code>src/App.tsx:74</code>), not behind <code>AdminRoute</code>, and
+      <code>AllMatchesView</code> contains exactly one role check — around the
+      <b>player-filter dropdown</b> (<code>src/views/PlayerView.tsx:461</code>). Every signed-in
+      player could always see the live court cards, the zones and the meter.
+    </p>
+    <p>
+      The reason it felt admin-only was the way in: a 12&nbsp;px grey <em>All Matches ↗</em> link,
+      additionally hidden on <code>/sessions/:id</code> while the session is
+      <code>registration_open</code>. Permission was never the problem; signposting was.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Where does the “two courts side by side” view live now?</p>
+    <p class="a">
+      It is a third tab on <code>/sessions/:id</code>, beside Schedule and Leaderboard.
+      <code>AllMatchesView</code> gained an <code>embedded</code> prop that drops the page wrapper,
+      the <code>LiveIndicator</code> and the “← My Matches” link — the tab bar is the way back — and
+      suppresses the payment banner, because the Schedule tab already carries the GCash block.
+      The standalone <code>?show=all</code> route still works and is unchanged.
+    </p>
+    <p class="a">
+      It only shows court cards when a match is actually <code>playing</code>. Locking the schedule
+      is not enough; a game has to be sent onto a court from <code>/session/:id</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why did players without a photo look like blanks on the court cards?</p>
+    <p class="a">
+      <code>Avatar.tsx</code> fell back to <code>bg-muted</code> with a
+      <code>text-muted-foreground</code> initial, so every photo-less player rendered as the same
+      grey disc — and every Ana, Ate and Alex collapsed onto the same letter. Fine at 24&nbsp;px in a
+      list; conspicuous on a card built around four 48&nbsp;px faces.
+    </p>
+    <p class="a">
+      The fallback now derives a stable hue from the name. <b>32% lightness is not arbitrary:</b> it
+      is the darkest the scale needs so white text clears 4.5&nbsp;: 1 at the lightest hues.
+      Yellow-green (around 60°) is the worst case at <b>4.77&nbsp;: 1</b>; every one of the 360 hues
+      was checked. Anything lighter fails there.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>
