@@ -3,6 +3,11 @@ import { supabase } from '@/lib/supabase'
 import { buildCourtLabels, buildCourtSlots, type CourtSlot, normalizeCourtCount } from '@/lib/courts'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 
+export interface CourtPlayerDisplay {
+  name: string
+  avatarUrl: string | null
+}
+
 export interface CourtMatchDisplay {
   id: string
   gameNumber: number
@@ -11,6 +16,13 @@ export interface CourtMatchDisplay {
   t1p2: string
   t2p1: string
   t2p2: string
+  /**
+   * The same four players with their avatars, for surfaces that show faces.
+   * Added alongside the name fields rather than replacing them so the kiosk
+   * board and CourtCard keep working unchanged.
+   */
+  team1: CourtPlayerDisplay[]
+  team2: CourtPlayerDisplay[]
 }
 
 export interface CourtData {
@@ -190,16 +202,16 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
 
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('id, name_slug, nickname')
+        .select('id, name_slug, nickname, avatar_url')
         .in('id', allIds)
 
       if (cancelled) return
 
-      const nameMap = new Map(
-        ((profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null }>)
-          .map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)])
-      )
+      const profileRows = (profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null; avatar_url: string | null }>
+      const nameMap = new Map(profileRows.map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
+      const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
       const name = (id: string) => nameMap.get(id) ?? id
+      const player = (id: string): CourtPlayerDisplay => ({ name: name(id), avatarUrl: avatarMap.get(id) ?? null })
 
       const toDisplay = (m: MatchRow): CourtMatchDisplay => ({
         id: m.id,
@@ -209,6 +221,8 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
         t1p2: name(m.team1_player2_id),
         t2p1: name(m.team2_player1_id),
         t2p2: name(m.team2_player2_id),
+        team1: [player(m.team1_player1_id), player(m.team1_player2_id)],
+        team2: [player(m.team2_player1_id), player(m.team2_player2_id)],
       })
 
       const currentByCourt = new Map<number, CourtMatchDisplay>()

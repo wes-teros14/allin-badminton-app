@@ -28,3 +28,10 @@ export function completedMatchUpdate(startedAt: string | null, nowMs = Date.now(
     ...(durationSeconds != null ? { duration_seconds: durationSeconds } : {}),
   }
 }
+
+/** mm:ss for a court timer. Shared by the court strip and the match board. */
+export function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}

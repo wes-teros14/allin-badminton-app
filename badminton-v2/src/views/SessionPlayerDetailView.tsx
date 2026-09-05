@@ -8,11 +8,13 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { derivePaymentState } from '@/lib/paymentState'
 import { MAX_RECEIPTS_PER_SESSION } from '@/lib/receipts'
 import { useAuth } from '@/hooks/useAuth'
+import { useCourtState } from '@/hooks/useCourtState'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useSessionReceipts, signReceiptUrls, type SessionReceipt } from '@/hooks/useSessionReceipts'
 import { PersonalGameCard, SessionProgress } from '@/components/MatchBoard'
+import { PlayerCourtTabs } from '@/components/PlayerCourtTabs'
 import { AllMatchesView } from '@/views/PlayerView'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
@@ -254,7 +256,14 @@ function ScheduleTab({
   onRegister: () => void
 }) {
   const { matches, playerDisplayName, playerAvatarUrl, sessionMatchTotal, sessionMatchPlayed, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, refresh } = usePlayerSchedule(nameSlug, sessionId)
-  const { status } = useRealtime(resolvedId, refresh)
+  const { courts, isLoading: courtsLoading, refresh: refreshCourts } = useCourtState(resolvedId || undefined)
+  // Courts and the personal schedule are two reads; a realtime ping has to
+  // refresh both or the strip goes stale while your own card updates.
+  const refreshAll = useCallback(() => {
+    refresh()
+    refreshCourts()
+  }, [refresh, refreshCourts])
+  const { status } = useRealtime(resolvedId, refreshAll)
   const { phoneNumber, qrCodeUrl } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
   const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, hasPaymentInfo })
@@ -482,6 +491,17 @@ function ScheduleTab({
         </div>
       )}
 
+      {/*
+        Every court in the session, whether or not you are on one. Your own card
+        below shows only your game, so without this a player mid-game saw just
+        their own court and a player between games saw none at all.
+      */}
+      {!isLoading && resolvedId && sessionStatus !== 'registration_open' && (
+        <div className="max-w-sm mx-auto px-4 pt-4">
+          <PlayerCourtTabs courts={courts} isLoading={courtsLoading} />
+        </div>
+      )}
+
       <div className="max-w-sm mx-auto px-4 py-4">
         <SessionProgress
           sessionPlayed={sessionMatchPlayed}
@@ -501,14 +521,18 @@ function ScheduleTab({
               </div>
             )
           : matches.map((m, i) => (
-              <PersonalGameCard
-                key={m.id}
-                match={m}
-                you={playerDisplayName}
-                yourAvatarUrl={playerAvatarUrl}
-                isNextUp={i === firstQueuedIndex}
-                promote={!playingMatch && i === firstQueuedIndex}
-              />
+              // Your live game is already a full card in the court strip above,
+              // so rendering it again here just duplicates a court.
+              m.status === 'playing' ? null : (
+                <PersonalGameCard
+                  key={m.id}
+                  match={m}
+                  you={playerDisplayName}
+                  yourAvatarUrl={playerAvatarUrl}
+                  isNextUp={i === firstQueuedIndex}
+                  promote={!playingMatch && i === firstQueuedIndex}
+                />
+              )
             ))}
       </div>
     </div>
