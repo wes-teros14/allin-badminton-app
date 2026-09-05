@@ -44,7 +44,12 @@
     --primary-subtle: #EDE0F5;
     --success: #22C55E;
     --muted-surface: #F4F4F6;
+    /* --gold is the medal, border and wash gold; --gold-ink is its text-safe
+       pair. They differ in light because one #FFB200 cannot do both jobs on
+       white: as a border it needs 3:1, as text it needs 4.5:1, and a gold dark
+       enough for text would render darker than the bronze medal below it. */
     --gold: #B87A00;
+    --gold-ink: #8A5A00;
 }
 
 .dark {
@@ -80,6 +85,7 @@
     --sidebar-border: #2D1A40;
     --sidebar-ring: #6F3E87;
     --gold: #FFB200;
+    --gold-ink: #FFB200;
     --primary-subtle: #2D1B42;
 }
 
@@ -139,6 +145,7 @@
     --color-primary-subtle: var(--primary-subtle);
     --color-success: var(--success);
     --color-gold: var(--gold);
+    --color-gold-ink: var(--gold-ink);
     --color-muted-surface: var(--muted-surface);
     --color-surface: var(--surface);
 }
