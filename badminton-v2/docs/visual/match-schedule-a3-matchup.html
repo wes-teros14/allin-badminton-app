@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedule A3 — Matchup band</title>
+<style>
+:root,[data-theme="light"]{
+  --background:#FAF7FB;--card:#FFFFFF;--muted:#F1ECF6;--foreground:#1B1220;
+  --muted-foreground:#6B5F73;--border:#E7E0EC;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#EDE0F5;--gold:#B87A00;--gold-ink:#8A5A00;--live:#B3252B;--court2:#1F6F6B;
+}
+[data-theme="dark"]{
+  --background:#0F0A18;--card:#1A1025;--muted:#1E1230;--foreground:#FFF;
+  --muted-foreground:#B39DBB;--border:#2D1A40;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#2D1B42;--gold:#FFB200;--gold-ink:#FFB200;--live:#FF6B70;--court2:#4FD1C5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);
+  font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .4s,color .4s}
+.page{max-width:1080px;margin:0 auto;padding:40px 24px 90px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.1;letter-spacing:-.025em;margin:12px 0 0;font-weight:650}
+.sub{max-width:62ch;color:var(--muted-foreground);margin:12px 0 0;font-size:.97rem}
+.switch{display:flex;align-items:center;gap:10px;flex:none}
+.switch span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.orb-btn{width:44px;height:44px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);border-radius:11px;cursor:pointer;color:var(--foreground)}
+.orb{width:20px;height:20px;border-radius:50%;background:transparent;box-shadow:inset 8px -8px 0 0 currentColor;transform:rotate(-25deg);transition:transform .5s cubic-bezier(.5,-.3,.3,1.4),box-shadow .5s,background .3s}
+[data-theme="light"] .orb{background:currentColor;transform:scale(.52) rotate(180deg);
+  box-shadow:inset 15px -15px 0 0 transparent,0 -19px 0 -7px currentColor,0 19px 0 -7px currentColor,-19px 0 0 -7px currentColor,19px 0 0 -7px currentColor,-13px -13px 0 -7px currentColor,13px 13px 0 -7px currentColor,-13px 13px 0 -7px currentColor,13px -13px 0 -7px currentColor}
+.nav{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap}
+.nav a{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;text-decoration:none;color:var(--muted-foreground);border:1px solid var(--border);border-radius:999px;padding:9px 13px;transition:.15s}
+.nav a:hover{color:var(--foreground);border-color:var(--primary)}
+.nav a[aria-current]{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+.split{display:grid;grid-template-columns:384px minmax(0,1fr);gap:44px;align-items:start;margin-top:34px}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+
+.device{width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:var(--background);position:sticky;top:24px}
+.appbar{background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.appbar .dot{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.28)}
+.screen{padding:14px 14px 22px}
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.shead h2{font-size:17px;font-weight:650;margin:0;letter-spacing:-.01em}
+.shead .when{font-size:12px;color:var(--muted-foreground);flex:none}
+.meter{margin-top:10px}
+.meter__bar{height:4px;border-radius:999px;background:var(--muted);overflow:hidden}
+.meter__fill{height:100%;background:var(--primary);border-radius:999px}
+.meter__txt{display:flex;justify-content:space-between;margin-top:6px;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+.zone{margin-top:20px}
+.zone__h{display:flex;align-items:center;gap:8px;margin:0 0 9px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+.zone__h .count{margin-left:auto;font-weight:600}
+
+.av{border-radius:50%;flex:none;display:block}
+.av--fb{background:var(--muted);color:var(--muted-foreground);display:grid;place-items:center;font-weight:700;line-height:1}
+.av--fb.tinted{color:#fff}
+
+/* ---------- the matchup band ---------- */
+.now{border:1px solid var(--border);border-radius:16px;padding:13px 12px;background:var(--card);margin-bottom:9px}
+.now[data-court="1"]{border-color:color-mix(in srgb,var(--primary) 55%,transparent)}
+.now[data-court="2"]{border-color:color-mix(in srgb,var(--court2) 55%,transparent)}
+.now__top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.courtchip{font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;border-radius:6px;flex:none}
+.courtchip[data-c="1"]{background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .courtchip[data-c="1"]{color:#DCC2EE}
+.courtchip[data-c="2"]{background:color-mix(in srgb,var(--court2) 16%,transparent);color:var(--court2)}
+.elapsed{font:600 12px/1 ui-monospace,Menlo,monospace;color:var(--gold-ink)}
+.livetag{margin-left:auto;display:flex;align-items:center;gap:5px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:var(--live)}
+.livetag i{width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+.band{display:grid;grid-template-columns:1fr 26px 1fr;align-items:start;gap:4px}
+.band__side{display:flex;justify-content:space-evenly;gap:6px}
+.band__p{width:64px;text-align:center}
+.band__p .av{margin:0 auto 6px}
+.band__nm{font-size:11.5px;font-weight:600;line-height:1.25;letter-spacing:-.01em;
+  word-break:break-word;hyphens:auto}
+.band__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:14px}
+.band__mid span{font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted-foreground)}
+.band__mid i{display:block;width:1px;height:22px;background:var(--border);margin:5px 0}
+.gnum{font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--muted-foreground);margin:0 0 10px;text-align:center}
+
+/* ---------- 4-up mini band for next/later ---------- */
+.next{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid var(--border);border-radius:12px;background:var(--card);margin-bottom:7px}
+.next__n{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--muted);color:var(--muted-foreground);font:700 12px/1 ui-monospace,Menlo,monospace}
+.next__body{min-width:0;flex:1}
+.mini{display:flex;align-items:center;gap:4px}
+.mini .sep{font:700 8.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted-foreground);padding:0 4px;flex:none}
+.mini__nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
+.next__meta{font:600 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground);margin-top:5px}
+
+.row{display:flex;align-items:center;gap:9px;padding:8px 2px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row__n{width:22px;flex:none;font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground);text-align:right}
+.row__nm{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;color:var(--muted-foreground)}
+
+details.played{margin-top:20px;border-top:1px solid var(--border);padding-top:14px}
+details.played summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+details.played summary::-webkit-details-marker{display:none}
+details.played summary .chev{margin-left:auto;transition:transform .2s}
+details.played[open] summary .chev{transform:rotate(180deg)}
+.done{display:flex;align-items:center;gap:9px;padding:9px 2px;border-bottom:1px solid var(--border)}
+.done:last-child{border-bottom:0}
+.done__n{width:22px;flex:none;font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground);text-align:right}
+.done .nm{font-size:12px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.done .win{font-weight:650;color:var(--gold-ink)}
+.done .lose{color:var(--muted-foreground)}
+.done .beat{color:var(--muted-foreground);padding:0 3px;flex:none}
+
+.notes h3{font-size:1.02rem;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+.notes h3:not(:first-child){margin-top:26px}
+.notes p,.notes li{color:var(--muted-foreground);font-size:.95rem}
+.notes p{margin:0 0 10px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin-bottom:8px}
+.notes b{color:var(--foreground);font-weight:650}
+.tag{display:inline-block;font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:4px 7px;border-radius:5px;margin-right:6px;background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .tag{color:#DCC2EE}
+.tag--warn{background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold-ink)}
+code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div>
+      <p class="kicker">Schedule A · avatars · option 3</p>
+      <h1>Matchup band</h1>
+    </div>
+    <div class="switch">
+      <span>Theme</span>
+      <button class="orb-btn" id="orb" type="button" role="switch" aria-checked="true" aria-label="Dark mode"><span class="orb" aria-hidden="true"></span></button>
+    </div>
+  </div>
+  <p class="sub">
+    Faces lead. The live card becomes a <b>2-versus-2 band</b> — four 48 px portraits across with
+    names under them and the net down the middle. It reads like a fixture graphic rather than a list
+    row, and it is the only one where you find your court by looking rather than reading.
+  </p>
+  <nav class="nav">
+    <a href="match-schedule-a1-progressive.html">A1 · Progressive</a>
+    <a href="match-schedule-a2-pairstack.html">A2 · Pair stacks</a>
+    <a href="match-schedule-a3-matchup.html" aria-current="page">A3 · Matchup band</a>
+  </nav>
+
+  <div class="split">
+    <div class="device">
+      <div class="appbar"><span class="dot"></span><span>Match schedule</span></div>
+      <div class="screen" id="screen"></div>
+    </div>
+
+    <div class="notes">
+      <h3>Why this one</h3>
+      <ul>
+        <li><b>48 px is comfortably above the recognition threshold.</b> These are the only faces in
+        any of the three options big enough to identify someone you have played once.</li>
+        <li><b>The layout states the shape of the game.</b> Two left, two right, a net between —
+        anyone who plays doubles reads it instantly, with no “vs” label needed.</li>
+        <li><b>It suits the moment.</b> You look at the live card when you are walking to a court and
+        want to know who you are up against. That is a glance, not a read.</li>
+        <li>Names sit under the faces, so long nicknames wrap instead of truncating — no more
+        <code>Alexis (Cru…</code>.</li>
+      </ul>
+
+      <h3>Trade-offs</h3>
+      <ul>
+        <li><b>The live card is roughly 40 % taller</b> than in A1 or A2. With two courts running, the
+        two hero cards nearly fill the first screen and Up next drops below the fold.</li>
+        <li>Four fixed-width name columns at 384 px means about 64 px each. Fine for “Boyet”, tight for
+        anything longer.</li>
+        <li>It commits hardest to avatars, so it is the option that suffers most when a player has no
+        photo — a 48 px grey letter circle is very visible.</li>
+        <li>Up next and Later fall back to a small 4-up strip, so the treatment is not really
+        consistent down the list. <b>A2 is the consistent one.</b></li>
+      </ul>
+
+      <h3>The fallback problem — worth deciding</h3>
+      <p>
+        <span class="tag tag--warn">Real issue</span>
+        <code>Avatar.tsx</code> falls back to <code>bg-muted</code> with
+        <code>text-muted-foreground</code> and a <b>single</b> initial — low contrast, and every Ana,
+        Ate and Alex collapses to “A”. This option magnifies it more than the other two, because the
+        faces are the layout.
+      </p>
+      <p>
+        Six of these sixteen have no photo. Toggle to compare today’s grey against a suggested fix.
+      </p>
+      <p style="margin-top:14px">
+        <button id="fbToggle" type="button" style="font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;padding:10px 14px;border-radius:9px;border:1px solid var(--primary);background:transparent;color:var(--foreground);cursor:pointer">
+          Show today’s grey fallback
+        </button>
+      </p>
+
+      <h3>Note</h3>
+      <p>
+        <span class="tag tag--warn">Correction</span> I earlier called the
+        <code>← My Matches</code> link a bug. It is not —
+        <code>PlayerListViewInner</code> auto-redirects a registered player to their own slug
+        (<code>src/views/PlayerView.tsx:216</code>).
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Fixture + avatar helper. Inlined on purpose: these sheets must render
+   from disk with no network and no sibling files. */
+window.SCHED = (function () {
+  /* 16 players. 10 have a photo, 6 do not — the realistic mix. `h` is a hue,
+     used both for the stand-in portrait and for the suggested tinted fallback. */
+  var P = {
+    Ana:{h:288,p:1}, Boyet:{h:18,p:1},  Chito:{h:150,p:0}, Dan:{h:212,p:1},
+    Eric:{h:42,p:1}, Fely:{h:332,p:0},  Gigi:{h:266,p:1},  Hector:{h:100,p:1},
+    Ige:{h:8,p:0},   Jun:{h:190,p:1},   Ken:{h:76,p:1},    Lito:{h:310,p:0},
+    Mina:{h:172,p:1},Nes:{h:28,p:0},    Ony:{h:240,p:1},   Pau:{h:128,p:0}
+  };
+
+  function avatar(name, size, tinted) {
+    var d = P[name] || { h: 0, p: 0 };
+    if (d.p) {
+      return '<svg class="av" width="' + size + '" height="' + size + '" viewBox="0 0 40 40" aria-hidden="true">' +
+        '<circle cx="20" cy="20" r="20" fill="hsl(' + d.h + ' 46% 56%)"/>' +
+        '<circle cx="20" cy="16" r="7.4" fill="hsl(' + d.h + ' 44% 88%)"/>' +
+        '<path d="M5.4 40c1.8-8.9 7.4-13.4 14.6-13.4S32.8 31.1 34.6 40z" fill="hsl(' + d.h + ' 44% 88%)"/></svg>';
+    }
+    var st = 'width:' + size + 'px;height:' + size + 'px;font-size:' + Math.round(size * 0.45) + 'px';
+    if (tinted) st += ';background:hsl(' + d.h + ' 44% 38%)';
+    return '<span class="av av--fb' + (tinted ? ' tinted' : '') + '" style="' + st + '" aria-hidden="true">' +
+      name.charAt(0) + '</span>';
+  }
+
+  var live = [
+    { n: 9,  court: 1, t: '12:04', a: ['Ana', 'Boyet'],  b: ['Chito', 'Dan'] },
+    { n: 10, court: 2, t: '04:31', a: ['Eric', 'Fely'],  b: ['Gigi', 'Hector'] }
+  ];
+  var next = [
+    { n: 11, a: ['Ige', 'Jun'],   b: ['Ken', 'Lito'],   meta: 'First open court' },
+    { n: 12, a: ['Mina', 'Nes'],  b: ['Ony', 'Pau'],    meta: '2 games away' },
+    { n: 13, a: ['Ana', 'Chito'], b: ['Eric', 'Gigi'],  meta: '3 games away' }
+  ];
+  var later = [
+    { n: 14, a: ['Boyet', 'Dan'],  b: ['Fely', 'Hector'] },
+    { n: 15, a: ['Ige', 'Ken'],    b: ['Jun', 'Lito'] },
+    { n: 16, a: ['Mina', 'Ony'],   b: ['Nes', 'Pau'] },
+    { n: 17, a: ['Ana', 'Dan'],    b: ['Boyet', 'Chito'] },
+    { n: 18, a: ['Eric', 'Hector'],b: ['Fely', 'Gigi'] },
+    { n: 19, a: ['Ige', 'Lito'],   b: ['Jun', 'Ken'] },
+    { n: 20, a: ['Mina', 'Pau'],   b: ['Nes', 'Ony'] }
+  ];
+  var done = [
+    { n: 8, w: ['Mina', 'Nes'],   l: ['Ony', 'Pau'] },
+    { n: 7, w: ['Ige', 'Jun'],    l: ['Ken', 'Lito'] },
+    { n: 6, w: ['Eric', 'Fely'],  l: ['Gigi', 'Hector'] },
+    { n: 5, w: ['Ana', 'Boyet'],  l: ['Chito', 'Dan'] },
+    { n: 4, w: ['Nes', 'Ony'],    l: ['Mina', 'Pau'] },
+    { n: 3, w: ['Jun', 'Ken'],    l: ['Ige', 'Lito'] },
+    { n: 2, w: ['Boyet', 'Hector'], l: ['Chito', 'Gigi'] },
+    { n: 1, w: ['Ana', 'Dan'],    l: ['Fely', 'Ony'] }
+  ];
+
+  function header() {
+    return '<div class="shead"><h2>Thursday Night</h2><span class="when">Sep 11</span></div>' +
+      '<div class="meter"><div class="meter__bar"><div class="meter__fill" style="width:40%"></div></div>' +
+      '<div class="meter__txt"><span>8 of 20 played</span><span>2 on court</span></div></div>';
+  }
+
+  return { players: P, avatar: avatar, live: live, next: next, later: later, done: done, header: header };
+})();
+</script>
+<script>
+(function(){
+  var S = window.SCHED, tinted = true;
+
+  function bandSide(pair){
+    return '<div class="band__side">' + pair.map(function(n){
+      return '<div class="band__p">'+S.avatar(n,48,tinted)+'<p class="band__nm" style="margin:0">'+n+'</p></div>';
+    }).join('') + '</div>';
+  }
+  function fourUp(a,b,size){
+    return '<div class="mini">'
+      + S.avatar(a[0],size,tinted) + S.avatar(a[1],size,tinted)
+      + '<span class="sep">VS</span>'
+      + S.avatar(b[0],size,tinted) + S.avatar(b[1],size,tinted) + '</div>';
+  }
+
+  function render(){
+    var h = S.header();
+
+    h += '<div class="zone"><p class="zone__h">On court now</p>';
+    S.live.forEach(function(g){
+      h += '<div class="now" data-court="'+g.court+'">'
+        +  '<div class="now__top"><span class="courtchip" data-c="'+g.court+'">Court '+g.court+'</span>'
+        +  '<span class="elapsed">'+g.t+'</span><span class="livetag"><i></i>LIVE</span></div>'
+        +  '<p class="gnum">Game '+g.n+'</p>'
+        +  '<div class="band">'+bandSide(g.a)
+        +  '<div class="band__mid"><span>VS</span><i></i></div>'
+        +  bandSide(g.b)+'</div></div>';
+    });
+    h += '</div>';
+
+    h += '<div class="zone"><p class="zone__h">Up next <span class="count">'+S.next.length+'</span></p>';
+    S.next.forEach(function(g){
+      h += '<div class="next"><span class="next__n">'+g.n+'</span><div class="next__body">'
+        +  fourUp(g.a,g.b,26)
+        +  '<p class="mini__nm">'+g.a.join(' &amp; ')+' vs '+g.b.join(' &amp; ')+'</p>'
+        +  '<p class="next__meta">'+g.meta+'</p></div></div>';
+    });
+    h += '</div>';
+
+    h += '<div class="zone"><p class="zone__h">Later <span class="count">'+S.later.length+'</span></p>';
+    S.later.forEach(function(g){
+      h += '<div class="row"><span class="row__n">'+g.n+'</span>'
+        +  fourUp(g.a,g.b,18)
+        +  '<span class="row__nm">'+g.a.join(' &amp; ')+' vs '+g.b.join(' &amp; ')+'</span></div>';
+    });
+    h += '</div>';
+
+    h += '<details class="played"><summary>Played <span class="count">'+S.done.length+'</span> <span class="chev">⌄</span></summary><div style="margin-top:10px">';
+    S.done.forEach(function(g){
+      h += '<div class="done"><span class="done__n">'+g.n+'</span>'
+        +  S.avatar(g.w[0],18,tinted)+S.avatar(g.w[1],18,tinted)
+        +  '<span class="nm win">'+g.w.join(' &amp; ')+'</span>'
+        +  '<span class="beat">beat</span><span class="nm lose">'+g.l.join(' &amp; ')+'</span></div>';
+    });
+    h += '</div></details>';
+
+    document.getElementById('screen').innerHTML = h;
+  }
+
+  document.getElementById('fbToggle').addEventListener('click',function(){
+    tinted=!tinted;
+    this.textContent = tinted ? 'Show today’s grey fallback' : 'Show suggested tinted fallback';
+    render();
+  });
+  var root=document.documentElement,btn=document.getElementById('orb');
+  btn.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')!=='dark';
+    root.setAttribute('data-theme',dark?'dark':'light');
+    btn.setAttribute('aria-checked',String(dark));
+  });
+  render();
+})();
+</script>
+</body>
+</html>

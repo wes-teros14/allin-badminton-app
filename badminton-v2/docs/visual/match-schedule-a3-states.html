@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A3 across session states</title>
+<style>
+:root,[data-theme="light"]{
+  --background:#FAF7FB;--card:#FFFFFF;--muted:#F1ECF6;--foreground:#1B1220;
+  --muted-foreground:#6B5F73;--border:#E7E0EC;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#EDE0F5;--gold:#B87A00;--gold-ink:#8A5A00;--destructive:#B3252B;
+  --success:#157F3D;--live:#B3252B;--court2:#1F6F6B;
+}
+[data-theme="dark"]{
+  --background:#0F0A18;--card:#1A1025;--muted:#1E1230;--foreground:#FFF;
+  --muted-foreground:#B39DBB;--border:#2D1A40;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#2D1B42;--gold:#FFB200;--gold-ink:#FFB200;--destructive:#DC595E;
+  --success:#22C55E;--live:#FF6B70;--court2:#4FD1C5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);
+  font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .4s,color .4s}
+.page{max-width:1140px;margin:0 auto;padding:40px 24px 90px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.1;letter-spacing:-.025em;margin:12px 0 0;font-weight:650}
+.sub{max-width:64ch;color:var(--muted-foreground);margin:12px 0 0;font-size:.97rem}
+.switch{display:flex;align-items:center;gap:10px;flex:none}
+.switch span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.orb-btn{width:44px;height:44px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);border-radius:11px;cursor:pointer;color:var(--foreground)}
+.orb{width:20px;height:20px;border-radius:50%;background:transparent;box-shadow:inset 8px -8px 0 0 currentColor;transform:rotate(-25deg);transition:transform .5s cubic-bezier(.5,-.3,.3,1.4),box-shadow .5s,background .3s}
+[data-theme="light"] .orb{background:currentColor;transform:scale(.52) rotate(180deg);
+  box-shadow:inset 15px -15px 0 0 transparent,0 -19px 0 -7px currentColor,0 19px 0 -7px currentColor,-19px 0 0 -7px currentColor,19px 0 0 -7px currentColor,-13px -13px 0 -7px currentColor,13px 13px 0 -7px currentColor,-13px 13px 0 -7px currentColor,13px -13px 0 -7px currentColor}
+.nav{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap}
+.nav a{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;text-decoration:none;color:var(--muted-foreground);border:1px solid var(--border);border-radius:999px;padding:9px 13px;transition:.15s}
+.nav a:hover{color:var(--foreground);border-color:var(--primary)}
+.nav a[aria-current]{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+
+/* ---- state picker ---- */
+.states{display:flex;gap:8px;flex-wrap:wrap;margin-top:30px}
+.st{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:11px 14px;
+  cursor:pointer;text-align:left;color:inherit;font:inherit;transition:.15s;min-width:150px}
+.st:hover{border-color:var(--primary)}
+.st[aria-pressed="true"]{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.st b{display:block;font-size:13px;font-weight:650;letter-spacing:-.01em}
+.st span{display:block;margin-top:3px;font:600 9.5px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-foreground)}
+
+.split{display:grid;grid-template-columns:384px minmax(0,1fr);gap:44px;align-items:start;margin-top:28px}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.device{width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:var(--background);position:sticky;top:24px}
+.appbar{background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.appbar .dot{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.28)}
+.screen{padding:14px 14px 24px;min-height:420px}
+
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.shead h2{font-size:17px;font-weight:650;margin:0;letter-spacing:-.01em}
+.shead .when{font-size:12px;color:var(--muted-foreground);flex:none}
+.statusline{margin-top:5px;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+.meter{margin-top:11px}
+.meter__bar{height:4px;border-radius:999px;background:var(--muted);overflow:hidden}
+.meter__fill{height:100%;background:var(--primary);border-radius:999px}
+.meter__txt{display:flex;justify-content:space-between;margin-top:6px;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+
+/* ---- payment banner ---- */
+.pay{margin-top:13px;border-radius:14px;padding:12px 13px;border:1px solid}
+.pay--unpaid{border-color:color-mix(in srgb,var(--destructive) 45%,transparent);
+  background:color-mix(in srgb,var(--destructive) 9%,transparent)}
+.pay--submitted{border-color:color-mix(in srgb,var(--gold) 50%,transparent);
+  background:color-mix(in srgb,var(--gold) 10%,transparent)}
+.pay__top{display:flex;align-items:center;gap:8px}
+.pay__tag{font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;
+  padding:4px 7px;border-radius:5px;flex:none}
+.pay--unpaid .pay__tag{background:color-mix(in srgb,var(--destructive) 20%,transparent);color:var(--destructive)}
+.pay--submitted .pay__tag{background:color-mix(in srgb,var(--gold) 22%,transparent);color:var(--gold-ink)}
+.pay__amt{margin-left:auto;font-size:17px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.pay--unpaid .pay__amt{color:var(--destructive)}
+.pay__msg{font-size:12.5px;color:var(--muted-foreground);margin:8px 0 0;line-height:1.45}
+.pay__cta{margin-top:11px;width:100%;min-height:44px;border:0;border-radius:10px;cursor:pointer;
+  font:600 13.5px/1 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;gap:7px}
+.pay--unpaid .pay__cta{background:var(--primary);color:var(--primary-fg)}
+.pay--submitted .pay__cta{background:transparent;border:1px solid var(--border);color:var(--foreground)}
+.paidchip{display:inline-flex;align-items:center;gap:5px;margin-top:11px;
+  font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;
+  padding:5px 8px;border-radius:6px;
+  background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success)}
+
+/* ---- empty state ---- */
+.empty{margin-top:22px;border:1px dashed var(--border);border-radius:16px;padding:26px 20px;text-align:center}
+.empty__icon{font-size:26px;line-height:1}
+.empty h3{font-size:15px;font-weight:650;margin:12px 0 0;letter-spacing:-.01em}
+.empty p{font-size:12.5px;color:var(--muted-foreground);margin:7px auto 0;max-width:30ch;line-height:1.5}
+.empty__steps{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);text-align:left}
+.step{display:flex;align-items:flex-start;gap:9px;padding:6px 0;font-size:12px}
+.step i{width:16px;height:16px;flex:none;border-radius:50%;margin-top:1px;display:grid;place-items:center;
+  font:700 9px/1 ui-monospace,Menlo,monospace;background:var(--muted);color:var(--muted-foreground);font-style:normal}
+.step.on i{background:var(--primary);color:#fff}
+.step.on{color:var(--foreground);font-weight:600}
+.step:not(.on){color:var(--muted-foreground)}
+
+/* ---- A3 pieces ---- */
+.av{border-radius:50%;flex:none;display:block}
+.av--fb{background:var(--muted);color:var(--muted-foreground);display:grid;place-items:center;font-weight:700;line-height:1}
+.av--fb.tinted{color:#fff}
+.zone{margin-top:20px}
+.zone__h{display:flex;align-items:center;gap:8px;margin:0 0 9px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+.zone__h .count{margin-left:auto;font-weight:600}
+.now{border:1px solid var(--border);border-radius:16px;padding:13px 12px;background:var(--card);margin-bottom:9px}
+.now[data-court="1"]{border-color:color-mix(in srgb,var(--primary) 55%,transparent)}
+.now[data-court="2"]{border-color:color-mix(in srgb,var(--court2) 55%,transparent)}
+.now__top{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.courtchip{font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;border-radius:6px;flex:none}
+.courtchip[data-c="1"]{background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .courtchip[data-c="1"]{color:#DCC2EE}
+.courtchip[data-c="2"]{background:color-mix(in srgb,var(--court2) 16%,transparent);color:var(--court2)}
+.elapsed{font:600 12px/1 ui-monospace,Menlo,monospace;color:var(--gold-ink)}
+.livetag{margin-left:auto;display:flex;align-items:center;gap:5px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:var(--live)}
+.livetag i{width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.band{display:grid;grid-template-columns:1fr 26px 1fr;align-items:start;gap:4px}
+.band__side{display:flex;justify-content:space-evenly;gap:6px}
+.band__p{width:64px;text-align:center}
+.band__p .av{margin:0 auto 6px}
+.band__nm{font-size:11.5px;font-weight:600;line-height:1.25;letter-spacing:-.01em;word-break:break-word;margin:0}
+.band__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:14px}
+.band__mid span{font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted-foreground)}
+.band__mid i{display:block;width:1px;height:22px;background:var(--border);margin:5px 0}
+.gnum{font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--muted-foreground);margin:0 0 10px;text-align:center}
+.next{display:flex;align-items:center;gap:10px;padding:10px 11px;border:1px solid var(--border);border-radius:12px;background:var(--card);margin-bottom:7px}
+.next__n{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--muted);color:var(--muted-foreground);font:700 12px/1 ui-monospace,Menlo,monospace}
+.next__body{min-width:0;flex:1}
+.mini{display:flex;align-items:center;gap:4px}
+.mini .sep{font:700 8.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted-foreground);padding:0 4px;flex:none}
+.mini__nm{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:5px 0 0}
+.next__meta{font:600 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground);margin:5px 0 0}
+.row{display:flex;align-items:center;gap:9px;padding:8px 2px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row__n{width:22px;flex:none;font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground);text-align:right}
+.row__nm{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;color:var(--muted-foreground)}
+details.played{margin-top:20px;border-top:1px solid var(--border);padding-top:14px}
+details.played summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+details.played summary::-webkit-details-marker{display:none}
+details.played summary .chev{margin-left:auto;transition:transform .2s}
+details.played[open] summary .chev{transform:rotate(180deg)}
+.done{display:flex;align-items:center;gap:9px;padding:9px 2px;border-bottom:1px solid var(--border)}
+.done:last-child{border-bottom:0}
+.done__n{width:22px;flex:none;font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground);text-align:right}
+.done .nm{font-size:12px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.done .win{font-weight:650;color:var(--gold-ink)}
+.done .lose{color:var(--muted-foreground)}
+.done .beat{color:var(--muted-foreground);padding:0 3px;flex:none}
+
+.notes h3{font-size:1.02rem;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+.notes h3:not(:first-child){margin-top:26px}
+.notes p,.notes li{color:var(--muted-foreground);font-size:.95rem}
+.notes p{margin:0 0 10px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin-bottom:8px}
+.notes b{color:var(--foreground);font-weight:650}
+.tag{display:inline-block;font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:4px 7px;border-radius:5px;margin-right:6px;background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .tag{color:#DCC2EE}
+.tag--warn{background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold-ink)}
+.tag--stop{background:color-mix(in srgb,var(--destructive) 18%,transparent);color:var(--destructive)}
+code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.88rem}
+th,td{text-align:left;padding:8px 10px 8px 0;border-bottom:1px solid var(--border);vertical-align:top}
+th{font:700 9.5px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+td{color:var(--muted-foreground)}
+td:first-child{color:var(--foreground);font-weight:600;white-space:nowrap}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div>
+      <p class="kicker">Direction: A3 · across every session state</p>
+      <h1>What players see before, during and after</h1>
+    </div>
+    <div class="switch">
+      <span>Theme</span>
+      <button class="orb-btn" id="orb" type="button" role="switch" aria-checked="true" aria-label="Dark mode"><span class="orb" aria-hidden="true"></span></button>
+    </div>
+  </div>
+
+  <p class="sub">
+    A3 is only interesting when a game is live — most of a session it is not. This walks the same
+    screen through all five states, and adds the payment prompt for the case you asked about:
+    <b>schedule drawn, money not in.</b> Nothing here is implemented yet.
+  </p>
+
+  <nav class="nav">
+    <a href="match-schedule-a3-matchup.html">← A3 · live only</a>
+    <a href="match-schedule-a3-states.html" aria-current="page">A3 · all states</a>
+  </nav>
+
+  <div class="states" role="group" aria-label="Session state" id="states"></div>
+
+  <div class="split">
+    <div class="device">
+      <div class="appbar"><span class="dot"></span><span>Match schedule</span></div>
+      <div class="screen" id="screen"></div>
+    </div>
+
+    <div class="notes" id="notes"></div>
+  </div>
+</div>
+
+<script>
+/* Fixture. Inlined on purpose: this sheet must render from disk with no network. */
+(function () {
+  var P = {
+    Ana:{h:288,p:1}, Boyet:{h:18,p:1},  Chito:{h:150,p:0}, Dan:{h:212,p:1},
+    Eric:{h:42,p:1}, Fely:{h:332,p:0},  Gigi:{h:266,p:1},  Hector:{h:100,p:1},
+    Ige:{h:8,p:0},   Jun:{h:190,p:1},   Ken:{h:76,p:1},    Lito:{h:310,p:0},
+    Mina:{h:172,p:1},Nes:{h:28,p:0},    Ony:{h:240,p:1},   Pau:{h:128,p:0}
+  };
+  function av(n, s) {
+    var d = P[n] || { h: 0, p: 0 };
+    if (d.p) return '<svg class="av" width="'+s+'" height="'+s+'" viewBox="0 0 40 40" aria-hidden="true">'
+      + '<circle cx="20" cy="20" r="20" fill="hsl('+d.h+' 46% 56%)"/>'
+      + '<circle cx="20" cy="16" r="7.4" fill="hsl('+d.h+' 44% 88%)"/>'
+      + '<path d="M5.4 40c1.8-8.9 7.4-13.4 14.6-13.4S32.8 31.1 34.6 40z" fill="hsl('+d.h+' 44% 88%)"/></svg>';
+    return '<span class="av av--fb tinted" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*.45)
+      + 'px;background:hsl('+d.h+' 44% 38%)" aria-hidden="true">'+n.charAt(0)+'</span>';
+  }
+
+  var ALL = [
+    {n:1,a:['Ana','Dan'],b:['Fely','Ony']},        {n:2,a:['Boyet','Hector'],b:['Chito','Gigi']},
+    {n:3,a:['Jun','Ken'],b:['Ige','Lito']},        {n:4,a:['Nes','Ony'],b:['Mina','Pau']},
+    {n:5,a:['Ana','Boyet'],b:['Chito','Dan']},     {n:6,a:['Eric','Fely'],b:['Gigi','Hector']},
+    {n:7,a:['Ige','Jun'],b:['Ken','Lito']},        {n:8,a:['Mina','Nes'],b:['Ony','Pau']},
+    {n:9,a:['Ana','Boyet'],b:['Chito','Dan']},     {n:10,a:['Eric','Fely'],b:['Gigi','Hector']},
+    {n:11,a:['Ige','Jun'],b:['Ken','Lito']},       {n:12,a:['Mina','Nes'],b:['Ony','Pau']},
+    {n:13,a:['Ana','Chito'],b:['Eric','Gigi']},    {n:14,a:['Boyet','Dan'],b:['Fely','Hector']},
+    {n:15,a:['Ige','Ken'],b:['Jun','Lito']},       {n:16,a:['Mina','Ony'],b:['Nes','Pau']},
+    {n:17,a:['Ana','Dan'],b:['Boyet','Chito']},    {n:18,a:['Eric','Hector'],b:['Fely','Gigi']},
+    {n:19,a:['Ige','Lito'],b:['Jun','Ken']},       {n:20,a:['Mina','Pau'],b:['Nes','Ony']}
+  ];
+
+  var STATES = [
+    { k:'noschedule', b:'No schedule yet',    s:'registration_open', pay:'unpaid',    played:0,  live:0 },
+    { k:'lockedunpaid',b:'Schedule · unpaid', s:'schedule_locked',   pay:'unpaid',    played:0,  live:0 },
+    { k:'lockedsub',  b:'Schedule · sent',    s:'schedule_locked',   pay:'submitted', played:0,  live:0 },
+    { k:'live',       b:'Live',               s:'in_progress',       pay:'paid',      played:8,  live:2 },
+    { k:'complete',   b:'Complete',           s:'complete',          pay:'paid',      played:20, live:0 }
+  ];
+  var current = STATES[1];
+
+  /* ---------------- renderers ---------------- */
+  function head(st) {
+    var label = { registration_open:'Registration open', schedule_locked:'Schedule locked',
+                  in_progress:'In progress', complete:'Complete' }[st.s];
+    var h = '<div class="shead"><h2>Thursday Night</h2><span class="when">Sep 11</span></div>'
+      + '<p class="statusline">' + label + ' · Court 3, Marikina</p>';
+    if (st.s !== 'registration_open') {
+      var pct = Math.round(st.played / ALL.length * 100);
+      h += '<div class="meter"><div class="meter__bar"><div class="meter__fill" style="width:'+pct+'%"></div></div>'
+        + '<div class="meter__txt"><span>'+st.played+' of '+ALL.length+' played</span>'
+        + '<span>'+(st.live ? st.live+' on court' : st.played===ALL.length ? 'finished' : 'not started')+'</span></div></div>';
+    }
+    return h;
+  }
+
+  function payment(st) {
+    if (st.pay === 'paid') return '<span class="paidchip">✓ Paid ₱250</span>';
+    if (st.pay === 'submitted') return '<div class="pay pay--submitted">'
+      + '<div class="pay__top"><span class="pay__tag">Awaiting confirmation</span><span class="pay__amt">₱250</span></div>'
+      + '<p class="pay__msg">Receipt received. Wes will confirm it — nothing more to do.</p>'
+      + '<button class="pay__cta" type="button">View my receipt</button></div>';
+    var urgent = st.s !== 'registration_open';
+    return '<div class="pay pay--unpaid">'
+      + '<div class="pay__top"><span class="pay__tag">Unpaid</span><span class="pay__amt">₱250</span></div>'
+      + '<p class="pay__msg">' + (urgent
+          ? 'Your games are drawn and you are in ' + 5 + ' of them. Send ₱250 via GCash, then upload the receipt so it can be confirmed.'
+          : 'Send ₱250 via GCash, then upload the receipt so it can be confirmed.')
+      + '</p><button class="pay__cta" type="button">Pay &amp; upload receipt →</button></div>';
+  }
+
+  function emptyState(st) {
+    return '<div class="empty">'
+      + '<div class="empty__icon">🏸</div>'
+      + '<h3>Matches aren’t drawn yet</h3>'
+      + '<p>The schedule is generated once registration closes. You’ll see all 20 games here.</p>'
+      + '<div class="empty__steps">'
+      +   '<div class="step on"><i>✓</i><span>You’re registered</span></div>'
+      +   '<div class="step' + (st.pay === 'paid' ? ' on' : '') + '"><i>' + (st.pay === 'paid' ? '✓' : '2') + '</i><span>Payment confirmed</span></div>'
+      +   '<div class="step"><i>3</i><span>Registration closes · matches drawn</span></div>'
+      +   '<div class="step"><i>4</i><span>Session starts</span></div>'
+      + '</div></div>';
+  }
+
+  function bandSide(pair) {
+    return '<div class="band__side">' + pair.map(function (n) {
+      return '<div class="band__p">' + av(n, 48) + '<p class="band__nm">' + n + '</p></div>';
+    }).join('') + '</div>';
+  }
+  function fourUp(g, size) {
+    return '<div class="mini">' + av(g.a[0],size) + av(g.a[1],size)
+      + '<span class="sep">VS</span>' + av(g.b[0],size) + av(g.b[1],size) + '</div>';
+  }
+  function nm(g) { return g.a.join(' & ') + ' vs ' + g.b.join(' & '); }
+
+  function schedule(st) {
+    var played = ALL.slice(0, st.played);
+    var live   = ALL.slice(st.played, st.played + st.live);
+    var rest   = ALL.slice(st.played + st.live);
+    var h = '';
+
+    if (live.length) {
+      h += '<div class="zone"><p class="zone__h">On court now</p>';
+      live.forEach(function (g, i) {
+        var c = i + 1;
+        h += '<div class="now" data-court="'+c+'"><div class="now__top">'
+          +  '<span class="courtchip" data-c="'+c+'">Court '+c+'</span>'
+          +  '<span class="elapsed">'+(i===0?'12:04':'04:31')+'</span>'
+          +  '<span class="livetag"><i></i>LIVE</span></div>'
+          +  '<p class="gnum">Game '+g.n+'</p>'
+          +  '<div class="band">'+bandSide(g.a)+'<div class="band__mid"><span>VS</span><i></i></div>'+bandSide(g.b)+'</div></div>';
+      });
+      h += '</div>';
+    }
+
+    if (rest.length) {
+      var upNext = rest.slice(0, 3), later = rest.slice(3);
+      h += '<div class="zone"><p class="zone__h">'
+        + (st.s === 'schedule_locked' ? 'Starts with' : 'Up next')
+        + ' <span class="count">'+upNext.length+'</span></p>';
+      upNext.forEach(function (g, i) {
+        var meta = st.s === 'schedule_locked'
+          ? (i === 0 ? 'First on court' : 'Game ' + (i + 1) + ' of the night')
+          : (i === 0 ? 'First open court' : (i + 1) + ' games away');
+        h += '<div class="next"><span class="next__n">'+g.n+'</span><div class="next__body">'
+          +  fourUp(g, 26) + '<p class="mini__nm">'+nm(g)+'</p>'
+          +  '<p class="next__meta">'+meta+'</p></div></div>';
+      });
+      h += '</div>';
+
+      if (later.length) {
+        h += '<div class="zone"><p class="zone__h">Later <span class="count">'+later.length+'</span></p>';
+        later.forEach(function (g) {
+          h += '<div class="row"><span class="row__n">'+g.n+'</span>'+fourUp(g,18)
+            +  '<span class="row__nm">'+nm(g)+'</span></div>';
+        });
+        h += '</div>';
+      }
+    }
+
+    if (played.length) {
+      var open = st.s === 'complete' ? ' open' : '';
+      h += '<details class="played"'+open+'><summary>'
+        + (st.s === 'complete' ? 'All results' : 'Played')
+        + ' <span class="count">'+played.length+'</span> <span class="chev">⌄</span></summary><div style="margin-top:10px">';
+      played.slice().reverse().forEach(function (g) {
+        h += '<div class="done"><span class="done__n">'+g.n+'</span>'
+          +  av(g.a[0],18)+av(g.a[1],18)
+          +  '<span class="nm win">'+g.a.join(' &amp; ')+'</span>'
+          +  '<span class="beat">beat</span><span class="nm lose">'+g.b.join(' &amp; ')+'</span></div>';
+      });
+      h += '</div></details>';
+    }
+    return h;
+  }
+
+  var NOTES = {
+    noschedule: {
+      t: 'Registration open — no matches exist yet',
+      body: '<p><span class="tag tag--stop">Today</span> <b>The page renders nothing.</b> '
+        + '<code>usePlayerSchedule</code> returns an empty <code>matches</code> array, the list maps '
+        + 'over it, and you get the header and blank space below. There is no empty state anywhere in '
+        + '<code>ScheduleView</code> or <code>AllMatchesView</code>.</p>'
+        + '<p>The court strip is correctly hidden here — <code>sessionStatus !== \'registration_open\'</code> '
+        + 'gates it (<code>src/views/PlayerView.tsx:500</code>) — but nothing replaces it.</p>'
+        + '<p><b>Proposed:</b> say what is missing and why, and show where the player is in the sequence. '
+        + 'The four steps double as the answer to “what happens next”, which is otherwise only in Wes’s head.</p>'
+    },
+    lockedunpaid: {
+      t: 'Schedule locked, payment not in — the case you asked about',
+      body: '<p><span class="tag tag--stop">Today</span> <b>The schedule page says nothing about money.</b> '
+        + 'Payment lives entirely on <code>SessionPlayerDetailView</code> at <code>/sessions/:id</code> — a '
+        + 'different screen, reached from a different tab. A player can look at their games all night and '
+        + 'never be told they still owe ₱250.</p>'
+        + '<p><b>Proposed:</b> a banner directly under the header, only when '
+        + '<code>derivePaymentState() !== \'paid\'</code>. It states the amount, ties it to something '
+        + 'concrete (“you are in 5 of them”), and hands off to the screen that already does receipts. '
+        + '<b>It does not duplicate the upload UI</b> — one derivation, one upload flow, per the existing '
+        + 'convention in <code>src/lib/paymentState.ts</code>.</p>'
+        + '<p>Note the zone heading changes from <b>Up next</b> to <b>Starts with</b>. Before the session '
+        + 'begins nothing is “next”, and “first open court” would be a lie — no court is running.</p>'
+    },
+    lockedsub: {
+      t: 'Receipt sent, waiting on Wes',
+      body: '<p>The middle state <code>derivePaymentState</code> already returns and almost nothing '
+        + 'surfaces. Gold rather than red, no call to action beyond “view my receipt”, and the copy '
+        + 'explicitly says there is nothing more to do — that is the whole point of the state.</p>'
+        + '<p><span class="tag tag--warn">Decision</span> The label in the app today is '
+        + '<code>Awaiting confirmation</code> (<code>PAYMENT_STATE_LABEL</code>). Kept verbatim rather '
+        + 'than inventing a second wording.</p>'
+    },
+    live: {
+      t: 'In progress — this is the A3 you picked',
+      body: '<p>Two live cards as 2-versus-2 bands, then Up next, then Later, then the played games '
+        + 'folded away. Paid, so the banner collapses to a single chip.</p>'
+        + '<p><span class="tag tag--warn">Watch</span> With two courts running, the two bands take '
+        + 'most of the first screen. That was A3’s known trade-off and it is real — scroll the phone.</p>'
+    },
+    complete: {
+      t: 'Complete — the page becomes a record',
+      body: '<p>No live cards, nothing queued, so the whole screen is results — and the disclosure '
+        + 'opens by default rather than hiding everything behind a summary line.</p>'
+        + '<p><b>Open question:</b> after a session ends this page is the only place the night’s results '
+        + 'exist in order. Worth adding your own record for the night here (played, won) the way option C '
+        + 'did? It is the same data.</p>'
+    }
+  };
+
+  /* ---------------- wiring ---------------- */
+  function paint() {
+    var st = current;
+    var h = head(st) + payment(st);
+    h += (st.s === 'registration_open') ? emptyState(st) : schedule(st);
+    document.getElementById('screen').innerHTML = h;
+
+    document.querySelectorAll('#states .st').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.k === st.k));
+    });
+    var n = NOTES[st.k];
+    document.getElementById('notes').innerHTML = '<h3>' + n.t + '</h3>' + n.body + stateTable();
+  }
+
+  function stateTable() {
+    return '<h3>Every state, and what the page does today</h3>'
+      + '<table><thead><tr><th>Session status</th><th>Matches</th><th>Page today</th></tr></thead><tbody>'
+      + '<tr><td>setup</td><td>none</td><td>Not reachable — session is invisible to players</td></tr>'
+      + '<tr><td>registration_open</td><td>none</td><td><b>Blank.</b> Header, then nothing</td></tr>'
+      + '<tr><td>registration_closed</td><td>none until generated</td><td><b>Blank</b>, plus an empty court strip</td></tr>'
+      + '<tr><td>schedule_locked</td><td>all queued</td><td>Full list, no live card, no payment prompt</td></tr>'
+      + '<tr><td>in_progress</td><td>mixed</td><td>Works — this is the state it was designed for</td></tr>'
+      + '<tr><td>complete</td><td>all complete</td><td>Every row dimmed to <code>opacity-50</code></td></tr>'
+      + '</tbody></table>';
+  }
+
+  var wrap = document.getElementById('states');
+  STATES.forEach(function (s) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'st'; b.dataset.k = s.k;
+    b.innerHTML = '<b>' + s.b + '</b><span>' + s.s + '</span>';
+    b.addEventListener('click', function () { current = s; paint(); });
+    wrap.appendChild(b);
+  });
+
+  var root = document.documentElement, orb = document.getElementById('orb');
+  orb.addEventListener('click', function () {
+    var dark = root.getAttribute('data-theme') !== 'dark';
+    root.setAttribute('data-theme', dark ? 'dark' : 'light');
+    orb.setAttribute('aria-checked', String(dark));
+  });
+
+  paint();
+})();
+</script>
+</body>
+</html>
