@@ -289,6 +289,39 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Where does “3+ sessions played and active in the last 4” actually live now?</p>
+    <p class="a">
+      In one place: <code>fetchEligiblePlayerIds()</code> in
+      <code>src/lib/boardEligibility.ts</code>, which also owns
+      <code>MIN_SESSIONS_PLAYED</code>, <code>RECENT_SESSIONS_WINDOW</code> and the excluded-account
+      list. Every surface asks that one function — Mga Lodi, Partners, Cheers, Awards, and the award
+      badges on My Profile.
+    </p>
+    <p class="a">
+      It had been reimplemented inline four times, and the copies had drifted: the Cheers tab applied
+      neither rule, so a player who had turned up twice a year ago could still hold a cheer board.
+      The two exclusion sets were also duplicated under different names
+      (<code>CHEER_EXCLUDED</code> and <code>STREAK_EXCLUDED</code>) holding identical ids.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why do the profile’s award badges compute their own ranking instead of reading the Awards tab?</p>
+    <p class="a">
+      They still compute it locally — the two views load independently — but they now run the
+      <em>same</em> functions: <code>fetchEligiblePlayerIds</code> and <code>rankCheerShares</code>
+      with <code>maxPlaces: 1</code>, resolving a tie to nobody exactly as the Awards tab does.
+    </p>
+    <p class="a">
+      This matters because the two had silently diverged. After the Awards tab moved to shares, the
+      profile was still awarding 🌟 Most Cheers Received and 🙌 Most Cheers Given and still ranking
+      the six categories by raw count — so a player could see a badge on their profile that did not
+      exist on the leaderboard, with no way to work out why. If you change one ranking rule, check
+      both files.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>

@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
+import { fetchEligiblePlayerIds } from '@/lib/boardEligibility'
+import { cheerSharePct, rankCheerShares } from '@/lib/cheerShare'
 import { resizeImageFile } from '@/lib/imageResize'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
@@ -88,17 +90,32 @@ async function fetchAwards(userId: string): Promise<Award[]> {
 
   const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
 
-  const [cheerRes, statsRes, earlyBirdRes] = await Promise.all([
-    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
+  const [cheerRes, statsRes, earlyBirdRes, eligibleIds] = await Promise.all([
+    supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     latestSessionId
       ? supabase.from('session_registrations').select('player_id').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
       : Promise.resolve({ data: null }),
+    fetchEligiblePlayerIds(),
   ])
 
-  const cheers = (cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>
-  const stats = (statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>
+  // These badges must agree with the Awards tab exactly — a badge here that the
+  // leaderboard does not show is a contradiction the reader cannot diagnose. So
+  // the same eligibility, the same share ranking, and the same six awards.
+  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
+    .filter(c => eligibleIds.has(c.player_id))
+  const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
+    .filter(s => eligibleIds.has(s.player_id))
   const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
+
+  /** Sole holder of the highest share in one category, or nobody if it is tied. */
+  function topShare(getCount: (c: typeof cheers[number]) => number): string | null {
+    const ranked = rankCheerShares(
+      cheers.map(c => ({ playerId: c.player_id, categoryCount: getCount(c), totalReceived: c.cheers_received })),
+      { maxPlaces: 1 },
+    )
+    return ranked.length === 1 ? ranked[0].playerId : null
+  }
 
   function top(arr: Array<{ player_id: string; value: number }>): string | null {
     if (arr.length === 0) return null
@@ -108,26 +125,19 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     return sorted[0].player_id
   }
 
-  const STREAK_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
-  const cheerFiltered = cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id))
-
   const awards: Award[] = []
 
-  if (top(cheerFiltered.map(c => ({ player_id: c.player_id, value: c.cheers_received }))) === userId)
-    awards.push({ emoji: '🌟', label: 'Most Cheers Received' })
-  if (top(cheerFiltered.map(c => ({ player_id: c.player_id, value: c.cheers_given }))) === userId)
-    awards.push({ emoji: '🙌', label: 'Most Cheers Given' })
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received }))) === userId)
+  if (topShare(c => c.offense_received) === userId)
     awards.push({ emoji: '⚔️', label: 'Top Offense' })
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.defense_received }))) === userId)
+  if (topShare(c => c.defense_received) === userId)
     awards.push({ emoji: '🛡️', label: 'Top Defense' })
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received }))) === userId)
+  if (topShare(c => c.technique_received) === userId)
     awards.push({ emoji: '🎯', label: 'Top Technique' })
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received }))) === userId)
+  if (topShare(c => c.movement_received) === userId)
     awards.push({ emoji: '💨', label: 'Top Movement' })
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received }))) === userId)
+  if (topShare(c => c.good_sport_received) === userId)
     awards.push({ emoji: '🤝', label: 'Top Good Sport' })
-  if (top(cheers.map(c => ({ player_id: c.player_id, value: c.solid_effort_received }))) === userId)
+  if (topShare(c => c.solid_effort_received) === userId)
     awards.push({ emoji: '💪', label: 'Top Solid Effort' })
   if (top(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
     awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
@@ -384,8 +394,14 @@ export function ProfileView() {
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Cheers</h2>
         {cheerStats ? (
           <div className="grid grid-cols-2 gap-3">
-            <StatCard label="Received" value={String(cheerStats.cheers_received)} />
-            <StatCard label="Given" value={String(cheerStats.cheers_given)} />
+            {/* The total is the denominator the percentages below are of. It is
+                shown as context, not as a ranking: cheering is compulsory, so
+                the count only says how many matches were played. */}
+            <StatCard
+              label="Cheers received"
+              value={String(cheerStats.cheers_received)}
+              sub="across all types"
+            />
             {[
               { label: '⚔️ Fierce Offense',   val: cheerStats.offense_received },
               { label: '🛡️ Iron Defense',     val: cheerStats.defense_received },
@@ -396,7 +412,12 @@ export function ProfileView() {
             ]
               .filter(t => t.val > 0)
               .map(t => (
-                <StatCard key={t.label} label={t.label} value={String(t.val)} />
+                <StatCard
+                  key={t.label}
+                  label={t.label}
+                  value={`${cheerSharePct(t.val, cheerStats.cheers_received)}%`}
+                  sub={`${t.val} of ${cheerStats.cheers_received}`}
+                />
               ))
             }
           </div>
