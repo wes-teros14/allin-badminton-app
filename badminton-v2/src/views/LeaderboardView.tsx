@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces, groupByRank } from '@/lib/denseRank'
 import { MIN_CHEERS_RECEIVED, rankCheerShares } from '@/lib/cheerShare'
+import { BOARD_EXCLUDED, fetchEligiblePlayerIds, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
 import type { RankGroup } from '@/lib/denseRank'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
@@ -99,14 +100,6 @@ const PODIUM_TINT = [
 // ---------------------------------------------------------------------------
 // Data fetchers
 // ---------------------------------------------------------------------------
-const RECENT_SESSIONS_WINDOW = 4
-/**
- * Sessions a player must have attended to appear on any board. On the
- * partnership board *both* partners must clear it, so one regular carrying a
- * newcomer through three games together cannot mint a top-ten pairing.
- */
-const MIN_SESSIONS_PLAYED = 3
-
 async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const [statsRes, profilesRes, recentSessionsRes] = await Promise.all([
     supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', MIN_SESSIONS_PLAYED),
@@ -149,9 +142,10 @@ async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
 }
 
 async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
-  const [statsRes, profilesRes] = await Promise.all([
+  const [statsRes, profilesRes, eligibleIds] = await Promise.all([
     supabase.from('player_cheer_stats').select('*').gt('cheers_received', 0),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
+    fetchEligiblePlayerIds(),
   ])
 
   const nameMap = new Map(
@@ -159,10 +153,8 @@ async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
       .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
-  const CHEER_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
-
   return ((statsRes.data ?? []) as CheerStatsRow[])
-    .filter(s => !CHEER_EXCLUDED.has(s.player_id) && nameMap.has(s.player_id))
+    .filter(s => !BOARD_EXCLUDED.has(s.player_id) && nameMap.has(s.player_id) && eligibleIds.has(s.player_id))
     .map(s => ({
       ...s,
       displayName: nameMap.get(s.player_id)!,
@@ -224,28 +216,11 @@ async function fetchCompletedMatchesForPairs(): Promise<PairTallyMatch[]> {
 }
 
 async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
-  const [matches, profilesRes, recentSessionsRes, seasonedRes] = await Promise.all([
+  const [matches, profilesRes, eligibleIds] = await Promise.all([
     fetchCompletedMatchesForPairs(),
     supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
-    supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
-    // Same floor the individual board applies, read from the same column, so
-    // "3+ sessions played" cannot come to mean two different things.
-    supabase.from('player_stats').select('player_id').gte('sessions_attended', MIN_SESSIONS_PLAYED),
+    fetchEligiblePlayerIds(),
   ])
-
-  const seasonedPlayerIds = new Set(
-    ((seasonedRes.data ?? []) as Array<{ player_id: string }>).map((s) => s.player_id),
-  )
-
-  const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
-  const activePlayerIds = new Set<string>()
-  if (recentSessionIds.length > 0) {
-    const { data: registrations } = await supabase
-      .from('session_registrations')
-      .select('player_id')
-      .in('session_id', recentSessionIds)
-    for (const r of (registrations ?? []) as Array<{ player_id: string }>) activePlayerIds.add(r.player_id)
-  }
 
   type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
   const profileRows = (profilesRes.data ?? []) as ProfileRow[]
@@ -267,8 +242,7 @@ async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
   const ranked = rankPairs(tallyPairs(matches), {
     minGames: MIN_GAMES_TOGETHER,
     maxRank: MAX_PLACES,
-    isEligiblePlayer: (id) =>
-      profileById.has(id) && activePlayerIds.has(id) && seasonedPlayerIds.has(id),
+    isEligiblePlayer: (id) => profileById.has(id) && eligibleIds.has(id),
   })
 
   const toPlayer = (id: string): PairLeaderboardPlayer => ({
@@ -585,6 +559,14 @@ const CHEER_CATEGORIES = [
  * of this type — not by how many they collected. See `cheerShare.ts` for why
  * the raw counts had to go.
  */
+/**
+ * One cheer category, ranked by what share of a player's received cheers were
+ * of this type — not by how many they collected. See `cheerShare.ts` for why
+ * the raw counts had to go.
+ *
+ * Rendered through the same `RankedBoard` as the win-rate boards, so a podium,
+ * a tie group and a rank chip mean the same thing on every tab.
+ */
 function CheerShareList({
   label,
   entries,
@@ -608,30 +590,43 @@ function CheerShareList({
   return (
     <div>
       <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{label}</h2>
-      <div className="space-y-2">
-        {groupByRank(ranked).map((group) => (
-          <RankPlace
-            key={group.rank}
-            group={group}
-            tiedNoun="players"
-            keyOf={(row) => row.playerId}
-            frameClassName="rounded-xl border border-border"
-            marker={<RankChip rank={group.rank} />}
-            renderRow={(row) => (
-              <>
-                <span className="flex-1 min-w-0 truncate text-sm font-medium">{names.get(row.playerId)}</span>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-primary tabular-nums">{row.sharePct}%</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    {row.categoryCount} of {row.totalReceived}
-                  </p>
-                </div>
-              </>
-            )}
-          />
-        ))}
-      </div>
+      <RankedBoard
+        entries={ranked}
+        tiedNoun="players"
+        keyOf={(row) => row.playerId}
+        renderRow={(row, variant) => (
+          <CheerShareRowBody name={names.get(row.playerId) ?? ''} row={row} variant={variant} />
+        )}
+      />
     </div>
+  )
+}
+
+/** Everything on a cheer row except the marker, which the place owns. */
+function CheerShareRowBody({
+  name,
+  row,
+  variant,
+}: {
+  name: string
+  row: { sharePct: number; categoryCount: number; totalReceived: number }
+  variant: 'podium' | 'list'
+}) {
+  const podium = variant === 'podium'
+  return (
+    <>
+      <span className={`flex-1 min-w-0 truncate ${podium ? 'text-[15px] font-semibold' : 'text-sm font-medium'}`}>
+        {name}
+      </span>
+      <div className="text-right shrink-0">
+        <p className={`font-bold text-primary tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>
+          {row.sharePct}%
+        </p>
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {row.categoryCount} of {row.totalReceived}
+        </p>
+      </div>
+    </>
   )
 }
 
@@ -653,26 +648,20 @@ function CheersLeaderboard() {
     return <p className="text-muted-foreground text-sm">No cheers recorded yet.</p>
   }
 
-  const boards = CHEER_CATEGORIES.map((category) => (
-    <CheerShareList
-      key={category.label}
-      label={category.label}
-      entries={entries}
-      getCount={category.of}
-    />
-  ))
-
   return (
     <div className="space-y-6">
       <p className="text-xs text-muted-foreground text-center">
-        Ranked by share of each player's cheers · min. {MIN_CHEERS_RECEIVED} cheers received
+        Ranked by share of each player's cheers · min. {MIN_CHEERS_RECEIVED} cheers received ·
+        {' '}{MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
       </p>
-      {boards}
-      <p className="text-xs text-muted-foreground leading-relaxed">
-        Cheering is required after every game, so totals given and received only measure how many
-        matches someone played. These boards read the one part that is a choice — which cheer people
-        picked.
-      </p>
+      {CHEER_CATEGORIES.map((category) => (
+        <CheerShareList
+          key={category.label}
+          label={category.label}
+          entries={entries}
+          getCount={category.of}
+        />
+      ))}
     </div>
   )
 }
@@ -687,7 +676,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     .maybeSingle()
   const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
 
-  const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirdRes] = await Promise.all([
+  const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirdRes, eligibleIds] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
@@ -696,6 +685,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     latestSessionId
       ? supabase.from('session_registrations').select('player_id').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
       : Promise.resolve({ data: null }),
+    fetchEligiblePlayerIds(),
   ])
 
   const nameMap = new Map(
@@ -703,10 +693,14 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
+  // Every award, cheer-based or attendance-based, is drawn from the same pool
+  // the other tabs rank: established players who are still turning up.
+  const isRankable = (id: string) => nameMap.has(id) && eligibleIds.has(id) && !BOARD_EXCLUDED.has(id)
+
   const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
-    .filter(s => nameMap.has(s.player_id))
+    .filter(s => isRankable(s.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
-    .filter(s => nameMap.has(s.player_id))
+    .filter(s => isRankable(s.player_id))
   const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
   let earlyBirdName: string | null = earlyBirdPlayerId ? (nameMap.get(earlyBirdPlayerId) ?? null) : null
   if (earlyBirdPlayerId && !earlyBirdName) {
@@ -735,12 +729,11 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   }
 
   // Consecutive sessions streak per player
-  const STREAK_EXCLUDED = new Set(['d3def74c-7367-4553-af30-eaa58e45ddb7', '8e48d7bf-c7dc-45a5-a468-7ee9b81db677'])
   const completedSessionIds = ((sessionsRes.data ?? []) as Array<{ id: string }>).map(s => s.id)
   const allRegsRes = await supabase.from('session_registrations').select('session_id, player_id').in('session_id', completedSessionIds)
   const playerSessions = new Map<string, Set<string>>()
   for (const r of (allRegsRes.data ?? []) as Array<{ session_id: string; player_id: string }>) {
-    if (STREAK_EXCLUDED.has(r.player_id)) continue
+    if (!isRankable(r.player_id)) continue
     if (!playerSessions.has(r.player_id)) playerSessions.set(r.player_id, new Set())
     playerSessions.get(r.player_id)!.add(r.session_id)
   }
@@ -796,7 +789,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
 
   const awards: AwardEntry[] = [
     // System-generated awards first
-    countAward('📅', 'Most Sessions Joined', topHolder(stats.filter(s => !STREAK_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended })))),
+    countAward('📅', 'Most Sessions Joined', topHolder(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended })))),
     countAward('🔥', 'Attendance Streak', topHolder(streakEntries)),
     { emoji: '🐦', label: 'Registration Early Bird', holder: earlyBirdName, valueLabel: null },
     // Cheer-based awards, by share of the holder's own received cheers

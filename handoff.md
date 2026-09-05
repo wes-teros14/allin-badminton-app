@@ -1,6 +1,6 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-05, ~09:15. Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-05, ~09:35. Overwrite this file on every update; it is never a running history.
 
 ## Just done this session
 
@@ -11,6 +11,9 @@ Updated: 2026-09-05, ~09:15. Overwrite this file on every update; it is never a 
 - **Cheer boards are now shares, not counts.** Removed *Most Cheers Received* / *Most Cheers Given* and the 🌟/🙌 awards — cheering is compulsory, so both were 3-per-match attendance counts. The six categories now rank `category ÷ cheers_received` with a 15-cheer floor.
 - `RANK_ICON` deleted — its last caller is gone, so the medal-vs-digit mismatch no longer exists anywhere in the app.
 - New shared libs: `src/lib/denseRank.ts` and `src/lib/cheerShare.ts`, both unit-tested.
+- **Cheers tab now uses the same podium/chip/tie UI** as the two win-rate boards, and its explanatory footer paragraph was removed.
+- **Eligibility unified in `src/lib/boardEligibility.ts`** — 3+ sessions played and active in the last 4 now gate Cheers and Awards as well, and the excluded-account list is one set instead of two copies under different names.
+- **My Profile**: cheer stat cards now show a share (`40%`, sub `12 of 30`) with the total as context; the "Given" card is gone. Its award badges were still on the old count ranking and still awarding 🌟/🙌 — they now run the same eligibility and share ranking as the Awards tab.
 
 ## Current state
 
