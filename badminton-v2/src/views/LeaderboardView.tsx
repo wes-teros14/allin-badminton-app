@@ -906,7 +906,7 @@ export function LeaderboardView() {
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            {t === 'wins' ? 'Mga Lodi' : t === 'cheers' ? 'Cheers' : t === 'awards' ? 'Awards' : 'Partners'}
+            {t === 'wins' ? 'Individual' : t === 'cheers' ? 'Cheers' : t === 'awards' ? 'Awards' : 'Partners'}
           </button>
         ))}
       </div>
