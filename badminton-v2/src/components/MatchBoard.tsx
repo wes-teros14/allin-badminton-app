@@ -453,16 +453,58 @@ function OutcomeChip({ outcome, won }: { outcome: PersonalMatch['outcome']; won:
   return <span className="text-sm font-bold text-success">✓</span>
 }
 
+/**
+ * Progress on a personal list.
+ *
+ * The bar tracks the *session*, not your own games, because that is the number
+ * that moves without you — it is what tells you how near your next game is.
+ * Your own count sits beside it as text.
+ */
+export function SessionProgress({
+  sessionPlayed,
+  sessionTotal,
+  yourPlayed,
+  yourTotal,
+}: {
+  sessionPlayed: number
+  sessionTotal: number
+  yourPlayed: number
+  yourTotal: number
+}) {
+  if (sessionTotal === 0) return null
+  return (
+    <div className="mb-3.5">
+      <div className="h-1 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-500"
+          style={{ width: `${Math.round((sessionPlayed / sessionTotal) * 100)}%` }}
+        />
+      </div>
+      <div className="mt-1.5 flex justify-between font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+        <span>{sessionPlayed} of {sessionTotal} played</span>
+        <span className="text-foreground">You: {yourPlayed} of {yourTotal}</span>
+      </div>
+    </div>
+  )
+}
+
 export function PersonalGameCard({
   match,
   you,
   yourAvatarUrl,
   isNextUp,
+  promote,
 }: {
   match: PersonalMatch
   you: string
   yourAvatarUrl: string | null
   isNextUp: boolean
+  /**
+   * Render this one as the full band even though it is not live. The caller
+   * sets it on the next game only when nothing is running, so the list always
+   * has exactly one thing to look at first — and never two.
+   */
+  promote: boolean
 }) {
   const isLive = match.status === 'playing'
   const isDone = match.status === 'complete'
@@ -476,23 +518,38 @@ export function PersonalGameCard({
     { name: match.opp2NameSlug, avatarUrl: match.opp2AvatarUrl },
   ]
 
-  // Live: the full band, same as the board's hero.
-  if (isLive) {
+  // The band, for whatever the list should be looking at: a live game, or —
+  // when nothing is running — the next one.
+  if (isLive || promote) {
     return (
       <div
-        className="rounded-2xl border bg-card p-3"
-        style={{ borderColor: `color-mix(in srgb, var(--${(match.courtNumber ?? 1) === 1 ? 'primary' : 'court2'}) 55%, transparent)` }}
+        className={`mb-2.5 rounded-2xl border p-3 ${isLive ? 'bg-card' : 'bg-primary-subtle'}`}
+        style={{
+          borderColor: isLive
+            ? `color-mix(in srgb, var(--${(match.courtNumber ?? 1) === 1 ? 'primary' : 'court2'}) 55%, transparent)`
+            : 'color-mix(in srgb, var(--primary) 40%, transparent)',
+        }}
       >
         <div className="flex items-center gap-2 mb-3">
-          {match.courtNumber != null && (
-            <span className={`shrink-0 rounded-md px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] ${courtChipClass(match.courtNumber)}`}>
-              Court {match.courtNumber}
+          {isLive ? (
+            <>
+              {/* No court number on a queued game — none is assigned until the
+                  admin sends it on, so the chip says what is actually true. */}
+              {match.courtNumber != null && (
+                <span className={`shrink-0 rounded-md px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] ${courtChipClass(match.courtNumber)}`}>
+                  Court {match.courtNumber}
+                </span>
+              )}
+              <span className="ml-auto flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-destructive">
+                <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+                Live
+              </span>
+            </>
+          ) : (
+            <span className="shrink-0 rounded-md bg-primary px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
+              Your next game
             </span>
           )}
-          <span className="ml-auto flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-destructive">
-            <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
-            Live
-          </span>
         </div>
         <p className="mb-2.5 text-center font-mono text-[11px] font-bold tracking-[0.08em] text-muted-foreground">
           Game {match.gameNumber}
@@ -509,38 +566,31 @@ export function PersonalGameCard({
     )
   }
 
-  // Everything else: one compact row, the next one lifted by its border only.
+  // Everything else: a single line. Your own name is dropped — it is on every
+  // row of your own list — so "with X vs Y & Z" fits beside the faces.
   return (
-    <div className={`rounded-xl border p-2.5 ${isNextUp ? 'border-primary/40 bg-primary-subtle' : 'border-border'}`}>
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-muted font-mono text-xs font-bold text-muted-foreground">
-          {match.gameNumber}
+    <div className={`flex items-center gap-2 border-b border-border py-2.5 last:border-b-0 ${isNextUp ? 'font-semibold' : ''}`}>
+      <span className="w-5 shrink-0 text-right font-mono text-[11px] font-bold text-muted-foreground tabular-nums">
+        {match.gameNumber}
+      </span>
+      <span className="flex shrink-0 items-center gap-[3px]">
+        <Avatar url={match.partnerAvatarUrl} name={match.partnerNameSlug} size={20} />
+        <span className="px-0.5 text-[8.5px] font-bold uppercase text-muted-foreground">v</span>
+        <Avatar url={match.opp1AvatarUrl} name={match.opp1NameSlug} size={20} />
+        <Avatar url={match.opp2AvatarUrl} name={match.opp2NameSlug} size={20} />
+      </span>
+      <span className={`min-w-0 flex-1 truncate text-[12.5px] ${isDone ? 'text-muted-foreground' : ''}`}>
+        <span className="text-muted-foreground">with</span>{' '}
+        <span className="font-semibold text-primary dark:text-[#DCC2EE]">{match.partnerNameSlug}</span>{' '}
+        <span className="text-muted-foreground">vs</span> {match.opp1NameSlug} &amp; {match.opp2NameSlug}
+      </span>
+      {isDone ? (
+        <OutcomeChip outcome={match.outcome} won={match.won} />
+      ) : isNextUp ? (
+        <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-primary-foreground">
+          Next
         </span>
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          {mine.map((p, i) => (
-            <Avatar key={`m-${i}`} url={p.avatarUrl} name={p.name} size={26} />
-          ))}
-          <span className="px-1 text-[8.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground shrink-0">vs</span>
-          {theirs.map((p, i) => (
-            <Avatar key={`t-${i}`} url={p.avatarUrl} name={p.name} size={26} />
-          ))}
-        </div>
-        <span className="shrink-0">
-          {isDone
-            ? <OutcomeChip outcome={match.outcome} won={match.won} />
-            : isNextUp
-            ? <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-primary-foreground">Next</span>
-            : null}
-        </span>
-      </div>
-      {/* The player themselves has to be named, or the row reads as though the
-          partner is playing the pair alone. */}
-      <p className={`mt-2 truncate text-[13px] ${isDone ? 'text-muted-foreground' : 'font-semibold'}`}>
-        {you} <span className="text-muted-foreground">&amp;</span>{' '}
-        <span className="text-primary dark:text-[#DCC2EE]">{match.partnerNameSlug}</span>
-        <span className="px-1.5 text-muted-foreground">vs</span>
-        {match.opp1NameSlug} <span className="text-muted-foreground">&amp;</span> {match.opp2NameSlug}
-      </p>
+      ) : null}
     </div>
   )
 }

@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedule tab — three fixes</title>
+<style>
+:root,[data-theme="light"]{
+  --background:#FAF7FB;--card:#FFFFFF;--muted:#F1ECF6;--foreground:#1B1220;
+  --muted-foreground:#6B5F73;--border:#E7E0EC;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#EDE0F5;--gold:#B87A00;--gold-ink:#8A5A00;--destructive:#B3252B;
+  --success:#157F3D;--live:#B3252B;--court2:#1F6F6B;
+}
+[data-theme="dark"]{
+  --background:#0F0A18;--card:#1A1025;--muted:#1E1230;--foreground:#FFF;
+  --muted-foreground:#B39DBB;--border:#2D1A40;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#2D1B42;--gold:#FFB200;--gold-ink:#FFB200;--destructive:#DC595E;
+  --success:#22C55E;--live:#FF6B70;--court2:#4FD1C5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);
+  font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .4s,color .4s}
+.page{max-width:1180px;margin:0 auto;padding:40px 24px 90px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.1;letter-spacing:-.025em;margin:12px 0 0;font-weight:650}
+.sub{max-width:64ch;color:var(--muted-foreground);margin:12px 0 0;font-size:.97rem}
+.switch{display:flex;align-items:center;gap:10px;flex:none}
+.switch span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.orb-btn{width:44px;height:44px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);border-radius:11px;cursor:pointer;color:var(--foreground)}
+.orb{width:20px;height:20px;border-radius:50%;background:transparent;box-shadow:inset 8px -8px 0 0 currentColor;transform:rotate(-25deg);transition:transform .5s cubic-bezier(.5,-.3,.3,1.4),box-shadow .5s,background .3s}
+[data-theme="light"] .orb{background:currentColor;transform:scale(.52) rotate(180deg);
+  box-shadow:inset 15px -15px 0 0 transparent,0 -19px 0 -7px currentColor,0 19px 0 -7px currentColor,-19px 0 0 -7px currentColor,19px 0 0 -7px currentColor,-13px -13px 0 -7px currentColor,13px 13px 0 -7px currentColor,-13px 13px 0 -7px currentColor,13px -13px 0 -7px currentColor}
+
+.controls{display:flex;gap:26px;flex-wrap:wrap;margin-top:30px}
+.grp__l{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground);margin:0 0 9px}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opt{border:1px solid var(--border);background:var(--card);border-radius:11px;padding:10px 13px;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.opt:hover{border-color:var(--primary)}
+.opt[aria-pressed="true"]{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.opt b{display:block;font-size:13px;font-weight:650}
+.opt span{display:block;margin-top:3px;font:600 9px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-foreground)}
+
+.split{display:grid;grid-template-columns:384px minmax(0,1fr);gap:44px;align-items:start;margin-top:30px}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.device{width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:var(--background);position:sticky;top:24px}
+.appbar{background:var(--primary);color:#fff;padding:9px 14px;display:flex;align-items:center;gap:10px;font-size:12.5px;font-weight:500}
+.appbar .dot{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.28)}
+.tabs{display:flex;gap:6px;padding:8px 14px 0;background:var(--background)}
+.tabs b,.tabs i{font:600 12px/1 system-ui,sans-serif;font-style:normal;padding:7px 13px;border-radius:999px}
+.tabs b{background:var(--primary);color:#fff}
+.tabs i{color:var(--muted-foreground)}
+/* the real purple header on this screen */
+.phead{background:var(--primary);color:#fff;padding:14px;margin-top:8px}
+.phead h2{font-size:22px;font-weight:700;margin:0;letter-spacing:-.02em}
+.phead p{margin:3px 0 0;font-size:12.5px;opacity:.82}
+.screen{padding:12px 14px 22px}
+
+/* --- the new meter --- */
+.meter{margin:0 0 14px}
+.meter__bar{height:4px;border-radius:999px;background:var(--muted);overflow:hidden}
+.meter__fill{height:100%;background:var(--primary);border-radius:999px}
+.meter__txt{display:flex;justify-content:space-between;margin-top:6px;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+.meter__you{color:var(--foreground)}
+
+.zone__h{display:flex;align-items:center;gap:8px;margin:16px 0 8px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+.zone__h .c{margin-left:auto;font-weight:600}
+
+.av{border-radius:50%;flex:none;display:block}
+.av--fb{background:var(--muted);color:var(--muted-foreground);display:grid;place-items:center;font-weight:700;line-height:1}
+
+/* --- band (live or next) --- */
+.band-card{border:1px solid var(--border);border-radius:16px;padding:12px;background:var(--card);margin-bottom:9px}
+.band-card[data-kind="live"]{border-color:color-mix(in srgb,var(--primary) 55%,transparent)}
+.band-card[data-kind="next"]{border-color:color-mix(in srgb,var(--primary) 40%,transparent);background:var(--primary-subtle)}
+.bc__top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.chip{font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px;border-radius:6px;flex:none}
+.chip--court{background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .chip--court{color:#DCC2EE}
+.chip--next{background:var(--primary);color:var(--primary-fg)}
+.elapsed{font:600 12px/1 ui-monospace,Menlo,monospace;color:var(--gold-ink)}
+.livetag{margin-left:auto;display:flex;align-items:center;gap:5px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:var(--live)}
+.livetag i{width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.gnum{font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--muted-foreground);margin:0 0 10px;text-align:center}
+.band{display:grid;grid-template-columns:1fr 26px 1fr;align-items:start;gap:4px}
+.band__side{display:flex;justify-content:space-evenly;gap:6px}
+.band__p{width:64px;text-align:center}
+.band__p .av{margin:0 auto 6px}
+.band__nm{font-size:11.5px;font-weight:600;line-height:1.25;margin:0;word-break:break-word}
+.band__mid{display:flex;flex-direction:column;align-items:center;justify-content:center;padding-top:14px}
+.band__mid span{font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted-foreground)}
+.band__mid i{display:block;width:1px;height:22px;background:var(--border);margin:5px 0}
+
+/* --- two-line row (what ships today) --- */
+.row2{border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:9px}
+.row2.is-next{border-color:color-mix(in srgb,var(--primary) 40%,transparent);background:var(--primary-subtle)}
+.row2__top{display:flex;align-items:center;gap:9px}
+.row2__n{width:30px;height:30px;flex:none;border-radius:9px;display:grid;place-items:center;background:var(--muted);font:700 12px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground)}
+.row2__avs{display:flex;align-items:center;gap:4px;flex:1;min-width:0}
+.row2__nm{margin:8px 0 0;font-size:13px;font-weight:600}
+.vsm{font:700 8.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;color:var(--muted-foreground);padding:0 3px;flex:none}
+
+/* --- one-line row --- */
+.row1{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--border)}
+.row1:last-child{border-bottom:0}
+.row1__n{width:20px;flex:none;text-align:right;font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground)}
+.row1__avs{display:flex;align-items:center;gap:3px;flex:none}
+.row1__nm{min-width:0;flex:1;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row1__nm .w{color:var(--muted-foreground)}
+.row1__nm .p{font-weight:650;color:var(--primary)}
+[data-theme="dark"] .row1__nm .p{color:#DCC2EE}
+.row1.done .row1__nm{color:var(--muted-foreground)}
+.res{flex:none;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;padding:4px 7px;border-radius:999px}
+.res--w{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
+.res--l{background:color-mix(in srgb,var(--destructive) 16%,transparent);color:var(--destructive)}
+.res--n{background:var(--primary);color:var(--primary-fg)}
+
+.notes h3{font-size:1.02rem;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+.notes h3:not(:first-child){margin-top:24px}
+.notes p,.notes li{color:var(--muted-foreground);font-size:.95rem}
+.notes p{margin:0 0 10px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin-bottom:8px}
+.notes b{color:var(--foreground);font-weight:650}
+.stat{display:inline-block;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;border-radius:6px;background:var(--muted);color:var(--foreground);margin:0 6px 6px 0}
+code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div>
+      <p class="kicker">Schedule tab · /sessions/:id · three fixes</p>
+      <h1>Giving your own list an anchor</h1>
+    </div>
+    <div class="switch">
+      <span>Theme</span>
+      <button class="orb-btn" id="orb" type="button" role="switch" aria-checked="true" aria-label="Dark mode"><span class="orb" aria-hidden="true"></span></button>
+    </div>
+  </div>
+
+  <p class="sub">
+    All Matches already matches the approved design. This screen does not: no progress bar, no zones,
+    and before anything is live every row is identical. Session of <b>14 games</b>, you are in
+    <b>5</b>. Switch between the three fixes and between the two states.
+  </p>
+
+  <div class="controls">
+    <div>
+      <p class="grp__l">Fix</p>
+      <div class="opts" id="optGrp"></div>
+    </div>
+    <div>
+      <p class="grp__l">Session state</p>
+      <div class="opts" id="stateGrp"></div>
+    </div>
+  </div>
+
+  <div class="split">
+    <div class="device">
+      <div class="appbar"><span class="dot"></span><span>Sessions</span></div>
+      <div class="tabs"><b>Schedule</b><i>Leaderboard</i></div>
+      <div class="phead">
+        <h2>Ana</h2>
+        <p>Sunday Morning · 5 games</p>
+        <p>Sep. 6, 2026 · 08:00 · 3 hrs · Court 3, Marikina</p>
+      </div>
+      <div class="screen" id="screen"></div>
+    </div>
+    <div class="notes" id="notes"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var P = { Ana:{h:288,p:0}, Boyet:{h:18,p:1}, Chito:{h:150,p:0}, Dan:{h:212,p:1},
+            Eric:{h:42,p:1}, Fely:{h:332,p:0}, Gigi:{h:266,p:1}, Hector:{h:100,p:1} }
+  function av(n, s) {
+    var d = P[n] || { h: 0, p: 0 }
+    if (d.p) return '<svg class="av" width="'+s+'" height="'+s+'" viewBox="0 0 40 40" aria-hidden="true">'
+      + '<circle cx="20" cy="20" r="20" fill="hsl('+d.h+' 46% 56%)"/>'
+      + '<circle cx="20" cy="16" r="7.4" fill="hsl('+d.h+' 44% 88%)"/>'
+      + '<path d="M5.4 40c1.8-8.9 7.4-13.4 14.6-13.4S32.8 31.1 34.6 40z" fill="hsl('+d.h+' 44% 88%)"/></svg>'
+    return '<span class="av av--fb" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*.45)+'px" aria-hidden="true">'+n.charAt(0)+'</span>'
+  }
+
+  // Ana's five games out of the session's fourteen.
+  var MINE = [
+    { n:2,  partner:'Boyet',  opp:['Chito','Dan'] },
+    { n:5,  partner:'Dan',    opp:['Eric','Fely'] },
+    { n:7,  partner:'Eric',   opp:['Gigi','Hector'] },
+    { n:9,  partner:'Chito',  opp:['Gigi','Hector'] },
+    { n:13, partner:'Gigi',   opp:['Dan','Hector'] }
+  ]
+  var STATES = [
+    { k:'locked', b:'Not live',  s:'Schedule locked', playedSession:0, playedMine:0, liveIdx:-1 },
+    { k:'live',   b:'Mid-session', s:'In progress',   playedSession:6, playedMine:2, liveIdx:2 }
+  ]
+  var OPTS = [
+    { k:'o1', b:'1 · Mirror All Matches', s:'meter + zones' },
+    { k:'o2', b:'2 · Meter + one-line',   s:'flat order' },
+    { k:'o3', b:'3 · Promote next',       s:'meter + band + one-line' }
+  ]
+  var opt = OPTS[2], state = STATES[0]
+
+  function statusOf(i) {
+    if (state.k === 'locked') return i === 0 ? 'next' : 'queued'
+    if (i < state.playedMine) return 'done'
+    if (i === state.liveIdx) return 'live'
+    return i === state.playedMine ? 'queued' : 'queued'
+  }
+  function nextIdx() {
+    for (var i = 0; i < MINE.length; i++) if (statusOf(i) === 'next' || (state.k === 'live' && statusOf(i) === 'queued' && i > state.liveIdx)) return i
+    return -1
+  }
+
+  function meter() {
+    var pct = Math.round(state.playedSession / 14 * 100)
+    return '<div class="meter"><div class="meter__bar"><div class="meter__fill" style="width:'+pct+'%"></div></div>'
+      + '<div class="meter__txt"><span>'+state.playedSession+' of 14 played</span>'
+      + '<span class="meter__you">You: '+state.playedMine+' of 5</span></div></div>'
+  }
+
+  function bandCard(m, kind) {
+    var mine = ['Ana', m.partner], theirs = m.opp
+    var side = function (arr) {
+      return '<div class="band__side">' + arr.map(function (n) {
+        return '<div class="band__p">'+av(n,48)+'<p class="band__nm">'+n+'</p></div>' }).join('') + '</div>'
+    }
+    var top = kind === 'live'
+      ? '<span class="chip chip--court">Court 1</span><span class="elapsed">04:36</span><span class="livetag"><i></i>LIVE</span>'
+      : '<span class="chip chip--next">Your next game</span>'
+    return '<div class="band-card" data-kind="'+kind+'"><div class="bc__top">'+top+'</div>'
+      + '<p class="gnum">Game '+m.n+'</p>'
+      + '<div class="band">'+side(mine)+'<div class="band__mid"><span>VS</span><i></i></div>'+side(theirs)+'</div></div>'
+  }
+
+  function row2(m, st) {
+    return '<div class="row2'+(st==='next'?' is-next':'')+'"><div class="row2__top">'
+      + '<span class="row2__n">'+m.n+'</span><span class="row2__avs">'
+      + av('Ana',26)+av(m.partner,26)+'<span class="vsm">VS</span>'+av(m.opp[0],26)+av(m.opp[1],26)
+      + '</span>'+chipFor(st)+'</div>'
+      + '<p class="row2__nm">Ana &amp; '+m.partner+' vs '+m.opp.join(' &amp; ')+'</p></div>'
+  }
+
+  function row1(m, st) {
+    // Your own name is dropped: it is on every row of your own list. "with X"
+    // keeps the partner unambiguous in half the width.
+    return '<div class="row1'+(st==='done'?' done':'')+'">'
+      + '<span class="row1__n">'+m.n+'</span>'
+      + '<span class="row1__avs">'+av(m.partner,20)+'<span class="vsm">v</span>'+av(m.opp[0],20)+av(m.opp[1],20)+'</span>'
+      + '<span class="row1__nm"><span class="w">with</span> <span class="p">'+m.partner+'</span> '
+      + '<span class="w">vs</span> '+m.opp.join(' &amp; ')+'</span>'
+      + chipFor(st) + '</div>'
+  }
+
+  function chipFor(st) {
+    if (st === 'done') return '<span class="res res--w">Win</span>'
+    if (st === 'next') return '<span class="res res--n">Next</span>'
+    return ''
+  }
+
+  function render() {
+    var h = meter(), ni = nextIdx()
+
+    if (opt.k === 'o1') {
+      var live = [], starts = [], later = [], done = []
+      MINE.forEach(function (m, i) {
+        var st = statusOf(i)
+        if (st === 'live') live.push(m)
+        else if (st === 'done') done.push(m)
+        else if (starts.length < 2) starts.push(m)
+        else later.push(m)
+      })
+      if (live.length) { h += '<p class="zone__h">On court now</p>'; live.forEach(function (m) { h += bandCard(m, 'live') }) }
+      if (starts.length) {
+        h += '<p class="zone__h">'+(state.k==='locked'?'Starts with':'Up next')+' <span class="c">'+starts.length+'</span></p>'
+        starts.forEach(function (m, i) { h += row2(m, i === 0 && state.k === 'locked' ? 'next' : 'queued') })
+      }
+      if (later.length) { h += '<p class="zone__h">Later <span class="c">'+later.length+'</span></p>'
+        later.forEach(function (m) { h += row1(m, 'queued') }) }
+      if (done.length) { h += '<p class="zone__h">Played <span class="c">'+done.length+'</span></p>'
+        done.forEach(function (m) { h += row1(m, 'done') }) }
+    }
+
+    if (opt.k === 'o2') {
+      MINE.forEach(function (m, i) {
+        var st = statusOf(i)
+        h += st === 'live' ? bandCard(m, 'live') : row1(m, st === 'next' ? 'next' : st)
+      })
+    }
+
+    if (opt.k === 'o3') {
+      // Only ever one band. A live game is already the thing to look at, so the
+      // next one stays a row; the band is promoted only when nothing is live.
+      var anyLive = MINE.some(function (_, i) { return statusOf(i) === 'live' })
+      MINE.forEach(function (m, i) {
+        var st = statusOf(i)
+        if (st === 'live') h += bandCard(m, 'live')
+        else if (!anyLive && i === ni) h += bandCard(m, 'next')
+        else h += row1(m, st)
+      })
+    }
+
+    document.getElementById('screen').innerHTML = h
+    document.querySelectorAll('#optGrp .opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.k === opt.k)) })
+    document.querySelectorAll('#stateGrp .opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.k === state.k)) })
+    document.getElementById('notes').innerHTML = NOTES[opt.k]
+  }
+
+  var NOTES = {
+    o1: '<h3>1 · Mirror All Matches</h3>'
+      + '<p>The same meter and the same zone headings as the board. Two screens, one grammar.</p>'
+      + '<ul><li><b>Consistent.</b> If you learn the board you have learned this.</li>'
+      + '<li><b>Costs the running order.</b> Your games stop being 2, 5, 7, 9, 13 down the page and get regrouped — which is the exact objection that made me drop zones here in the first place.</li>'
+      + '<li><b>Zones over five rows are thin.</b> "Later" holding two games is a heading earning very little.</li></ul>'
+      + '<p><span class="stat">Verdict</span> Consistent, but it imports a structure built for twenty games onto five.</p>',
+    o2: '<h3>2 · Meter + one-line rows</h3>'
+      + '<p>Keep the flat order. Halve the row by putting the names beside the faces instead of underneath, and drop your own name — it is on every row of your own list.</p>'
+      + '<ul><li><b>Shortest.</b> Rows go from ~79 px to ~38 px. The session I measured drops from 1626 px to roughly 1100 px.</li>'
+      + '<li><b>Order preserved.</b> Read straight down.</li>'
+      + '<li><b>Still no anchor before anything is live.</b> Only the Next chip distinguishes a row — which is the complaint, half-fixed.</li></ul>'
+      + '<p><span class="stat">Verdict</span> Fixes the scroll, not the flatness.</p>',
+    o3: '<h3>3 · Promote the next game</h3>'
+      + '<p>Whatever is next renders as the full 2-versus-2 band — the same one a live game gets — and everything else is a one-line row. There is always a next game, so the list always has something to look at first.</p>'
+      + '<ul><li><b>An anchor in every state.</b> Before the session, mid-session, and after your last game.</li>'
+      + '<li><b>Order preserved.</b> Nothing is regrouped; one row is simply bigger.</li>'
+      + '<li><b>Reuses what exists.</b> The band is already built for live games — this is the same component with a different chip.</li>'
+      + '<li><b>Two bands when your next game is also live?</b> No: a live game <em>is</em> your current game, so it takes the band and the following one stays a row.</li></ul>'
+      + '<p><span class="stat">Recommended</span> Keeps the reason I dropped zones, fixes the reason you noticed.</p>'
+      + '<h3>The meter, either way</h3>'
+      + '<p>It shows <b>session</b> progress with your own count beside it: <code>6 of 14 played · You: 2 of 5</code>. Session progress is what tells you how near your next game is; your own count is what tells you how much night you have left. The bar tracks the session, because that is the one that moves without you.</p>'
+  }
+
+  var og = document.getElementById('optGrp')
+  OPTS.forEach(function (o) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'opt'; b.dataset.k = o.k
+    b.innerHTML = '<b>'+o.b+'</b><span>'+o.s+'</span>'
+    b.addEventListener('click', function () { opt = o; render() }); og.appendChild(b)
+  })
+  var sg = document.getElementById('stateGrp')
+  STATES.forEach(function (s) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'opt'; b.dataset.k = s.k
+    b.innerHTML = '<b>'+s.b+'</b><span>'+s.s+'</span>'
+    b.addEventListener('click', function () { state = s; render() }); sg.appendChild(b)
+  })
+  var root = document.documentElement, orb = document.getElementById('orb')
+  orb.addEventListener('click', function () {
+    var d = root.getAttribute('data-theme') !== 'dark'
+    root.setAttribute('data-theme', d ? 'dark' : 'light'); orb.setAttribute('aria-checked', String(d))
+  })
+  render()
+})()
+</script>
+</body>
+</html>

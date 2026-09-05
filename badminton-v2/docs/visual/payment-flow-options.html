@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payment &amp; receipt — three fixes</title>
+<style>
+:root,[data-theme="light"]{
+  --background:#FAF7FB;--card:#FFFFFF;--muted:#F1ECF6;--foreground:#1B1220;
+  --muted-foreground:#6B5F73;--border:#E7E0EC;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#EDE0F5;--gold:#B87A00;--gold-ink:#8A5A00;--destructive:#B3252B;
+  --success:#157F3D;
+}
+[data-theme="dark"]{
+  --background:#0F0A18;--card:#1A1025;--muted:#1E1230;--foreground:#FFF;
+  --muted-foreground:#B39DBB;--border:#2D1A40;--primary:#6F3E87;--primary-fg:#FFF;
+  --primary-subtle:#2D1B42;--gold:#FFB200;--gold-ink:#FFB200;--destructive:#DC595E;
+  --success:#22C55E;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);
+  font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .4s,color .4s}
+.page{max-width:1180px;margin:0 auto;padding:40px 24px 90px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.1;letter-spacing:-.025em;margin:12px 0 0;font-weight:650}
+.sub{max-width:64ch;color:var(--muted-foreground);margin:12px 0 0;font-size:.97rem}
+.switch{display:flex;align-items:center;gap:10px;flex:none}
+.switch span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.orb-btn{width:44px;height:44px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);border-radius:11px;cursor:pointer;color:var(--foreground)}
+.orb{width:20px;height:20px;border-radius:50%;background:transparent;box-shadow:inset 8px -8px 0 0 currentColor;transform:rotate(-25deg);transition:transform .5s cubic-bezier(.5,-.3,.3,1.4),box-shadow .5s,background .3s}
+[data-theme="light"] .orb{background:currentColor;transform:scale(.52) rotate(180deg);
+  box-shadow:inset 15px -15px 0 0 transparent,0 -19px 0 -7px currentColor,0 19px 0 -7px currentColor,-19px 0 0 -7px currentColor,19px 0 0 -7px currentColor,-13px -13px 0 -7px currentColor,13px 13px 0 -7px currentColor,-13px 13px 0 -7px currentColor,13px -13px 0 -7px currentColor}
+.controls{display:flex;gap:26px;flex-wrap:wrap;margin-top:30px}
+.grp__l{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground);margin:0 0 9px}
+.opts{display:flex;gap:8px;flex-wrap:wrap}
+.opt{border:1px solid var(--border);background:var(--card);border-radius:11px;padding:10px 13px;cursor:pointer;color:inherit;font:inherit;text-align:left}
+.opt:hover{border-color:var(--primary)}
+.opt[aria-pressed="true"]{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.opt b{display:block;font-size:13px;font-weight:650}
+.opt span{display:block;margin-top:3px;font:600 9px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.07em;text-transform:uppercase;color:var(--muted-foreground)}
+.split{display:grid;grid-template-columns:384px minmax(0,1fr);gap:44px;align-items:start;margin-top:30px}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
+.device{width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:var(--background);position:sticky;top:24px}
+.appbar{background:var(--primary);color:#fff;padding:9px 14px;font-size:12.5px;font-weight:500}
+.screen{padding:14px}
+
+/* ---------- shared bits ---------- */
+.amt{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.lbl{font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.tag{font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;padding:5px 8px;border-radius:6px;flex:none}
+.tag--unpaid{background:color-mix(in srgb,var(--destructive) 18%,transparent);color:var(--destructive)}
+.tag--sent{background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold-ink)}
+.tag--paid{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
+.btn{width:100%;min-height:46px;border:0;border-radius:11px;cursor:pointer;font:600 14px/1 system-ui,sans-serif;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s}
+.btn--pri{background:var(--primary);color:var(--primary-fg)}
+.btn--pri:hover{filter:brightness(1.08)}
+.btn--gho{background:transparent;border:1px solid var(--border);color:var(--foreground)}
+.btn--gho:hover{border-color:var(--primary)}
+.card{border:1px solid var(--border);border-radius:16px;background:var(--card);padding:14px}
+.num{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--border);
+  border-radius:10px;background:var(--background);padding:11px 12px}
+.num b{font-size:16px;font-weight:650;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.qr{width:100%;aspect-ratio:1;max-width:150px;margin:0 auto;border-radius:10px;border:1px solid var(--border);
+  background:
+    linear-gradient(90deg,var(--foreground) 20%,transparent 0) 0 0/12px 12px,
+    linear-gradient(0deg,var(--foreground) 20%,transparent 0) 0 0/12px 12px,
+    var(--card);
+  opacity:.85;display:grid;place-items:center}
+.qr span{font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:var(--muted-foreground);
+  background:var(--card);padding:5px 7px;border-radius:5px}
+.hint{font-size:12px;color:var(--muted-foreground);line-height:1.5;margin:0}
+.thumb{width:52px;height:66px;border-radius:8px;border:1px solid var(--border);background:var(--muted);
+  display:grid;place-items:center;font-size:19px;flex:none}
+
+/* ---------- A: steps ---------- */
+.step{display:grid;grid-template-columns:26px 1fr;gap:11px;padding:0 0 4px}
+.step__i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  font:700 11px/1 ui-monospace,Menlo,monospace;background:var(--muted);color:var(--muted-foreground)}
+.step.on .step__i{background:var(--primary);color:var(--primary-fg)}
+.step.done .step__i{background:color-mix(in srgb,var(--success) 22%,transparent);color:var(--success)}
+.step__b{padding-bottom:16px;border-left:0}
+.step__t{font-size:13.5px;font-weight:650;margin:4px 0 0}
+.step.off .step__t{color:var(--muted-foreground);font-weight:500}
+.step__c{margin-top:9px}
+.rail{position:relative}
+.rail::before{content:"";position:absolute;left:12.5px;top:26px;bottom:14px;width:1px;background:var(--border)}
+
+/* ---------- C: split ---------- */
+.paysplit{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.paysplit .btn{min-height:78px;flex-direction:column;gap:6px;font-size:12.5px}
+.paysplit .btn i{font-style:normal;font-size:19px}
+
+.notes h3{font-size:1.02rem;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+.notes h3:not(:first-child){margin-top:24px}
+.notes p,.notes li{color:var(--muted-foreground);font-size:.95rem}
+.notes p{margin:0 0 10px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin-bottom:8px}
+.notes b{color:var(--foreground);font-weight:650}
+.pill{display:inline-block;font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:4px 7px;border-radius:5px;margin-right:6px;background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .pill{color:#DCC2EE}
+.pill--stop{background:color-mix(in srgb,var(--destructive) 18%,transparent);color:var(--destructive)}
+code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top">
+    <div>
+      <p class="kicker">Payment &amp; receipt · /sessions/:id · <b>A chosen</b></p>
+      <h1>Paying, and proving you paid</h1>
+    </div>
+    <div class="switch">
+      <span>Theme</span>
+      <button class="orb-btn" id="orb" type="button" role="switch" aria-checked="true" aria-label="Dark mode"><span class="orb" aria-hidden="true"></span></button>
+    </div>
+  </div>
+
+  <p class="sub">
+    The block today never says <b>how much</b>, shows a QR you cannot scan on the phone displaying it,
+    and looks identical whether you have paid or not. Three ways to fix it — switch option and state.
+  </p>
+
+  <div class="controls">
+    <div><p class="grp__l">Option</p><div class="opts" id="optGrp"></div></div>
+    <div><p class="grp__l">State</p><div class="opts" id="stGrp"></div></div>
+  </div>
+
+  <div class="split">
+    <div class="device">
+      <div class="appbar">Sunday Morning · Schedule</div>
+      <div class="screen" id="screen"></div>
+    </div>
+    <div class="notes" id="notes"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var OPTS = [
+    { k:'now', b:'0 · What ships today', s:'for comparison' },
+    { k:'a',   b:'A · Three steps',      s:'chosen · shipped' },
+    { k:'b',   b:'B · One action card',  s:'minimal' },
+    { k:'c',   b:'C · Amount first',     s:'pay / prove split' }
+  ]
+  var STATES = [
+    { k:'unpaid', b:'Unpaid',    s:'nothing sent' },
+    { k:'sent',   b:'Sent',      s:'receipt uploaded' },
+    { k:'paid',   b:'Confirmed', s:'admin ticked it' }
+  ]
+  var opt = OPTS[3], st = STATES[0]
+  var PHONE = '0917 123 4567', AMOUNT = '₱250'
+
+  function qr(size) {
+    return '<div class="qr" style="max-width:'+size+'px"><span>QR</span></div>'
+  }
+  function numRow() {
+    return '<div class="num"><b>'+PHONE+'</b><button class="btn btn--gho" style="width:auto;min-height:34px;padding:0 12px;font-size:12px">Copy</button></div>'
+  }
+  function receiptRow() {
+    return '<div style="display:flex;align-items:center;gap:10px"><span class="thumb">🧾</span>'
+      + '<div style="min-width:0"><p style="margin:0;font-size:12.5px;font-weight:600">Receipt · 1 of 3</p>'
+      + '<p class="hint" style="margin-top:2px">Sent 08:12 · “sorry late”</p></div></div>'
+  }
+
+  /* ---------------- 0 · today ---------------- */
+  function today() {
+    if (st.k === 'paid') return '<p class="hint">The whole block disappears once confirmed — nothing is shown at all.</p>'
+    return '<div class="card" style="border-color:color-mix(in srgb,var(--primary) 20%,transparent);background:color-mix(in srgb,var(--primary) 10%,transparent)">'
+      + '<p style="margin:0 0 12px;font-size:14px;font-weight:650">You&rsquo;re registered! GCash payment details below:</p>'
+      + numRow()
+      + '<div style="margin:12px 0">'+qr(150)+'</div>'
+      + '<p class="hint">Once sent, please upload your receipt below so I can confirm it. I don&rsquo;t monitor GCash directly.</p>'
+      + '<div style="margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--primary) 20%,transparent)">'
+      + (st.k === 'sent' ? '<p style="margin:0 0 8px;font-size:12px;font-weight:650;color:#B45309">🟠 Receipt submitted — awaiting confirmation</p>'+receiptRow()+'<div style="height:8px"></div>' : '')
+      + '<button class="btn btn--pri" style="min-height:42px">📎 '+(st.k==='sent'?'Add another receipt':'Add receipt + note')+'</button>'
+      + (st.k === 'sent' ? '<p class="hint" style="text-align:center;margin-top:7px">1 of 3 submitted</p>' : '')
+      + '</div></div>'
+  }
+
+  /* ---------------- A · steps ---------------- */
+  function stepsOpt() {
+    var s1 = st.k === 'unpaid' ? 'on' : 'done'
+    var s2 = st.k === 'unpaid' ? 'off' : st.k === 'sent' ? 'done' : 'done'
+    var s3 = st.k === 'paid' ? 'done' : 'off'
+    var head = '<div style="display:flex;align-items:center;gap:9px;margin-bottom:14px">'
+      + '<span class="lbl">Session fee</span><span class="amt" style="margin-left:auto">'+AMOUNT+'</span>'
+      + '<span class="tag tag--'+(st.k==='unpaid'?'unpaid':st.k==='sent'?'sent':'paid')+'">'+(st.k==='unpaid'?'Unpaid':st.k==='sent'?'Sent':'Paid')+'</span></div>'
+    var body = '<div class="rail">'
+      + '<div class="step '+s1+'"><span class="step__i">'+(s1==='done'?'✓':'1')+'</span><div class="step__b">'
+      +   '<p class="step__t">Send '+AMOUNT+' on GCash</p>'
+      +   (st.k === 'unpaid' ? '<div class="step__c">'+numRow()
+      +     '<div style="height:8px"></div><button class="btn btn--gho" style="min-height:38px;font-size:12.5px">Show QR instead</button></div>' : '')
+      + '</div></div>'
+      + '<div class="step '+s2+'"><span class="step__i">'+(s2==='done'?'✓':'2')+'</span><div class="step__b">'
+      +   '<p class="step__t">Upload the receipt</p>'
+      +   (st.k === 'unpaid' ? '<p class="hint" style="margin-top:5px">A screenshot from GCash is enough.</p>'
+      +     '<div class="step__c"><button class="btn btn--pri">Add receipt</button></div>'
+            : '<div class="step__c">'+receiptRow()+'</div>')
+      + '</div></div>'
+      + '<div class="step '+s3+'"><span class="step__i">'+(s3==='done'?'✓':'3')+'</span><div class="step__b">'
+      +   '<p class="step__t">'+(st.k==='paid'?'Confirmed by Wes':'Wes confirms it')+'</p>'
+      +   (st.k === 'sent' ? '<p class="hint" style="margin-top:5px">Nothing more to do — he checks your receipt against GCash, then marks it paid.</p>' : '')
+      + '</div></div></div>'
+    return '<div class="card">'+head+body+'</div>'
+  }
+
+  /* ---------------- B · one action card ---------------- */
+  function actionOpt() {
+    if (st.k === 'paid') return '<div class="card" style="display:flex;align-items:center;gap:10px">'
+      + '<span class="tag tag--paid">Paid</span><span style="font-size:13.5px;font-weight:600">'+AMOUNT+' confirmed</span></div>'
+    if (st.k === 'sent') return '<div class="card">'
+      + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px"><span class="tag tag--sent">Awaiting confirmation</span><span class="amt" style="margin-left:auto;font-size:22px">'+AMOUNT+'</span></div>'
+      + receiptRow()
+      + '<p class="hint" style="margin-top:11px">Nothing more to do. Wes checks your receipt against GCash.</p>'
+      + '<div style="height:11px"></div><button class="btn btn--gho" style="min-height:40px;font-size:12.5px">Add another receipt</button></div>'
+    return '<div class="card">'
+      + '<div style="display:flex;align-items:center;gap:9px"><span class="lbl">Session fee</span><span class="amt" style="margin-left:auto">'+AMOUNT+'</span><span class="tag tag--unpaid">Unpaid</span></div>'
+      + '<div style="height:14px"></div>'
+      + '<button class="btn btn--pri">Copy GCash number</button>'
+      + '<p class="hint" style="text-align:center;margin:8px 0 0">'+PHONE+'</p>'
+      + '<details style="margin-top:12px"><summary style="cursor:pointer;list-style:none;font:600 12px/1 system-ui;color:var(--muted-foreground);text-align:center">Show QR code ⌄</summary>'
+      + '<div style="margin-top:11px">'+qr(150)+'</div></details>'
+      + '<div style="height:12px"></div><div style="border-top:1px solid var(--border);padding-top:12px">'
+      + '<button class="btn btn--gho">📎 Upload receipt when sent</button></div></div>'
+  }
+
+  /* ---------------- C · amount first ---------------- */
+  function amountOpt() {
+    if (st.k === 'paid') return '<div class="card" style="display:flex;align-items:center;gap:10px">'
+      + '<span class="tag tag--paid">Paid</span><span style="font-size:13.5px;font-weight:600">'+AMOUNT+' confirmed</span></div>'
+    var head = '<div style="display:flex;align-items:flex-end;gap:10px;margin-bottom:4px">'
+      + '<div><p class="lbl" style="margin:0 0 6px">You owe</p><p class="amt" style="margin:0">'+AMOUNT+'</p></div>'
+      + '<span class="tag tag--'+(st.k==='sent'?'sent':'unpaid')+'" style="margin-left:auto">'+(st.k==='sent'?'Sent':'Unpaid')+'</span></div>'
+    if (st.k === 'sent') return '<div class="card">'+head
+      + '<p class="hint" style="margin-top:12px">Receipt received. Wes checks it against GCash and confirms.</p>'
+      + '<div style="height:12px"></div>'+receiptRow()
+      + '<div style="height:12px"></div><button class="btn btn--gho" style="min-height:40px;font-size:12.5px">Add another receipt</button></div>'
+    return '<div class="card">'+head
+      + '<p class="hint" style="margin:12px 0 0">Two things: send it, then show the receipt.</p>'
+      + '<div style="height:12px"></div>'
+      + '<div class="paysplit">'
+      +   '<button class="btn btn--pri"><i>⧉</i>Copy number</button>'
+      +   '<button class="btn btn--gho"><i>▦</i>Show QR</button>'
+      + '</div>'
+      + '<p class="hint" style="text-align:center;margin:8px 0 0">'+PHONE+'</p>'
+      + '<div style="height:14px"></div><div style="border-top:1px solid var(--border);padding-top:13px">'
+      + '<button class="btn btn--pri">📎 Upload receipt</button>'
+      + '<p class="hint" style="text-align:center;margin-top:7px">A GCash screenshot is enough</p></div></div>'
+  }
+
+  var NOTES = {
+    now: '<h3>What ships today</h3>'
+      + '<ul>'
+      + '<li><span class="pill pill--stop">Worst</span> <b>It never says how much.</b> <code>sessionPrice</code> is passed into the tab and not rendered anywhere. The player has to already know the fee.</li>'
+      + '<li><b>The QR is a dead end on the device showing it.</b> You cannot scan your own screen — and the player is on their phone, paying with GCash on that same phone. It only helps when paying from another device or showing someone. Yet it is the largest element in the block.</li>'
+      + '<li><b>Unpaid and sent look nearly identical.</b> The whole “here is how to pay” wall stays after you have paid, with one small amber line added inside it.</li>'
+      + '<li><b>That amber line is <code>text-amber-600</code></b> — about 3.2 : 1 in light mode, under the 4.5 : 1 floor. Already on the list of light-mode colours to fix.</li>'
+      + '<li><b>Nothing states the fee is per session</b>, or what happens after upload.</li>'+ '<li><span class="pill pill--stop">Wrong</span> <b>“I don&rsquo;t monitor GCash directly” was inaccurate.</b> Wes checks the receipt <em>against</em> GCash before confirming, so the line told players the opposite of what happens. Corrected everywhere.</li>'
+      + '</ul>',
+    a: '<h3>A · Three steps</h3>'
+      + '<p>Send → upload → confirmed, as a numbered rail. The current step is filled, past steps ticked.</p>'
+      + '<ul><li><b>Teaches the flow.</b> Nobody has to infer that uploading is required, or that Wes confirms manually.</li>'
+      + '<li><b>Step 3 is honest.</b> It shows a step you cannot complete yourself, which is exactly the truth of it.</li>'
+      + '<li><b>Tallest of the three</b>, and the steps never change after the first session — a returning player reads scaffolding they no longer need.</li></ul>',
+    b: '<h3>B · One action card</h3>'
+      + '<p>One card, one job per state. Unpaid: copy the number. Sent: your receipt and “nothing more to do”. Paid: a single line.</p>'
+      + '<ul><li><b>Shortest.</b> The paid state is one row rather than a vanished block.</li>'
+      + '<li><b>QR demoted to a disclosure</b>, which matches how useful it actually is on the paying device.</li>'
+      + '<li><b>Least explicit.</b> A first-timer is told what to do, but not that a human confirms it later.</li></ul>',
+    c: '<h3>C · Amount first</h3>'
+      + '<p>The number you owe is the headline. Then the two things you do, split: pay it, prove it.</p>'
+      + '<ul><li><b>Answers the first question immediately.</b> “How much?” is above everything else.</li>'
+      + '<li><b>Copy and QR side by side</b>, copy weighted as primary — it is the one that works on the phone you are holding.</li>'
+      + '<li><b>Upload sits below a rule</b>, so “pay” and “prove” read as two jobs rather than one long list.</li>'
+      + '<li><b>Less instructional than A.</b> It says what to do, not why a human is involved.</li></ul>'
+      + '<p><span class="pill">Recommended</span> It fixes the biggest gap — the missing amount — with the least scaffolding, and it puts the useful action first.</p>'
+      + '<h3>One thing worth deciding either way</h3>'
+      + '<p>Should the QR be <b>saveable</b>? Long-pressing an <code>&lt;img&gt;</code> already offers “save image” on both mobile browsers, which is what a player would need to open it in GCash. Worth a one-line hint under it rather than new code.</p>'
+  }
+
+  function render() {
+    var body = opt.k === 'now' ? today() : opt.k === 'a' ? stepsOpt() : opt.k === 'b' ? actionOpt() : amountOpt()
+    document.getElementById('screen').innerHTML = body
+    document.getElementById('notes').innerHTML = NOTES[opt.k]
+    document.querySelectorAll('#optGrp .opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.k === opt.k)) })
+    document.querySelectorAll('#stGrp .opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.k === st.k)) })
+  }
+  function mk(host, items, set) {
+    items.forEach(function (o) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'opt'; b.dataset.k = o.k
+      b.innerHTML = '<b>'+o.b+'</b><span>'+o.s+'</span>'
+      b.addEventListener('click', function () { set(o); render() }); host.appendChild(b)
+    })
+  }
+  mk(document.getElementById('optGrp'), OPTS, function (o) { opt = o })
+  mk(document.getElementById('stGrp'), STATES, function (o) { st = o })
+  var root = document.documentElement, orb = document.getElementById('orb')
+  orb.addEventListener('click', function () {
+    var d = root.getAttribute('data-theme') !== 'dark'
+    root.setAttribute('data-theme', d ? 'dark' : 'light'); orb.setAttribute('aria-checked', String(d))
+  })
+  render()
+})()
+</script>
+</body>
+</html>
