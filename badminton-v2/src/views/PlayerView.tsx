@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
-import type { CourtSlot } from '@/lib/courts'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import { useRealtime } from '@/hooks/useRealtime'
-import { useCourtState, type CourtMatchDisplay } from '@/hooks/useCourtState'
+import { useCourtState } from '@/hooks/useCourtState'
+import { PlayerCourtTabs } from '@/components/PlayerCourtTabs'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
-import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
+import { formatElapsed } from '@/utils/matchTiming'
 import { useSessionReceipts } from '@/hooks/useSessionReceipts'
 import { derivePaymentState } from '@/lib/paymentState'
 import { getLegacyWinningPairIndex } from '@/lib/matchResults'
@@ -32,102 +32,6 @@ interface SessionMeta {
   status: string | null
   venue: string | null
   price: number | null
-}
-
-function formatElapsed(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-function PlayerCourtTabs({
-  courts,
-  isLoading,
-}: {
-  courts: CourtSlot<CourtMatchDisplay>[]
-  isLoading: boolean
-}) {
-  const [elapsedByCourt, setElapsedByCourt] = useState<Record<number, number>>({})
-
-  useEffect(() => {
-    function updateElapsed() {
-      setElapsedByCourt(Object.fromEntries(
-        courts.map((court) => [court.courtNumber, elapsedSecondsFromStartedAt(court.current?.startedAt ?? null) ?? 0]),
-      ))
-    }
-
-    updateElapsed()
-    const intervalId = setInterval(updateElapsed, 1000)
-    return () => clearInterval(intervalId)
-  }, [courts])
-
-  return (
-    <div
-      className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(courts.length, 1), 2)}, minmax(0, 1fr))` }}
-    >
-      {courts.map((court) => {
-        const match = court.current ?? court.next
-        const isPlaying = !!court.current
-
-        return (
-          <div
-            key={court.courtNumber}
-            className={`min-h-[7rem] rounded-xl border p-3 ${
-              isPlaying
-                ? 'border-primary/30 bg-[var(--primary-subtle)]'
-                : 'border-border bg-card'
-            }`}
-          >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                {court.label}
-              </p>
-              <div className="flex items-center gap-2">
-                {isPlaying && (
-                  <>
-                    <span className="text-[0.65rem] font-mono font-semibold text-gold-ink">
-                      {formatElapsed(elapsedByCourt[court.courtNumber] ?? 0)}
-                    </span>
-                    <span className="flex items-center gap-1 text-[0.65rem] font-bold tracking-widest text-red-500">
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                      LIVE
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {isLoading ? (
-              <div className="space-y-2">
-                <div className="h-4 w-12 rounded bg-muted animate-pulse" />
-                <div className="h-3 w-full rounded bg-muted animate-pulse" />
-                <div className="h-3 w-4/5 rounded bg-muted animate-pulse" />
-              </div>
-            ) : match ? (
-              <div className="space-y-1">
-                {isPlaying && (
-                  <p className="text-[0.65rem] font-bold uppercase tracking-widest text-red-500">Playing</p>
-                )}
-                <p className={`whitespace-nowrap text-xl font-bold ${isPlaying ? 'text-foreground' : 'text-primary'}`}>Game {match.gameNumber}</p>
-                <p className={`truncate text-xs font-medium ${isPlaying ? 'text-foreground' : 'text-primary'}`}>
-                  {match.t1p1} &amp; {match.t1p2}
-                </p>
-                <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">vs</p>
-                <p className={`truncate text-xs font-medium ${isPlaying ? 'text-foreground' : 'text-primary'}`}>
-                  {match.t2p1} &amp; {match.t2p2}
-                </p>
-              </div>
-            ) : (
-              <div className="flex h-14 items-center">
-                <p className="text-xs text-muted-foreground">No match</p>
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
 }
 
 export function PlayerView() {

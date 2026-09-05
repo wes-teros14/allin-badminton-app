@@ -166,6 +166,29 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Only your own court shows on <code>/sessions/&lt;id&gt;</code> because that tab is your personal schedule.”</p>
+    <p>
+      Half right, and the wrong conclusion. The Schedule tab <em>is</em> per-player, and the court
+      chip on your own card does follow your game — but that was never the whole story. The page had
+      <strong>no court overview at all</strong>. A player mid-game saw one court because their own
+      card carried a chip; a player between games saw none. Reported as “I finished my game and
+      still see no Court 1”, which is what proved it.
+    </p>
+    <p>
+      Not a data problem: <code>court_count</code> was 2 and both courts were occupied. The
+      two-court strip (<code>PlayerCourtTabs</code> + <code>useCourtState</code>) only ever existed
+      in <code>PlayerView.tsx</code>, serving <code>/match-schedule/session/&lt;id&gt;</code>. When
+      session cards started linking to <code>/sessions/&lt;id&gt;</code> instead, players silently
+      lost the overview the admin view kept.
+    </p>
+    <p>
+      Fixed by extracting <code>PlayerCourtTabs</code> to <code>src/components/</code> and rendering
+      it on both routes. It shows every court whether or not you are on one.
+    </p>
+  </div>
+
   <h2 class="topic" id="leaderboard">Leaderboard</h2>
 
   <div class="qa">
