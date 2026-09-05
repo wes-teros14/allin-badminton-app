@@ -149,8 +149,16 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **The payment banner links to `/sessions/:id`, it does not repeat the receipt upload.** Payment
   otherwise lives entirely on `SessionPlayerDetailView`, so a player could study their games all
   night without being told they still owe. One derivation, one upload flow.
-- **`ScheduleView` is a different component** (`/match-schedule/session/:id/:nameSlug`, your games
-  only, `GameCard`). It was not changed, and still has no empty state and no payment prompt.
+- **Matches render on three surfaces, not two.** `/sessions/:id` → Schedule tab
+  (`SessionPlayerDetailView`, and the only one with the GCash QR), `/match-schedule/session/:id/:slug`
+  (`ScheduleView`), and `?show=all` (`AllMatchesView`). The first is the one players actually land
+  on. All three now draw from `src/components/MatchBoard.tsx`: `PersonalGameCard` for the two
+  personal lists, `MatchBoard` for all twenty. `GameCard` and `StatusChip` are gone.
+- **The personal lists deliberately do not use the board's zones.** Sorting five games into
+  "on court / up next / later" gains nothing and costs a predictable order. What carries over is the
+  weight: your live game is a full band, everything else is a compact row.
+- **A personal row must name the player.** Rendering only the partner reads as though the partner is
+  playing the pair alone — "Boyet vs Chito & Dan" instead of "Ana & Boyet vs Chito & Dan".
 - **`/match-schedule/session/:id` without a slug is not a dead end.** `PlayerListViewInner`
   auto-redirects a signed-in, registered player to their own slug with `replace: true`
   (`src/views/PlayerView.tsx:216`). An admin who is not registered falls through to the picker.

@@ -8,7 +8,6 @@ import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useCourtState, type CourtMatchDisplay } from '@/hooks/useCourtState'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
-import { GameCard } from '@/components/GameCard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
@@ -21,6 +20,7 @@ import {
   MatchBoard,
   NoScheduleYet,
   PaymentBanner,
+  PersonalGameCard,
   type BoardMatch,
   type BoardPlayer,
 } from '@/components/MatchBoard'
@@ -488,7 +488,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 }
 
 function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: string; sessionId?: string }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
+  const { matches, playerDisplayName, playerAvatarUrl, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
   const {
     courts,
     isLoading: courtsLoading,
@@ -567,30 +567,15 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
       <div className="max-w-sm mx-auto px-4 py-4 flex flex-col gap-3">
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
-              <GameCard
-                key={i}
-                gameNumber={0}
-                partnerNameSlug=""
-                opp1NameSlug=""
-                opp2NameSlug=""
-                status="queued"
-                isNextUp={false}
-                isLoading
-              />
+              <div key={i} className="h-[86px] rounded-xl bg-muted animate-pulse" />
             ))
           : matches.map((m, i) => (
-              <GameCard
+              <PersonalGameCard
                 key={m.id}
-                gameNumber={m.gameNumber}
-                partnerNameSlug={m.partnerNameSlug}
-                opp1NameSlug={m.opp1NameSlug}
-                opp2NameSlug={m.opp2NameSlug}
-                partnerAvatarUrl={m.partnerAvatarUrl}
-                opp1AvatarUrl={m.opp1AvatarUrl}
-                opp2AvatarUrl={m.opp2AvatarUrl}
-                status={m.status}
+                match={m}
+                you={playerDisplayName}
+                yourAvatarUrl={playerAvatarUrl}
                 isNextUp={i === firstQueuedIndex}
-                won={m.won}
               />
             ))}
       </div>
