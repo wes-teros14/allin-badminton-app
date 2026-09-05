@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme toggle — specimen sheet</title>
+<style>
+/* ============================================================
+   THEME TOKENS
+   Dark values are the app's live tokens (src/index.css .dark).
+   Light values are PROPOSED — see the findings panel at the end.
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  --background:        #FAF7FB;
+  --card:              #FFFFFF;
+  --card-sunken:       #F3EEF7;
+  --foreground:        #1B1220;
+  --muted-foreground:  #6B5F73;
+  --border:            #E7E0EC;
+  --primary:           #6F3E87;
+  --primary-foreground:#FFFFFF;
+  --primary-subtle:    #EDE0F5;
+  --gold:              #FFB200;
+  --gold-ink:          #8A5A00;
+  --destructive:       #B3252B;
+  --success:           #157F3D;
+  --shadow-card:       0 1px 2px rgba(27,18,32,.06), 0 8px 24px -12px rgba(27,18,32,.18);
+  --grain-opacity:     .035;
+  --sky-a:             #FFE9B8;
+  --sky-b:             #FFC46B;
+  --star-opacity:      0;
+}
+[data-theme="dark"] {
+  --background:        #0F0A18;
+  --card:              #1A1025;
+  --card-sunken:       #1E1230;
+  --foreground:        #FFFFFF;
+  --muted-foreground:  #B39DBB;
+  --border:            #2D1A40;
+  --primary:           #6F3E87;
+  --primary-foreground:#FFFFFF;
+  --primary-subtle:    #2D1B42;
+  --gold:              #FFB200;
+  --gold-ink:          #FFB200;
+  --destructive:       #DC595E;
+  --success:           #22C55E;
+  --shadow-card:       0 1px 0 rgba(255,255,255,.03) inset, 0 12px 32px -16px rgba(0,0,0,.8);
+  --grain-opacity:     .05;
+  --sky-a:             #35215F;
+  --sky-b:             #150C28;
+  --star-opacity:      1;
+}
+
+/* ============================================================
+   SHEET CHROME — blueprint / specimen-sheet voice.
+   Georgia display against a monospace label grid; the app
+   preview alone uses a UI sans, standing in for Geist Variable
+   (no webfonts: this file must open from disk, offline).
+   ============================================================ */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font: 400 16px/1.6 Georgia, "Iowan Old Style", "Times New Roman", serif;
+  transition: background .5s cubic-bezier(.4,0,.2,1), color .5s cubic-bezier(.4,0,.2,1);
+}
+body::before {  /* grain */
+  content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  transition: opacity .5s;
+}
+.wrap { max-width: 1000px; margin: 0 auto; padding: 64px 28px 120px; }
+
+.eyebrow {
+  font: 500 11px/1 ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, monospace;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--muted-foreground);
+}
+h1 {
+  font: 400 clamp(2.4rem, 6vw, 3.6rem)/1.02 Georgia, serif;
+  letter-spacing: -.025em; margin: 14px 0 0;
+}
+h1 em { font-style: italic; color: var(--primary); }
+[data-theme="dark"] h1 em { color: #C79BE0; }
+.lede {
+  max-width: 60ch; margin: 18px 0 0; color: var(--muted-foreground);
+  font-size: 1.0625rem;
+}
+
+.rule { height: 1px; background: var(--border); border: 0; margin: 56px 0 0; }
+.rule--tick { position: relative; }
+.rule--tick::after {
+  content: ""; position: absolute; left: 0; top: -5px; width: 1px; height: 11px;
+  background: var(--border);
+}
+
+/* --- specimen block --- */
+.spec { padding-top: 40px; }
+.spec__head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.spec__no {
+  font: 500 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .16em;
+  color: var(--primary); padding-top: 4px;
+}
+[data-theme="dark"] .spec__no { color: #C79BE0; }
+.spec__name { font: 400 1.65rem/1.2 Georgia, serif; letter-spacing: -.02em; margin: 0; }
+.spec__where {
+  font: 500 11px/1 ui-monospace, Menlo, monospace; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted-foreground);
+  border: 1px solid var(--border); border-radius: 999px; padding: 6px 10px;
+}
+.spec__body {
+  display: grid; grid-template-columns: minmax(280px, 1fr) minmax(240px, 300px);
+  gap: 32px; align-items: start; margin-top: 26px;
+}
+@media (max-width: 720px) { .spec__body { grid-template-columns: 1fr; } }
+.stage {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  padding: 34px 26px; display: flex; flex-direction: column; align-items: center; gap: 20px;
+  transition: background .5s, border-color .5s, box-shadow .5s;
+}
+.stage__caption {
+  font: 500 11px/1.5 ui-monospace, Menlo, monospace; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted-foreground); text-align: center;
+}
+.notes { font-size: .95rem; color: var(--muted-foreground); }
+.notes p { margin: 0 0 12px; }
+.notes strong { color: var(--foreground); font-weight: 700; }
+.notes ul { margin: 0; padding-left: 18px; }
+.notes li { margin-bottom: 7px; }
+
+/* ============================================================
+   VARIANT 01 — NAV ORB
+   A 44x44 ghost button. The mark is one element: a crescent
+   that fills into a disc and throws eight rays, so the two
+   states are the same object rather than a crossfade.
+   ============================================================ */
+.navbar {
+  width: 100%; max-width: 384px; display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 14px; border-radius: 12px;
+  background: var(--card-sunken); border: 1px solid var(--border);
+  transition: background .5s, border-color .5s;
+}
+.navbar__logo {
+  width: 26px; height: 26px; border-radius: 7px; flex: none;
+  background: linear-gradient(140deg, var(--primary), #C79BE0);
+}
+.navbar__tabs {
+  display: flex; gap: 14px; margin-right: auto;
+  font: 500 12.5px/1 ui-monospace, Menlo, monospace; color: var(--muted-foreground);
+}
+.navbar__tabs b { color: var(--foreground); font-weight: 600; }
+
+.orb-btn {
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center;
+  background: transparent; border: 0; border-radius: 11px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .2s;
+}
+.orb-btn:hover { background: var(--primary-subtle); }
+.orb-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.orb-btn:active .orb { transform: scale(.86) rotate(-25deg); }
+.orb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 9px -9px 0 0 var(--foreground);
+  transform: rotate(-25deg);
+  transition: transform .55s cubic-bezier(.5,-0.3,.3,1.4),
+              box-shadow .55s cubic-bezier(.4,0,.2,1),
+              background .35s ease;
+}
+[data-theme="light"] .orb,
+:root:not([data-theme="dark"]) .orb {
+  background: var(--foreground);
+  transform: scale(.52) rotate(180deg);
+  box-shadow:
+    inset 16px -16px 0 0 transparent,
+      0px -21px 0 -8px var(--foreground),
+      0px  21px 0 -8px var(--foreground),
+    -21px   0px 0 -8px var(--foreground),
+     21px   0px 0 -8px var(--foreground),
+    -15px -15px 0 -8px var(--foreground),
+     15px  15px 0 -8px var(--foreground),
+    -15px  15px 0 -8px var(--foreground),
+     15px -15px 0 -8px var(--foreground);
+}
+
+/* ============================================================
+   VARIANT 02 — SHUTTLE SWITCH
+   The thumb is a shuttlecock. It does not slide: it arcs, dips
+   and flips end-over-end, the way a real birdie travels.
+   ============================================================ */
+.shuttle {
+  position: relative; width: 76px; height: 40px; flex: none;
+  border: 1px solid var(--border); border-radius: 999px; padding: 0;
+  background: linear-gradient(160deg, var(--sky-a), var(--sky-b));
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: background .6s cubic-bezier(.4,0,.2,1), border-color .5s;
+}
+.shuttle:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.shuttle__stars {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  opacity: var(--star-opacity); transition: opacity .5s;
+}
+.shuttle__stars::before {
+  content: ""; position: absolute; left: 14px; top: 12px;
+  width: 2px; height: 2px; border-radius: 50%; background: #fff;
+  box-shadow: 8px 12px 0 -0.4px #E9D9F5, 20px 5px 0 -0.6px #C79BE0,
+              31px 19px 0 -0.5px #fff, 44px 9px 0 -0.7px #B39DBB;
+}
+.shuttle__track {
+  position: absolute; left: 4px; top: 4px; width: 32px; height: 32px;
+  transform: translateX(36px);
+  transition: transform .5s cubic-bezier(.35,1.5,.4,1);
+}
+[data-theme="light"] .shuttle__track,
+:root:not([data-theme="dark"]) .shuttle__track { transform: translateX(0); }
+.shuttle__arc { display: block; width: 100%; height: 100%; }
+.shuttle.is-flying .shuttle__arc { animation: birdie-arc .5s cubic-bezier(.4,0,.2,1); }
+@keyframes birdie-arc {
+  0%   { transform: translateY(0)     scale(1); }
+  45%  { transform: translateY(-9px)  scale(1.06); }
+  100% { transform: translateY(0)     scale(1); }
+}
+.shuttle__disc {
+  width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center;
+  background: #FFFDF8;
+  box-shadow: 0 2px 7px rgba(15,10,24,.45), 0 0 0 1px rgba(15,10,24,.06);
+  color: var(--primary);
+  transform: rotate(0deg);
+  transition: transform .5s cubic-bezier(.35,1.4,.4,1);
+}
+[data-theme="dark"] .shuttle__disc { transform: rotate(180deg); }
+.shuttle__disc svg { width: 21px; height: 21px; display: block; }
+
+/* ============================================================
+   VARIANT 03 — TRI-STATE SEGMENT
+   Light / Auto / Dark. Auto follows prefers-color-scheme, which
+   neither switch above can express.
+   ============================================================ */
+.segment {
+  position: relative; display: grid; grid-template-columns: repeat(3, 1fr);
+  width: 100%; max-width: 300px; height: 44px; padding: 4px;
+  background: var(--card-sunken); border: 1px solid var(--border); border-radius: 12px;
+  transition: background .5s, border-color .5s;
+}
+.segment__thumb {
+  position: absolute; top: 4px; left: 4px; height: 36px;
+  width: calc((100% - 8px) / 3);
+  background: var(--card); border-radius: 9px;
+  box-shadow: 0 1px 3px rgba(15,10,24,.28);
+  transition: transform .38s cubic-bezier(.35,1.35,.4,1), background .5s;
+}
+.segment[data-choice="auto"] .segment__thumb { transform: translateX(100%); }
+.segment[data-choice="dark"] .segment__thumb { transform: translateX(200%); }
+.segment button {
+  position: relative; z-index: 1; border: 0; background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font: 600 12px/1 ui-monospace, Menlo, monospace; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted-foreground);
+  border-radius: 9px; -webkit-tap-highlight-color: transparent;
+  transition: color .25s;
+}
+.segment button[aria-checked="true"] { color: var(--foreground); }
+.segment button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.segment button svg { width: 14px; height: 14px; }
+.segment__hint {
+  font: 500 11px/1.5 ui-monospace, Menlo, monospace; color: var(--muted-foreground);
+  text-align: center; letter-spacing: .04em;
+}
+
+/* ============================================================
+   LIVE APP PREVIEW — real components, real tokens, 384px
+   ============================================================ */
+.preview {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  width: 100%; max-width: 384px; display: flex; flex-direction: column; gap: 12px;
+}
+.pcard {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px; box-shadow: var(--shadow-card);
+  transition: background .5s, border-color .5s, box-shadow .5s;
+}
+.pcard__top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pill {
+  font: 600 10.5px/1 system-ui, sans-serif; letter-spacing: .05em; text-transform: uppercase;
+  padding: 5px 9px; border-radius: 999px; flex: none;
+}
+.pill--open  { background: var(--primary-subtle); color: var(--primary); }
+[data-theme="dark"] .pill--open { color: #DCC2EE; }
+.pill--due   { background: color-mix(in srgb, var(--destructive) 16%, transparent); color: var(--destructive); }
+.pcard__title { font-size: 15.5px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+.pcard__meta { font-size: 12.5px; color: var(--muted-foreground); margin: 4px 0 0; }
+.pcard__cta {
+  margin-top: 14px; width: 100%; height: 40px; border: 0; border-radius: 10px;
+  background: var(--primary); color: var(--primary-foreground);
+  font: 600 13.5px/1 system-ui, sans-serif; cursor: pointer;
+}
+.rankrow { display: flex; align-items: center; gap: 12px; padding: 11px 14px; }
+.rankchip {
+  width: 34px; height: 34px; flex: none; border-radius: 10px; display: grid; place-items: center;
+  font: 700 13px/1 system-ui, sans-serif;
+  background: var(--card-sunken); color: var(--muted-foreground);
+  transition: background .5s, color .5s;
+}
+.rankchip--gold {
+  background: color-mix(in srgb, var(--gold) 20%, transparent);
+  color: var(--gold-ink); font-size: 16px;
+}
+.rankrow__name { font-size: 14px; font-weight: 600; margin-right: auto; }
+.rankrow__val  { font-size: 13.5px; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
+[data-theme="dark"] .rankrow__val { color: #C79BE0; }
+
+/* ============================================================
+   FINDINGS
+   ============================================================ */
+.findings { margin-top: 18px; display: grid; gap: 14px; }
+.finding { border-left: 2px solid var(--border); padding: 2px 0 2px 16px; }
+.finding--warn { border-left-color: var(--gold); }
+.finding--stop { border-left-color: var(--destructive); }
+.finding h3 {
+  font: 600 12px/1.4 ui-monospace, Menlo, monospace; letter-spacing: .08em;
+  text-transform: uppercase; margin: 0 0 5px; color: var(--foreground);
+}
+.finding p { margin: 0; font-size: .94rem; color: var(--muted-foreground); }
+code {
+  font: 500 .87em/1 ui-monospace, Menlo, monospace;
+  background: var(--card-sunken); padding: 2px 5px; border-radius: 4px; color: var(--foreground);
+}
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.sw { width: 62px; }
+.sw i { display: block; height: 42px; border-radius: 8px; border: 1px solid var(--border); }
+.sw span {
+  display: block; margin-top: 6px;
+  font: 500 9.5px/1.4 ui-monospace, Menlo, monospace; color: var(--muted-foreground);
+  letter-spacing: .04em;
+}
+footer {
+  margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--border);
+  font: 500 11px/1.7 ui-monospace, Menlo, monospace; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--muted-foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">All-In Badminton · Specimen sheet · 2026-09-05</p>
+  <h1>Three ways to turn <em>the lights on</em>.</h1>
+  <p class="lede">
+    The app has been permanently dark since launch — <code>index.html</code> hard-codes
+    <code>class="dark"</code>. Every control below is live: press one and this whole sheet,
+    including the phone preview, repaints in the proposed light tokens. Pick a variant,
+    then it gets built for real.
+  </p>
+
+  <hr class="rule rule--tick">
+
+  <!-- 01 ------------------------------------------------------------------ -->
+  <section class="spec">
+    <div class="spec__head">
+      <span class="spec__no">01</span>
+      <h2 class="spec__name">Nav orb</h2>
+      <span class="spec__where">TopNavBar · end of the bar</span>
+    </div>
+    <div class="spec__body">
+      <div class="stage">
+        <div class="navbar">
+          <span class="navbar__logo"></span>
+          <span class="navbar__tabs"><b>Sessions</b><span>Leaderboard</span></span>
+          <button class="orb-btn" type="button" role="switch" aria-checked="true"
+                  aria-label="Dark mode" data-toggle="switch">
+            <span class="orb" aria-hidden="true"></span>
+          </button>
+        </div>
+        <p class="stage__caption">44 × 44 target · 0 px of nav width</p>
+      </div>
+      <div class="notes">
+        <p><strong>One object, two states.</strong> The crescent fills into a disc and throws
+        eight rays. It is a single <code>div</code> driven by <code>box-shadow</code> — no icon
+        swap, no crossfade, nothing to pop.</p>
+        <ul>
+          <li>Costs the nav no horizontal space, which matters at 384 px.</li>
+          <li>Always reachable — no menu to open first.</li>
+          <li>Cannot express “follow my phone”. Two states only.</li>
+          <li>The icon shows the <em>current</em> theme, not the destination, so the action has
+              to live in <code>aria-label</code>.</li>
+          <li>The nav is <code>bg-primary</code> in <em>both</em> themes, so the orb must be drawn
+              in <code>currentColor</code> (white), never <code>var(--foreground)</code> — that
+              would be 2.37 : 1 on the purple bar in light mode.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- 02 ------------------------------------------------------------------ -->
+  <section class="spec">
+    <div class="spec__head">
+      <span class="spec__no">02</span>
+      <h2 class="spec__name">Shuttle switch</h2>
+      <span class="spec__where">ProfileView · above Sign out</span>
+    </div>
+    <div class="spec__body">
+      <div class="stage">
+        <button class="shuttle" type="button" role="switch" aria-checked="true"
+                aria-label="Dark mode" data-toggle="switch">
+          <span class="shuttle__stars" aria-hidden="true"></span>
+          <span class="shuttle__track"><span class="shuttle__arc">
+            <span class="shuttle__disc">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M5.6 3.9a.7.7 0 0 1 .9-.75L12 4.6l5.5-1.45a.7.7 0 0 1 .9.75L15.6 15.2H8.4z"
+                      fill="currentColor"/>
+                <path d="M12 4.9v10M9.2 4.2 10.4 15M14.8 4.2 13.6 15" stroke="#FFFDF8"
+                      stroke-width="1.15" stroke-linecap="round"/>
+                <circle cx="12" cy="18.6" r="3.4" fill="currentColor"/>
+              </svg>
+            </span>
+          </span></span>
+        </button>
+        <p class="stage__caption">76 × 40 · the birdie arcs and flips</p>
+      </div>
+      <div class="notes">
+        <p><strong>The one thing anyone will remember.</strong> The thumb does not slide across
+        the track — it lifts, arcs and tumbles end-over-end, because that is what a shuttlecock
+        actually does. Underneath, a starfield fades into a warm sky.</p>
+        <ul>
+          <li>Unmistakably <em>this</em> app. No other product has this switch.</li>
+          <li>Still reads as a standard switch, so nobody has to learn it.</li>
+          <li>Needs ~76 px, so it wants a settings row, not the nav bar.</li>
+          <li>Motion is the whole point, so it must degrade cleanly under
+              <code>prefers-reduced-motion</code> — it does.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <!-- 03 ------------------------------------------------------------------ -->
+  <section class="spec">
+    <div class="spec__head">
+      <span class="spec__no">03</span>
+      <h2 class="spec__name">Tri-state segment</h2>
+      <span class="spec__where">ProfileView · above Sign out</span>
+    </div>
+    <div class="spec__body">
+      <div class="stage">
+        <div class="segment" data-choice="dark" role="radiogroup" aria-label="Appearance">
+          <span class="segment__thumb" aria-hidden="true"></span>
+          <button type="button" role="radio" aria-checked="false" data-choice="light">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4.2"/>
+              <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M19.1 4.9l-1.5 1.5M6.4 17.6l-1.5 1.5"/>
+            </svg>Light
+          </button>
+          <button type="button" role="radio" aria-checked="false" data-choice="auto">Auto</button>
+          <button type="button" role="radio" aria-checked="true" data-choice="dark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 14.2A8.3 8.3 0 0 1 9.8 4 8.4 8.4 0 1 0 20 14.2Z"/>
+            </svg>Dark
+          </button>
+        </div>
+        <p class="stage__caption">Auto → follows your phone <span data-os></span></p>
+      </div>
+      <div class="notes">
+        <p><strong>The honest one.</strong> A two-state switch quietly lies: it cannot say
+        “match my phone”, which is what most people actually want and what iOS and Android
+        already schedule at sunset.</p>
+        <ul>
+          <li>Only variant that supports <code>prefers-color-scheme</code> as a real choice.</li>
+          <li>Current state is written out — no icon to decode.</li>
+          <li>Wants a full row, so it lives in settings, not the nav.</li>
+          <li>Three states means three things to persist and test, not two.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule rule--tick">
+
+  <!-- PREVIEW -------------------------------------------------------------- -->
+  <section class="spec">
+    <div class="spec__head">
+      <span class="spec__no">04</span>
+      <h2 class="spec__name">What light mode does to the app</h2>
+      <span class="spec__where">384 px · real tokens</span>
+    </div>
+    <div class="spec__body">
+      <div class="stage">
+        <div class="preview">
+          <div class="pcard">
+            <div class="pcard__top">
+              <span class="pill pill--open">Registration open</span>
+              <span class="pill pill--due">Unpaid</span>
+            </div>
+            <p class="pcard__title">Thursday Night · Court 3</p>
+            <p class="pcard__meta">Sep 11, 2026 · 16 players · 20 matches</p>
+            <button class="pcard__cta" type="button">Register</button>
+          </div>
+          <div class="pcard" style="padding:4px 0">
+            <div class="rankrow">
+              <span class="rankchip rankchip--gold">1</span>
+              <span class="rankrow__name">Alexis (Cruz)</span>
+              <span class="rankrow__val">72.4%</span>
+            </div>
+            <div class="rankrow">
+              <span class="rankchip">4</span>
+              <span class="rankrow__name">Marco &amp; Jen</span>
+              <span class="rankrow__val">61.0%</span>
+            </div>
+          </div>
+        </div>
+        <p class="stage__caption">Flip any toggle above and watch this repaint</p>
+      </div>
+      <div class="notes">
+        <p><strong>Light mode is not free.</strong> The <code>:root</code> block in
+        <code>src/index.css</code> is shadcn’s untouched default with the brand purple dropped
+        in — it has never once rendered. Four tokens break the moment it does.</p>
+      </div>
+    </div>
+
+    <div class="findings">
+      <div class="finding finding--stop">
+        <h3>--muted swaps roles between themes</h3>
+        <p>Light defines <code>--muted: #6B7280</code>, a mid-grey <em>text</em> colour. Dark
+        defines <code>--muted: #1E1230</code>, a <em>surface</em>. Every <code>bg-muted</code>
+        in the app becomes a slab of grey the moment the light block is used. A real bug,
+        not a taste call.</p>
+      </div>
+      <div class="finding finding--stop">
+        <h3>--gold is unreadable on white — 1.8 : 1</h3>
+        <p><code>#FFB200</code> against <code>#FFFFFF</code> measures 1.81 : 1, far under the
+        4.5 : 1 floor. First place on the podium would vanish. Proposed here: keep
+        <code>#FFB200</code> as the medal <em>fill</em> and add
+        <code>--gold-ink: #8A5A00</code> (5.94 : 1) for anything that is text.</p>
+      </div>
+      <div class="finding finding--warn">
+        <h3>--destructive and --success both fail on white</h3>
+        <p><code>#DC595E</code> hits 3.71 : 1 and <code>#22C55E</code> about 2.2 : 1 on white.
+        Darkened here for light mode only, to <code>#B3252B</code> (6.55 : 1) and
+        <code>#157F3D</code> (5.09 : 1). Their dark-mode values are untouched.</p>
+      </div>
+      <div class="finding finding--warn">
+        <h3>--muted-surface exists only in :root</h3>
+        <p>Already flagged in the handoff as a live trap. Once light mode is real it stops
+        being a trap and becomes an ordinary token — <code>#F4F4F6</code> is fine, it just
+        needs a <code>.dark</code> counterpart before anything uses it.</p>
+      </div>
+      <div class="finding">
+        <h3>--primary is safe in both</h3>
+        <p><code>#6F3E87</code> measures 7.69 : 1 against white, and the same against its own
+        white foreground. It carries across unchanged, which is why the brand still reads as
+        the brand in the preview above.</p>
+      </div>
+    </div>
+
+    <div class="swatches" aria-label="Proposed light palette">
+      <div class="sw"><i style="background:#FAF7FB"></i><span>bg<br>FAF7FB</span></div>
+      <div class="sw"><i style="background:#FFFFFF"></i><span>card<br>FFFFFF</span></div>
+      <div class="sw"><i style="background:#F3EEF7"></i><span>sunken<br>F3EEF7</span></div>
+      <div class="sw"><i style="background:#E7E0EC"></i><span>border<br>E7E0EC</span></div>
+      <div class="sw"><i style="background:#6B5F73"></i><span>muted-fg<br>6B5F73</span></div>
+      <div class="sw"><i style="background:#1B1220"></i><span>fg<br>1B1220</span></div>
+      <div class="sw"><i style="background:#6F3E87"></i><span>primary<br>6F3E87</span></div>
+      <div class="sw"><i style="background:#8A5A00"></i><span>gold-ink<br>8A5A00</span></div>
+      <div class="sw"><i style="background:#B3252B"></i><span>destructive<br>B3252B</span></div>
+      <div class="sw"><i style="background:#157F3D"></i><span>success<br>157F3D</span></div>
+    </div>
+  </section>
+
+  <footer>
+    Throwaway sheet · docs/visual/theme-toggle-options.html · nothing here is wired into the app yet
+  </footer>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  var choice = 'dark';                       // 'light' | 'auto' | 'dark'
+
+  function resolved() {
+    return choice === 'auto' ? (mq.matches ? 'dark' : 'light') : choice;
+  }
+
+  function render() {
+    var theme = resolved();
+    root.setAttribute('data-theme', theme);
+
+    document.querySelectorAll('[data-toggle="switch"]').forEach(function (el) {
+      el.setAttribute('aria-checked', String(theme === 'dark'));
+      el.setAttribute('aria-label', theme === 'dark' ? 'Dark mode' : 'Light mode');
+    });
+
+    var seg = document.querySelector('.segment');
+    seg.setAttribute('data-choice', choice);
+    seg.querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-checked', String(b.dataset.choice === choice));
+    });
+
+    document.querySelector('[data-os]').textContent =
+      '(currently ' + (mq.matches ? 'dark' : 'light') + ')';
+  }
+
+  document.querySelectorAll('[data-toggle="switch"]').forEach(function (el) {
+    el.addEventListener('click', function () {
+      choice = resolved() === 'dark' ? 'light' : 'dark';
+      if (el.classList.contains('shuttle')) {
+        el.classList.remove('is-flying');
+        void el.offsetWidth;                 // restart the arc
+        el.classList.add('is-flying');
+      }
+      render();
+    });
+  });
+
+  document.querySelectorAll('.segment button').forEach(function (b) {
+    b.addEventListener('click', function () { choice = b.dataset.choice; render(); });
+  });
+
+  mq.addEventListener('change', function () { if (choice === 'auto') render(); });
+  render();
+})();
+</script>
+</body>
+</html>

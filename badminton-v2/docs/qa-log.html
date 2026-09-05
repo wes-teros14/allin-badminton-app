@@ -79,6 +79,7 @@
       <li><a href="#routing">Routing &amp; role gating</a></li>
       <li><a href="#session-cards">Session cards</a></li>
       <li><a href="#leaderboard">Leaderboard</a></li>
+      <li><a href="#theming">Theming &amp; light mode</a></li>
     </ol>
   </nav>
 
@@ -353,6 +354,59 @@
       the six categories by raw count — so a player could see a badge on their profile that did not
       exist on the leaderboard, with no way to work out why. If you change one ranking rule, check
       both files.
+    </p>
+  </div>
+
+  <h2 class="topic" id="theming">Theming &amp; light mode</h2>
+
+  <div class="qa">
+    <p class="q">We need a dark/light toggle and a real light mode. What actually has to change?</p>
+    <p class="a">
+      Three things, in order. <code>index.html</code> hard-codes <code>&lt;html class="dark"&gt;</code>,
+      so step one is a state holder that sets or clears that class. Step two is the light token block:
+      the <code>:root</code> section of <code>src/index.css</code> exists but has <em>never rendered</em> —
+      it is shadcn's stock light default with <code>--primary: #6F3E87</code> dropped in. Step three is
+      the control itself, which is the smallest part.
+    </p>
+    <p class="a">
+      Design options are laid out in
+      <code>docs/visual/theme-toggle-options.html</code> — a nav orb, a shuttlecock switch, and a
+      Light/Auto/Dark segment. Each one is live in that file and repaints the whole page, so the
+      proposed light palette can be judged rather than imagined.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why can't we just flip the class and use the light tokens that are already there?</p>
+    <p class="a">
+      Four of them break. The worst is <code>--muted</code>, which changes <em>role</em> between the
+      two blocks: light defines it as <code>#6B7280</code>, a mid-grey text colour, while dark defines
+      it as <code>#1E1230</code>, a surface. Every <code>bg-muted</code> in the app turns into a grey
+      slab the first time the light block is used. That is a bug, not a preference.
+    </p>
+    <p class="a">
+      The other three are contrast failures on white: <code>--gold #FFB200</code> measures 1.81 : 1
+      (the podium's first place would disappear), <code>--destructive #DC595E</code> 3.71 : 1, and
+      <code>--success #22C55E</code> roughly 2.2 : 1 — all under the 4.5 : 1 floor. The fix is
+      light-only overrides — <code>#8A5A00</code> (5.94 : 1) as a new <code>--gold-ink</code> for gold
+      <em>text</em> while <code>#FFB200</code> stays the medal fill, plus <code>#B3252B</code>
+      (6.55 : 1) and <code>#157F3D</code> (5.09 : 1). Dark-mode values stay as they are.
+    </p>
+    <p class="a">
+      <code>--primary #6F3E87</code> needs nothing: 7.69 : 1 against white and 7.69 : 1 against its
+      own white foreground. It is the one token that carries across both themes unchanged, which is
+      why the app still looks like itself in light mode.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does the toggle design bother with a third “Auto” state?</p>
+    <p class="a">
+      Because a two-state switch cannot say “match my phone”, and iOS and Android already schedule
+      that at sunset. A plain on/off switch silently overrides the OS preference the first time it is
+      touched. The trade-off is that three states means three things to persist and test instead of
+      two, and it needs a full settings row rather than a 44 px nav slot — which is exactly why the
+      three variants in the specimen sheet sit in different places in the app.
     </p>
   </div>
 
