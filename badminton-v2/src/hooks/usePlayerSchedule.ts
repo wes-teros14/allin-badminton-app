@@ -23,6 +23,9 @@ interface UsePlayerScheduleResult {
   matches: PlayerMatch[]
   playerDisplayName: string
   playerAvatarUrl: string | null
+  /** Whole-session totals, so a personal list can show how far the night is. */
+  sessionMatchTotal: number
+  sessionMatchPlayed: number
   sessionName: string
   sessionDate: string
   sessionVenue: string | null
@@ -50,6 +53,8 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
   const [matches, setMatches] = useState<PlayerMatch[]>([])
   const [playerDisplayName, setPlayerDisplayName] = useState('')
   const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string | null>(null)
+  const [sessionMatchTotal, setSessionMatchTotal] = useState(0)
+  const [sessionMatchPlayed, setSessionMatchPlayed] = useState(0)
   const [sessionName, setSessionName] = useState('')
   const [sessionDate, setSessionDate] = useState('')
   const [sessionVenue, setSessionVenue] = useState<string | null>(null)
@@ -136,6 +141,16 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         setSessionStatus(s.status)
         sid = s.id
       }
+
+      // Session-wide counts, for the progress meter. Head-only, so no rows are
+      // transferred and there is nothing to page.
+      const [{ count: totalCount }, { count: playedCount }] = await Promise.all([
+        supabase.from('matches').select('id', { count: 'exact', head: true }).eq('session_id', sid),
+        supabase.from('matches').select('id', { count: 'exact', head: true }).eq('session_id', sid).eq('status', 'complete'),
+      ])
+      if (cancelled) return
+      setSessionMatchTotal(totalCount ?? 0)
+      setSessionMatchPlayed(playedCount ?? 0)
 
       // 3. Fetch this player's matches
       const { data: rows } = await supabase
@@ -282,6 +297,8 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
     matches,
     playerDisplayName,
     playerAvatarUrl,
+    sessionMatchTotal,
+    sessionMatchPlayed,
     sessionName,
     sessionDate,
     sessionVenue,

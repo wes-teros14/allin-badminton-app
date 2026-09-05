@@ -21,6 +21,7 @@ import {
   NoScheduleYet,
   PaymentBanner,
   PersonalGameCard,
+  SessionProgress,
   type BoardMatch,
   type BoardPlayer,
 } from '@/components/MatchBoard'
@@ -488,7 +489,7 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
 }
 
 function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: string; sessionId?: string }) {
-  const { matches, playerDisplayName, playerAvatarUrl, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
+  const { matches, playerDisplayName, playerAvatarUrl, sessionMatchTotal, sessionMatchPlayed, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId, sessionStatus, isLoading, notFound, refresh } = usePlayerSchedule(nameSlug, sessionIdParam)
   const {
     courts,
     isLoading: courtsLoading,
@@ -564,7 +565,14 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
         </div>
       )}
 
-      <div className="max-w-sm mx-auto px-4 py-4 flex flex-col gap-3">
+      <div className="max-w-sm mx-auto px-4 py-4">
+        <SessionProgress
+          sessionPlayed={sessionMatchPlayed}
+          sessionTotal={sessionMatchTotal}
+          yourPlayed={matches.filter((m) => m.status === 'complete').length}
+          yourTotal={matches.length}
+        />
+
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-[86px] rounded-xl bg-muted animate-pulse" />
@@ -576,6 +584,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
                 you={playerDisplayName}
                 yourAvatarUrl={playerAvatarUrl}
                 isNextUp={i === firstQueuedIndex}
+                promote={!playingMatch && i === firstQueuedIndex}
               />
             ))}
       </div>

@@ -745,6 +745,43 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Why does the progress bar need a separate query?</p>
+    <p class="a">
+      Because <code>usePlayerSchedule</code> only fetches <em>your</em> matches — it filters with
+      <code>.or(team1_player1_id.eq…)</code>. A bar reading “2 of 5” would answer the wrong
+      question: what tells you how near your next game is, is how far the <em>session</em> has got,
+      and that number moves whether or not you are playing.
+    </p>
+    <p class="a">
+      So the hook now runs two <code>{ count: 'exact', head: true }</code> queries alongside. Head-only,
+      so no rows cross the wire and there is nothing to page — which matters given the rule that any
+      unbounded read in this codebase needs <code>.range()</code> and a count cross-check.
+    </p>
+    <p class="a">
+      <strong>Gotcha worth remembering:</strong> a stubbed Supabase must send
+      <code>Access-Control-Expose-Headers: content-range</code> or the browser hides the header and
+      every <code>count</code> reads as <code>null</code>. Real Supabase sets it; a Playwright
+      <code>route.fulfill</code> does not, which made the meter look broken when it was not.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does the QR barely help on a phone?</p>
+    <p class="a">
+      Because a player is looking at it on the same phone they would pay with — and you cannot scan
+      a QR with the device displaying it. It only helps when paying from a second device or showing
+      someone else. Yet today it is the largest element in the payment block, sitting below the
+      phone number, which is the part that actually works.
+    </p>
+    <p class="a">
+      The bigger gap is that the block <strong>never states the amount</strong>.
+      <code>sessionPrice</code> is passed into <code>ScheduleTab</code> and never rendered, so a
+      player has to already know the fee. Options are in
+      <code>docs/visual/payment-flow-options.html</code>.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>
