@@ -295,7 +295,7 @@ function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
   )
 }
 
-function AllMatchesView({ sessionId }: { sessionId: string }) {
+export function AllMatchesView({ sessionId, embedded = false }: { sessionId: string; embedded?: boolean }) {
   const { user, role } = useAuth()
   const [matches, setMatches] = useState<BoardMatch[]>([])
   const [playerNames, setPlayerNames] = useState<string[]>([])
@@ -424,9 +424,9 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground relative">
-      <LiveIndicator status={status} onRefresh={refresh} />
-      <div className="max-w-sm mx-auto px-4 py-8">
+    <div className={embedded ? 'relative' : 'min-h-screen bg-background text-foreground relative'}>
+      {!embedded && <LiveIndicator status={status} onRefresh={refresh} />}
+      <div className={`max-w-sm mx-auto px-4 ${embedded ? 'py-4' : 'py-8'}`}>
         <BoardHeader
           sessionName={session?.name ?? ''}
           sessionDate={session?.date ?? null}
@@ -438,17 +438,20 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
         />
 
         {/* Its own row: LiveIndicator is `absolute top-3 right-4`, so anything
-            sharing the header's top-right corner sits underneath it. */}
-        <div className="mt-2 flex justify-end">
-          <Link
-            to={`/match-schedule/session/${sessionId}`}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← My Matches
-          </Link>
-        </div>
+            sharing the header's top-right corner sits underneath it. Embedded in
+            a tab there is nothing to go back to — the tab bar is the way out. */}
+        {!embedded && (
+          <div className="mt-2 flex justify-end">
+            <Link
+              to={`/match-schedule/session/${sessionId}`}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ← My Matches
+            </Link>
+          </div>
+        )}
 
-        {registration && (
+        {registration && !embedded && (
           <PaymentBanner
             paymentState={paymentState}
             price={session?.price ?? null}

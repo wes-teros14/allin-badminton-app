@@ -13,6 +13,7 @@ import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useSessionReceipts, signReceiptUrls, type SessionReceipt } from '@/hooks/useSessionReceipts'
 import { PersonalGameCard, SessionProgress } from '@/components/MatchBoard'
+import { AllMatchesView } from '@/views/PlayerView'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { ReceiptUploadDialog } from '@/components/ReceiptUploadDialog'
@@ -579,10 +580,11 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
 // ---------------------------------------------------------------------------
 // Main view
 // ---------------------------------------------------------------------------
-type Tab = 'schedule' | 'leaderboard'
+type Tab = 'schedule' | 'allmatches' | 'leaderboard'
 
 const TAB_LABELS: Record<Tab, string> = {
   schedule: 'Schedule',
+  allmatches: 'All matches',
   leaderboard: 'Leaderboard',
 }
 
@@ -679,7 +681,7 @@ export function SessionPlayerDetailView() {
       {/* Tab bar */}
       <div className="flex justify-center items-center gap-1 px-4 py-3 border-b border-border">
         <div className="flex gap-1">
-          {(['schedule', 'leaderboard'] as Tab[]).map((t) => (
+          {(['schedule', 'allmatches', 'leaderboard'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -722,6 +724,10 @@ export function SessionPlayerDetailView() {
             <p className="text-muted-foreground text-sm">No schedule found for your account.</p>
           </div>
         )
+      )}
+
+      {tab === 'allmatches' && sessionId && (
+        <AllMatchesView sessionId={sessionId} embedded />
       )}
 
       {tab === 'leaderboard' && sessionId && (
