@@ -79,6 +79,7 @@
       <li><a href="#routing">Routing &amp; role gating</a></li>
       <li><a href="#session-cards">Session cards</a></li>
       <li><a href="#leaderboard">Leaderboard</a></li>
+      <li><a href="#theming">Theming &amp; light mode</a></li>
     </ol>
   </nav>
 
@@ -353,6 +354,178 @@
       the six categories by raw count — so a player could see a badge on their profile that did not
       exist on the leaderboard, with no way to work out why. If you change one ranking rule, check
       both files.
+    </p>
+  </div>
+
+  <h2 class="topic" id="theming">Theming &amp; light mode</h2>
+
+  <div class="qa">
+    <p class="q">We need a dark/light toggle and a real light mode. What actually has to change?</p>
+    <p class="a">
+      Three things, in order. <code>index.html</code> hard-codes <code>&lt;html class="dark"&gt;</code>,
+      so step one is a state holder that sets or clears that class. Step two is the light token block:
+      the <code>:root</code> section of <code>src/index.css</code> exists but has <em>never rendered</em> —
+      it is shadcn's stock light default with <code>--primary: #6F3E87</code> dropped in. Step three is
+      the control itself, which is the smallest part.
+    </p>
+    <p class="a">
+      Design options are laid out in
+      <code>docs/visual/theme-toggle-options.html</code> — a nav orb, a shuttlecock switch, and a
+      Light/Auto/Dark segment. Each one is live in that file and repaints the whole page, so the
+      proposed light palette can be judged rather than imagined.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why can't we just flip the class and use the light tokens that are already there?</p>
+    <p class="a">
+      Four of them break. The worst is <code>--muted</code>, which changes <em>role</em> between the
+      two blocks: light defines it as <code>#6B7280</code>, a mid-grey text colour, while dark defines
+      it as <code>#1E1230</code>, a surface. Every <code>bg-muted</code> in the app turns into a grey
+      slab the first time the light block is used. That is a bug, not a preference.
+    </p>
+    <p class="a">
+      The other three are contrast failures on white: <code>--gold #FFB200</code> measures 1.81 : 1
+      (the podium's first place would disappear), <code>--destructive #DC595E</code> 3.71 : 1, and
+      <code>--success #22C55E</code> roughly 2.2 : 1 — all under the 4.5 : 1 floor. The fix is
+      light-only overrides — <code>#8A5A00</code> (5.94 : 1) as a new <code>--gold-ink</code> for gold
+      <em>text</em> while <code>#FFB200</code> stays the medal fill, plus <code>#B3252B</code>
+      (6.55 : 1) and <code>#157F3D</code> (5.09 : 1). Dark-mode values stay as they are.
+    </p>
+    <p class="a">
+      <code>--primary #6F3E87</code> needs nothing: 7.69 : 1 against white and 7.69 : 1 against its
+      own white foreground. It is the one token that carries across both themes unchanged, which is
+      why the app still looks like itself in light mode.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does the toggle design bother with a third “Auto” state?</p>
+    <p class="a">
+      Because a two-state switch cannot say “match my phone”, and iOS and Android already schedule
+      that at sunset. A plain on/off switch silently overrides the OS preference the first time it is
+      touched. The trade-off is that three states means three things to persist and test instead of
+      two, and it needs a full settings row rather than a 44 px nav slot — which is exactly why the
+      three variants in the specimen sheet sit in different places in the app.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“The theme toggle can go in the hamburger menu, or next to it.”</p>
+    <p>
+      Half wrong, and the wrong half matters. Both the hamburger button and the dropdown it opens
+      are wrapped in <code>hasAdminTabs</code> in <code>src/components/TopNavBar.tsx</code>, which is
+      <code>role === 'admin' || role === 'moderator'</code>. A plain player never sees a menu button
+      at all — so a toggle placed inside that menu would be invisible to almost everyone who uses
+      the app.
+    </p>
+    <p>
+      The nav bar itself is still fine: the toggle sits at the right-hand end, after the
+      <code>flex-1</code> tab list and outside the <code>hasAdminTabs</code> guard, so it renders for
+      every signed-in user. The two real slots are that one and a new Appearance row in
+      <code>ProfileView</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Where exactly would the toggle sit in the app?</p>
+    <p class="a">
+      Two slots. <strong>Nav bar</strong> — <code>src/components/TopNavBar.tsx:145</code>, between
+      the tab list and the hamburger; visible on every screen for every user, but only 44 px wide so
+      only an icon button fits. <strong>My Profile</strong> —
+      <code>src/views/ProfileView.tsx:405</code>, a new Appearance row directly above the existing
+      Sign out button, which is full width and fits anything, including a Light/Auto/Dark segment.
+    </p>
+    <p class="a">
+      Whichever is chosen, the state itself has to live above <code>&lt;Routes&gt;</code> in
+      <code>src/App.tsx</code>, not inside <code>PlayerLayout</code> — <code>/live-board</code>,
+      <code>/live-board/:sessionId</code> and <code>/register</code> never mount that layout, so a
+      layout-scoped provider would leave them on whatever class the previous page left behind.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Does the purple nav bar need a light version?</p>
+    <p class="a">
+      No. <code>TopNavBar</code> is <code>bg-primary text-primary-foreground</code>, and
+      <code>--primary</code> is <code>#6F3E87</code> in <em>both</em> token blocks — so the bar looks
+      identical in either theme and needs no work.
+    </p>
+    <p class="a">
+      The catch is that anything drawn on it must use <code>currentColor</code>, not
+      <code>var(--foreground)</code>. In light mode <code>--foreground</code> becomes
+      <code>#1B1220</code>, which measures 2.37 : 1 against that purple — well under the 4.5 : 1
+      floor and effectively invisible.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“<code>--gold</code> is unreadable on white at 1.8 : 1 — the podium’s first-place
+    <em>text</em> would vanish.”</p>
+    <p>
+      The number is right, the reason was wrong. <code>--gold</code> is never used as text anywhere
+      in the app: the podium applies it as <code>border-gold bg-gold/[0.07]</code>
+      (<code>src/views/LeaderboardView.tsx:98</code>) and the award toast uses it as a border. So
+      the rule that applies is the 3 : 1 floor for non-text UI boundaries, not the 4.5 : 1 text
+      floor — and <code>#FFB200</code> at 1.81 : 1 fails that too, so the fix is the same either
+      way: light mode uses <code>#B87A00</code> (3.61 : 1), dark keeps <code>#FFB200</code>.
+    </p>
+    <p>
+      Worth keeping because the wrong reason would have led to the wrong fix — a separate
+      <code>--gold-ink</code> token for text that nothing would ever have used.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What was actually the dangerous part of turning light mode on?</p>
+    <p class="a">
+      <code>--muted</code>. The light block defined it as <code>#6B7280</code>, a mid-grey
+      <em>text</em> colour; the dark block defined it as <code>#1E1230</code>, a <em>surface</em>.
+      The app only ever uses it as a surface — <code>bg-muted</code> appears <strong>106
+      times</strong> and bare <code>text-muted</code> <strong>zero</strong> times, since every muted
+      text is <code>text-muted-foreground</code>. Switching to light would have turned every
+      skeleton loader, hover state and table header into a grey slab. It is now
+      <code>#F1ECF6</code>.
+    </p>
+    <p class="a">
+      The same class of bug bit a second place: <code>.live-board-dark</code> overrides some tokens
+      but uses <code>text-muted-foreground</code> without defining
+      <code>--muted-foreground</code>. That worked only because <code>&lt;html&gt;</code> was always
+      dark. The scoped block now carries its own. <strong>The general rule:</strong> a token defined
+      in one theme block but not the other silently resolves to the wrong theme’s value.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why doesn’t the app follow my phone’s dark mode automatically?</p>
+    <p class="a">
+      Deliberate. Dark is the default and only an explicit <code>light</code> in
+      <code>localStorage['badminton-theme']</code> switches it, so every existing player sees
+      exactly what they saw before until they choose otherwise. Following the OS would have
+      silently changed the app’s appearance for everyone whose phone is in light mode.
+    </p>
+    <p class="a">
+      That default is also why the toggle is a two-state orb rather than a Light/Auto/Dark segment —
+      there is no “Auto” to represent. Adding one later means swapping the control in the same
+      Appearance row; the state lives in <code>ThemeContext</code>, not in the button.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why is the theme provider in <code>App.tsx</code> and not in <code>PlayerLayout</code>?</p>
+    <p class="a">
+      Three routes never mount <code>PlayerLayout</code>: <code>/live-board</code>,
+      <code>/live-board/:sessionId</code> and <code>/register</code>
+      (<code>src/App.tsx:59</code>–<code>61</code>). A layout-scoped provider would leave those on
+      whatever class the previous page happened to set. <code>ThemeProvider</code> wraps
+      <code>&lt;Routes&gt;</code> instead.
+    </p>
+    <p class="a">
+      There is also an inline script in <code>index.html</code> that applies the class before React
+      loads. Without it a light-mode player gets a dark flash on every page load. It duplicates the
+      rule in <code>readStoredTheme()</code> on purpose — change one, change the other.
     </p>
   </div>
 

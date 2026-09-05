@@ -270,3 +270,47 @@
   **Root cause**: Five things, and the first was a layout defect rather than a preference. An **untied** place rendered the rank *inside* the bordered card, after its `px-4` (`LeaderboardView.tsx:327`); a **tied** place rendered it *outside*, to the left of the cards (`:337-345`). Ranks therefore sat ~16px apart horizontally on the same board and the cards started at two different x-positions, so there was no column to run an eye down. On top of that: rank used `text-muted-foreground` while the win rate used `text-primary` and bold, making the ordering value the quietest thing on the row; `RANK_ICON` returned 🥇🥈🥉 then bare digits, and colour emoji beside a grey glyph share no weight, size or baseline, so places 4-10 read as *absent* rather than lower; the cell was `text-sm w-5` — 14px in 20px — with no `tabular-nums`, so "10" and "4" did not centre alike; and a tie group's single glyph was top-aligned beside a 2px rule with nothing stating how many were tied. None of it was a data problem: `rankPairs` and `groupByRank` were computing dense ranks and cutting on places correctly the whole time.
   **Fix**: Both tied and untied places now render through one `RankPlace` component, so the marker column is a fixed width by construction — 34px chip or 36px medal cell, verified in a real browser at 34px and identical x for every row including tie groups. Places 1-3 became a medal podium (medal + ordinal + tinted border, first place borrowing the existing `--gold` token the award toast already uses), everything below a numbered chip, with a divider naming the places actually on screen. A shared place states "3 tied" in words above its rows. The Mga Lodi board was moved onto the same component, which meant giving it dense ranks too — it had been numbering by array index, so two players on the same win rate would have taken 🥇 and 🥈. Rank arithmetic moved to `src/lib/denseRank.ts` (`assignDenseRanks`, `cutToPlaces`, `groupByRank`) so the two boards read from one implementation.
   **Rule**: When one visual element has two rendering paths — a normal case and a grouped/tied/empty case — put the shared chrome in one component that both paths call, rather than writing the chrome twice. Two copies of "draw the rank" is how the same column ends up at two x-positions, and no amount of restyling either copy fixes it. Second: a complaint phrased as "too small" or "hard to see" deserves a measurement before a redesign — here the size was a real but minor factor, and the actual cause was geometry that no font-size change would have fixed. Third: if two adjacent tabs show the same kind of ranking, they need the same rank *semantics*, not just the same paint — index-based numbering next to dense ranks contradicts itself the first time anyone ties.
+
+## Theme toggle exploration (2026-09-05)
+
+**Symptom** — In the toggle chooser page, selecting a location did nothing: the readout stayed at
+"—" and the console threw `Cannot set properties of null` on every repaint.
+
+**Root cause** — The option rows were `<button class="opt">`, and one of them contained the
+Light/Auto/Dark segment, which is made of `<button>` elements. The HTML parser closes an open
+`button` when it meets another `button` start tag, so the outer row was truncated and its
+`.opt__flag` span ended up outside it. `o.querySelector('.opt__flag')` then returned null.
+
+**Fix** — Option rows became `<div role="radio" tabindex="0">` with click + Enter/Space handlers,
+and `disabled` became `aria-disabled`. Verified in Chromium: all five location/type combinations
+produce the right readout with zero console errors.
+
+**Also found (not a bug I introduced)** — `TopNavBar`'s hamburger and its dropdown are both behind
+`hasAdminTabs`, so neither exists for a plain player. Any UI placed in that menu is admin-only.
+
+## Light mode: `--muted` had swapped roles between the two token blocks (2026-09-05)
+
+**Symptom** — Latent, never seen, because `index.html` hard-coded `<html class="dark">` and the
+`:root` block had never rendered. The moment a light theme was switched on, every skeleton loader,
+hover state and table header would have become a mid-grey slab.
+
+**Root cause** — `:root` defined `--muted: #6B7280` (shadcn's stock mid-grey *text* colour) while
+`.dark` defined `--muted: #1E1230` (a *surface*). The codebase treats it purely as a surface:
+`bg-muted` appears **106 times**, bare `text-muted` **zero** times — every muted text is
+`text-muted-foreground`. So the light value was simply wrong for how the token is used.
+
+**Fix** — Light `--muted` is now `#F1ECF6`. Three other light values were corrected at the same
+time for contrast on white: `--gold` `#B87A00` (was 1.81 : 1 as a medal border), `--destructive`
+`#B3252B` (was 3.71 : 1 under `text-destructive`), `--ring` `#6F3E87`. `--success`,
+`--primary-hover`, `--primary-pressed` and `--muted-surface` were left alone — zero usages in
+`src/`, so they cannot break anything.
+
+**Second bug found by the same change** — `.live-board-dark` uses `text-muted-foreground` three
+times in `LiveBoardView.tsx` but never defined `--muted-foreground` in its own block. It worked
+only because `<html>` was permanently `.dark`. Once `<html>` could be light, the projector board
+would have taken the light grey `#6B5F73` on its near-black ground. The scoped block now carries
+its own `--muted-foreground: #B39DBB`. Verified in Chromium with `<html>` light.
+
+**Rule** — In a two-theme app, a token defined in one block but not the other silently resolves to
+the other theme's value. Any scoped block that overrides *some* tokens must define *every* token
+the markup inside it actually resolves.

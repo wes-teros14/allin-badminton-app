@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-04
+Last updated: 2026-09-05
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -17,7 +17,8 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 - React + TypeScript, Vite 8, `react-router` (v7 style imports: `from 'react-router'`, not `react-router-dom`).
 - Tailwind v4 — tokens declared as CSS variables in `badminton-v2/src/index.css` and mapped under `@theme inline`. A new brand token needs **both** the `--x` variable and a `--color-x: var(--x)` line, or the utility class won't exist.
-- **The app is permanently dark.** `index.html` hard-codes `<html class="dark">` and there is no toggle, so only the `.dark` token block matters in practice. A token defined in `:root` but not in `.dark` still resolves — to its light value — which is a live trap: `--muted-surface` is light-only and would render near-white.
+- **The app has both themes as of 2026-09-05; dark is the default.** `index.html` no longer hard-codes `class="dark"` — an inline pre-paint script reads `localStorage['badminton-theme']` and only an explicit `light` turns the lights on, so an existing player who never touches the toggle sees no change. `ThemeProvider` (`src/contexts/ThemeContext.tsx`) owns the state and is mounted above `<Routes>` in `App.tsx`, deliberately *not* inside `PlayerLayout` — `/live-board`, `/live-board/:sessionId` and `/register` never mount that layout.
+- **Both token blocks now matter.** A token defined in one block but not the other silently resolves to the wrong theme's value. `.live-board-dark` had exactly this bug latent: it uses `text-muted-foreground` but never defined `--muted-foreground`, which worked only while `<html>` was always dark. It now carries its own. `--muted-surface`, `--success`, `--primary-hover` and `--primary-pressed` have zero usages in `src/`, so their values cannot break anything.
 - shadcn/ui in `src/components/ui`. Icons: `lucide-react`. Toasts: `sonner`.
 - Supabase for auth (Google OAuth + PKCE), Postgres, Storage (receipts), and Realtime.
 - Deployed on Vercel.
@@ -76,6 +77,25 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Invariants belong in the database.** Anything an algorithm guarantees can still be violated by a hand-edit form, so the check goes in a Postgres `CHECK` plus a shared validator for a readable error (see `matches_distinct_players_check`, migration 079, and `src/lib/matchPlayers.ts`).
 - **Nicknames are not unique.** `profiles.nickname` is free text; `disambiguateDisplayNames` qualifies collisions ("Alexis (Cruz)") so two people don't collapse into one on screen.
 
+## Theming
+
+- Two blocks in `src/index.css`: `:root` (light) and `.dark`. Tailwind's `dark` variant is
+  `&:is(.dark *)`, so the class lives on `<html>`.
+- **`--muted` is a *surface*, not a text colour.** 106 uses of `bg-muted`, zero bare `text-muted` —
+  every muted text in the app is `text-muted-foreground`. The light block shipped with
+  `--muted: #6B7280`, a mid-grey text colour, which would have slabbed all 106. It is now
+  `#F1ECF6`. If you ever see a grey block where a skeleton should be, this token is why.
+- Light-mode values that deliberately differ from dark, all because they land on white:
+  `--gold` `#B87A00`, `--destructive` `#B3252B` (6.55 : 1; `#DC595E` was 3.71 : 1),
+  `--ring` `#6F3E87`. `--primary` `#6F3E87` is 7.69 : 1 on white and is the same in both.
+- **The nav bar is `bg-primary` in both themes**, so it needs no light-mode work — but anything
+  drawn on it must use `currentColor`, never `var(--foreground)` (2.37 : 1 on that purple).
+  `ThemeToggle` follows this rule so it can be moved onto the nav later without a rewrite.
+- The toggle mark is one element, `.theme-orb`: a crescent that fills into a disc and throws eight
+  rays via `box-shadow`. Not two icons crossfading — nothing pops mid-transition.
+- Design options that were considered and rejected are preserved in
+  `badminton-v2/docs/visual/theme-toggle-options.html`.
+
 ## Testing
 
 - `npm run test:unit` — vitest, `include: ['src/**/*.test.ts']`, `environment: 'node'`. **Node only: there is no DOM or React Testing Library setup**, so pure functions get unit tests and components do not. Extracting logic into a testable helper is the established response to this.
@@ -97,6 +117,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligiblePlayerIds()` plus `MIN_SESSIONS_PLAYED`, `RECENT_SESSIONS_WINDOW` and `BOARD_EXCLUDED`. Every surface asks that one function: Mga Lodi, Partners, Cheers, Awards, and the award badges on My Profile. The rules are 3+ sessions attended and registered for at least one of the last 4 completed sessions. Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy.
 - **My Profile computes its own award badges.** It has to agree with the Awards tab, so it calls the same `fetchEligiblePlayerIds` and `rankCheerShares(..., { maxPlaces: 1 })`, resolving a tie to nobody the same way. The two files diverged once already, showing badges on profiles that the leaderboard did not award. Change one, check the other.
 - First place borrows the existing `--gold` token that the award toast uses, so the app has one gold. Silver and bronze use palette values; bronze is `amber-700` rather than an orange, because an orange wash on the dark card reads as the destructive red.
+- **`--gold` is a border and a 7% wash (`border-gold bg-gold/[0.07]`), never text.** That is why its light value is a different hex: `#FFB200` measures 1.81 : 1 on white and the medal border would vanish, so light mode uses `#B87A00` (3.61 : 1, clearing the 3 : 1 floor for non-text UI). Dark keeps `#FFB200`.
 - **Cheer boards are shares, never counts.** Cheering is compulsory — `PlayerLayout` replaces the whole page with the cheer gate until you have cheered all three other players in the match, and a skip only survives until the next reload. So `cheers_given` and `cheers_received` both come out at three per match played: they rank attendance while looking like they rank merit. Both boards and both awards (🌟/🙌) were removed for that reason; 📅 Most Sessions Joined already says the same thing honestly. The one real choice is *which of the six types*, so the six category boards score `category ÷ cheers_received` with a `MIN_CHEERS_RECEIVED` floor (15 ≈ one session). Do not reintroduce a raw cheer count as a ranking — a count still rewards whoever played most.
 - `cheers_received` is exactly the sum of the six category columns (migration 036 increments the total and one category by 1 per row), which is what makes a player's six shares sum to 100%. Any new cheer type must update that trigger or the shares stop adding up.
 - `RANK_ICON` (medal-then-digit) is gone. Every ranked surface uses the podium/chip treatment, and the numbered chip is one shared `RankChip` at a fixed 34 px.
