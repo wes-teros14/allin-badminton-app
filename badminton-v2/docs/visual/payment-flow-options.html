@@ -110,7 +110,7 @@ code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);paddi
 <div class="page">
   <div class="top">
     <div>
-      <p class="kicker">Payment &amp; receipt · /sessions/:id</p>
+      <p class="kicker">Payment &amp; receipt · /sessions/:id · <b>A chosen</b></p>
       <h1>Paying, and proving you paid</h1>
     </div>
     <div class="switch">
@@ -142,7 +142,7 @@ code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);paddi
 (function () {
   var OPTS = [
     { k:'now', b:'0 · What ships today', s:'for comparison' },
-    { k:'a',   b:'A · Three steps',      s:'explicit flow' },
+    { k:'a',   b:'A · Three steps',      s:'chosen · shipped' },
     { k:'b',   b:'B · One action card',  s:'minimal' },
     { k:'c',   b:'C · Amount first',     s:'pay / prove split' }
   ]
@@ -203,7 +203,7 @@ code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);paddi
       + '</div></div>'
       + '<div class="step '+s3+'"><span class="step__i">'+(s3==='done'?'✓':'3')+'</span><div class="step__b">'
       +   '<p class="step__t">'+(st.k==='paid'?'Confirmed by Wes':'Wes confirms it')+'</p>'
-      +   (st.k === 'sent' ? '<p class="hint" style="margin-top:5px">Nothing more to do — he checks receipts, not GCash.</p>' : '')
+      +   (st.k === 'sent' ? '<p class="hint" style="margin-top:5px">Nothing more to do — he checks your receipt against GCash, then marks it paid.</p>' : '')
       + '</div></div></div>'
     return '<div class="card">'+head+body+'</div>'
   }
@@ -215,7 +215,7 @@ code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);paddi
     if (st.k === 'sent') return '<div class="card">'
       + '<div style="display:flex;align-items:center;gap:9px;margin-bottom:12px"><span class="tag tag--sent">Awaiting confirmation</span><span class="amt" style="margin-left:auto;font-size:22px">'+AMOUNT+'</span></div>'
       + receiptRow()
-      + '<p class="hint" style="margin-top:11px">Nothing more to do. Wes checks receipts, not GCash.</p>'
+      + '<p class="hint" style="margin-top:11px">Nothing more to do. Wes checks your receipt against GCash.</p>'
       + '<div style="height:11px"></div><button class="btn btn--gho" style="min-height:40px;font-size:12.5px">Add another receipt</button></div>'
     return '<div class="card">'
       + '<div style="display:flex;align-items:center;gap:9px"><span class="lbl">Session fee</span><span class="amt" style="margin-left:auto">'+AMOUNT+'</span><span class="tag tag--unpaid">Unpaid</span></div>'
@@ -236,7 +236,7 @@ code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);paddi
       + '<div><p class="lbl" style="margin:0 0 6px">You owe</p><p class="amt" style="margin:0">'+AMOUNT+'</p></div>'
       + '<span class="tag tag--'+(st.k==='sent'?'sent':'unpaid')+'" style="margin-left:auto">'+(st.k==='sent'?'Sent':'Unpaid')+'</span></div>'
     if (st.k === 'sent') return '<div class="card">'+head
-      + '<p class="hint" style="margin-top:12px">Receipt received. Wes confirms it — he does not monitor GCash.</p>'
+      + '<p class="hint" style="margin-top:12px">Receipt received. Wes checks it against GCash and confirms.</p>'
       + '<div style="height:12px"></div>'+receiptRow()
       + '<div style="height:12px"></div><button class="btn btn--gho" style="min-height:40px;font-size:12.5px">Add another receipt</button></div>'
     return '<div class="card">'+head
@@ -259,7 +259,7 @@ code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);paddi
       + '<li><b>The QR is a dead end on the device showing it.</b> You cannot scan your own screen — and the player is on their phone, paying with GCash on that same phone. It only helps when paying from another device or showing someone. Yet it is the largest element in the block.</li>'
       + '<li><b>Unpaid and sent look nearly identical.</b> The whole “here is how to pay” wall stays after you have paid, with one small amber line added inside it.</li>'
       + '<li><b>That amber line is <code>text-amber-600</code></b> — about 3.2 : 1 in light mode, under the 4.5 : 1 floor. Already on the list of light-mode colours to fix.</li>'
-      + '<li><b>Nothing states the fee is per session</b>, or what happens after upload.</li>'
+      + '<li><b>Nothing states the fee is per session</b>, or what happens after upload.</li>'+ '<li><span class="pill pill--stop">Wrong</span> <b>“I don&rsquo;t monitor GCash directly” was inaccurate.</b> Wes checks the receipt <em>against</em> GCash before confirming, so the line told players the opposite of what happens. Corrected everywhere.</li>'
       + '</ul>',
     a: '<h3>A · Three steps</h3>'
       + '<p>Send → upload → confirmed, as a numbered rail. The current step is filled, past steps ticked.</p>'

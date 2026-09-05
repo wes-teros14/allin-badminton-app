@@ -782,6 +782,43 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“I don&rsquo;t monitor GCash directly.”</p>
+    <p>
+      That line sat in the payment block and was inaccurate — Wes checks the receipt
+      <em>against</em> GCash before confirming, so it told players the opposite of what happens.
+      It could reasonably have made someone skip uploading a receipt on the assumption the app was
+      the only record, or expect a confirmation that only arrives after a manual cross-check.
+    </p>
+    <p>
+      Replaced everywhere with <em>“he checks your receipt against GCash, then marks it paid”</em>,
+      which is both what happens and a reason to bother uploading. The line also existed in three
+      places in the design POC; all corrected.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why is payment a three-step list now rather than one block?</p>
+    <p class="a">
+      Because the flow ends with something the player cannot do themselves, and that is worth
+      stating. Steps 1 and 2 are theirs — send it, upload the receipt — and step 3 is Wes. It stays
+      greyed until a receipt exists, so “what happens next” is answered without anyone having to
+      ask.
+    </p>
+    <p class="a">
+      The block now also leads with the amount. <code>sessionPrice</code> was already being passed
+      into <code>ScheduleTab</code> and simply never rendered, so a player had to know the fee from
+      somewhere else entirely. The QR moved behind a <em>Show QR instead</em> disclosure, because
+      you cannot scan a QR with the phone displaying it — the copyable number is the one that
+      actually works on the device in your hand.
+    </p>
+    <p class="a">
+      Unchanged: <code>shouldShowPaymentInfo</code> still hides the whole block once
+      <code>paid === true</code>. That rule has its own unit test and was left alone.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>
