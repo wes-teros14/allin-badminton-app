@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, Outlet } from 'react-router'
 import { useAuth } from '@/contexts/AuthContext'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 import { supabase } from '@/lib/supabase'
 import { Toaster } from '@/components/ui/sonner'
 import { PlayerLayout } from '@/layouts/PlayerLayout'
@@ -48,6 +49,7 @@ const LeaderboardView          = lazy(() => import('@/views/LeaderboardView'))
 
 function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
     <Toaster position="top-center" offset={64} style={{ fontSize: '1rem' }} />
     <DevLoginPanel />
@@ -87,6 +89,7 @@ function App() {
       </Routes>
     </Suspense>
     </AuthProvider>
+    </ThemeProvider>
   )
 }
 

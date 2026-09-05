@@ -1,118 +1,67 @@
-# Tasks
+# Light/dark mode — Nav orb in My Profile
 
-## Active — `005-payment-receipt-upload` (awaiting database migration)
+Chosen from `badminton-v2/docs/visual/theme-toggle-options.html`:
+**Nav orb control, in an Appearance row above Sign out on My Profile.**
 
-Code is complete and validated as far as it can be without the schema. **Nothing
-in this feature works until migrations 075–077 are applied.**
+## Plan
 
-- [ ] Apply `075_create_session_receipts.sql`, `076_create_receipts_bucket.sql`,
-      `077_session_receipts_realtime.sql` to **dev** (`tsvetqzkullivprbjtli`)
-      via Supabase Dashboard → SQL Editor. `supabase db push` does not work in
-      this environment (see lessons.md lines 29, 39, 181).
-- [ ] Then run `npm run test:e2e -- tests/payment-receipts.spec.ts`
-- [ ] Then the manual checks below (T012, T023, T033, T039, T044, T049, T054, T055)
-- [ ] Apply the same three migrations to **prod** (`ensdfitpeyreunihkqkh`).
-      Migration `071` was previously left dev-only — do not repeat that.
+- [x] `index.html` — drop the hard-coded `class="dark"`; add a pre-paint inline script so a
+      light-mode user never sees a dark flash. Dark stays the default: only an explicit
+      `light` in storage turns the lights on.
+- [x] `src/contexts/ThemeContext.tsx` (new) — `'light' | 'dark'`, writes the class onto
+      `documentElement`, sets `color-scheme`, persists to `localStorage`. Matches the
+      `AuthContext` shape exactly (provider + `useTheme` in the same file).
+- [x] `src/hooks/useTheme.ts` (new) — thin re-export, matching `src/hooks/useAuth.ts`.
+- [x] `src/App.tsx` — mount `ThemeProvider` above `<Routes>`, not inside `PlayerLayout`:
+      `/live-board`, `/live-board/:sessionId` and `/register` never mount that layout.
+- [x] `src/components/ThemeToggle.tsx` (new) — the 44 x 44 orb button.
+- [x] `src/index.css` — `.theme-orb` styles; fix the light token block; give
+      `.live-board-dark` its own `--muted-foreground`.
+- [x] `src/views/ProfileView.tsx` — Appearance row directly above the Sign out button.
+- [x] Verify: `tsc -b`, `vite build`, `npm run test:unit`, and both themes rendered in Chromium.
+- [x] Commit, push `dev`, merge `dev` into `main` non-fast-forward, push `main`.
 
-Full task list: `specs/005-payment-receipt-upload/tasks.md` (45/58 complete).
+## Token changes, and why each one is necessary
 
----
+Measured against the surfaces they actually land on. Only tokens the app really uses are touched.
 
-## Review — Payment Receipt Upload & Admin Receipt Review
+| Token | Light was | Light now | Why |
+|---|---|---|---|
+| `--muted` | `#6B7280` | `#F1ECF6` | **The critical one.** It is a mid-grey *text* colour in the light block and a *surface* in the dark block. The app uses it as a surface **106 times** (`bg-muted`) and as text **0 times**, so every skeleton, hover state and table header would have rendered as a grey slab. |
+| `--gold` | `#FFB200` | `#B87A00` | Used as `border-gold` + `bg-gold/[0.07]` on the podium. `#FFB200` on white is 1.81 : 1 — the first-place medal border would be invisible. `#B87A00` is 3.61 : 1, clearing the 3 : 1 floor for non-text UI. |
+| `--destructive` | `#DC595E` | `#B3252B` | 3.71 : 1 on white fails AA for the `text-destructive` Sign out button and the unpaid pills. `#B3252B` is 6.55 : 1. |
+| `--background` | `#FFFFFF` | `#FAF7FB` | `--card` is also white, so cards had nothing but a border separating them from the page. A barely-violet ground matches the brand and gives the cards a surface to sit on. |
+| `--foreground`, `--card-foreground`, `--popover-foreground` | `#18181B` / `oklch(.145 0 0)` | `#1B1220` | Three near-blacks doing one job, none matching. One violet-tinted near-black at 17.1 : 1 on the new ground. |
+| `--ring` | `oklch(.708 0 0)` | `#6F3E87` | Dark mode already uses `--primary` for the focus ring; light used a grey that barely reads. |
+| `.live-board-dark --muted-foreground` | (inherited) | `#B39DBB` | **Regression guard.** `LiveBoardView` uses `text-muted-foreground` three times and the scoped block never defined it — it worked only because `<html>` was always `.dark`. Without this the projector board gets dark-grey text on a near-black ground. |
 
-### What was built
+Left alone deliberately: `--success`, `--primary-hover`, `--primary-pressed` and `--muted-surface`
+have **zero** usages in `src/`, so their light values cannot break anything. `--primary #6F3E87`
+already measures 7.69 : 1 against white and needs no change.
 
-A player attaches their GCash screenshot with an optional note directly from the
-payment banner on their session card; the organiser gets a per-player link in the
-Finance payment panel to review those receipts before confirming payment.
+## Review
 
-Payment now shows three states — **Unpaid** (red), **Awaiting confirmation**
-(orange), **Paid** (green) — consistently on the session card, the sessions list
-and the admin panel.
+**Shipped.** Nav orb in an Appearance row above Sign out on My Profile. Dark stays the default —
+only an explicit `light` in `localStorage['badminton-theme']` turns the lights on, so no existing
+player's app changes appearance until they choose to.
 
-### The decision everything else follows from
+**Verified**
+- `tsc -b` and `vite build` clean; vitest **242 / 242**.
+- `/profile` rendered in Chromium against stubbed Supabase in both themes: 44 x 44 button, orb
+  geometry correct in each state (22 px crescent rotated -25 deg -> 29.2 px box; 0.52 scaled disc ->
+  11.4 px box, rays as box-shadows), `aria-checked` and `aria-label` both flip, the choice persists
+  to `localStorage`, zero page errors.
+- `/live-board` rendered with `<html>` in light mode: still `#0F0A18` with white text and
+  `--muted-foreground: #B39DBB`. The regression guard works.
 
-**The orange state is derived, never stored.** `session_registrations.paid` keeps
-its exact original meaning (confirmed by an admin) and stays the sole input to
-revenue; orange is computed as `paid === false && activeReceiptCount > 0`.
+**Not verified**
+- Nothing has been seen on a physical phone.
+- The podium's new light gold `#B87A00` has been computed (3.61 : 1 on white) but never rendered
+  against real leaderboard data.
 
-So `get_session_finance` was **not touched at all**, revenue arithmetic cannot
-shift, and `tests/finance-totals.spec.ts` passes **unmodified**. A stored
-`payment_status` column would have been a second value able to disagree with
-`paid`, and that disagreement would surface as wrong money.
-
-It also made FR-033 free: registrations predating this feature have zero
-receipts, so they derive to exactly the state they already showed. No backfill.
-
-### Files
-
-**New (11)**: 3 migrations · `lib/paymentState.ts` · `lib/imageResize.ts` ·
-`lib/receipts.ts` · `hooks/useSessionReceipts.ts` · `components/ReceiptUploadDialog.tsx` ·
-`components/ReceiptViewerDialog.tsx` · 2 unit test files · 1 E2E spec
-
-**Modified (9)**: `types/database.ts` · `hooks/useRoster.ts` ·
-`hooks/usePlayerSessions.ts` · `components/RosterPanel.tsx` ·
-`views/SessionPlayerDetailView.tsx` · `views/MySessionsView.tsx` ·
-`views/ProfileView.tsx` · `views/AdminView.tsx` · 1 existing test
-
-### What was validated
-
-| Check | Result |
-|---|---|
-| `npx tsc -b` | Clean |
-| `npm run lint` | **0 new problems** (4 pre-existing — see below) |
-| `npm run test:unit` | **143 passed**, 17 files (was 139; +4 new) |
-| `tests/finance-totals.spec.ts` | Passes **unmodified** — the FR-034 evidence |
-
-**Pre-existing lint problems, not introduced here**: 3 `prefer-const` errors in
-`usePlayerSchedule.ts` (zero diff — never touched by this feature) and 1
-`react-hooks/exhaustive-deps` warning in `ProfileView.tsx`. The warning sat at
-line 189 in HEAD and reports at 165 now because 24 lines were removed —
-189 − 24 = 165, same untouched `useEffect`.
-
-**`finance-totals.spec.ts` is flaky under parallel workers, pre-existing.**
-Measured 3 runs with the feature (1 fail, then 2 clean) and 3 runs stashed at
-HEAD (1 fail, then 2 clean) — identical pattern, tied to dev-server warm-up. At
-`--workers=1` it passes every time. Not caused by this feature; `FinanceView`
-imports nothing this feature touches.
-
-### The bug caught before it shipped
-
-`/speckit-analyze` found that the "delete the storage object before the row" rule
-had been specified for two call sites when there are **three**. An admin removing
-a player from the roster cascades their receipt rows away, and the row holds
-`storage_path` — the only record of where the image lives. Every such removal
-would have stranded receipt images in the bucket permanently: unreachable,
-undeletable, still readable, with no error and no failing test.
-
-Fixed in `useRoster.removePlayer`, with an E2E assertion that checks the **bucket**
-rather than the rows — the rows always vanish cleanly, so asserting on them
-proves nothing. Written up in `tasks/lessons.md`.
-
-### Deferred, not done
-
-**`AdminRoute` admits moderators to admin-only screens.** `src/App.tsx:28` lets
-both `admin` and `moderator` through to `/finance`, `/players` and `/inventory`,
-while `067_add_moderator_role.sql` states moderators cannot access them — that
-comment is intent, not an enforced guard.
-
-This feature meets its own requirement at the data layer instead (a moderator's
-`SELECT` on `session_receipts` returns nothing and their `createSignedUrl` is
-refused), which is strictly stronger than a route guard. But the underlying gap
-is real, predates this work, and spans three screens this feature does not
-otherwise touch. **Recommend a separate spec** rather than widening this branch.
-
-### Also out of scope, by decision
-
-OCR of receipts · GCash API integration · notifying the organiser on upload ·
-structured partial-payment amounts · moderator access to receipts · admins
-uploading on a player's behalf.
-
----
-
-## Recently completed
-
-- Added a "# of courts" control below "Set Limit" on the Registration Open
-  screen (`RegistrationURLCard.tsx` + `SessionView.tsx`), updating
-  `sessions.court_count`. Court-card rendering was already dynamic per
-  `court_count`; verified live in a real browser. See `tasks/lessons.md`.
+**Found but deliberately not fixed**
+- `text-amber-600 dark:text-amber-500` in `MySessionsView.tsx:123` and
+  `SessionPlayerDetailView.tsx:290` now actually take their light branch for the first time.
+  Amber-600 on white is roughly 3.3 : 1 at `text-xs`, under the 4.5 : 1 floor. It is a
+  deliberately-authored light/dark pair, so it is flagged in `handoff.md` rather than changed here.
+- 3 pre-existing `prefer-const` errors in `src/hooks/usePlayerSchedule.ts`, unrelated to this work.
