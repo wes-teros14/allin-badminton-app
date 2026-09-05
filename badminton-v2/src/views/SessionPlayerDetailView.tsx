@@ -183,6 +183,47 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
 
 const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
 
+/**
+ * One step of the payment flow. `on` is the step you can act on now, `done` is
+ * behind you, `off` is ahead — step 3 is always `off` until a receipt exists,
+ * because it is the one you cannot complete yourself.
+ */
+function PayStep({
+  n,
+  state,
+  title,
+  last,
+  children,
+}: {
+  n: number
+  state: 'on' | 'done' | 'off'
+  title: string
+  last?: boolean
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="grid grid-cols-[26px_1fr] gap-3">
+      <span
+        className={`relative z-10 grid h-[26px] w-[26px] place-items-center rounded-full font-mono text-[11px] font-bold ${
+          state === 'done'
+            ? 'bg-success/20 text-success'
+            : state === 'on'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted text-muted-foreground'
+        }`}
+      >
+        {state === 'done' ? '✓' : n}
+      </span>
+      <div className={last ? 'pb-1' : 'pb-4'}>
+        <p className={`mt-1 text-[13.5px] ${state === 'off' ? 'font-medium text-muted-foreground' : 'font-semibold'}`}>
+          {title}
+        </p>
+        {children ? <div className="mt-2.5">{children}</div> : null}
+      </div>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Schedule tab
 // ---------------------------------------------------------------------------
@@ -256,62 +297,114 @@ function ScheduleTab({
         />
       )}
 
-      {/* Payment info banner — shown whenever registered + unpaid + configured,
-          regardless of session status (a player may still owe payment after
-          registration closes, schedule locks, or the session starts) */}
+      {/* Payment — shown whenever registered + unpaid + configured, regardless
+          of session status (a player may still owe after registration closes,
+          the schedule locks, or the session starts).
+
+          Three steps rather than one wall of instructions: the flow ends with
+          something the player cannot do themselves, and saying so is the point. */}
       {isRegistered && showPaymentInfo && (
         <div className="max-w-sm mx-auto px-4 mt-3">
-          <div className="px-4 py-4 rounded-xl border border-primary/20 bg-primary/10 space-y-3">
-            <p className="text-sm font-semibold text-foreground">You&apos;re registered! GCash payment details below:</p>
-            {phoneNumber && (
-              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-card border border-border">
-                <span className="text-sm font-medium">{phoneNumber}</span>
-                <button
-                  onClick={handleCopyPhone}
-                  className="text-xs font-semibold text-primary hover:underline shrink-0"
-                >
-                  Copy
-                </button>
-              </div>
-            )}
-            {qrCodeUrl && (
-              <img
-                src={qrCodeUrl}
-                alt="Payment QR code"
-                className="w-40 h-40 object-contain rounded-lg border border-border mx-auto"
-                onError={(e) => { e.currentTarget.style.display = 'none' }}
-              />
-            )}
-            <p className="text-xs text-muted-foreground">Once sent, please upload your receipt below so I can confirm it. I don&apos;t monitor GCash directly.</p>
-
-            {/* Receipt upload — one combined action for image + note */}
-            <div className="pt-1 border-t border-primary/20 space-y-2">
-              {paymentState === 'submitted' && (
-                <p className="text-xs font-semibold text-amber-600 dark:text-amber-500">
-                  🟠 Receipt submitted — awaiting confirmation
-                </p>
+          <div className="rounded-2xl border border-border bg-card p-3.5">
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                Session fee
+              </span>
+              {sessionPrice != null && (
+                <span className="ml-auto text-[28px] font-bold leading-none tracking-[-0.03em] tabular-nums">
+                  ₱{sessionPrice}
+                </span>
               )}
-
-              <SubmittedReceipts
-                receipts={receipts}
-                canRemove={paid !== true}
-                onRemove={(r) => { void deleteReceipt(r) }}
-              />
-
-              <button
-                onClick={() => setUploadOpen(true)}
-                disabled={isUploading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+              <span
+                className={`shrink-0 rounded-md px-2 py-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] ${
+                  paymentState === 'submitted'
+                    ? 'bg-gold/20 text-gold-ink'
+                    : 'bg-destructive/20 text-destructive'
+                }`}
               >
-                <Paperclip className="w-4 h-4" />
-                {receipts.length > 0 ? 'Add another receipt' : 'Add receipt + note'}
-              </button>
+                {paymentState === 'submitted' ? 'Sent' : 'Unpaid'}
+              </span>
+            </div>
 
-              {receipts.length > 0 && receipts.length < MAX_RECEIPTS_PER_SESSION && (
-                <p className="text-[11px] text-center text-muted-foreground">
-                  {receipts.length} of {MAX_RECEIPTS_PER_SESSION} submitted
-                </p>
-              )}
+            <div className="relative">
+              {/* the rail the step markers sit on */}
+              <span className="absolute left-[12.5px] top-6 bottom-3 w-px bg-border" aria-hidden="true" />
+
+              <PayStep n={1} state={paymentState === 'unpaid' ? 'on' : 'done'} title={`Send ${sessionPrice != null ? `₱${sessionPrice}` : 'the fee'} on GCash`}>
+                {paymentState === 'unpaid' && (
+                  <>
+                    {phoneNumber && (
+                      <div className="flex items-center justify-between gap-2.5 rounded-[10px] border border-border bg-background px-3 py-2.5">
+                        <span className="text-[15px] font-semibold tabular-nums">{phoneNumber}</span>
+                        <button
+                          onClick={handleCopyPhone}
+                          className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:border-primary"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    )}
+                    {qrCodeUrl && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer list-none text-center text-xs font-semibold text-muted-foreground [&::-webkit-details-marker]:hidden">
+                          Show QR instead ⌄
+                        </summary>
+                        <img
+                          src={qrCodeUrl}
+                          alt="GCash payment QR code"
+                          className="mx-auto mt-2.5 h-36 w-36 rounded-lg border border-border object-contain"
+                          onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        />
+                        <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+                          Press and hold to save it
+                        </p>
+                      </details>
+                    )}
+                  </>
+                )}
+              </PayStep>
+
+              <PayStep
+                n={2}
+                state={paymentState === 'submitted' ? 'done' : paymentState === 'unpaid' ? 'on' : 'off'}
+                title="Upload the receipt"
+              >
+                {paymentState === 'unpaid' && (
+                  <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
+                    A screenshot from GCash is enough.
+                  </p>
+                )}
+                <SubmittedReceipts
+                  receipts={receipts}
+                  canRemove={paid !== true}
+                  onRemove={(r) => { void deleteReceipt(r) }}
+                />
+                <button
+                  onClick={() => setUploadOpen(true)}
+                  disabled={isUploading}
+                  className={`mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-[11px] text-sm font-semibold transition-colors disabled:opacity-50 ${
+                    receipts.length > 0
+                      ? 'border border-border text-foreground hover:border-primary'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  }`}
+                >
+                  <Paperclip className="h-4 w-4" />
+                  {receipts.length > 0 ? 'Add another receipt' : 'Add receipt'}
+                </button>
+                {receipts.length > 0 && receipts.length < MAX_RECEIPTS_PER_SESSION && (
+                  <p className="mt-1.5 text-center text-[11px] text-muted-foreground">
+                    {receipts.length} of {MAX_RECEIPTS_PER_SESSION} submitted
+                  </p>
+                )}
+              </PayStep>
+
+              <PayStep n={3} state={paymentState === 'submitted' ? 'on' : 'off'} title="Wes confirms it" last>
+                {paymentState === 'submitted' && (
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Nothing more to do — he checks your receipt against GCash, then marks it paid.
+                  </p>
+                )}
+              </PayStep>
             </div>
           </div>
 
