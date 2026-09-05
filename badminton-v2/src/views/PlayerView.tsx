@@ -81,7 +81,7 @@ function PlayerCourtTabs({
               <div className="flex items-center gap-2">
                 {isPlaying && (
                   <>
-                    <span className="text-[0.65rem] font-mono font-semibold text-[#FFB200]">
+                    <span className="text-[0.65rem] font-mono font-semibold text-gold-ink">
                       {formatElapsed(elapsedByCourt[court.courtNumber] ?? 0)}
                     </span>
                     <span className="flex items-center gap-1 text-[0.65rem] font-bold tracking-widest text-red-500">
