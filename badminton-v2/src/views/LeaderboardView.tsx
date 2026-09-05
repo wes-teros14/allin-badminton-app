@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces, groupByRank } from '@/lib/denseRank'
+import { MIN_CHEERS_RECEIVED, rankCheerShares } from '@/lib/cheerShare'
 import type { RankGroup } from '@/lib/denseRank'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
@@ -68,11 +69,9 @@ interface AwardEntry {
   emoji: string
   label: string
   holder: string | null
-  value: number
+  /** Pre-formatted, because cheer awards read "62%" and count awards read "9". */
+  valueLabel: string | null
 }
-
-/** Still used by the Cheers lists, which are top-five counts rather than places. */
-const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
 
 // ---------------------------------------------------------------------------
 // Ranked board presentation
@@ -293,6 +292,19 @@ async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
 // Sub-components
 // ---------------------------------------------------------------------------
 /**
+ * The numbered marker every non-podium place uses, on all three ranked
+ * surfaces. Fixed 34px: the width is what keeps the rank column aligned, so it
+ * must not vary between boards or between tied and untied places.
+ */
+function RankChip({ rank }: { rank: number }) {
+  return (
+    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-secondary text-[15px] font-bold tabular-nums text-foreground">
+      {rank}
+    </span>
+  )
+}
+
+/**
  * One place on a board: a marker (medal or numbered chip) beside either a
  * single row or, when a place is shared, a stack of rows under a "3 tied"
  * caption.
@@ -412,11 +424,7 @@ function RankedBoard<T extends { rank: number }>({
           keyOf={keyOf}
           renderRow={(item) => renderRow(item, 'list')}
           frameClassName="rounded-xl border border-border"
-          marker={
-            <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-secondary text-[15px] font-bold tabular-nums text-foreground">
-              {group.rank}
-            </span>
-          }
+          marker={<RankChip rank={group.rank} />}
         />
       ))}
     </div>
@@ -562,31 +570,65 @@ function RowStat({
   )
 }
 
-function CheerRankList({
+/** The six cheer types, each its own share board on the Cheers tab. */
+const CHEER_CATEGORIES = [
+  { label: '⚔️ Fierce Offense', award: '⚔️ Top Fierce Offense', of: (e: CheerLeaderboardEntry) => e.offense_received },
+  { label: '🛡️ Iron Defense', award: '🛡️ Top Iron Defense', of: (e: CheerLeaderboardEntry) => e.defense_received },
+  { label: '🎯 Smooth Technique', award: '🎯 Top Smooth Technique', of: (e: CheerLeaderboardEntry) => e.technique_received },
+  { label: '💨 Swift Movement', award: '💨 Top Swift Movement', of: (e: CheerLeaderboardEntry) => e.movement_received },
+  { label: '🤝 Good Sport', award: '🤝 Top Good Sport', of: (e: CheerLeaderboardEntry) => e.good_sport_received },
+  { label: '💪 Solid Effort', award: '💪 Top Solid Effort', of: (e: CheerLeaderboardEntry) => e.solid_effort_received },
+] as const
+
+/**
+ * One cheer category, ranked by what share of a player's received cheers were
+ * of this type — not by how many they collected. See `cheerShare.ts` for why
+ * the raw counts had to go.
+ */
+function CheerShareList({
   label,
   entries,
-  getValue,
-  unit,
+  getCount,
 }: {
   label: string
   entries: CheerLeaderboardEntry[]
-  getValue: (e: CheerLeaderboardEntry) => number
-  unit: string
+  getCount: (e: CheerLeaderboardEntry) => number
 }) {
-  const sorted = [...entries].filter(e => getValue(e) > 0).sort((a, b) => getValue(b) - getValue(a)).slice(0, 5)
-  if (sorted.length === 0) return null
+  const names = new Map(entries.map((e) => [e.player_id, e.displayName]))
+  const ranked = rankCheerShares(
+    entries.map((e) => ({
+      playerId: e.player_id,
+      categoryCount: getCount(e),
+      totalReceived: e.cheers_received,
+    })),
+  )
+
+  if (ranked.length === 0) return null
+
   return (
     <div>
       <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">{label}</h2>
       <div className="space-y-2">
-        {sorted.map((entry, i) => (
-          <div key={entry.player_id} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-            <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
-              {RANK_ICON(i)}
-            </span>
-            <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
-            <span className="text-sm font-bold text-primary shrink-0">{getValue(entry)} {unit}</span>
-          </div>
+        {groupByRank(ranked).map((group) => (
+          <RankPlace
+            key={group.rank}
+            group={group}
+            tiedNoun="players"
+            keyOf={(row) => row.playerId}
+            frameClassName="rounded-xl border border-border"
+            marker={<RankChip rank={group.rank} />}
+            renderRow={(row) => (
+              <>
+                <span className="flex-1 min-w-0 truncate text-sm font-medium">{names.get(row.playerId)}</span>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-primary tabular-nums">{row.sharePct}%</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    {row.categoryCount} of {row.totalReceived}
+                  </p>
+                </div>
+              </>
+            )}
+          />
         ))}
       </div>
     </div>
@@ -605,30 +647,32 @@ function CheersLeaderboard() {
 
   useEffect(() => { load() }, [load])
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
-        ))}
-      </div>
-    )
-  }
+  if (isLoading) return <BoardSkeleton height="h-14" />
 
   if (entries.length === 0) {
     return <p className="text-muted-foreground text-sm">No cheers recorded yet.</p>
   }
 
+  const boards = CHEER_CATEGORIES.map((category) => (
+    <CheerShareList
+      key={category.label}
+      label={category.label}
+      entries={entries}
+      getCount={category.of}
+    />
+  ))
+
   return (
     <div className="space-y-6">
-      <CheerRankList label="Most Cheers Received" entries={entries} getValue={e => e.cheers_received} unit="received" />
-      <CheerRankList label="Most Cheers Given" entries={entries} getValue={e => e.cheers_given} unit="given" />
-      <CheerRankList label="⚔️ Fierce Offense" entries={entries} getValue={e => e.offense_received} unit="received" />
-      <CheerRankList label="🛡️ Iron Defense" entries={entries} getValue={e => e.defense_received} unit="received" />
-      <CheerRankList label="🎯 Smooth Technique" entries={entries} getValue={e => e.technique_received} unit="received" />
-      <CheerRankList label="💨 Swift Movement" entries={entries} getValue={e => e.movement_received} unit="received" />
-      <CheerRankList label="🤝 Good Sport" entries={entries} getValue={e => e.good_sport_received} unit="received" />
-      <CheerRankList label="💪 Solid Effort" entries={entries} getValue={e => e.solid_effort_received} unit="received" />
+      <p className="text-xs text-muted-foreground text-center">
+        Ranked by share of each player's cheers · min. {MIN_CHEERS_RECEIVED} cheers received
+      </p>
+      {boards}
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Cheering is required after every game, so totals given and received only measure how many
+        matches someone played. These boards read the one part that is a choice — which cheer people
+        picked.
+      </p>
     </div>
   )
 }
@@ -644,7 +688,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
 
   const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirdRes] = await Promise.all([
-    supabase.from('player_cheer_stats').select('player_id, cheers_received, cheers_given, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
+    supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
     supabase.from('cheers').select('receiver_id, giver_id, created_at').order('created_at', { ascending: false }),
@@ -659,7 +703,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
-  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; cheers_given: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
+  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
     .filter(s => nameMap.has(s.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => nameMap.has(s.player_id))
@@ -674,10 +718,8 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
 
   // Tiebreaker maps: latest activity timestamp per player
   const latestReceivedAt = new Map<string, string>()
-  const latestGivenAt = new Map<string, string>()
   for (const c of cheerTimestamps) {
     if (!latestReceivedAt.has(c.receiver_id)) latestReceivedAt.set(c.receiver_id, c.created_at)
-    if (!latestGivenAt.has(c.giver_id)) latestGivenAt.set(c.giver_id, c.created_at)
   }
 
   function topHolder(arr: Array<{ player_id: string; value: number }>, tiebreaker?: Map<string, string>): { holder: string | null; value: number } {
@@ -713,20 +755,57 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     if (maxStreak >= 2) streakEntries.push({ player_id: playerId, value: maxStreak })
   }
 
+  /**
+   * A cheer award goes to the highest *share*, not the highest count, and only
+   * among players past the received floor. "Most Cheers Received" and "Most
+   * Cheers Given" are gone entirely: cheering is compulsory after every game,
+   * so both were three-per-match attendance counts wearing a rosette — and
+   * "Most Sessions Joined" below already says that honestly.
+   */
+  function topShareHolder(
+    getCount: (c: typeof cheers[number]) => number,
+  ): { holder: string | null; valueLabel: string | null } {
+    const ranked = rankCheerShares(
+      cheers.map((c) => ({
+        playerId: c.player_id,
+        categoryCount: getCount(c),
+        totalReceived: c.cheers_received,
+      })),
+      { maxPlaces: 1 },
+    )
+
+    // A shared first place has no single holder, matching how the count-based
+    // awards already render a tie as vacant.
+    if (ranked.length !== 1) return { holder: null, valueLabel: null }
+    return {
+      holder: nameMap.get(ranked[0].playerId) ?? null,
+      valueLabel: `${ranked[0].sharePct}%`,
+    }
+  }
+
+  const countAward = (
+    emoji: string,
+    label: string,
+    result: { holder: string | null; value: number },
+  ): AwardEntry => ({
+    emoji,
+    label,
+    holder: result.holder,
+    valueLabel: result.value > 0 ? String(result.value) : null,
+  })
+
   const awards: AwardEntry[] = [
     // System-generated awards first
-    { emoji: '📅', label: 'Most Sessions Joined', ...topHolder(stats.filter(s => !STREAK_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) },
-    { emoji: '🔥', label: 'Attendance Streak', ...topHolder(streakEntries) },
-    { emoji: '🐦', label: 'Registration Early Bird', holder: earlyBirdName, value: earlyBirdName ? 1 : 0 },
-    // Cheer-based awards
-    { emoji: '🌟', label: 'Most Cheers Received', ...topHolder(cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id)).map(c => ({ player_id: c.player_id, value: c.cheers_received })), latestReceivedAt) },
-    { emoji: '🙌', label: 'Most Cheers Given',    ...topHolder(cheers.filter(c => !STREAK_EXCLUDED.has(c.player_id)).map(c => ({ player_id: c.player_id, value: c.cheers_given })), latestGivenAt) },
-    { emoji: '⚔️', label: 'Top Fierce Offense',   ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.offense_received })), latestReceivedAt) },
-    { emoji: '🛡️', label: 'Top Iron Defense',     ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.defense_received })), latestReceivedAt) },
-    { emoji: '🎯', label: 'Top Smooth Technique', ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.technique_received })), latestReceivedAt) },
-    { emoji: '💨', label: 'Top Swift Movement',   ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.movement_received })), latestReceivedAt) },
-    { emoji: '🤝', label: 'Top Good Sport',       ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.good_sport_received })), latestReceivedAt) },
-    { emoji: '💪', label: 'Top Solid Effort',    ...topHolder(cheers.map(c => ({ player_id: c.player_id, value: c.solid_effort_received })), latestReceivedAt) },
+    countAward('📅', 'Most Sessions Joined', topHolder(stats.filter(s => !STREAK_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended })))),
+    countAward('🔥', 'Attendance Streak', topHolder(streakEntries)),
+    { emoji: '🐦', label: 'Registration Early Bird', holder: earlyBirdName, valueLabel: null },
+    // Cheer-based awards, by share of the holder's own received cheers
+    { emoji: '⚔️', label: 'Top Fierce Offense',   ...topShareHolder(c => c.offense_received) },
+    { emoji: '🛡️', label: 'Top Iron Defense',     ...topShareHolder(c => c.defense_received) },
+    { emoji: '🎯', label: 'Top Smooth Technique', ...topShareHolder(c => c.technique_received) },
+    { emoji: '💨', label: 'Top Swift Movement',   ...topShareHolder(c => c.movement_received) },
+    { emoji: '🤝', label: 'Top Good Sport',       ...topShareHolder(c => c.good_sport_received) },
+    { emoji: '💪', label: 'Top Solid Effort',     ...topShareHolder(c => c.solid_effort_received) },
   ]
 
   return awards
@@ -765,8 +844,8 @@ function AwardsLeaderboard() {
               {a.holder ?? <span className="text-muted-foreground italic">Vacant — tied or no data</span>}
             </p>
           </div>
-          {a.holder && a.value > 0 && (
-            <span className="text-sm font-bold text-primary shrink-0">{a.value}</span>
+          {a.holder && a.valueLabel && (
+            <span className="text-sm font-bold text-primary tabular-nums shrink-0">{a.valueLabel}</span>
           )}
         </div>
       ))}

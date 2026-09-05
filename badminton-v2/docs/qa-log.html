@@ -246,6 +246,49 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Why were “Most Cheers Received” and “Most Cheers Given” removed?</p>
+    <p class="a">
+      Because both were attendance counts wearing a rosette. Cheering is not optional:
+      <code>PlayerLayout.tsx:28</code> replaces the <em>entire page</em> with the cheer gate while
+      any cheer is pending, and the panel walks you through all three other players in the match —
+      you choose only <em>which type</em>, never whether or whom. The Skip button writes to local
+      React state, so a refresh brings the gate straight back; you cannot durably skip.
+    </p>
+    <p class="a">
+      So <code>cheers_given</code> is three per match you played, and
+      <code>cheers_received</code> is the same number, because the three others in each of your
+      matches are each gated into cheering you. The two boards ranked the same thing, and the Awards
+      tab’s 📅 Most Sessions Joined already ranked it a third time — honestly. The only variance
+      between them was lag: a player who hadn’t opened the app yet hadn’t paid the cheers they owed.
+      That is noise, not merit.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why are the six cheer categories scored as a percentage now?</p>
+    <p class="a">
+      Because the raw counts had the same disease in milder form. The cheer <em>type</em> is the one
+      genuine choice in the flow, so the categories carry real signal — but as counts they still
+      largely ranked whoever played most: 20 matches yields 60 cheers spread over six categories,
+      6 matches yields 18. Removing the two totals and stopping there would have left two obvious
+      attendance boards replaced by six subtle ones.
+    </p>
+    <p class="a">
+      Each board now shows what share of that player’s own received cheers were of this type —
+      “12 of 30 · 40%”. This works arithmetically because the trigger in migration 036 increments
+      <code>cheers_received</code> and exactly one category by 1 per row, so a player’s six shares
+      sum to 100%. A floor of <code>MIN_CHEERS_RECEIVED</code> (15, roughly one session’s worth)
+      keeps a 4-of-4 sample from reading as a perfect 100% and taking the board — the same
+      minimum-sample idea as <code>min 3 games together</code> on the Partners board.
+    </p>
+    <p class="a">
+      Concretely: a player with 24 Offense cheers out of 120 total (20%) now ranks
+      <em>below</em> one with 12 out of 30 (40%). Under the old count ranking the first won by
+      double.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>
