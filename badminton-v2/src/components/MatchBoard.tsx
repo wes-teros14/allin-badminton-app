@@ -410,3 +410,137 @@ export function MatchBoard({
     </>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Personal list (My Profile → session, and your own schedule page)
+// ---------------------------------------------------------------------------
+
+/**
+ * The same A3 treatment applied to a player's own five-or-so games rather than
+ * all twenty.
+ *
+ * The board's zones are deliberately NOT reused here. Sorting five games into
+ * "on court / up next / later" gains nothing and costs the one thing a personal
+ * list has going for it — a predictable order you can read down. What carries
+ * over is the weight: your live game is a full 2-versus-2 band, everything else
+ * is a compact row.
+ */
+export interface PersonalMatch {
+  id: string
+  gameNumber: number
+  status: 'queued' | 'playing' | 'complete'
+  courtNumber: number | null
+  partnerNameSlug: string
+  opp1NameSlug: string
+  opp2NameSlug: string
+  partnerAvatarUrl: string | null
+  opp1AvatarUrl: string | null
+  opp2AvatarUrl: string | null
+  outcome: 'won' | 'lost' | 'draw' | null
+  won: boolean | null
+}
+
+function OutcomeChip({ outcome, won }: { outcome: PersonalMatch['outcome']; won: boolean | null }) {
+  if (outcome === 'draw') {
+    return <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">1–1</span>
+  }
+  if (won === true) {
+    return <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">Win</span>
+  }
+  if (won === false) {
+    return <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">Loss</span>
+  }
+  return <span className="text-sm font-bold text-success">✓</span>
+}
+
+export function PersonalGameCard({
+  match,
+  you,
+  yourAvatarUrl,
+  isNextUp,
+}: {
+  match: PersonalMatch
+  you: string
+  yourAvatarUrl: string | null
+  isNextUp: boolean
+}) {
+  const isLive = match.status === 'playing'
+  const isDone = match.status === 'complete'
+
+  const mine: BoardPlayer[] = [
+    { name: you, avatarUrl: yourAvatarUrl },
+    { name: match.partnerNameSlug, avatarUrl: match.partnerAvatarUrl },
+  ]
+  const theirs: BoardPlayer[] = [
+    { name: match.opp1NameSlug, avatarUrl: match.opp1AvatarUrl },
+    { name: match.opp2NameSlug, avatarUrl: match.opp2AvatarUrl },
+  ]
+
+  // Live: the full band, same as the board's hero.
+  if (isLive) {
+    return (
+      <div
+        className="rounded-2xl border bg-card p-3"
+        style={{ borderColor: `color-mix(in srgb, var(--${(match.courtNumber ?? 1) === 1 ? 'primary' : 'court2'}) 55%, transparent)` }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          {match.courtNumber != null && (
+            <span className={`shrink-0 rounded-md px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] ${courtChipClass(match.courtNumber)}`}>
+              Court {match.courtNumber}
+            </span>
+          )}
+          <span className="ml-auto flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-destructive">
+            <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" />
+            Live
+          </span>
+        </div>
+        <p className="mb-2.5 text-center font-mono text-[11px] font-bold tracking-[0.08em] text-muted-foreground">
+          Game {match.gameNumber}
+        </p>
+        <div className="grid items-start gap-1" style={{ gridTemplateColumns: '1fr 26px 1fr' }}>
+          <BandSide players={mine} />
+          <div className="flex flex-col items-center justify-center pt-3.5">
+            <span className="font-mono text-[9px] font-bold tracking-[0.1em] text-muted-foreground">vs</span>
+            <span className="my-1.5 block h-5 w-px bg-border" />
+          </div>
+          <BandSide players={theirs} />
+        </div>
+      </div>
+    )
+  }
+
+  // Everything else: one compact row, the next one lifted by its border only.
+  return (
+    <div className={`rounded-xl border p-2.5 ${isNextUp ? 'border-primary/40 bg-primary-subtle' : 'border-border'}`}>
+      <div className="flex items-center gap-2.5">
+        <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-muted font-mono text-xs font-bold text-muted-foreground">
+          {match.gameNumber}
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          {mine.map((p, i) => (
+            <Avatar key={`m-${i}`} url={p.avatarUrl} name={p.name} size={26} />
+          ))}
+          <span className="px-1 text-[8.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground shrink-0">vs</span>
+          {theirs.map((p, i) => (
+            <Avatar key={`t-${i}`} url={p.avatarUrl} name={p.name} size={26} />
+          ))}
+        </div>
+        <span className="shrink-0">
+          {isDone
+            ? <OutcomeChip outcome={match.outcome} won={match.won} />
+            : isNextUp
+            ? <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-primary-foreground">Next</span>
+            : null}
+        </span>
+      </div>
+      {/* The player themselves has to be named, or the row reads as though the
+          partner is playing the pair alone. */}
+      <p className={`mt-2 truncate text-[13px] ${isDone ? 'text-muted-foreground' : 'font-semibold'}`}>
+        {you} <span className="text-muted-foreground">&amp;</span>{' '}
+        <span className="text-primary dark:text-[#DCC2EE]">{match.partnerNameSlug}</span>
+        <span className="px-1.5 text-muted-foreground">vs</span>
+        {match.opp1NameSlug} <span className="text-muted-foreground">&amp;</span> {match.opp2NameSlug}
+      </p>
+    </div>
+  )
+}

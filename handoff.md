@@ -1,6 +1,6 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-05, ~12:10. Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-05, ~13:05. Overwrite this file on every update; it is never a running history.
 
 ## Just done this session
 
@@ -33,9 +33,14 @@ Updated: 2026-09-05, ~12:10. Overwrite this file on every update; it is never a 
   Chromium against stubbed Supabase across all five session states — correct zones, band count,
   meter, and payment banner in each; zero page errors.
 - **Not verified**: nothing seen on a physical phone or against real data.
-- **Unchanged on purpose**: `ScheduleView` (the default per-player view at
-  `/match-schedule/session/:id/:nameSlug`) still uses `GameCard` and still has **no empty state and
-  no payment prompt**. Porting those two is a small step if wanted — see open questions.
+- **All three matches surfaces now use the new look.** `GameCard` and `StatusChip` are deleted.
+  `PersonalGameCard` (in `MatchBoard.tsx`) draws a player's own games on both
+  `/sessions/:id` → Schedule tab and `/match-schedule/session/:id/:nameSlug`; `MatchBoard` draws
+  all twenty on `?show=all`.
+- `usePlayerSchedule` gained `courtNumber` on each match and `playerAvatarUrl` on the result — both
+  additive.
+- **Still not on the personal screens**: the empty state and the payment banner. `/sessions/:id`
+  already has its own GCash block so it does not need one; `ScheduleView` has neither.
 - **Pre-existing lint errors** in `src/hooks/usePlayerSchedule.ts` (3 x `prefer-const`), untouched.
 
 ## Known, not fixed
@@ -58,9 +63,9 @@ Updated: 2026-09-05, ~12:10. Overwrite this file on every update; it is never a 
 
 ## Open questions for the next session
 
-- **Should `ScheduleView` get the empty state and payment banner too?** It is the page players
-  actually land on, so both fixes matter more there. Both components are already exported from
-  `MatchBoard.tsx` and take plain props.
+- **Should `ScheduleView` get the empty state and the payment banner?** It has neither. Both are
+  exported from `MatchBoard.tsx` and take plain props. `/sessions/:id` does not need the banner —
+  its GCash block is right above the list.
 - **Should the orb also go on the nav bar?** It draws in `currentColor` so it can, with no rewrite.
 - **Should `/sessions` show `setup` sessions to admins?** Still flagged, still undecided.
 - Should the two `tasks/lessons.md` files be consolidated into the root one?

@@ -7,6 +7,8 @@ export interface PlayerMatch {
   id: string
   gameNumber: number
   status: 'queued' | 'playing' | 'complete'
+  /** Only set once the game is sent on; queued games have no court yet. */
+  courtNumber: number | null
   partnerNameSlug: string
   opp1NameSlug: string
   opp2NameSlug: string
@@ -20,6 +22,7 @@ export interface PlayerMatch {
 interface UsePlayerScheduleResult {
   matches: PlayerMatch[]
   playerDisplayName: string
+  playerAvatarUrl: string | null
   sessionName: string
   sessionDate: string
   sessionVenue: string | null
@@ -36,6 +39,7 @@ type MatchRow = {
   id: string
   queue_position: number
   status: 'queued' | 'playing' | 'complete'
+  court_number: number | null
   team1_player1_id: string
   team1_player2_id: string
   team2_player1_id: string
@@ -45,6 +49,7 @@ type MatchRow = {
 export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string | null): UsePlayerScheduleResult {
   const [matches, setMatches] = useState<PlayerMatch[]>([])
   const [playerDisplayName, setPlayerDisplayName] = useState('')
+  const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string | null>(null)
   const [sessionName, setSessionName] = useState('')
   const [sessionDate, setSessionDate] = useState('')
   const [sessionVenue, setSessionVenue] = useState<string | null>(null)
@@ -69,7 +74,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
       // 1. Resolve nameSlug to player id
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, name_slug, nickname')
+        .select('id, name_slug, nickname, avatar_url')
         .eq('name_slug', nameSlug)
         .maybeSingle()
 
@@ -81,9 +86,10 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
         return
       }
 
-      const p = profile as { id: string; name_slug: string; nickname: string | null }
+      const p = profile as { id: string; name_slug: string; nickname: string | null; avatar_url: string | null }
       const playerId = p.id
       setPlayerDisplayName(formatDisplayName(p.nickname, p.name_slug))
+      setPlayerAvatarUrl(p.avatar_url)
 
       // 2. Find active session (or use override)
       let sid: string
@@ -134,7 +140,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
       // 3. Fetch this player's matches
       const { data: rows } = await supabase
         .from('matches')
-        .select('id, queue_position, status, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id')
+        .select('id, queue_position, status, court_number, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id')
         .eq('session_id', sid)
         .or(`team1_player1_id.eq.${playerId},team1_player2_id.eq.${playerId},team2_player1_id.eq.${playerId},team2_player2_id.eq.${playerId}`)
         .order('queue_position')
@@ -204,6 +210,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
           id: match.id,
           gameNumber: match.queue_position,
           status: match.status,
+          courtNumber: match.court_number ?? null,
           partnerNameSlug,
           opp1NameSlug,
           opp2NameSlug,
@@ -274,6 +281,7 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
   return {
     matches,
     playerDisplayName,
+    playerAvatarUrl,
     sessionName,
     sessionDate,
     sessionVenue,

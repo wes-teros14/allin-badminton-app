@@ -12,7 +12,7 @@ import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useSessionReceipts, signReceiptUrls, type SessionReceipt } from '@/hooks/useSessionReceipts'
-import { GameCard } from '@/components/GameCard'
+import { PersonalGameCard } from '@/components/MatchBoard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { ReceiptUploadDialog } from '@/components/ReceiptUploadDialog'
@@ -211,7 +211,7 @@ function ScheduleTab({
   registrationOpensAt: string | null
   onRegister: () => void
 }) {
-  const { matches, playerDisplayName, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, refresh } = usePlayerSchedule(nameSlug, sessionId)
+  const { matches, playerDisplayName, playerAvatarUrl, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, refresh } = usePlayerSchedule(nameSlug, sessionId)
   const { status } = useRealtime(resolvedId, refresh)
   const { phoneNumber, qrCodeUrl } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
@@ -391,7 +391,7 @@ function ScheduleTab({
       <div className="max-w-sm mx-auto px-4 py-4 flex flex-col gap-3">
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
-              <GameCard key={i} gameNumber={0} partnerNameSlug="" opp1NameSlug="" opp2NameSlug="" status="queued" isNextUp={false} isLoading />
+              <div key={i} className="h-[86px] rounded-xl bg-muted animate-pulse" />
             ))
           : matches.length === 0
           ? (
@@ -400,19 +400,12 @@ function ScheduleTab({
               </div>
             )
           : matches.map((m, i) => (
-              <GameCard
+              <PersonalGameCard
                 key={m.id}
-                gameNumber={m.gameNumber}
-                partnerNameSlug={m.partnerNameSlug}
-                opp1NameSlug={m.opp1NameSlug}
-                opp2NameSlug={m.opp2NameSlug}
-                partnerAvatarUrl={m.partnerAvatarUrl}
-                opp1AvatarUrl={m.opp1AvatarUrl}
-                opp2AvatarUrl={m.opp2AvatarUrl}
-                status={m.status}
+                match={m}
+                you={playerDisplayName}
+                yourAvatarUrl={playerAvatarUrl}
                 isNextUp={i === firstQueuedIndex}
-                outcome={m.outcome}
-                won={m.won}
               />
             ))}
       </div>
