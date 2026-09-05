@@ -307,6 +307,40 @@
   </div>
 
   <div class="qa">
+    <p class="q">Why does the Cheers tab show one cheer type at a time instead of all six?</p>
+    <p class="a">
+      Six boards stacked meant up to <strong>eighteen medals on one screen, six of them gold</strong>.
+      A medal that appears six times per scroll stops meaning “best” and becomes decoration — the
+      podium was designed for one board of ten places. The page also measured
+      <strong>3,920&nbsp;px</strong> at phone width with only <em>three</em> qualifying players; a
+      full club would have pushed it past 6,000.
+    </p>
+    <p class="a">
+      A six-way switcher now shows one category at a time. Same fixture, the tab measures
+      <strong>1,600&nbsp;px</strong> — and exactly one gold medal exists at any moment. The buttons
+      are 54&nbsp;×&nbsp;51&nbsp;px, above the 44&nbsp;px touch minimum, and carry an
+      <code>aria-label</code> with the full category name since the visible label is abbreviated
+      (“Tech”, “Sport”).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What is the “Cheered for” card on My Profile, and why did the old Cheers cards go?</p>
+    <p class="a">
+      It answers the question the six category boards never could: <em>what am I known for?</em>
+      One card showing your strongest cheer type, the share it represents, and a bar splitting your
+      received cheers across all six. The segments add to 100% by construction — migration 036’s
+      trigger increments <code>cheers_received</code> and exactly one category per row.
+    </p>
+    <p class="a">
+      The old Cheers section below Stats showed the same six percentages again as seven stat cards,
+      so it was removed and its total folded into the new card as “of 30 cheers received”. The exact
+      per-category counts (“12 of 30”) are gone from the profile; they still appear on the
+      leaderboard rows, and the denominator is what made the percentage trustworthy.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Why do the profile’s award badges compute their own ranking instead of reading the Awards tab?</p>
     <p class="a">
       They still compute it locally — the two views load independently — but they now run the
