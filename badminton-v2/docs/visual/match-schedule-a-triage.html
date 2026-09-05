@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match schedule — A · Triage</title>
+<style>
+/* Shipped app tokens. Light values are the ones now live in src/index.css. */
+:root,[data-theme="light"]{
+  --background:#FAF7FB;--card:#FFFFFF;--muted:#F1ECF6;--foreground:#1B1220;
+  --muted-foreground:#6B5F73;--border:#E7E0EC;--primary:#6F3E87;--primary-fg:#FFFFFF;
+  --primary-subtle:#EDE0F5;--gold:#B87A00;--gold-ink:#8A5A00;--destructive:#B3252B;
+  --live:#B3252B;--court2:#1F6F6B;
+}
+[data-theme="dark"]{
+  --background:#0F0A18;--card:#1A1025;--muted:#1E1230;--foreground:#FFFFFF;
+  --muted-foreground:#B39DBB;--border:#2D1A40;--primary:#6F3E87;--primary-fg:#FFFFFF;
+  --primary-subtle:#2D1B42;--gold:#FFB200;--gold-ink:#FFB200;--destructive:#DC595E;
+  --live:#FF6B70;--court2:#4FD1C5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);
+  font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  transition:background .4s,color .4s}
+.page{max-width:1080px;margin:0 auto;padding:40px 24px 90px}
+.mono{font-family:ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace}
+
+/* ---- sheet chrome ---- */
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.1;letter-spacing:-.025em;margin:12px 0 0;font-weight:650}
+.sub{max-width:60ch;color:var(--muted-foreground);margin:12px 0 0;font-size:.97rem}
+.switch{display:flex;align-items:center;gap:10px;flex:none}
+.switch span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.orb-btn{width:44px;height:44px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);border-radius:11px;cursor:pointer;color:var(--foreground)}
+.orb{width:20px;height:20px;border-radius:50%;background:transparent;box-shadow:inset 8px -8px 0 0 currentColor;transform:rotate(-25deg);transition:transform .5s cubic-bezier(.5,-.3,.3,1.4),box-shadow .5s,background .3s}
+[data-theme="light"] .orb{background:currentColor;transform:scale(.52) rotate(180deg);
+  box-shadow:inset 15px -15px 0 0 transparent,0 -19px 0 -7px currentColor,0 19px 0 -7px currentColor,-19px 0 0 -7px currentColor,19px 0 0 -7px currentColor,-13px -13px 0 -7px currentColor,13px 13px 0 -7px currentColor,-13px 13px 0 -7px currentColor,13px -13px 0 -7px currentColor}
+.nav{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap}
+.nav a{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;
+  text-decoration:none;color:var(--muted-foreground);border:1px solid var(--border);
+  border-radius:999px;padding:9px 13px;transition:.15s}
+.nav a:hover{color:var(--foreground);border-color:var(--primary)}
+.nav a[aria-current]{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+.split{display:grid;grid-template-columns:384px minmax(0,1fr);gap:44px;align-items:start;margin-top:34px}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+
+/* ---- phone ---- */
+.device{width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:var(--background);position:sticky;top:24px}
+.appbar{background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.appbar .dot{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.28)}
+.screen{padding:14px 14px 22px}
+
+/* ---- session header + progress ---- */
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.shead h2{font-size:17px;font-weight:650;margin:0;letter-spacing:-.01em}
+.shead .when{font-size:12px;color:var(--muted-foreground);flex:none}
+.meter{margin-top:10px}
+.meter__bar{height:4px;border-radius:999px;background:var(--muted);overflow:hidden}
+.meter__fill{height:100%;background:var(--primary);border-radius:999px}
+.meter__txt{display:flex;justify-content:space-between;margin-top:6px;
+  font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+
+/* ---- section headings ---- */
+.zone{margin-top:20px}
+.zone__h{display:flex;align-items:center;gap:8px;margin:0 0 9px;
+  font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+.zone__h .count{margin-left:auto;font-weight:600;color:var(--muted-foreground)}
+
+/* ---- HERO: on court now ---- */
+.now{border:1px solid var(--border);border-radius:16px;padding:13px 14px;background:var(--card);margin-bottom:9px}
+.now[data-court="1"]{border-color:color-mix(in srgb,var(--primary) 55%,transparent)}
+.now[data-court="2"]{border-color:color-mix(in srgb,var(--court2) 55%,transparent)}
+.now__top{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.courtchip{font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;
+  padding:5px 8px;border-radius:6px;flex:none}
+.courtchip[data-c="1"]{background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .courtchip[data-c="1"]{color:#DCC2EE}
+.courtchip[data-c="2"]{background:color-mix(in srgb,var(--court2) 16%,transparent);color:var(--court2)}
+.elapsed{font:600 12px/1 ui-monospace,Menlo,monospace;color:var(--gold-ink)}
+.livetag{margin-left:auto;display:flex;align-items:center;gap:5px;
+  font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:var(--live)}
+.livetag i{width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.gnum{font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--muted-foreground)}
+.pair{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.vs{display:flex;align-items:center;gap:8px;margin:7px 0;
+  font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:var(--muted-foreground)}
+.vs::before,.vs::after{content:"";height:1px;background:var(--border);flex:1}
+
+/* ---- MEDIUM: up next ---- */
+.next{display:flex;align-items:center;gap:11px;padding:11px 12px;border:1px solid var(--border);
+  border-radius:12px;background:var(--card);margin-bottom:7px}
+.next__n{width:34px;height:34px;flex:none;border-radius:9px;display:grid;place-items:center;
+  background:var(--muted);color:var(--muted-foreground);font:700 12px/1 ui-monospace,Menlo,monospace}
+.next__body{min-width:0;flex:1}
+.next__pairs{font-size:13.5px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.next__pairs em{font-style:normal;font-weight:500;color:var(--muted-foreground);padding:0 4px}
+.next__meta{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground);margin-top:5px}
+
+/* ---- COMPACT: later ---- */
+.row{display:grid;grid-template-columns:32px minmax(0,1fr);gap:10px;align-items:center;
+  padding:9px 2px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.row__n{font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground);text-align:right}
+.row__p{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row__p em{font-style:normal;color:var(--muted-foreground);padding:0 3px}
+
+/* ---- PLAYED (collapsed) ---- */
+details.played{margin-top:20px;border-top:1px solid var(--border);padding-top:14px}
+details.played summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;
+  font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+details.played summary::-webkit-details-marker{display:none}
+details.played summary .chev{margin-left:auto;transition:transform .2s}
+details.played[open] summary .chev{transform:rotate(180deg)}
+.done{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;
+  padding:10px 2px;border-bottom:1px solid var(--border)}
+.done:last-child{border-bottom:0}
+.done__n{font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground);text-align:right}
+.done__p{font-size:13px;min-width:0}
+.done__p .win{font-weight:650;color:var(--gold-ink)}
+.done__p .lose{color:var(--muted-foreground)}
+.done__p em{font-style:normal;color:var(--muted-foreground);padding:0 3px}
+.trophy{font-size:12px;flex:none}
+
+/* ---- rationale ---- */
+.notes h3{font-size:1.02rem;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+.notes h3:not(:first-child){margin-top:26px}
+.notes p,.notes li{color:var(--muted-foreground);font-size:.95rem}
+.notes p{margin:0 0 10px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin-bottom:8px}
+.notes b{color:var(--foreground);font-weight:650}
+.tag{display:inline-block;font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;
+  text-transform:uppercase;padding:4px 7px;border-radius:5px;margin-right:6px;
+  background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .tag{color:#DCC2EE}
+code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top">
+    <div>
+      <p class="kicker">Match schedule · Option A</p>
+      <h1>Triage — now, next, later</h1>
+    </div>
+    <div class="switch">
+      <span>Theme</span>
+      <button class="orb-btn" id="orb" type="button" role="switch" aria-checked="true" aria-label="Dark mode">
+        <span class="orb" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+
+  <p class="sub">
+    Sorts by <b>state</b>, not by number. Three row weights carry the whole hierarchy: two live courts as
+    full cards, the next three as medium rows, the rest as one-line entries, and everything played folded
+    behind a disclosure with the winner recorded.
+  </p>
+
+  <nav class="nav">
+    <a href="match-schedule-a-triage.html" aria-current="page">A · Triage</a>
+    <a href="match-schedule-b-timeline.html">B · Timeline</a>
+    <a href="match-schedule-c-you.html">C · You first</a>
+  </nav>
+
+  <div class="split">
+    <!-- ============== PHONE ============== -->
+    <div class="device">
+      <div class="appbar"><span class="dot"></span><span>Match schedule</span></div>
+      <div class="screen">
+
+        <div class="shead">
+          <h2>Thursday Night</h2>
+          <span class="when">Sep 11</span>
+        </div>
+        <div class="meter">
+          <div class="meter__bar"><div class="meter__fill" style="width:40%"></div></div>
+          <div class="meter__txt"><span>8 of 20 played</span><span>2 on court</span></div>
+        </div>
+
+        <!-- NOW -->
+        <div class="zone">
+          <p class="zone__h">On court now</p>
+          <div class="now" data-court="1">
+            <div class="now__top">
+              <span class="courtchip" data-c="1">Court 1</span>
+              <span class="elapsed">12:04</span>
+              <span class="livetag"><i></i>LIVE</span>
+            </div>
+            <p class="gnum" style="margin:0 0 6px">Game 9</p>
+            <p class="pair" style="margin:0">Ana &amp; Boyet</p>
+            <p class="vs">VS</p>
+            <p class="pair" style="margin:0">Chito &amp; Dan</p>
+          </div>
+          <div class="now" data-court="2">
+            <div class="now__top">
+              <span class="courtchip" data-c="2">Court 2</span>
+              <span class="elapsed">04:31</span>
+              <span class="livetag"><i></i>LIVE</span>
+            </div>
+            <p class="gnum" style="margin:0 0 6px">Game 10</p>
+            <p class="pair" style="margin:0">Eric &amp; Fely</p>
+            <p class="vs">VS</p>
+            <p class="pair" style="margin:0">Gigi &amp; Hector</p>
+          </div>
+        </div>
+
+        <!-- UP NEXT -->
+        <div class="zone">
+          <p class="zone__h">Up next <span class="count">3</span></p>
+          <div class="next">
+            <span class="next__n">11</span>
+            <div class="next__body">
+              <p class="next__pairs" style="margin:0">Ige &amp; Jun <em>vs</em> Ken &amp; Lito</p>
+              <p class="next__meta" style="margin:0">First open court</p>
+            </div>
+          </div>
+          <div class="next">
+            <span class="next__n">12</span>
+            <div class="next__body">
+              <p class="next__pairs" style="margin:0">Mina &amp; Nes <em>vs</em> Ony &amp; Pau</p>
+              <p class="next__meta" style="margin:0">2 games away</p>
+            </div>
+          </div>
+          <div class="next">
+            <span class="next__n">13</span>
+            <div class="next__body">
+              <p class="next__pairs" style="margin:0">Ana &amp; Chito <em>vs</em> Eric &amp; Gigi</p>
+              <p class="next__meta" style="margin:0">3 games away</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- LATER -->
+        <div class="zone">
+          <p class="zone__h">Later <span class="count">7</span></p>
+          <div class="row"><span class="row__n">14</span><span class="row__p">Boyet &amp; Dan <em>vs</em> Fely &amp; Hector</span></div>
+          <div class="row"><span class="row__n">15</span><span class="row__p">Ige &amp; Ken <em>vs</em> Jun &amp; Lito</span></div>
+          <div class="row"><span class="row__n">16</span><span class="row__p">Mina &amp; Ony <em>vs</em> Nes &amp; Pau</span></div>
+          <div class="row"><span class="row__n">17</span><span class="row__p">Ana &amp; Dan <em>vs</em> Boyet &amp; Chito</span></div>
+          <div class="row"><span class="row__n">18</span><span class="row__p">Eric &amp; Hector <em>vs</em> Fely &amp; Gigi</span></div>
+          <div class="row"><span class="row__n">19</span><span class="row__p">Ige &amp; Lito <em>vs</em> Jun &amp; Ken</span></div>
+          <div class="row"><span class="row__n">20</span><span class="row__p">Mina &amp; Pau <em>vs</em> Nes &amp; Ony</span></div>
+        </div>
+
+        <!-- PLAYED -->
+        <details class="played">
+          <summary>Played <span class="count">8</span> <span class="chev">⌄</span></summary>
+          <div style="margin-top:10px">
+            <div class="done"><span class="done__n">8</span><span class="done__p"><span class="win">Mina &amp; Nes</span> <em>beat</em> <span class="lose">Ony &amp; Pau</span></span><span class="trophy">🏆</span></div>
+            <div class="done"><span class="done__n">7</span><span class="done__p"><span class="win">Ige &amp; Jun</span> <em>beat</em> <span class="lose">Ken &amp; Lito</span></span><span class="trophy">🏆</span></div>
+            <div class="done"><span class="done__n">6</span><span class="done__p"><span class="win">Eric &amp; Fely</span> <em>beat</em> <span class="lose">Gigi &amp; Hector</span></span><span class="trophy">🏆</span></div>
+            <div class="done"><span class="done__n">5</span><span class="done__p"><span class="win">Ana &amp; Boyet</span> <em>beat</em> <span class="lose">Chito &amp; Dan</span></span><span class="trophy">🏆</span></div>
+            <div class="done"><span class="done__n">4</span><span class="done__p"><span class="win">Nes &amp; Ony</span> <em>beat</em> <span class="lose">Mina &amp; Pau</span></span><span class="trophy">🏆</span></div>
+            <div class="done"><span class="done__n">3</span><span class="done__p"><span class="win">Jun &amp; Ken</span> <em>beat</em> <span class="lose">Ige &amp; Lito</span></span><span class="trophy">🏆</span></div>
+          </div>
+        </details>
+
+      </div>
+    </div>
+
+    <!-- ============== NOTES ============== -->
+    <div class="notes">
+      <h3>What it fixes</h3>
+      <ul>
+        <li><b>Court number appears at all.</b> Today the list never says which court a game is on — the
+        court strip lives on the other schedule view. “Where do I go” is the first question a player has.</li>
+        <li><b>Three row weights instead of twenty identical cards.</b> Live is a full card, next is a
+        medium row, later is one line. You can find “what’s happening” without reading anything.</li>
+        <li><b>Played games are folded away, not dimmed.</b> Today they keep full-size cards at
+        <code>opacity-50</code>, so after 15 games three quarters of the scroll is greyed history — and
+        50 % opacity on body text drops it under AA.</li>
+        <li><b>Results are shown.</b> <code>match_results.winning_pair_index</code> already exists; a ✓ that
+        only says “finished” throws it away.</li>
+        <li><b>Progress meter</b> answers “how far in are we” in one glance.</li>
+      </ul>
+
+      <h3>Trade-offs</h3>
+      <ul>
+        <li>Game order is broken up. If you think in game numbers (“what’s game 14?”) you now scan a
+        section rather than one continuous list. <b>Option B keeps the order intact.</b></li>
+        <li>Three row templates is three things to keep consistent as the app changes.</li>
+        <li>“2 games away” is a count, not a time. Honest, but less useful than minutes — and minutes
+        would have to be estimated from average game length, which is a guess.</li>
+      </ul>
+
+      <h3>Notes</h3>
+      <p>
+        <span class="tag" style="background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold-ink)">Correction</span>
+        I earlier called the <code>← My Matches</code> link a bug. It is not.
+        <code>/match-schedule/session/:sessionId</code> renders <code>PlayerListViewInner</code>,
+        which auto-redirects a signed-in, registered player to
+        <code>/match-schedule/session/:id/:nameSlug</code> with <code>replace: true</code>
+        (<code>src/views/PlayerView.tsx:216</code>). The link round-trips through the picker and
+        lands on your own schedule. I traced the route table but not the redirect.</p>
+      <p>
+        <span class="tag">Dropped</span> The four 24 px avatars per card. At that size you cannot
+        recognise a face you do not already know, and 80 of them on one screen compete with the names,
+        which are the thing you actually read.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('orb');
+  btn.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')!=='dark';
+    root.setAttribute('data-theme',dark?'dark':'light');
+    btn.setAttribute('aria-checked',String(dark));
+    btn.setAttribute('aria-label',dark?'Dark mode':'Light mode');
+  });
+})();
+</script>
+</body>
+</html>

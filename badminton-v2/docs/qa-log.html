@@ -80,6 +80,7 @@
       <li><a href="#session-cards">Session cards</a></li>
       <li><a href="#leaderboard">Leaderboard</a></li>
       <li><a href="#theming">Theming &amp; light mode</a></li>
+      <li><a href="#match-schedule">Match schedule</a></li>
     </ol>
   </nav>
 
@@ -589,6 +590,117 @@
       The fix is to let the browser convert: paint the computed value into a 1 x 1
       <code>&lt;canvas&gt;</code> and read <code>getImageData</code>. Worth remembering for any
       future contrast checking in this repo.
+    </p>
+  </div>
+
+  <h2 class="topic" id="match-schedule">Match schedule</h2>
+
+  <div class="qa">
+    <p class="q">What is wrong with the All Matches schedule as it stands?</p>
+    <p class="a">
+      <code>AllMatchesView</code> (<code>src/views/PlayerView.tsx:293</code>) renders twenty
+      identical cards. Five things follow from that:
+    </p>
+    <p class="a">
+      <strong>1. It never says which court.</strong> The court strip lives on the other schedule view
+      (<code>ScheduleView</code>), so the first question a player has — where do I go — is unanswered.
+      <strong>2. Nothing is anchored.</strong> Live, done and twelve-games-away all render at the same
+      size, so finding “what is next” means reading every card.
+      <strong>3. Played games keep full-size cards at <code>opacity-50</code>.</strong> After fifteen
+      games three quarters of the scroll is dimmed history, and 50 % opacity on body text drops it
+      under the AA contrast floor.
+      <strong>4. Results are thrown away.</strong> A ✓ says “finished” but not who won, even though
+      <code>match_results.winning_pair_index</code> is already there.
+      <strong>5. The <code>vs</code> divider costs a whole line per card</strong> and says the same word
+      twenty times, while the two pairs — the part that differs — are drawn identically.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction of a correction</span>
+    <p class="q">“The <code>← My Matches</code> link is broken — it points at the route it is already on.”</p>
+    <p>
+      That was my claim, and it was wrong. Mark caught it. The link does work, by a route I had not
+      read: <code>/match-schedule/session/:sessionId</code> renders
+      <code>PlayerListViewInner</code>, which <em>auto-redirects</em> a signed-in player who is
+      registered for that session to <code>/match-schedule/session/:id/:nameSlug</code> with
+      <code>replace: true</code> (<code>src/views/PlayerView.tsx:216</code>). So the link
+      round-trips through the picker and lands on your own schedule.
+    </p>
+    <p>
+      <strong>How I got it wrong:</strong> I read the route table in <code>App.tsx</code>, saw that
+      the target route had no <code>:nameSlug</code>, and concluded it could not reach a player’s
+      schedule. Routes tell you what renders; they do not tell you what that component does on
+      mount. The lesson is to follow the component, not just the URL.
+    </p>
+    <p>
+      <strong>What is actually true:</strong> the redirect needs three things — signed in, a
+      <code>name_slug</code> on the profile, and a <code>session_registrations</code> row for that
+      session. An admin who is not registered falls through to the “Select a player” picker
+      instead. That is reasonable behaviour, not a bug; the label just reads oddly for that one
+      case.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why can’t the schedule just group games by court?</p>
+    <p class="a">
+      Because a court is only assigned when the admin sends a game on. <code>useAdminSession</code>
+      returns <code>courts</code>, <code>queued</code> and <code>finished</code> as three separate
+      buckets, and everything in <code>queued</code> has no court yet. With two courts running, only
+      two of twenty games know where they are being played at any moment — a court-grouped layout
+      would put eighteen games in an “unassigned” column.
+    </p>
+    <p class="a">
+      That is why the three proposals sort by <em>state</em>, by <em>order</em>, or by <em>person</em>
+      instead. It is also why any “Court” label on a queued game has to read something honest like
+      “first open court” rather than a number.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Is the All Matches page the same UI a player sees by default?</p>
+    <p class="a">
+      No — they are two different components. The default landing page is
+      <code>ScheduleView</code> at <code>/match-schedule/session/:id/:nameSlug</code>: <em>your</em>
+      games only, drawn with <code>GameCard</code>, plus a <code>PlayerCourtTabs</code> strip and a
+      “it’s your turn” banner. <code>AllMatchesView</code> is what you reach with
+      <code>?show=all</code> and shows all twenty. Redesigning All Matches does not change the
+      default view.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What does the schedule page show when the session isn’t live?</p>
+    <p class="a">
+      <strong>Nothing, for two whole statuses.</strong> While the session is
+      <code>registration_open</code> or <code>registration_closed</code>, no matches have been
+      generated, so <code>usePlayerSchedule</code> returns an empty array, the list maps over
+      nothing, and the player gets a header followed by blank space. There is no empty state in
+      either component.
+    </p>
+    <p class="a">
+      <code>schedule_locked</code> renders the full list with every game queued — no live card, no
+      elapsed timer, and the “first open court” label would be wrong because no court is running.
+      <code>complete</code> renders every row at <code>opacity-50</code>. The court strip is hidden
+      only for <code>registration_open</code> (<code>src/views/PlayerView.tsx:500</code>), so
+      <code>registration_closed</code> shows an empty strip above the blank space.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why doesn’t the schedule page mention payment?</p>
+    <p class="a">
+      Because payment lives entirely on <code>SessionPlayerDetailView</code> at
+      <code>/sessions/:id</code> — a different screen on a different tab, which holds the GCash
+      details and the receipt upload. A player can study their games all night and never be told
+      they still owe ₱250.
+    </p>
+    <p class="a">
+      The proposed banner sits under the schedule header and appears only when
+      <code>derivePaymentState() !== 'paid'</code>. It deliberately <em>links to</em> that screen
+      rather than duplicating the upload flow — same reasoning as
+      <code>src/lib/paymentState.ts</code> itself: one derivation, one place it can go wrong.
     </p>
   </div>
 

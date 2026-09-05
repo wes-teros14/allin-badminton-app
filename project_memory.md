@@ -116,7 +116,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 ## Leaderboards
 
-- Four tabs on `/leaderboard`: **Mga Lodi** (individual win rate), **Partners** (partnership win rate), **Cheers**, **Awards**.
+- Four tabs on `/leaderboard`: **Individual** (win rate; called *Mga Lodi* until 2026-09-05), **Partners** (partnership win rate), **Cheers**, **Awards**.
 - **Both ranked boards render through one component.** `RankedBoard` / `RankPlace` in `LeaderboardView.tsx` draw a medal podium for places 1–3 and a fixed 34 px numbered chip for every place below, with a divider naming the places actually on screen. Tied and untied places go through the *same* path deliberately — the previous code drew the rank inside the card for untied places and outside it for tied ones, so the rank column never lined up. Keeping the marker column a fixed width is the fix; don't reintroduce a second rendering path for ties.
 - **Rank arithmetic lives in `src/lib/denseRank.ts`** (`assignDenseRanks`, `cutToPlaces`, `groupByRank`) and is shared. Equal rates take the same place; the next distinct rate takes the next number (1, 1, 2 — never 1, 1, 3); and the cut counts **places, not rows**, so a board may show twelve rows across ten places. Both boards must keep using it — index-based numbering next to dense ranks contradicts itself the moment anyone ties.
 - **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligiblePlayerIds()` plus `MIN_SESSIONS_PLAYED`, `RECENT_SESSIONS_WINDOW` and `BOARD_EXCLUDED`. Every surface asks that one function: Mga Lodi, Partners, Cheers, Awards, and the award badges on My Profile. The rules are 3+ sessions attended and registered for at least one of the last 4 completed sessions. Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy.
@@ -129,6 +129,31 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **The Cheers tab shows one category at a time**, behind a six-way switcher. Six stacked boards meant up to eighteen medals per screen — a gold that repeats six times is decoration, not a placing — and the tab measured 3,920 px with only three qualifying players. One at a time it is 1,600 px with exactly one gold. Do not restore the stacked layout.
 - **The six cheer types live in `src/lib/cheerTypes.ts`** (`CHEER_CATEGORIES`, `signatureCheer`) with slug, emoji, name, short label and bar colour. Both the leaderboard switcher and the profile bar read it, so a seventh type is added once. Bar colours are fixed hex tuned against `--card`, not tokens — revisit if a light theme lands.
 - **My Profile carries a "Cheered for" card** between Sign out and Awards: strongest cheer type, its share, and a bar splitting the player's cheers across all six. It replaced a Cheers section that repeated the same six percentages as stat cards.
+
+## Match schedule board
+
+- **`/match-schedule/session/:id?show=all` renders `AllMatchesView`, which draws
+  `src/components/MatchBoard.tsx`.** The board sorts by *state*, not by game number: live games are
+  full 2-versus-2 bands, the next three are medium rows, the rest are one-liners, and played games
+  fold behind a disclosure with the winner. Chosen over a timeline and a person-first layout;
+  options and trade-offs are preserved in `badminton-v2/docs/visual/match-schedule-*.html`.
+- **Grouping by court was rejected and cannot work.** A court is assigned only when the admin sends
+  a game on, so `useAdminSession` returns `queued` with no court. With two courts running, eighteen
+  of twenty games would fall into an "unassigned" column. Any court label on a queued game has to
+  read something honest like "first open court", never a number.
+- **`--court2` exists because two tints of `--primary` are indistinguishable at 20 px.** Court 1
+  uses the brand purple; court 2 is teal (`#1F6F6B` light, `#4FD1C5` dark).
+- **Zone wording is status-dependent.** Before `in_progress` the headings read *Starts with* /
+  *First on court*; after, *Up next* / *First open court*. Nothing is "next" and no court is open
+  before the session starts.
+- **The payment banner links to `/sessions/:id`, it does not repeat the receipt upload.** Payment
+  otherwise lives entirely on `SessionPlayerDetailView`, so a player could study their games all
+  night without being told they still owe. One derivation, one upload flow.
+- **`ScheduleView` is a different component** (`/match-schedule/session/:id/:nameSlug`, your games
+  only, `GameCard`). It was not changed, and still has no empty state and no payment prompt.
+- **`/match-schedule/session/:id` without a slug is not a dead end.** `PlayerListViewInner`
+  auto-redirects a signed-in, registered player to their own slug with `replace: true`
+  (`src/views/PlayerView.tsx:216`). An admin who is not registered falls through to the picker.
 
 ## Decisions made, and alternatives rejected
 

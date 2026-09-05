@@ -50,6 +50,10 @@
        enough for text would render darker than the bronze medal below it. */
     --gold: #B87A00;
     --gold-ink: #8A5A00;
+    /* Court 2 on the match board. Court 1 uses --primary; a second court needs a
+       distinct hue, because two tints of the same purple are indistinguishable
+       at the 20px chip size the list rows use. */
+    --court2: #1F6F6B;
 }
 
 .dark {
@@ -87,6 +91,7 @@
     --gold: #FFB200;
     --gold-ink: #FFB200;
     --primary-subtle: #2D1B42;
+    --court2: #4FD1C5;
 }
 
 .live-board-dark {
@@ -146,6 +151,7 @@
     --color-success: var(--success);
     --color-gold: var(--gold);
     --color-gold-ink: var(--gold-ink);
+    --color-court2: var(--court2);
     --color-muted-surface: var(--muted-surface);
     --color-surface: var(--surface);
 }

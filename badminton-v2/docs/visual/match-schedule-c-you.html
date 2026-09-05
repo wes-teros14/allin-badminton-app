@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match schedule — C · You first</title>
+<style>
+:root,[data-theme="light"]{
+  --background:#FAF7FB;--card:#FFFFFF;--muted:#F1ECF6;--foreground:#1B1220;
+  --muted-foreground:#6B5F73;--border:#E7E0EC;--primary:#6F3E87;--primary-fg:#FFFFFF;
+  --primary-subtle:#EDE0F5;--gold:#B87A00;--gold-ink:#8A5A00;--destructive:#B3252B;--live:#B3252B;
+}
+[data-theme="dark"]{
+  --background:#0F0A18;--card:#1A1025;--muted:#1E1230;--foreground:#FFFFFF;
+  --muted-foreground:#B39DBB;--border:#2D1A40;--primary:#6F3E87;--primary-fg:#FFFFFF;
+  --primary-subtle:#2D1B42;--gold:#FFB200;--gold-ink:#FFB200;--destructive:#DC595E;--live:#FF6B70;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);
+  font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .4s,color .4s}
+.page{max-width:1080px;margin:0 auto;padding:40px 24px 90px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.1;letter-spacing:-.025em;margin:12px 0 0;font-weight:650}
+.sub{max-width:60ch;color:var(--muted-foreground);margin:12px 0 0;font-size:.97rem}
+.switch{display:flex;align-items:center;gap:10px;flex:none}
+.switch span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.orb-btn{width:44px;height:44px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);border-radius:11px;cursor:pointer;color:var(--foreground)}
+.orb{width:20px;height:20px;border-radius:50%;background:transparent;box-shadow:inset 8px -8px 0 0 currentColor;transform:rotate(-25deg);transition:transform .5s cubic-bezier(.5,-.3,.3,1.4),box-shadow .5s,background .3s}
+[data-theme="light"] .orb{background:currentColor;transform:scale(.52) rotate(180deg);
+  box-shadow:inset 15px -15px 0 0 transparent,0 -19px 0 -7px currentColor,0 19px 0 -7px currentColor,-19px 0 0 -7px currentColor,19px 0 0 -7px currentColor,-13px -13px 0 -7px currentColor,13px 13px 0 -7px currentColor,-13px 13px 0 -7px currentColor,13px -13px 0 -7px currentColor}
+.nav{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap}
+.nav a{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;text-decoration:none;color:var(--muted-foreground);border:1px solid var(--border);border-radius:999px;padding:9px 13px;transition:.15s}
+.nav a:hover{color:var(--foreground);border-color:var(--primary)}
+.nav a[aria-current]{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+.split{display:grid;grid-template-columns:384px minmax(0,1fr);gap:44px;align-items:start;margin-top:34px}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+
+.device{width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:var(--background);position:sticky;top:24px}
+.appbar{background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.appbar .dot{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.28)}
+.screen{padding:14px 14px 24px}
+
+/* ---- who am I ---- */
+.who{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.who__av{width:32px;height:32px;border-radius:50%;flex:none;background:var(--primary);color:#fff;
+  display:grid;place-items:center;font-size:13px;font-weight:700}
+.who__lab{font:600 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground);margin:0 0 3px}
+.who__name{font-size:14px;font-weight:650;margin:0;letter-spacing:-.01em}
+.who__sw{margin-left:auto;flex:none;border:1px solid var(--border);background:transparent;color:var(--muted-foreground);
+  border-radius:8px;height:32px;padding:0 10px;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.who__sw:hover{color:var(--foreground);border-color:var(--primary)}
+
+/* ---- your next, the hero ---- */
+.yournext{margin-top:11px;border:1px solid var(--primary);border-radius:16px;overflow:hidden;background:var(--card)}
+.yournext__bar{background:var(--primary);color:#fff;padding:7px 13px;
+  font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.yournext__body{padding:13px}
+.yournext__g{font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--muted-foreground);margin:0 0 7px}
+.side{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.side.mine .me{color:var(--primary);position:relative}
+[data-theme="dark"] .side.mine .me{color:#DCC2EE}
+.vs{display:flex;align-items:center;gap:8px;margin:7px 0;font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:var(--muted-foreground)}
+.vs::before,.vs::after{content:"";height:1px;background:var(--border);flex:1}
+.countdown{margin-top:11px;padding-top:10px;border-top:1px solid var(--border);
+  display:flex;align-items:baseline;gap:7px}
+.countdown b{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.countdown span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+
+/* ---- your record strip ---- */
+.strip{display:flex;gap:7px;margin-top:11px}
+.stat{flex:1;border:1px solid var(--border);border-radius:11px;padding:9px 10px;background:var(--card)}
+.stat b{display:block;font-size:18px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+.stat span{font:600 9px/1.3 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--muted-foreground)}
+
+/* ---- the list ---- */
+.zone__h{display:flex;align-items:center;gap:8px;margin:20px 0 8px;
+  font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+.zone__h .count{margin-left:auto;font-weight:600}
+.g{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:9px;align-items:center;
+  padding:10px 0;border-bottom:1px solid var(--border)}
+.g:last-child{border-bottom:0}
+.g__n{font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground)}
+.g__p{font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted-foreground)}
+.g__p em{font-style:normal;padding:0 3px}
+.g__tag{font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 6px;border-radius:5px;flex:none;background:var(--muted);color:var(--muted-foreground)}
+.g__tag[data-t="live"]{background:color-mix(in srgb,var(--live) 16%,transparent);color:var(--live)}
+
+/* mine — the only rows at full weight */
+.g.mine{background:var(--primary-subtle);border-bottom-color:transparent;border-radius:11px;
+  padding:11px 10px;margin:3px 0;grid-template-columns:30px minmax(0,1fr) auto}
+.g.mine .g__p{color:var(--foreground);font-weight:600;font-size:13.5px}
+.g.mine .g__n{color:var(--primary)}
+[data-theme="dark"] .g.mine .g__n{color:#DCC2EE}
+.g.mine .me{text-decoration:underline;text-decoration-color:var(--primary);text-underline-offset:3px;text-decoration-thickness:2px}
+.g.done .g__p .win{color:var(--muted-foreground);font-weight:650}
+.g.mine.done .g__p .win{color:var(--gold-ink);font-weight:700}
+.g__tag[data-t="won"]{background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold-ink)}
+
+.notes h3{font-size:1.02rem;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+.notes h3:not(:first-child){margin-top:26px}
+.notes p,.notes li{color:var(--muted-foreground);font-size:.95rem}
+.notes p{margin:0 0 10px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin-bottom:8px}
+.notes b{color:var(--foreground);font-weight:650}
+.tag{display:inline-block;font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:4px 7px;border-radius:5px;margin-right:6px;background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .tag{color:#DCC2EE}
+code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top">
+    <div>
+      <p class="kicker">Match schedule · Option C</p>
+      <h1>You first</h1>
+    </div>
+    <div class="switch">
+      <span>Theme</span>
+      <button class="orb-btn" id="orb" type="button" role="switch" aria-checked="true" aria-label="Dark mode">
+        <span class="orb" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+
+  <p class="sub">
+    Answers the question people actually open this page to ask: <b>when am I on, and who with?</b>
+    Your games are the only full-weight rows; everyone else’s stay as thin context lines. The
+    admin-only player filter becomes the organising idea, and everybody gets it.
+  </p>
+
+  <nav class="nav">
+    <a href="match-schedule-a-triage.html">A · Triage</a>
+    <a href="match-schedule-b-timeline.html">B · Timeline</a>
+    <a href="match-schedule-c-you.html" aria-current="page">C · You first</a>
+  </nav>
+
+  <div class="split">
+    <div class="device">
+      <div class="appbar"><span class="dot"></span><span>Match schedule</span></div>
+      <div class="screen">
+
+        <div class="who">
+          <span class="who__av">A</span>
+          <div>
+            <p class="who__lab">Showing</p>
+            <p class="who__name">Ana</p>
+          </div>
+          <button class="who__sw" type="button">Change</button>
+        </div>
+
+        <div class="yournext">
+          <div class="yournext__bar"><span>Your next game</span><span>Court 1</span></div>
+          <div class="yournext__body">
+            <p class="yournext__g">Game 13</p>
+            <p class="side mine" style="margin:0"><span class="me">Ana</span> &amp; Chito</p>
+            <p class="vs">VS</p>
+            <p class="side" style="margin:0">Eric &amp; Gigi</p>
+            <div class="countdown">
+              <b>3</b><span>games away</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="strip">
+          <div class="stat"><b>5</b><span>Your games</span></div>
+          <div class="stat"><b>2–0</b><span>Won–lost</span></div>
+          <div class="stat"><b>3</b><span>Left</span></div>
+        </div>
+
+        <p class="zone__h">Tonight <span class="count">20 games</span></p>
+
+        <div class="g done"><span class="g__n">1</span><span class="g__p"><span class="win">Ige &amp; Jun</span> <em>beat</em> Ken &amp; Lito</span><span class="g__tag">Done</span></div>
+        <div class="g mine done"><span class="g__n">2</span><span class="g__p"><span class="win"><span class="me">Ana</span> &amp; Boyet</span> <em>beat</em> Chito &amp; Dan</span><span class="g__tag" data-t="won">Won</span></div>
+        <div class="g done"><span class="g__n">3</span><span class="g__p"><span class="win">Nes &amp; Ony</span> <em>beat</em> Mina &amp; Pau</span><span class="g__tag">Done</span></div>
+        <div class="g done"><span class="g__n">4</span><span class="g__p"><span class="win">Eric &amp; Fely</span> <em>beat</em> Gigi &amp; Hector</span><span class="g__tag">Done</span></div>
+        <div class="g mine done"><span class="g__n">5</span><span class="g__p"><span class="win"><span class="me">Ana</span> &amp; Dan</span> <em>beat</em> Fely &amp; Ony</span><span class="g__tag" data-t="won">Won</span></div>
+        <div class="g done"><span class="g__n">6</span><span class="g__p"><span class="win">Jun &amp; Ken</span> <em>beat</em> Ige &amp; Lito</span><span class="g__tag">Done</span></div>
+        <div class="g done"><span class="g__n">7</span><span class="g__p"><span class="win">Mina &amp; Nes</span> <em>beat</em> Ony &amp; Pau</span><span class="g__tag">Done</span></div>
+        <div class="g done"><span class="g__n">8</span><span class="g__p"><span class="win">Boyet &amp; Hector</span> <em>beat</em> Chito &amp; Gigi</span><span class="g__tag">Done</span></div>
+        <div class="g mine"><span class="g__n">9</span><span class="g__p"><span class="me">Ana</span> &amp; Boyet <em>vs</em> Chito &amp; Dan</span><span class="g__tag" data-t="live">Live</span></div>
+        <div class="g"><span class="g__n">10</span><span class="g__p">Eric &amp; Fely <em>vs</em> Gigi &amp; Hector</span><span class="g__tag" data-t="live">Live</span></div>
+        <div class="g"><span class="g__n">11</span><span class="g__p">Ige &amp; Jun <em>vs</em> Ken &amp; Lito</span><span class="g__tag">Next</span></div>
+        <div class="g"><span class="g__n">12</span><span class="g__p">Mina &amp; Nes <em>vs</em> Ony &amp; Pau</span><span class="g__tag">Queued</span></div>
+        <div class="g mine"><span class="g__n">13</span><span class="g__p"><span class="me">Ana</span> &amp; Chito <em>vs</em> Eric &amp; Gigi</span><span class="g__tag">Yours</span></div>
+        <div class="g"><span class="g__n">14</span><span class="g__p">Boyet &amp; Dan <em>vs</em> Fely &amp; Hector</span><span class="g__tag">Queued</span></div>
+        <div class="g"><span class="g__n">15</span><span class="g__p">Ige &amp; Ken <em>vs</em> Jun &amp; Lito</span><span class="g__tag">Queued</span></div>
+        <div class="g"><span class="g__n">16</span><span class="g__p">Mina &amp; Ony <em>vs</em> Nes &amp; Pau</span><span class="g__tag">Queued</span></div>
+        <div class="g mine"><span class="g__n">17</span><span class="g__p"><span class="me">Ana</span> &amp; Dan <em>vs</em> Boyet &amp; Chito</span><span class="g__tag">Yours</span></div>
+        <div class="g"><span class="g__n">18</span><span class="g__p">Eric &amp; Hector <em>vs</em> Fely &amp; Gigi</span><span class="g__tag">Queued</span></div>
+
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>What it fixes</h3>
+      <ul>
+        <li><b>It answers the actual question.</b> A player opens a 20-game list to find their own name.
+        Today they have to read all twenty cards to do it — the names are set in identical weight and
+        colour with nothing to catch the eye.</li>
+        <li><b>The admin-only filter becomes the whole idea.</b> Right now there is a bare
+        <code>&lt;select&gt;</code> visible only to <code>role === 'admin'</code>, with no label and no
+        “showing 5 of 20” feedback. Here it is a first-class control everyone gets.</li>
+        <li><b>Your games are marked in two ways</b> — a tinted row <em>and</em> an underlined name — so
+        it does not depend on colour alone.</li>
+        <li><b>Your record for the night</b> comes free: five games, two won, three left. The data is
+        already loaded to draw the list.</li>
+        <li><b>Nothing is hidden.</b> Unlike A, all twenty rows are still there in order — the others are
+        just quiet.</li>
+      </ul>
+
+      <h3>Trade-offs</h3>
+      <ul>
+        <li><b>It needs to know who you are.</b> That is fine for a signed-in player, but this page is
+        also opened from <code>/session</code> by the admin on a laptop, where “you” is meaningless — so
+        it must fall back to a neutral all-games view. Two states to design, not one.</li>
+        <li>The other fifteen rows are deliberately low-contrast context. If people use this page to
+        look up <em>other</em> pairings, that is now the harder job. <b>Option B treats every game
+        equally.</b></li>
+        <li>Court is only shown on the hero card, not per row, to keep rows to one line.</li>
+        <li>“3 games away” is a count, not a time — honest, but a player probably wants minutes, and
+        minutes would have to be estimated.</li>
+      </ul>
+
+      <h3>Notes</h3>
+      <p>
+        <span class="tag" style="background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold-ink)">Correction</span>
+        I earlier called the <code>← My Matches</code> link a bug. It is not.
+        <code>/match-schedule/session/:sessionId</code> renders <code>PlayerListViewInner</code>,
+        which auto-redirects a signed-in, registered player to
+        <code>/match-schedule/session/:id/:nameSlug</code> with <code>replace: true</code>
+        (<code>src/views/PlayerView.tsx:216</code>). The link round-trips through the picker and
+        lands on your own schedule. I traced the route table but not the redirect.</p>
+      <p>
+        <span class="tag">Note</span> This is the only option that could <em>replace</em> a screen
+        rather than just redress one: if All Matches highlights your games, the separate per-player
+        <code>ScheduleView</code> at <code>/match-schedule/session/:id/:nameSlug</code> largely
+        duplicates it.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('orb');
+  btn.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')!=='dark';
+    root.setAttribute('data-theme',dark?'dark':'light');
+    btn.setAttribute('aria-checked',String(dark));
+    btn.setAttribute('aria-label',dark?'Dark mode':'Light mode');
+  });
+})();
+</script>
+</body>
+</html>
