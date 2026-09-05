@@ -18,8 +18,16 @@ export const RECENT_SESSIONS_WINDOW = 4
  */
 export const MIN_SESSIONS_PLAYED = 3
 
-/** Accounts kept off every board and every award. */
-export const BOARD_EXCLUDED = new Set([
+/**
+ * Accounts held back from the two *count-based* attendance awards only —
+ * Most Sessions Joined and Attendance Streak — where an organiser who is at
+ * every session wins by definition.
+ *
+ * They are NOT excluded from any ranked board. Every board now scores a rate:
+ * win rate, or a cheer share of a player's own total. A rate cannot be won by
+ * turning up more often, so there is nothing to hold back from.
+ */
+export const ATTENDANCE_AWARD_EXCLUDED = new Set([
   'd3def74c-7367-4553-af30-eaa58e45ddb7',
   '8e48d7bf-c7dc-45a5-a468-7ee9b81db677',
 ])
@@ -29,8 +37,8 @@ export const BOARD_EXCLUDED = new Set([
  * least `MIN_SESSIONS_PLAYED` sessions) and still turning up (registered for at
  * least one of the last `RECENT_SESSIONS_WINDOW` completed sessions).
  *
- * Excluded accounts are filtered here too, so a caller cannot forget one half
- * of the rule — every surface asks this one function.
+ * Deliberately says nothing about the excluded accounts: that list belongs to
+ * the two attendance awards, not to eligibility for a ranked board.
  */
 export async function fetchEligiblePlayerIds(): Promise<Set<string>> {
   const [seasonedRes, recentSessionsRes] = await Promise.all([
@@ -39,9 +47,7 @@ export async function fetchEligiblePlayerIds(): Promise<Set<string>> {
   ])
 
   const seasoned = new Set(
-    ((seasonedRes.data ?? []) as Array<{ player_id: string }>)
-      .map((s) => s.player_id)
-      .filter((id) => !BOARD_EXCLUDED.has(id)),
+    ((seasonedRes.data ?? []) as Array<{ player_id: string }>).map((s) => s.player_id),
   )
   const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
   if (seasoned.size === 0 || recentSessionIds.length === 0) return new Set()
