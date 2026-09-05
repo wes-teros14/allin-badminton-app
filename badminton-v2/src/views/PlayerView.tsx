@@ -485,14 +485,18 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
               <div key={i} className="h-[86px] rounded-xl bg-muted animate-pulse" />
             ))
           : matches.map((m, i) => (
-              <PersonalGameCard
-                key={m.id}
-                match={m}
-                you={playerDisplayName}
-                yourAvatarUrl={playerAvatarUrl}
-                isNextUp={i === firstQueuedIndex}
-                promote={!playingMatch && i === firstQueuedIndex}
-              />
+              // Your live game is already a full card in the court strip above,
+              // so rendering it again here just duplicates a court.
+              m.status === 'playing' ? null : (
+                <PersonalGameCard
+                  key={m.id}
+                  match={m}
+                  you={playerDisplayName}
+                  yourAvatarUrl={playerAvatarUrl}
+                  isNextUp={i === firstQueuedIndex}
+                  promote={!playingMatch && i === firstQueuedIndex}
+                />
+              )
             ))}
       </div>
     </div>
