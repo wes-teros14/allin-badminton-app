@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match schedule — B · Timeline</title>
+<style>
+:root,[data-theme="light"]{
+  --background:#FAF7FB;--card:#FFFFFF;--muted:#F1ECF6;--foreground:#1B1220;
+  --muted-foreground:#6B5F73;--border:#E7E0EC;--primary:#6F3E87;--primary-fg:#FFFFFF;
+  --primary-subtle:#EDE0F5;--gold:#B87A00;--gold-ink:#8A5A00;--destructive:#B3252B;
+  --live:#B3252B;--court2:#1F6F6B;--spine:#E0D6E9;
+}
+[data-theme="dark"]{
+  --background:#0F0A18;--card:#1A1025;--muted:#1E1230;--foreground:#FFFFFF;
+  --muted-foreground:#B39DBB;--border:#2D1A40;--primary:#6F3E87;--primary-fg:#FFFFFF;
+  --primary-subtle:#2D1B42;--gold:#FFB200;--gold-ink:#FFB200;--destructive:#DC595E;
+  --live:#FF6B70;--court2:#4FD1C5;--spine:#2D1A40;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);
+  font:400 16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;transition:background .4s,color .4s}
+.page{max-width:1080px;margin:0 auto;padding:40px 24px 90px}
+.top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.kicker{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+h1{font-size:clamp(1.7rem,4vw,2.2rem);line-height:1.1;letter-spacing:-.025em;margin:12px 0 0;font-weight:650}
+.sub{max-width:60ch;color:var(--muted-foreground);margin:12px 0 0;font-size:.97rem}
+.switch{display:flex;align-items:center;gap:10px;flex:none}
+.switch span{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.orb-btn{width:44px;height:44px;display:grid;place-items:center;background:transparent;border:1px solid var(--border);border-radius:11px;cursor:pointer;color:var(--foreground)}
+.orb{width:20px;height:20px;border-radius:50%;background:transparent;box-shadow:inset 8px -8px 0 0 currentColor;transform:rotate(-25deg);transition:transform .5s cubic-bezier(.5,-.3,.3,1.4),box-shadow .5s,background .3s}
+[data-theme="light"] .orb{background:currentColor;transform:scale(.52) rotate(180deg);
+  box-shadow:inset 15px -15px 0 0 transparent,0 -19px 0 -7px currentColor,0 19px 0 -7px currentColor,-19px 0 0 -7px currentColor,19px 0 0 -7px currentColor,-13px -13px 0 -7px currentColor,13px 13px 0 -7px currentColor,-13px 13px 0 -7px currentColor,13px -13px 0 -7px currentColor}
+.nav{display:flex;gap:8px;margin-top:26px;flex-wrap:wrap}
+.nav a{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;
+  text-decoration:none;color:var(--muted-foreground);border:1px solid var(--border);border-radius:999px;padding:9px 13px;transition:.15s}
+.nav a:hover{color:var(--foreground);border-color:var(--primary)}
+.nav a[aria-current]{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+.split{display:grid;grid-template-columns:384px minmax(0,1fr);gap:44px;align-items:start;margin-top:34px}
+@media(max-width:860px){.split{grid-template-columns:1fr}}
+
+.device{width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;background:var(--background);position:sticky;top:24px}
+.appbar{background:var(--primary);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.appbar .dot{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.28)}
+.screen{padding:14px 14px 24px}
+.shead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.shead h2{font-size:17px;font-weight:650;margin:0;letter-spacing:-.01em}
+.shead .when{font-size:12px;color:var(--muted-foreground);flex:none}
+.legend{display:flex;gap:12px;margin:11px 0 4px;
+  font:600 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-foreground)}
+.legend i{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.legend .c1{background:var(--primary)}
+.legend .c2{background:var(--court2)}
+
+/* ---------- the rail ---------- */
+.rail{position:relative;padding-left:42px;margin-top:14px}
+.rail::before{content:"";position:absolute;left:15px;top:6px;bottom:6px;width:2px;background:var(--spine);border-radius:2px}
+.rail::after{content:"";position:absolute;left:15px;top:6px;height:var(--progress,45%);width:2px;background:var(--primary);border-radius:2px}
+.node{position:relative;padding:0 0 4px}
+.node__dot{position:absolute;left:-33px;top:12px;width:12px;height:12px;border-radius:50%;
+  background:var(--background);border:2px solid var(--spine);z-index:1}
+.node[data-state="done"] .node__dot{background:var(--primary);border-color:var(--primary)}
+.node[data-state="live"] .node__dot{background:var(--live);border-color:var(--live);
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--live) 22%,transparent);animation:ring 1.8s ease-in-out infinite}
+@keyframes ring{0%,100%{box-shadow:0 0 0 4px color-mix(in srgb,var(--live) 22%,transparent)}
+                50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--live) 6%,transparent)}}
+
+/* compact row (done + queued) */
+.entry{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:9px;align-items:center;
+  padding:9px 0;border-bottom:1px solid var(--border)}
+.entry__n{font:700 11px/1 ui-monospace,Menlo,monospace;color:var(--muted-foreground)}
+.entry__p{font-size:13px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry__p em{font-style:normal;color:var(--muted-foreground);padding:0 3px}
+.entry__p .win{font-weight:650;color:var(--gold-ink)}
+.entry__p .lose{color:var(--muted-foreground)}
+.cbadge{width:20px;height:20px;flex:none;border-radius:5px;display:grid;place-items:center;
+  font:700 9.5px/1 ui-monospace,Menlo,monospace}
+.cbadge[data-c="1"]{background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .cbadge[data-c="1"]{color:#DCC2EE}
+.cbadge[data-c="2"]{background:color-mix(in srgb,var(--court2) 18%,transparent);color:var(--court2)}
+.cbadge[data-c="-"]{background:var(--muted);color:var(--muted-foreground)}
+
+/* expanded live card */
+.livecard{border:1px solid var(--live);border-radius:14px;padding:12px 13px;background:var(--card);margin:6px 0 10px}
+.livecard__top{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.elapsed{font:600 12px/1 ui-monospace,Menlo,monospace;color:var(--gold-ink)}
+.livetag{margin-left:auto;display:flex;align-items:center;gap:5px;font:700 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em;color:var(--live)}
+.livetag i{width:6px;height:6px;border-radius:50%;background:var(--live);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.gnum{font:700 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.08em;color:var(--muted-foreground);margin:0 0 6px}
+.pair{font-size:15px;font-weight:600;margin:0;letter-spacing:-.01em}
+.vs{display:flex;align-items:center;gap:8px;margin:6px 0;font:700 9px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:var(--muted-foreground)}
+.vs::before,.vs::after{content:"";height:1px;background:var(--border);flex:1}
+
+.divider{display:flex;align-items:center;gap:9px;margin:14px 0 8px;
+  font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+.divider::after{content:"";height:1px;background:var(--border);flex:1}
+
+.notes h3{font-size:1.02rem;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
+.notes h3:not(:first-child){margin-top:26px}
+.notes p,.notes li{color:var(--muted-foreground);font-size:.95rem}
+.notes p{margin:0 0 10px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin-bottom:8px}
+.notes b{color:var(--foreground);font-weight:650}
+.tag{display:inline-block;font:700 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;padding:4px 7px;border-radius:5px;margin-right:6px;background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .tag{color:#DCC2EE}
+code{font:500 .86em/1 ui-monospace,Menlo,monospace;background:var(--muted);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top">
+    <div>
+      <p class="kicker">Match schedule · Option B</p>
+      <h1>Timeline — one run of show</h1>
+    </div>
+    <div class="switch">
+      <span>Theme</span>
+      <button class="orb-btn" id="orb" type="button" role="switch" aria-checked="true" aria-label="Dark mode">
+        <span class="orb" aria-hidden="true"></span>
+      </button>
+    </div>
+  </div>
+
+  <p class="sub">
+    Keeps all twenty games in one unbroken order and hangs them off a spine that fills as the night
+    progresses. Only the live games expand; everything else is a single line. The night has a
+    <b>shape</b> you can see at a glance — how far in, how much left.
+  </p>
+
+  <nav class="nav">
+    <a href="match-schedule-a-triage.html">A · Triage</a>
+    <a href="match-schedule-b-timeline.html" aria-current="page">B · Timeline</a>
+    <a href="match-schedule-c-you.html">C · You first</a>
+  </nav>
+
+  <div class="split">
+    <div class="device">
+      <div class="appbar"><span class="dot"></span><span>Match schedule</span></div>
+      <div class="screen">
+
+        <div class="shead">
+          <h2>Thursday Night</h2>
+          <span class="when">8 / 20</span>
+        </div>
+        <div class="legend">
+          <span><i class="c1"></i>Court 1</span>
+          <span><i class="c2"></i>Court 2</span>
+        </div>
+
+        <div class="rail" style="--progress:44%">
+
+          <div class="divider">Played</div>
+
+          <div class="node" data-state="done"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">3</span>
+              <span class="entry__p"><span class="win">Jun &amp; Ken</span> <em>beat</em> <span class="lose">Ige &amp; Lito</span></span>
+              <span class="cbadge" data-c="1">1</span></div></div>
+          <div class="node" data-state="done"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">4</span>
+              <span class="entry__p"><span class="win">Nes &amp; Ony</span> <em>beat</em> <span class="lose">Mina &amp; Pau</span></span>
+              <span class="cbadge" data-c="2">2</span></div></div>
+          <div class="node" data-state="done"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">5</span>
+              <span class="entry__p"><span class="win">Ana &amp; Boyet</span> <em>beat</em> <span class="lose">Chito &amp; Dan</span></span>
+              <span class="cbadge" data-c="1">1</span></div></div>
+          <div class="node" data-state="done"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">6</span>
+              <span class="entry__p"><span class="win">Eric &amp; Fely</span> <em>beat</em> <span class="lose">Gigi &amp; Hector</span></span>
+              <span class="cbadge" data-c="2">2</span></div></div>
+          <div class="node" data-state="done"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">7</span>
+              <span class="entry__p"><span class="win">Ige &amp; Jun</span> <em>beat</em> <span class="lose">Ken &amp; Lito</span></span>
+              <span class="cbadge" data-c="1">1</span></div></div>
+          <div class="node" data-state="done"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">8</span>
+              <span class="entry__p"><span class="win">Mina &amp; Nes</span> <em>beat</em> <span class="lose">Ony &amp; Pau</span></span>
+              <span class="cbadge" data-c="2">2</span></div></div>
+
+          <div class="divider">Playing now</div>
+
+          <div class="node" data-state="live"><span class="node__dot"></span>
+            <div class="livecard">
+              <div class="livecard__top">
+                <span class="cbadge" data-c="1">1</span>
+                <span class="elapsed">12:04</span>
+                <span class="livetag"><i></i>LIVE</span>
+              </div>
+              <p class="gnum">Game 9</p>
+              <p class="pair">Ana &amp; Boyet</p>
+              <p class="vs">VS</p>
+              <p class="pair">Chito &amp; Dan</p>
+            </div>
+          </div>
+
+          <div class="node" data-state="live"><span class="node__dot"></span>
+            <div class="livecard">
+              <div class="livecard__top">
+                <span class="cbadge" data-c="2">2</span>
+                <span class="elapsed">04:31</span>
+                <span class="livetag"><i></i>LIVE</span>
+              </div>
+              <p class="gnum">Game 10</p>
+              <p class="pair">Eric &amp; Fely</p>
+              <p class="vs">VS</p>
+              <p class="pair">Gigi &amp; Hector</p>
+            </div>
+          </div>
+
+          <div class="divider">To come</div>
+
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">11</span><span class="entry__p">Ige &amp; Jun <em>vs</em> Ken &amp; Lito</span><span class="cbadge" data-c="-">–</span></div></div>
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">12</span><span class="entry__p">Mina &amp; Nes <em>vs</em> Ony &amp; Pau</span><span class="cbadge" data-c="-">–</span></div></div>
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">13</span><span class="entry__p">Ana &amp; Chito <em>vs</em> Eric &amp; Gigi</span><span class="cbadge" data-c="-">–</span></div></div>
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">14</span><span class="entry__p">Boyet &amp; Dan <em>vs</em> Fely &amp; Hector</span><span class="cbadge" data-c="-">–</span></div></div>
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">15</span><span class="entry__p">Ige &amp; Ken <em>vs</em> Jun &amp; Lito</span><span class="cbadge" data-c="-">–</span></div></div>
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">16</span><span class="entry__p">Mina &amp; Ony <em>vs</em> Nes &amp; Pau</span><span class="cbadge" data-c="-">–</span></div></div>
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry"><span class="entry__n">17</span><span class="entry__p">Ana &amp; Dan <em>vs</em> Boyet &amp; Chito</span><span class="cbadge" data-c="-">–</span></div></div>
+          <div class="node"><span class="node__dot"></span>
+            <div class="entry" style="border-bottom:0"><span class="entry__n">18</span><span class="entry__p">Eric &amp; Hector <em>vs</em> Fely &amp; Gigi</span><span class="cbadge" data-c="-">–</span></div></div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <h3>What it fixes</h3>
+      <ul>
+        <li><b>The night gets a shape.</b> The filled spine is the progress bar — you read “roughly
+        halfway” from the geometry, without a number.</li>
+        <li><b>Order is never broken.</b> Game 14 is exactly where you expect it, between 13 and 15. If
+        you think in game numbers, nothing moves.</li>
+        <li><b>Court is a colour, not a word.</b> A 20 px badge per row costs almost nothing and makes
+        “court 2 is running behind” visible by pattern.</li>
+        <li><b>One expanded card per court, everything else one line.</b> Twenty games fit in about two
+        screens instead of six.</li>
+        <li><b>Winners recorded</b> in the same row, so the played half becomes a record of the night
+        rather than a grey wall.</li>
+      </ul>
+
+      <h3>Trade-offs</h3>
+      <ul>
+        <li>Queued games have <b>no court yet</b> — a court is only assigned when the admin sends the game
+        on. So two thirds of the badges read <code>–</code>. That is honest, but it is a lot of
+        placeholders. <b>Option A avoids this</b> by only promising “first open court”.</li>
+        <li>The rail eats 42 px of a 384 px screen — about 11 % of the width, permanently.</li>
+        <li>You still scroll past everything played to reach what is next, unless the view auto-scrolls
+        to the live node on open. <b>Option A puts live at the top instead.</b></li>
+      </ul>
+
+      <h3>Notes</h3>
+      <p>
+        <span class="tag" style="background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold-ink)">Correction</span>
+        I earlier called the <code>← My Matches</code> link a bug. It is not.
+        <code>/match-schedule/session/:sessionId</code> renders <code>PlayerListViewInner</code>,
+        which auto-redirects a signed-in, registered player to
+        <code>/match-schedule/session/:id/:nameSlug</code> with <code>replace: true</code>
+        (<code>src/views/PlayerView.tsx:216</code>). The link round-trips through the picker and
+        lands on your own schedule. I traced the route table but not the redirect.</p>
+      <p>
+        <span class="tag">Court colour</span> Court 2 uses a teal that is not currently in the palette
+        (<code>#1F6F6B</code> light, <code>#4FD1C5</code> dark). If you want to stay strictly on brand,
+        the alternative is two tints of the purple — which is calmer, but much harder to tell apart at
+        20 px.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('orb');
+  btn.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')!=='dark';
+    root.setAttribute('data-theme',dark?'dark':'light');
+    btn.setAttribute('aria-checked',String(dark));
+    btn.setAttribute('aria-label',dark?'Dark mode':'Light mode');
+  });
+})();
+</script>
+</body>
+</html>

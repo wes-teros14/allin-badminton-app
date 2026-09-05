@@ -13,20 +13,24 @@ import { LiveIndicator } from '@/components/LiveIndicator'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
-import { Avatar } from '@/components/Avatar'
+import { useSessionReceipts } from '@/hooks/useSessionReceipts'
+import { derivePaymentState } from '@/lib/paymentState'
+import { getLegacyWinningPairIndex } from '@/lib/matchResults'
+import {
+  BoardHeader,
+  MatchBoard,
+  NoScheduleYet,
+  PaymentBanner,
+  type BoardMatch,
+  type BoardPlayer,
+} from '@/components/MatchBoard'
 
-interface MatchPlayer {
+interface SessionMeta {
   name: string
-  avatarUrl: string | null
-}
-
-interface AllMatch {
-  id: string
-  gameNumber: number
-  status: 'queued' | 'playing' | 'complete'
-  team1: MatchPlayer[]
-  team2: MatchPlayer[]
-  players: string[]
+  date: string | null
+  status: string | null
+  venue: string | null
+  price: number | null
 }
 
 function formatElapsed(seconds: number) {
@@ -291,77 +295,150 @@ function PlayerListViewInner({ sessionId }: { sessionId?: string } = {}) {
 }
 
 function AllMatchesView({ sessionId }: { sessionId: string }) {
-  const { role } = useAuth()
-  const [matches, setMatches] = useState<AllMatch[]>([])
+  const { user, role } = useAuth()
+  const [matches, setMatches] = useState<BoardMatch[]>([])
   const [playerNames, setPlayerNames] = useState<string[]>([])
   const [selectedPlayer, setSelectedPlayer] = useState('')
-  const [sessionName, setSessionName] = useState('')
+  const [session, setSession] = useState<SessionMeta | null>(null)
+  const [registration, setRegistration] = useState<{ paid: boolean | null; playerId: string } | null>(null)
+  const [yourGameCount, setYourGameCount] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [tick, setTick] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
   const { status } = useRealtime(sessionId, refresh)
+
+  const { activeReceiptCount } = useSessionReceipts(
+    registration ? sessionId : undefined,
+    registration?.playerId,
+  )
+  const paymentState = derivePaymentState({ paid: registration?.paid ?? null, activeReceiptCount })
+
+  // Court timers tick locally; the match rows themselves only change on refresh.
+  useEffect(() => {
+    if (!matches.some((m) => m.status === 'playing')) return
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [matches])
 
   useEffect(() => {
     let cancelled = false
     setIsLoading(true)
     async function load() {
-      // Fetch session info
       const { data: sess } = await supabase
-        .from('sessions').select('name').eq('id', sessionId).maybeSingle()
+        .from('sessions').select('name, date, status, venue, price').eq('id', sessionId).maybeSingle()
       if (cancelled) return
-      if (sess) setSessionName((sess as { name: string }).name)
+      if (sess) setSession(sess as SessionMeta)
 
-      // Fetch all matches
+      // The signed-in player's own registration drives the payment banner. An
+      // admin who is not registered simply gets no banner.
+      if (user) {
+        const { data: reg } = await supabase
+          .from('session_registrations').select('paid, player_id')
+          .eq('session_id', sessionId).eq('player_id', user.id).maybeSingle()
+        if (cancelled) return
+        const regRow = reg as { paid: boolean | null; player_id: string } | null
+        setRegistration(regRow ? { paid: regRow.paid, playerId: regRow.player_id } : null)
+      } else {
+        setRegistration(null)
+      }
+
       const { data: rows } = await supabase
         .from('matches')
-        .select('id, queue_position, status, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id')
+        .select('id, queue_position, status, court_number, started_at, team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id')
         .eq('session_id', sessionId)
         .order('queue_position')
-      if (cancelled || !rows) { setIsLoading(false); return }
+      if (cancelled || !rows) { setMatches([]); setIsLoading(false); return }
 
-      const matchRows = rows as Array<{ id: string; queue_position: number; status: string; team1_player1_id: string; team1_player2_id: string; team2_player1_id: string; team2_player2_id: string }>
+      const matchRows = rows as Array<{
+        id: string; queue_position: number; status: string
+        court_number: number | null; started_at: string | null
+        team1_player1_id: string; team1_player2_id: string
+        team2_player1_id: string; team2_player2_id: string
+      }>
 
-      // Collect all player IDs and resolve names + avatars
-      const allIds = [...new Set(matchRows.flatMap(m => [m.team1_player1_id, m.team1_player2_id, m.team2_player1_id, m.team2_player2_id]))]
+      // Winners, so a finished game says who won rather than only that it ended.
+      const winnerByMatch = new Map<string, 1 | 2>()
+      if (matchRows.length > 0) {
+        const { data: results } = await supabase
+          .from('match_results').select('match_id, winning_pair_index, game_number')
+          .in('match_id', matchRows.map((m) => m.id))
+        if (cancelled) return
+        const grouped = new Map<string, Array<{ winning_pair_index: number; game_number: number | null }>>()
+        for (const r of (results ?? []) as Array<{ match_id: string; winning_pair_index: number; game_number: number | null }>) {
+          const list = grouped.get(r.match_id) ?? []
+          list.push({ winning_pair_index: r.winning_pair_index, game_number: r.game_number })
+          grouped.set(r.match_id, list)
+        }
+        for (const [matchId, list] of grouped) {
+          const index = getLegacyWinningPairIndex(list)
+          if (index) winnerByMatch.set(matchId, index)
+        }
+      }
+
+      const allIds = [...new Set(matchRows.flatMap((m) => [m.team1_player1_id, m.team1_player2_id, m.team2_player1_id, m.team2_player2_id]))]
       const { data: profiles } = await supabase.from('profiles').select('id, name_slug, nickname, avatar_url').in('id', allIds)
       if (cancelled) return
       type ProfileRow = { id: string; name_slug: string; nickname: string | null; avatar_url: string | null }
       const profileRows = (profiles ?? []) as ProfileRow[]
-      const nameMap = new Map(profileRows.map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
-      const avatarMap = new Map(profileRows.map(p => [p.id, p.avatar_url]))
-      const name = (id: string) => nameMap.get(id) ?? '?'
-      const player = (id: string): MatchPlayer => ({ name: name(id), avatarUrl: avatarMap.get(id) ?? null })
+      const nameMap = new Map(profileRows.map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
+      const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
+      const player = (id: string): BoardPlayer => ({ name: nameMap.get(id) ?? '?', avatarUrl: avatarMap.get(id) ?? null })
 
-      const sortedNames = [...nameMap.values()].sort((a, b) => a.localeCompare(b))
-      setPlayerNames(sortedNames)
+      setPlayerNames([...nameMap.values()].sort((a, b) => a.localeCompare(b)))
+      setYourGameCount(
+        user ? matchRows.filter((m) => [m.team1_player1_id, m.team1_player2_id, m.team2_player1_id, m.team2_player2_id].includes(user.id)).length : null,
+      )
 
-      setMatches(matchRows.map(m => {
-        const p1 = name(m.team1_player1_id)
-        const p2 = name(m.team1_player2_id)
-        const p3 = name(m.team2_player1_id)
-        const p4 = name(m.team2_player2_id)
-        return {
-          id: m.id,
-          gameNumber: m.queue_position,
-          status: m.status as 'queued' | 'playing' | 'complete',
-          team1: [player(m.team1_player1_id), player(m.team1_player2_id)],
-          team2: [player(m.team2_player1_id), player(m.team2_player2_id)],
-          players: [p1, p2, p3, p4],
-        }
-      }))
+      setMatches(matchRows.map((m) => ({
+        id: m.id,
+        gameNumber: m.queue_position,
+        status: m.status as BoardMatch['status'],
+        courtNumber: m.court_number,
+        startedAt: m.started_at,
+        winningPairIndex: winnerByMatch.get(m.id) ?? null,
+        team1: [player(m.team1_player1_id), player(m.team1_player2_id)],
+        team2: [player(m.team2_player1_id), player(m.team2_player2_id)],
+      })))
       setIsLoading(false)
     }
     load()
     return () => { cancelled = true }
-  }, [sessionId, tick])
+  }, [sessionId, tick, user])
+
+  const visible = selectedPlayer
+    ? matches.filter((m) => [...m.team1, ...m.team2].some((p) => p.name === selectedPlayer))
+    : matches
+
+  const played = visible.filter((m) => m.status === 'complete').length
+  const liveCount = visible.filter((m) => m.status === 'playing').length
+  const sessionStarted = session?.status === 'in_progress' || session?.status === 'complete'
+
+  const elapsedByMatchId: Record<string, string> = {}
+  for (const m of matches) {
+    if (m.status === 'playing' && m.startedAt) {
+      elapsedByMatchId[m.id] = formatElapsed(Math.max(0, Math.floor((now - new Date(m.startedAt).getTime()) / 1000)))
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
       <LiveIndicator status={status} onRefresh={refresh} />
       <div className="max-w-sm mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">{sessionName || 'All Matches'}</h1>
+        <BoardHeader
+          sessionName={session?.name ?? ''}
+          sessionDate={session?.date ?? null}
+          sessionStatus={session?.status ?? null}
+          venue={session?.venue ?? null}
+          played={played}
+          total={visible.length}
+          liveCount={liveCount}
+        />
+
+        {/* Its own row: LiveIndicator is `absolute top-3 right-4`, so anything
+            sharing the header's top-right corner sits underneath it. */}
+        <div className="mt-2 flex justify-end">
           <Link
             to={`/match-schedule/session/${sessionId}`}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -369,58 +446,42 @@ function AllMatchesView({ sessionId }: { sessionId: string }) {
             ← My Matches
           </Link>
         </div>
+
+        {registration && (
+          <PaymentBanner
+            paymentState={paymentState}
+            price={session?.price ?? null}
+            sessionId={sessionId}
+            yourGameCount={yourGameCount}
+            scheduleDrawn={matches.length > 0}
+          />
+        )}
+
         {role === 'admin' && !isLoading && playerNames.length > 0 && (
           <select
             value={selectedPlayer}
             onChange={(e) => setSelectedPlayer(e.target.value)}
-            className="mb-4 w-full h-9 rounded-lg border border-input bg-background text-foreground px-3 text-sm"
+            aria-label="Filter by player"
+            className="mt-3 w-full h-9 rounded-lg border border-input bg-background text-foreground px-3 text-sm"
           >
-            <option value="">All Players</option>
+            <option value="">All players</option>
             {playerNames.map((n) => (
               <option key={n} value={n}>{n}</option>
             ))}
           </select>
         )}
-        <div className="flex flex-col gap-3">
-          {isLoading
-            ? Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
-              ))
-            : matches.filter(m => !selectedPlayer || m.players.includes(selectedPlayer)).map(m => (
-                <div
-                  key={m.id}
-                  className={`rounded-xl border border-border p-4 ${m.status === 'complete' ? 'opacity-50' : ''} ${m.status === 'playing' ? 'border-primary/30 bg-[var(--primary-subtle)]' : ''}`}
-                >
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className={`whitespace-nowrap text-2xl font-bold tabular-nums ${m.status === 'complete' ? 'line-through' : ''}`}>Game {m.gameNumber}</span>
-                    {m.status === 'playing' && <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">Playing</span>}
-                    {m.status === 'complete' && <span className="text-[var(--success)] text-lg">✓</span>}
-                  </div>
-                  <div
-                    className="grid items-center gap-1.5 text-sm text-foreground font-medium"
-                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 24px 24px minmax(0,1fr)' }}
-                  >
-                    <Avatar url={m.team1[0].avatarUrl} name={m.team1[0].name} size={24} />
-                    <span className="truncate">{m.team1[0].name}</span>
-                    <span className="text-center">&amp;</span>
-                    <Avatar url={m.team1[1].avatarUrl} name={m.team1[1].name} size={24} />
-                    <span className="truncate">{m.team1[1].name}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 mb-0.5 text-center">vs</p>
-                  <div
-                    className="grid items-center gap-1.5 text-sm text-foreground font-medium"
-                    style={{ gridTemplateColumns: '24px minmax(0,1fr) 24px 24px minmax(0,1fr)' }}
-                  >
-                    <Avatar url={m.team2[0].avatarUrl} name={m.team2[0].name} size={24} />
-                    <span className="truncate">{m.team2[0].name}</span>
-                    <span className="text-center">&amp;</span>
-                    <Avatar url={m.team2[1].avatarUrl} name={m.team2[1].name} size={24} />
-                    <span className="truncate">{m.team2[1].name}</span>
-                  </div>
-                </div>
-              ))
-          }
-        </div>
+
+        {isLoading ? (
+          <div className="mt-5 flex flex-col gap-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : matches.length === 0 ? (
+          <NoScheduleYet paymentState={paymentState} registered={registration != null} />
+        ) : (
+          <MatchBoard matches={visible} sessionStarted={sessionStarted} elapsedByMatchId={elapsedByMatchId} />
+        )}
       </div>
     </div>
   )

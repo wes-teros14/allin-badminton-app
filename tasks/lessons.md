@@ -348,3 +348,24 @@ both themes. Verified by measuring computed colour in Chromium in both themes.
    triple. It produced confidently wrong contrast numbers twice in this session before being
    caught. Paint the value into a 1x1 canvas and read `getImageData` instead, so the browser does
    the conversion.
+
+## I called working code a bug — routes are not behaviour (2026-09-05)
+
+**Symptom** — I asserted, in three design sheets and the Q&A log, that the `← My Matches` link in
+`AllMatchesView` was broken. Mark pushed back: "not sure why is there a bug since default view is
+filtered just on your matches?" He was right.
+
+**Root cause of my error** — I read the route table in `App.tsx`, saw the link's target
+(`/match-schedule/session/:sessionId`) had no `:nameSlug`, saw `PlayerView` only renders
+`ScheduleView` when `nameSlug` is present, and concluded the link could not reach a player's
+schedule. I never opened the component that route actually renders. `PlayerListViewInner`
+(`src/views/PlayerView.tsx:216`) runs an effect on mount that looks up the player's `name_slug` and
+their `session_registrations` row, then `navigate(..., { replace: true })` to their own slug. The
+link round-trips through the picker and lands exactly where the label says.
+
+**Fix** — Corrected in all three sheets and the qa-log, marked as a correction rather than quietly
+edited.
+
+**Rule** — A route tells you what component mounts. It does not tell you what that component does
+on mount. Before calling navigation broken, follow the component: check for redirect effects,
+guards, and `replace` navigations. "The URL lacks a param" is evidence, not a conclusion.
