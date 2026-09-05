@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react'
+import { MatchupBand } from '@/components/MatchBoard'
 import { elapsedSecondsFromStartedAt, formatElapsed } from '@/utils/matchTiming'
 import type { CourtSlot } from '@/lib/courts'
 import type { CourtMatchDisplay } from '@/hooks/useCourtState'
 
 /**
- * The live two-court strip: every court in the session, whether or not the
- * viewer is playing on it.
+ * Every court in the session, one card each, whether or not the viewer is
+ * playing on it.
  *
  * Shared by the match-schedule route and the session detail page. It lived
  * inside PlayerView while only one route used it; the session page linked from
  * a session card had no court overview at all, so a player who was mid-game saw
  * only the court chip on their own card, and once their game finished they saw
  * no court at all.
+ *
+ * A live court renders through `MatchupBand` — the same card the All matches
+ * board uses for "On court now" — so a court looks identical wherever it
+ * appears, and the viewer's own game needs no separate card of its own.
  */
 export function PlayerCourtTabs({
   courts,
@@ -34,67 +39,57 @@ export function PlayerCourtTabs({
     return () => clearInterval(intervalId)
   }, [courts])
 
-  return (
-    <div
-      className="grid gap-2"
-      style={{ gridTemplateColumns: `repeat(${Math.min(Math.max(courts.length, 1), 2)}, minmax(0, 1fr))` }}
-    >
-      {courts.map((court) => {
-        const match = court.current ?? court.next
-        const isPlaying = !!court.current
+  if (isLoading) {
+    return (
+      <div className="space-y-2.5">
+        {courts.map((court) => (
+          <div key={court.courtNumber} className="h-[168px] rounded-2xl bg-muted animate-pulse" />
+        ))}
+      </div>
+    )
+  }
 
+  return (
+    <div>
+      {courts.map((court) => {
+        if (court.current) {
+          return (
+            <MatchupBand
+              key={court.courtNumber}
+              match={{
+                id: court.current.id,
+                gameNumber: court.current.gameNumber,
+                status: 'playing',
+                courtNumber: court.courtNumber,
+                startedAt: court.current.startedAt,
+                winningPairIndex: null,
+                team1: court.current.team1,
+                team2: court.current.team2,
+              }}
+              elapsed={formatElapsed(elapsedByCourt[court.courtNumber] ?? 0)}
+            />
+          )
+        }
+
+        // An idle court still gets a card, so the session always reads as
+        // "two courts" rather than silently shrinking to whatever is running.
         return (
           <div
             key={court.courtNumber}
-            className={`min-h-[7rem] rounded-xl border p-3 ${
-              isPlaying
-                ? 'border-primary/30 bg-[var(--primary-subtle)]'
-                : 'border-border bg-card'
-            }`}
+            className="mb-2.5 rounded-2xl border border-border bg-card p-3"
           >
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="shrink-0 rounded-md bg-muted px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
                 {court.label}
-              </p>
-              <div className="flex items-center gap-2">
-                {isPlaying && (
-                  <>
-                    <span className="text-[0.65rem] font-mono font-semibold text-gold-ink">
-                      {formatElapsed(elapsedByCourt[court.courtNumber] ?? 0)}
-                    </span>
-                    <span className="flex items-center gap-1 text-[0.65rem] font-bold tracking-widest text-red-500">
-                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                      LIVE
-                    </span>
-                  </>
-                )}
-              </div>
+              </span>
             </div>
-
-            {isLoading ? (
-              <div className="space-y-2">
-                <div className="h-4 w-12 rounded bg-muted animate-pulse" />
-                <div className="h-3 w-full rounded bg-muted animate-pulse" />
-                <div className="h-3 w-4/5 rounded bg-muted animate-pulse" />
-              </div>
-            ) : match ? (
-              <div className="space-y-1">
-                {isPlaying && (
-                  <p className="text-[0.65rem] font-bold uppercase tracking-widest text-red-500">Playing</p>
-                )}
-                <p className={`whitespace-nowrap text-xl font-bold ${isPlaying ? 'text-foreground' : 'text-primary'}`}>Game {match.gameNumber}</p>
-                <p className={`truncate text-xs font-medium ${isPlaying ? 'text-foreground' : 'text-primary'}`}>
-                  {match.t1p1} &amp; {match.t1p2}
-                </p>
-                <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">vs</p>
-                <p className={`truncate text-xs font-medium ${isPlaying ? 'text-foreground' : 'text-primary'}`}>
-                  {match.t2p1} &amp; {match.t2p2}
-                </p>
-              </div>
+            {court.next ? (
+              <p className="text-xs text-muted-foreground">
+                Next up — <span className="font-semibold text-foreground">Game {court.next.gameNumber}</span>
+                {' · '}{court.next.t1p1} &amp; {court.next.t1p2} vs {court.next.t2p1} &amp; {court.next.t2p2}
+              </p>
             ) : (
-              <div className="flex h-14 items-center">
-                <p className="text-xs text-muted-foreground">No match</p>
-              </div>
+              <p className="text-xs text-muted-foreground">No match on this court.</p>
             )}
           </div>
         )
