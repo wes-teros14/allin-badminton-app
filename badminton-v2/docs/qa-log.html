@@ -704,6 +704,47 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“There are two different components showing matches — <code>ScheduleView</code> and
+    <code>AllMatchesView</code>.”</p>
+    <p>
+      Three, not two. I missed <code>SessionPlayerDetailView</code>’s <b>Schedule tab</b>
+      (<code>src/views/SessionPlayerDetailView.tsx:189</code>), which is the one a player actually
+      lands on from <code>/sessions/:id</code> — and the only one that shows the GCash QR
+      (<code>:277</code>). So the new board replaced the surface players reach <em>least</em>.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:14px">
+      <tr><td style="padding:6px 10px 6px 0"><code>/sessions/:id</code> · Schedule tab</td>
+          <td style="padding:6px 0"><code>ScheduleTab</code> → <code>GameCard</code> + GCash QR — <b>old</b></td></tr>
+      <tr><td style="padding:6px 10px 6px 0"><code>/match-schedule/session/:id/:nameSlug</code></td>
+          <td style="padding:6px 0"><code>ScheduleView</code> → <code>GameCard</code> — <b>old</b></td></tr>
+      <tr><td style="padding:6px 10px 6px 0"><code>/match-schedule/session/:id?show=all</code></td>
+          <td style="padding:6px 0"><code>AllMatchesView</code> → <code>MatchBoard</code> — <b>new</b></td></tr>
+    </table>
+    <p style="margin-top:10px">
+      The new board is reachable from the Schedule tab via the small <b>All Matches ↗</b> link
+      (<code>:373</code>), but only when <code>sessionStatus !== 'registration_open'</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why do two of those three still use <code>GameCard</code>?</p>
+    <p class="a">
+      Because they answer a different question. <code>ScheduleTab</code> and
+      <code>ScheduleView</code> both read <code>usePlayerSchedule</code>, which returns
+      <em>your</em> games only — typically five, framed as partner and opponents.
+      <code>MatchBoard</code> is built for all twenty, which is what makes its zones, its progress
+      meter and its “Later” bucket worth having.
+    </p>
+    <p class="a">
+      So porting the board across is not a straight swap. A five-row personal list has no “Later”
+      to speak of and a 5-of-5 meter says little. The parts that <em>do</em> carry over cleanly are
+      the pieces that are not about volume: the matchup band, the court chip, the recorded winner,
+      the empty state and the payment banner.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>
