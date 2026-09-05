@@ -136,7 +136,7 @@ export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refr
         </h2>
         {current && (
           <div className="flex items-center gap-3">
-            <span className="text-sm font-mono font-semibold text-[#FFB200]">
+            <span className="text-sm font-mono font-semibold text-gold-ink">
               {formatElapsed(elapsed)}
             </span>
             <span className="flex items-center gap-1.5 text-xs font-bold text-red-500 tracking-widest">
@@ -151,7 +151,7 @@ export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refr
       {isAdmin && confirmingFinish && current ? (
         /* Who Won — takes over the full middle area */
         <div className="flex-1 flex flex-col items-center justify-center gap-4 animate-[court-fade-in_0.3s_ease-out]">
-          <p className="text-2xl font-bold uppercase tracking-widest text-[#FFB200]">Who won?</p>
+          <p className="text-2xl font-bold uppercase tracking-widest text-gold-ink">Who won?</p>
           {splitScoring ? (
             <>
               <button

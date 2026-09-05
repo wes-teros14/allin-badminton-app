@@ -88,8 +88,8 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'schedule_locked') {
     return {
       label: 'Schedule Ready',
-      className: 'border-[#FFB200]/40 bg-[#FFB200]/10 text-[#FFB200]',
-      accentClassName: 'bg-[#FFB200]',
+      className: 'border-gold/40 bg-gold/10 text-gold-ink',
+      accentClassName: 'bg-gold',
       isActive: true,
     }
   }

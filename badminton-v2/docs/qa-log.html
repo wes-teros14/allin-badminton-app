@@ -529,6 +529,69 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Only four tokens break when light mode is switched on.”</p>
+    <p>
+      Wrong, and it shipped a visible bug: the award badges on <code>/profile</code> were
+      unreadable in light mode. Four <em>tokens</em> broke, but I had audited only the tokens.
+      Thirteen colours were written as hardcoded hex directly in <code>className</code>, where no
+      token could reach them.
+    </p>
+    <p>
+      The audit swept for <code>text-white</code>, <code>bg-white</code>, <code>text-black</code>
+      and <code>bg-black</code>. That pattern cannot match a Tailwind arbitrary value like
+      <code>text-[#FEFE6A]</code>, so the entire class was invisible to it. The sweep that finds
+      them is
+      <code>grep -rEo "(text|bg|border|fill|stroke|ring)-\[#[0-9A-Fa-f]{3,8}\]"</code>.
+    </p>
+    <p>
+      <code>#FEFE6A</code> is the live board’s neon yellow and measures <strong>1.01 : 1</strong> on
+      the light page. The six <code>text-[#FFB200]</code> spots in <code>PlayerView</code>,
+      <code>CourtCard</code>, <code>CourtTabs</code> and <code>MySessionsView</code> measure
+      1.79 : 1 and would have been the next bug reports.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why are there two gold tokens now instead of one?</p>
+    <p class="a">
+      Because in light mode one hex cannot do both jobs. As a medal border, gold needs 3 : 1; as
+      lettering it needs 4.5 : 1. A gold dark enough to read as text (<code>#8A5A00</code>,
+      5.58 : 1) is <em>darker than the <code>amber-700</code> bronze</em> sitting below it on the
+      podium, which looks plainly wrong.
+    </p>
+    <p class="a">
+      So <code>--gold</code> stays the medal, border and wash colour (<code>#FFB200</code> dark,
+      <code>#B87A00</code> light) and <code>--gold-ink</code> is its text pair
+      (<code>#FFB200</code> dark, <code>#8A5A00</code> light). In dark mode <code>#FFB200</code>
+      clears both floors on <code>#1A1025</code> at 10.8 : 1, so the two are the same value and the
+      split costs nothing. Rule of thumb: <code>text-gold-ink</code> for gold lettering,
+      <code>gold</code> for everything else.
+    </p>
+    <p class="a">
+      One visible side effect: the award badge in <strong>dark</strong> mode moved from the live
+      board’s neon <code>#FEFE6A</code> to the app’s gold <code>#FFB200</code>, so it now matches
+      the award toast and the podium’s first place instead of being a third yellow.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why did the measured contrast numbers come out wrong twice?</p>
+    <p class="a">
+      Because <code>getComputedStyle(el).color</code> returns <code>oklch(...)</code> in current
+      Chromium, and the check parsed it with a digit regex — so
+      <code>oklch(0.828 0.189 84.429)</code> was read as the RGB triple
+      <code>(0.828, 0.189, 84.429)</code>, producing confident nonsense like “amber-400 is
+      18.56 : 1 on white”. It is 1.72 : 1.
+    </p>
+    <p class="a">
+      The fix is to let the browser convert: paint the computed value into a 1 x 1
+      <code>&lt;canvas&gt;</code> and read <code>getImageData</code>. Worth remembering for any
+      future contrast checking in this repo.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>
