@@ -314,3 +314,37 @@ its own `--muted-foreground: #B39DBB`. Verified in Chromium with `<html>` light.
 **Rule** — In a two-theme app, a token defined in one block but not the other silently resolves to
 the other theme's value. Any scoped block that overrides *some* tokens must define *every* token
 the markup inside it actually resolves.
+
+## Award badges invisible in light mode — the colour audit had a hole (2026-09-05)
+
+**Symptom** — Reported straight after light mode shipped: the award badges on `/profile` were
+unreadable in light mode. Pale yellow text on a near-white page.
+
+**Root cause** — `ProfileView` drew the badge with `text-[#FEFE6A]` / `bg-[#FEFE6A]/10` /
+`border-[#FEFE6A]/30`, hardcoded. `#FEFE6A` is the *live board's* neon yellow — it belongs to
+`.live-board-dark`, where it sits on `#0F0A18`. On the light page it measures **1.01 : 1**.
+
+**Why it got shipped** — The pre-flight audit swept for hardcoded colours with
+`grep -o "text-white|bg-white|text-black|bg-black"` and `white/N|black/N`. That pattern cannot
+match a Tailwind arbitrary value such as `text-[#FEFE6A]`, so the whole class was invisible to the
+check. The right sweep is
+`grep -rEo "(text|bg|border|fill|stroke|ring)-\[#[0-9A-Fa-f]{3,8}\]"`, which found 13 of them —
+including six `text-[#FFB200]` (1.79 : 1 on white) across `PlayerView`, `CourtCard`, `CourtTabs`
+and `MySessionsView` that would have been the next four bug reports.
+
+**Fix** — Split the award gold in two, because one hex genuinely cannot do both jobs in light mode:
+`--gold` stays the medal/border/wash colour (`#B87A00` light, 3.61 : 1, and still lighter than the
+`amber-700` bronze below it on the podium — a text-dark gold would have rendered *darker* than
+bronze), and `--gold-ink` is its text pair (`#8A5A00` light = 5.58 : 1, `#FFB200` dark = 10.79 : 1,
+where one value clears both floors). All 13 hardcoded spots now use `gold` / `gold-ink`, except the
+two `#FEFE6A` notification dots in `TopNavBar`, which sit on the `bg-primary` bar that is purple in
+both themes. Verified by measuring computed colour in Chromium in both themes.
+
+**Two rules worth keeping**
+1. When auditing colours, sweep Tailwind **arbitrary values** (`text-[#...]`), not just named
+   utilities. Hardcoded hex is exactly where theme-awareness goes to die.
+2. Never parse `getComputedStyle(...).color` with a digit regex — current Chromium returns
+   `oklch()` / `oklab()`, and a naive regex silently reads `oklch(0.828 0.189 84.429)` as an RGB
+   triple. It produced confidently wrong contrast numbers twice in this session before being
+   caught. Paint the value into a 1x1 canvas and read `getImageData` instead, so the browser does
+   the conversion.

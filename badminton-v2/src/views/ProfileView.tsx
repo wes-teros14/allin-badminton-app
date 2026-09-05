@@ -432,9 +432,9 @@ export function ProfileView() {
         {awards.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {awards.map(a => (
-              <div key={a.label} className="flex items-center gap-1.5 bg-[#FEFE6A]/10 border border-[#FEFE6A]/30 rounded-full px-3 py-1.5">
+              <div key={a.label} className="flex items-center gap-1.5 bg-gold/10 border border-gold/40 rounded-full px-3 py-1.5">
                 <span className="text-base">{a.emoji}</span>
-                <span className="text-xs font-semibold text-[#FEFE6A]">{a.label}</span>
+                <span className="text-xs font-semibold text-gold-ink">{a.label}</span>
               </div>
             ))}
           </div>
