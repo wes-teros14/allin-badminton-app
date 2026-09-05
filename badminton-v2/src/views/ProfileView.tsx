@@ -4,8 +4,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
-import { fetchEligiblePlayerIds } from '@/lib/boardEligibility'
+import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { cheerSharePct, rankCheerShares } from '@/lib/cheerShare'
+import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
 import { resizeImageFile } from '@/lib/imageResize'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
@@ -20,6 +21,83 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
         {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
       </CardContent>
     </Card>
+  )
+}
+
+/**
+ * What this player is cheered for: their strongest cheer type, and a bar
+ * showing how their received cheers split across all six.
+ *
+ * A share rather than a count, for the same reason the boards are — cheering
+ * is compulsory after every game, so a raw total only says how many matches
+ * someone played. The segments add to 100% by construction: the trigger in
+ * migration 036 increments `cheers_received` and exactly one category per row.
+ */
+function CheerSignature({ stats }: { stats: CheerStats | null }) {
+  if (!stats || stats.cheers_received <= 0) return null
+
+  const signature = signatureCheer(stats)
+  if (!signature) return null
+
+  return (
+    <div>
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+        Cheered for
+      </h2>
+      <Card>
+        <CardContent className="pt-4 pb-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl leading-none" aria-hidden="true">{signature.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-[15px] font-semibold leading-tight">{signature.name}</p>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                of {stats.cheers_received} cheers received
+              </p>
+            </div>
+            <span className="shrink-0 text-[17px] font-bold text-primary tabular-nums">
+              {cheerSharePct(signature.of(stats), stats.cheers_received)}%
+            </span>
+          </div>
+
+          <div
+            className="flex h-2.5 overflow-hidden rounded-full bg-secondary"
+            role="img"
+            aria-label={CHEER_CATEGORIES
+              .filter((c) => c.of(stats) > 0)
+              .map((c) => `${c.name} ${cheerSharePct(c.of(stats), stats.cheers_received)} percent`)
+              .join(', ')}
+          >
+            {CHEER_CATEGORIES.map((category) => {
+              const pct = cheerSharePct(category.of(stats), stats.cheers_received)
+              if (pct <= 0) return null
+              return (
+                <span
+                  key={category.slug}
+                  style={{ width: `${pct}%`, backgroundColor: category.color }}
+                  className="h-full"
+                />
+              )
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+            {CHEER_CATEGORIES.filter((c) => c.of(stats) > 0).map((category) => (
+              <span key={category.slug} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-[2px]"
+                  style={{ backgroundColor: category.color }}
+                  aria-hidden="true"
+                />
+                {category.emoji} {category.name}
+                <span className="font-semibold text-foreground tabular-nums">
+                  {cheerSharePct(category.of(stats), stats.cheers_received)}%
+                </span>
+              </span>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
@@ -139,7 +217,8 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     awards.push({ emoji: '🤝', label: 'Top Good Sport' })
   if (topShare(c => c.solid_effort_received) === userId)
     awards.push({ emoji: '💪', label: 'Top Solid Effort' })
-  if (top(stats.map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
+  // Same carve-out the Awards tab applies: this one award is still a raw count.
+  if (top(stats.filter(s => !ATTENDANCE_AWARD_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
     awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
   if (earlyBirdPlayerId === userId)
     awards.push({ emoji: '🐦', label: 'Registration Early Bird' })
@@ -332,6 +411,9 @@ export function ProfileView() {
         Sign out
       </button>
 
+      {/* What you're cheered for */}
+      <CheerSignature stats={cheerStats} />
+
       {/* Awards */}
       <div>
         <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Awards</h2>
@@ -387,43 +469,6 @@ export function ProfileView() {
             />
           </div>
         ) : null}
-      </div>
-
-      {/* Cheers */}
-      <div>
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Cheers</h2>
-        {cheerStats ? (
-          <div className="grid grid-cols-2 gap-3">
-            {/* The total is the denominator the percentages below are of. It is
-                shown as context, not as a ranking: cheering is compulsory, so
-                the count only says how many matches were played. */}
-            <StatCard
-              label="Cheers received"
-              value={String(cheerStats.cheers_received)}
-              sub="across all types"
-            />
-            {[
-              { label: '⚔️ Fierce Offense',   val: cheerStats.offense_received },
-              { label: '🛡️ Iron Defense',     val: cheerStats.defense_received },
-              { label: '🎯 Smooth Technique', val: cheerStats.technique_received },
-              { label: '💨 Swift Movement',   val: cheerStats.movement_received },
-              { label: '🤝 Good Sport', val: cheerStats.good_sport_received },
-              { label: '💪 Solid Effort', val: cheerStats.solid_effort_received },
-            ]
-              .filter(t => t.val > 0)
-              .map(t => (
-                <StatCard
-                  key={t.label}
-                  label={t.label}
-                  value={`${cheerSharePct(t.val, cheerStats.cheers_received)}%`}
-                  sub={`${t.val} of ${cheerStats.cheers_received}`}
-                />
-              ))
-            }
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No cheers yet — join a session!</p>
-        )}
       </div>
 
     </div>
