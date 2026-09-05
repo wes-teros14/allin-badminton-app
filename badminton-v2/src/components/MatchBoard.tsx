@@ -75,7 +75,7 @@ function MiniBand({ match, size }: { match: BoardMatch; size: number }) {
 }
 
 /** The hero. Two left, two right, a net down the middle — the shape of the game. */
-function MatchupBand({ match, elapsed }: { match: BoardMatch; elapsed: string | null }) {
+export function MatchupBand({ match, elapsed }: { match: BoardMatch; elapsed: string | null }) {
   const court = match.courtNumber ?? 1
   return (
     <div
