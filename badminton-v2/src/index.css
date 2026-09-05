@@ -6,24 +6,24 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    --background: #FFFFFF;
-    --foreground: #18181B;
+    --background: #FAF7FB;
+    --foreground: #1B1220;
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: #1B1220;
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
+    --popover-foreground: #1B1220;
     --primary: #6F3E87;
     --primary-foreground: #ffffff;
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
-    --muted: #6B7280;
-    --muted-foreground: oklch(0.556 0 0);
+    --muted: #F1ECF6;
+    --muted-foreground: #6B5F73;
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
-    --destructive: #DC595E;
-    --border: #E4E4E7;
+    --destructive: #B3252B;
+    --border: #E7E0EC;
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --ring: #6F3E87;
     --chart-1: oklch(0.809 0.105 251.813);
     --chart-2: oklch(0.623 0.214 259.815);
     --chart-3: oklch(0.546 0.245 262.881);
@@ -44,7 +44,7 @@
     --primary-subtle: #EDE0F5;
     --success: #22C55E;
     --muted-surface: #F4F4F6;
-    --gold: #FFB200;
+    --gold: #B87A00;
 }
 
 .dark {
@@ -88,6 +88,7 @@
     --surface: #1A1025;
     --border: #2D1A40;
     --foreground: #FFFFFF;
+    --muted-foreground: #B39DBB;
     --primary: #FEFE6A;
     --primary-foreground: #0F0A18;
 }
@@ -165,6 +166,41 @@
     cursor: pointer;
     opacity: 1;
   }
+}
+
+/* Theme toggle mark (ThemeToggle.tsx). One element in two states: the crescent
+   fills into a disc and throws eight rays, so nothing pops in or out mid-flip.
+   `currentColor` throughout — on the purple nav bar this must inherit white,
+   not --foreground, which is 2.37:1 against #6F3E87. */
+.theme-orb {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: transparent;
+    /* crescent */
+    box-shadow: inset 9px -9px 0 0 currentColor;
+    transform: rotate(-25deg);
+    transition: transform 0.55s cubic-bezier(0.5, -0.3, 0.3, 1.4),
+                box-shadow 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                background 0.35s ease;
+}
+html:not(.dark) .theme-orb {
+    /* disc, plus eight rays laid out as box-shadows */
+    background: currentColor;
+    transform: scale(0.52) rotate(180deg);
+    box-shadow:
+        inset 16px -16px 0 0 transparent,
+        0 -21px 0 -8px currentColor,
+        0 21px 0 -8px currentColor,
+        -21px 0 0 -8px currentColor,
+        21px 0 0 -8px currentColor,
+        -15px -15px 0 -8px currentColor,
+        15px 15px 0 -8px currentColor,
+        -15px 15px 0 -8px currentColor,
+        15px -15px 0 -8px currentColor;
+}
+@media (prefers-reduced-motion: reduce) {
+    .theme-orb { transition: none; }
 }
 
 @utility game-hero {
