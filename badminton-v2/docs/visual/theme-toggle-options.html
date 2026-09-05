@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Theme toggle — pick one</title>
+<style>
+/* ============================================================
+   TOKENS
+   Dark = the app's live tokens (src/index.css .dark).
+   Light = PROPOSED. Nothing here is wired into the app.
+   ============================================================ */
+:root, [data-theme="light"] {
+  --background:#FAF7FB; --card:#FFFFFF; --card-sunken:#F3EEF7;
+  --foreground:#1B1220; --muted-foreground:#6B5F73; --border:#E7E0EC;
+  --primary:#6F3E87; --primary-foreground:#FFFFFF; --primary-subtle:#EDE0F5;
+  --gold:#FFB200; --gold-ink:#8A5A00; --destructive:#B3252B; --success:#157F3D;
+  --shadow-card:0 1px 2px rgba(27,18,32,.06), 0 8px 24px -12px rgba(27,18,32,.18);
+  --grain:.035; --sky-a:#FFE9B8; --sky-b:#FFC46B; --stars:0;
+}
+[data-theme="dark"] {
+  --background:#0F0A18; --card:#1A1025; --card-sunken:#1E1230;
+  --foreground:#FFFFFF; --muted-foreground:#B39DBB; --border:#2D1A40;
+  --primary:#6F3E87; --primary-foreground:#FFFFFF; --primary-subtle:#2D1B42;
+  --gold:#FFB200; --gold-ink:#FFB200; --destructive:#DC595E; --success:#22C55E;
+  --shadow-card:0 1px 0 rgba(255,255,255,.03) inset, 0 12px 32px -16px rgba(0,0,0,.8);
+  --grain:.05; --sky-a:#35215F; --sky-b:#150C28; --stars:1;
+}
+
+/* ============================================================
+   SHEET — specimen/blueprint voice. Georgia against a mono
+   label grid; the phone mock alone uses a UI sans, standing in
+   for Geist Variable (no webfonts — this opens from disk).
+   ============================================================ */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--background); color:var(--foreground);
+  font:400 16px/1.6 Georgia,"Iowan Old Style","Times New Roman",serif;
+  transition:background .5s cubic-bezier(.4,0,.2,1), color .5s cubic-bezier(.4,0,.2,1);
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:9999; pointer-events:none; opacity:var(--grain);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  transition:opacity .5s;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:56px 28px 110px}
+.eyebrow{font:500 11px/1 ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+h1{font:400 clamp(2.2rem,5.5vw,3.3rem)/1.03 Georgia,serif;letter-spacing:-.025em;margin:14px 0 0}
+h1 em{font-style:italic;color:var(--primary)}
+[data-theme="dark"] h1 em{color:#C79BE0}
+.lede{max-width:62ch;margin:16px 0 0;color:var(--muted-foreground);font-size:1.0625rem}
+.rule{height:1px;background:var(--border);border:0;margin:48px 0 0;position:relative}
+.rule::after{content:"";position:absolute;left:0;top:-5px;width:1px;height:11px;background:var(--border)}
+code{font:500 .87em/1 ui-monospace,Menlo,monospace;background:var(--card-sunken);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+h2.sec{font:400 1.6rem/1.2 Georgia,serif;letter-spacing:-.02em;margin:0}
+.sec__no{font:500 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:var(--primary);display:block;margin-bottom:8px}
+[data-theme="dark"] .sec__no{color:#C79BE0}
+
+/* ---------- chooser layout ---------- */
+.chooser{display:grid;grid-template-columns:minmax(0,1fr) 384px;gap:40px;align-items:start;margin-top:30px}
+@media (max-width:900px){.chooser{grid-template-columns:1fr}}
+.group{margin:18px 0 34px}
+.opts{display:grid;gap:10px}
+.opt{
+  display:grid;grid-template-columns:112px 1fr;gap:16px;align-items:center;
+  text-align:left;width:100%;cursor:pointer;
+  background:var(--card);border:1px solid var(--border);border-radius:13px;
+  padding:14px 16px;color:inherit;font:inherit;
+  transition:border-color .2s, background .5s, box-shadow .2s, opacity .2s;
+}
+.opt--wide{grid-template-columns:1fr}
+.opt:hover:not([aria-disabled="true"]){border-color:var(--primary)}
+.opt:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.opt[aria-checked="true"]{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.opt[aria-disabled="true"]{opacity:.4;cursor:not-allowed}
+.opt__demo{display:flex;align-items:center;justify-content:center;min-height:44px}
+.opt__name{font:400 1.05rem/1.25 Georgia,serif;margin:0}
+.opt__why{font-size:.86rem;color:var(--muted-foreground);margin:4px 0 0;line-height:1.5}
+.opt__flag{
+  display:inline-block;margin-top:7px;font:600 9.5px/1.4 ui-monospace,Menlo,monospace;
+  letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;border-radius:5px;
+  background:color-mix(in srgb,var(--destructive) 15%,transparent);color:var(--destructive);
+}
+.opt__flag--ok{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
+
+/* ---------- the three controls ---------- */
+/* 01 nav orb — one element: a crescent that fills into a disc with rays */
+.orb-btn{width:44px;height:44px;flex:none;display:grid;place-items:center;background:transparent;border:0;border-radius:11px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .2s}
+.orb-btn:hover{background:rgba(255,255,255,.16)}
+.orb-btn:focus-visible{outline:2px solid currentColor;outline-offset:-2px}
+.orb-btn:active .orb{transform:scale(.86) rotate(-25deg)}
+.orb{
+  width:22px;height:22px;border-radius:50%;background:transparent;
+  box-shadow:inset 9px -9px 0 0 currentColor; transform:rotate(-25deg);
+  transition:transform .55s cubic-bezier(.5,-0.3,.3,1.4), box-shadow .55s cubic-bezier(.4,0,.2,1), background .35s;
+}
+[data-theme="light"] .orb{
+  background:currentColor; transform:scale(.52) rotate(180deg);
+  box-shadow:inset 16px -16px 0 0 transparent,
+    0 -21px 0 -8px currentColor, 0 21px 0 -8px currentColor,
+    -21px 0 0 -8px currentColor, 21px 0 0 -8px currentColor,
+    -15px -15px 0 -8px currentColor, 15px 15px 0 -8px currentColor,
+    -15px 15px 0 -8px currentColor, 15px -15px 0 -8px currentColor;
+}
+.opt .orb-btn:hover{background:var(--primary-subtle)}
+
+/* 02 shuttle switch — the birdie arcs and tumbles */
+.shuttle{position:relative;width:76px;height:40px;flex:none;border:1px solid var(--border);border-radius:999px;padding:0;background:linear-gradient(160deg,var(--sky-a),var(--sky-b));cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .6s cubic-bezier(.4,0,.2,1),border-color .5s}
+.shuttle:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+.shuttle__stars{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:var(--stars);transition:opacity .5s}
+.shuttle__stars::before{content:"";position:absolute;left:14px;top:12px;width:2px;height:2px;border-radius:50%;background:#fff;box-shadow:8px 12px 0 -.4px #E9D9F5,20px 5px 0 -.6px #C79BE0,31px 19px 0 -.5px #fff,44px 9px 0 -.7px #B39DBB}
+.shuttle__track{position:absolute;left:4px;top:4px;width:32px;height:32px;transform:translateX(36px);transition:transform .5s cubic-bezier(.35,1.5,.4,1)}
+[data-theme="light"] .shuttle__track{transform:translateX(0)}
+.shuttle__arc{display:block;width:100%;height:100%}
+.shuttle.is-flying .shuttle__arc{animation:birdie-arc .5s cubic-bezier(.4,0,.2,1)}
+@keyframes birdie-arc{0%{transform:translateY(0) scale(1)}45%{transform:translateY(-9px) scale(1.06)}100%{transform:translateY(0) scale(1)}}
+.shuttle__disc{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#FFFDF8;box-shadow:0 2px 7px rgba(15,10,24,.45),0 0 0 1px rgba(15,10,24,.06);color:#6F3E87;transform:rotate(0deg);transition:transform .5s cubic-bezier(.35,1.4,.4,1)}
+[data-theme="dark"] .shuttle__disc{transform:rotate(180deg)}
+.shuttle__disc svg{width:21px;height:21px;display:block}
+
+/* 03 tri-state segment */
+.segment{position:relative;display:grid;grid-template-columns:repeat(3,1fr);width:100%;max-width:210px;height:40px;padding:4px;background:var(--card-sunken);border:1px solid var(--border);border-radius:11px;transition:background .5s,border-color .5s}
+.segment__thumb{position:absolute;top:4px;left:4px;height:32px;width:calc((100% - 8px)/3);background:var(--card);border-radius:8px;box-shadow:0 1px 3px rgba(15,10,24,.28);transition:transform .38s cubic-bezier(.35,1.35,.4,1),background .5s}
+.segment[data-choice="auto"] .segment__thumb{transform:translateX(100%)}
+.segment[data-choice="dark"] .segment__thumb{transform:translateX(200%)}
+.segment button{position:relative;z-index:1;border:0;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground);border-radius:8px;-webkit-tap-highlight-color:transparent;transition:color .25s}
+.segment button[aria-checked="true"]{color:var(--foreground)}
+.segment button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* ---------- phone mock ---------- */
+.phone{position:sticky;top:28px}
+.phone__label{font:500 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground);margin:0 0 10px}
+.device{
+  width:384px;max-width:100%;border:1px solid var(--border);border-radius:22px;overflow:hidden;
+  background:var(--background);box-shadow:var(--shadow-card);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  transition:background .5s,border-color .5s;
+}
+/* the nav is bg-primary in BOTH themes — exactly like TopNavBar.tsx */
+.nav{position:relative;background:#6F3E87;color:#fff;padding:9px 10px;display:flex;align-items:center;gap:10px;min-height:58px}
+.nav__logo{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.28);flex:none}
+.nav__tabs{display:flex;gap:14px;flex:1;min-width:0;font-size:13px;font-weight:500}
+.nav__tabs button{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:2px 0;opacity:.68;white-space:nowrap}
+.nav__tabs button[aria-current="page"]{opacity:1;border-bottom:2px solid #fff}
+.nav__burger{background:none;border:0;color:#fff;cursor:pointer;padding:6px;flex:none;opacity:.85;font-size:15px;line-height:1}
+.nav__sheet{position:absolute;top:100%;left:0;right:0;background:#6F3E87;border-top:1px solid rgba(255,255,255,.2);z-index:5;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+.nav__sheet .row{display:flex;align-items:center;min-height:46px;padding:0 16px;color:#fff;opacity:.8;font-size:13px;font-weight:500}
+.nav__sheet .sheetslot{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:8px 16px;border-top:1px solid rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:600;opacity:1}
+
+.screen{padding:14px;display:flex;flex-direction:column;gap:11px;min-height:420px}
+.pcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:15px;box-shadow:var(--shadow-card);transition:background .5s,border-color .5s}
+.pcard__top{display:flex;gap:7px;margin-bottom:9px}
+.pill{font:600 10px/1 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;padding:5px 8px;border-radius:999px}
+.pill--open{background:var(--primary-subtle);color:var(--primary)}
+[data-theme="dark"] .pill--open{color:#DCC2EE}
+.pill--due{background:color-mix(in srgb,var(--destructive) 16%,transparent);color:var(--destructive)}
+.pill--paid{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
+.pcard__title{font-size:15px;font-weight:650;margin:0;letter-spacing:-.01em}
+.pcard__meta{font-size:12.5px;color:var(--muted-foreground);margin:4px 0 0}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 14px;min-height:52px;border:1px solid var(--border);border-radius:11px;font-size:13px;color:var(--muted-foreground);background:transparent;transition:border-color .5s;font-family:inherit}
+.prow--out{color:var(--destructive);border-color:color-mix(in srgb,var(--destructive) 30%,transparent);justify-content:center;cursor:pointer}
+.prow--slot{border-style:dashed;border-color:var(--gold)}
+.prow__label{font-size:13px;font-weight:600;color:var(--foreground)}
+.phead{display:flex;align-items:center;gap:11px;padding:2px 0 6px}
+.phead__av{width:44px;height:44px;border-radius:50%;background:linear-gradient(140deg,var(--primary),#C79BE0);flex:none}
+.phead__name{font-size:16px;font-weight:650;margin:0}
+.phead__sub{font-size:12px;color:var(--muted-foreground);margin:2px 0 0}
+.ghost{font:600 9.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground);margin:8px 2px 0}
+
+/* ---------- readout ---------- */
+.readout{margin-top:36px;border:1px solid var(--primary);border-radius:14px;padding:22px 24px;background:var(--card);transition:background .5s}
+.readout__k{font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground);margin:0}
+.readout__v{font:400 1.35rem/1.35 Georgia,serif;margin:10px 0 0;letter-spacing:-.01em}
+.readout__v b{color:var(--primary);font-weight:400;font-style:italic}
+[data-theme="dark"] .readout__v b{color:#C79BE0}
+.readout__note{font-size:.92rem;color:var(--muted-foreground);margin:12px 0 0;max-width:70ch}
+.readout__files{margin:16px 0 0;padding:0;list-style:none;display:grid;gap:7px}
+.readout__files li{font:500 11.5px/1.6 ui-monospace,Menlo,monospace;color:var(--muted-foreground);letter-spacing:.02em}
+.readout__files b{color:var(--foreground);font-weight:600}
+
+/* ---------- findings ---------- */
+.findings{margin-top:22px;display:grid;gap:14px}
+.finding{border-left:2px solid var(--border);padding:2px 0 2px 16px}
+.finding--warn{border-left-color:var(--gold)}
+.finding--stop{border-left-color:var(--destructive)}
+.finding h3{font:600 12px/1.4 ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;margin:0 0 5px}
+.finding p{margin:0;font-size:.94rem;color:var(--muted-foreground)}
+.swatches{display:flex;flex-wrap:wrap;gap:9px;margin-top:26px}
+.sw{width:60px}
+.sw i{display:block;height:40px;border-radius:8px;border:1px solid var(--border)}
+.sw span{display:block;margin-top:6px;font:500 9px/1.4 ui-monospace,Menlo,monospace;color:var(--muted-foreground);letter-spacing:.03em}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--border);font:500 11px/1.7 ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-foreground)}
+
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">All-In Badminton · Chooser · 2026-09-05 · <b>decided</b></p>
+  <h1>Pick a control, and <em>pick where it lives</em>.</h1>
+  <p class="lede">
+    <strong>Decided:</strong> the <em>nav orb</em>, in an Appearance row above Sign out on
+    My&nbsp;Profile — built and shipped on 2026-09-05. This page is kept as the record of what was
+    considered and why. Every control below is still live, so pressing one repaints the page in the
+    light tokens that actually shipped.
+  </p>
+
+  <hr class="rule">
+
+  <div class="chooser">
+
+    <!-- ============ controls ============ -->
+    <div>
+      <span class="sec__no" style="margin-top:34px">01</span>
+      <h2 class="sec">Which control</h2>
+
+      <div class="group">
+        <div class="opts" role="radiogroup" aria-label="Toggle type" id="typeGroup">
+
+          <div class="opt" role="radio" tabindex="0" data-type="orb" aria-checked="true">
+            <span class="opt__demo">
+              <span class="orb-btn" data-toggle="switch"><span class="orb"></span></span>
+            </span>
+            <span>
+              <p class="opt__name">Nav orb</p>
+              <p class="opt__why">One 44 × 44 icon button. The crescent fills into a disc and throws
+              eight rays — a single element, not an icon swap. Small enough to fit anywhere.</p>
+              <span class="opt__flag" hidden></span>
+            </span>
+          </div>
+
+          <div class="opt" role="radio" tabindex="0" data-type="shuttle" aria-checked="false">
+            <span class="opt__demo">
+              <span class="shuttle" data-toggle="switch">
+                <span class="shuttle__stars"></span>
+                <span class="shuttle__track"><span class="shuttle__arc"><span class="shuttle__disc">
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M5.6 3.9a.7.7 0 0 1 .9-.75L12 4.6l5.5-1.45a.7.7 0 0 1 .9.75L15.6 15.2H8.4z" fill="currentColor"/>
+                    <path d="M12 4.9v10M9.2 4.2 10.4 15M14.8 4.2 13.6 15" stroke="#FFFDF8" stroke-width="1.15" stroke-linecap="round"/>
+                    <circle cx="12" cy="18.6" r="3.4" fill="currentColor"/>
+                  </svg>
+                </span></span></span>
+              </span>
+            </span>
+            <span>
+              <p class="opt__name">Shuttle switch</p>
+              <p class="opt__why">76 × 40. The thumb doesn’t slide — it arcs, dips and tumbles
+              end-over-end, the way a birdie actually flies. Starfield fades to warm sky beneath it.</p>
+              <span class="opt__flag" hidden></span>
+            </span>
+          </div>
+
+          <div class="opt" role="radio" tabindex="0" data-type="segment" aria-checked="false">
+            <span class="opt__demo">
+              <span class="segment" data-choice="dark" data-seg style="max-width:112px">
+                <span class="segment__thumb"></span>
+                <button type="button" data-choice="light" tabindex="-1">L</button>
+                <button type="button" data-choice="auto"  tabindex="-1">A</button>
+                <button type="button" data-choice="dark"  tabindex="-1">D</button>
+              </span>
+            </span>
+            <span>
+              <p class="opt__name">Light / Auto / Dark</p>
+              <p class="opt__why">A full-width segment. The only one that can say “follow my phone”,
+              which is what iOS and Android already schedule at sunset. Needs a whole row.</p>
+              <span class="opt__flag" hidden></span>
+            </span>
+          </div>
+
+        </div>
+      </div>
+
+      <span class="sec__no">02</span>
+      <h2 class="sec">Where it lives</h2>
+
+      <div class="group">
+        <div class="opts" role="radiogroup" aria-label="Location" id="locGroup">
+
+          <div class="opt opt--wide" role="radio" tabindex="0" data-loc="nav" aria-checked="true">
+            <span>
+              <p class="opt__name">Nav bar, right-hand end</p>
+              <p class="opt__why">On every screen, for every signed-in user, one tap from anywhere.
+              The slot is 44 px wide, so only the orb fits — and two states means it can never
+              offer Auto.</p>
+              <span class="opt__flag opt__flag--ok">Orb only</span>
+            </span>
+          </div>
+
+          <div class="opt opt--wide" role="radio" tabindex="0" data-loc="profile" aria-checked="false">
+            <span>
+              <p class="opt__name">My&nbsp;Profile, above Sign&nbsp;out</p>
+              <p class="opt__why">A full-width “Appearance” row sitting with the other account
+              settings, where people already go to change their nickname. Two taps away, fits any
+              control.</p>
+              <span class="opt__flag opt__flag--ok">Any control</span>
+            </span>
+          </div>
+
+          <div class="opt opt--wide" role="radio" tabindex="0" data-loc="both" aria-checked="false">
+            <span>
+              <p class="opt__name">Both — orb in the nav, full control in Profile</p>
+              <p class="opt__why">The orb is the quick flip from anywhere; the profile row owns the
+              real setting, Auto included. One piece of state, two ways into it.</p>
+              <span class="opt__flag opt__flag--ok">Recommended</span>
+            </span>
+          </div>
+
+          <div class="opt opt--wide" role="radio" tabindex="0" data-loc="sheet" aria-checked="false">
+            <span>
+              <p class="opt__name">Inside the hamburger menu</p>
+              <p class="opt__why">Tidy, and out of the way. But that dropdown renders behind
+              <code>hasAdminTabs</code> — it exists only for admins and moderators, so ordinary
+              players would have no way to reach the toggle at all.</p>
+              <span class="opt__flag">Admins only — players locked out</span>
+            </span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ phone ============ -->
+    <div class="phone">
+      <p class="phone__label">Live preview · 384 px · tap the tabs</p>
+      <div class="device">
+        <div class="nav">
+          <span class="nav__logo"></span>
+          <span class="nav__tabs">
+            <button type="button" data-screen="sessions" aria-current="page">Sessions</button>
+            <button type="button" data-screen="profile">My&nbsp;Profile</button>
+          </span>
+          <span id="navSlot"></span>
+          <button class="nav__burger" type="button" id="burger" aria-label="Menu">&#9776;</button>
+          <div class="nav__sheet" id="sheet" hidden>
+            <div class="row">Admin</div>
+            <div class="row">Players</div>
+            <div class="row">Finance</div>
+            <div class="sheetslot"><span>Appearance</span><span id="sheetSlot"></span></div>
+          </div>
+        </div>
+
+        <!-- sessions screen -->
+        <div class="screen" id="screenSessions">
+          <div class="pcard">
+            <div class="pcard__top">
+              <span class="pill pill--open">Registration open</span>
+              <span class="pill pill--due">Unpaid</span>
+            </div>
+            <p class="pcard__title">Thursday Night · Court 3</p>
+            <p class="pcard__meta">Sep 11, 2026 · 16 players · 20 matches</p>
+          </div>
+          <div class="pcard">
+            <div class="pcard__top">
+              <span class="pill pill--open">Registration closed</span>
+              <span class="pill pill--paid">Paid</span>
+            </div>
+            <p class="pcard__title">Sunday Morning · Courts 1–2</p>
+            <p class="pcard__meta">Sep 7, 2026 · 16 players · 20 matches</p>
+          </div>
+          <p class="ghost">Schedule locked · 2 more sessions</p>
+        </div>
+
+        <!-- profile screen -->
+        <div class="screen" id="screenProfile" hidden>
+          <div class="phead">
+            <span class="phead__av"></span>
+            <span>
+              <p class="phead__name">Alexis Cruz</p>
+              <p class="phead__sub">12 sessions · 72.4% win rate</p>
+            </span>
+          </div>
+          <div class="prow"><span>Nickname: <b class="prow__label">Lexi</b></span><span>edit</span></div>
+          <div class="prow prow--slot" id="profileSlot"><span class="prow__label">Appearance</span></div>
+          <button class="prow prow--out" type="button">Sign out</button>
+          <p class="ghost">What you’re cheered for</p>
+          <div class="pcard">
+            <p class="pcard__title" style="font-size:13px">Best Smash · 40%</p>
+            <p class="pcard__meta">12 of 30 cheers received</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ readout ============ -->
+  <div class="readout">
+    <p class="readout__k">Your pick</p>
+    <p class="readout__v" id="readout">—</p>
+    <p class="readout__note" id="readoutNote"></p>
+    <ul class="readout__files" id="readoutFiles"></ul>
+  </div>
+
+  <hr class="rule">
+
+  <span class="sec__no" style="margin-top:36px">03</span>
+  <h2 class="sec">What light mode costs, whichever you pick</h2>
+  <p class="lede" style="margin-top:12px">
+    The <code>:root</code> block in <code>src/index.css</code> is shadcn’s stock light default with
+    the brand purple dropped in. It has never once rendered, and four tokens break the moment it does.
+  </p>
+
+  <div class="findings">
+    <div class="finding finding--stop">
+      <h3>--muted swaps role between the two blocks</h3>
+      <p>Light defines <code>--muted: #6B7280</code>, a mid-grey <em>text</em> colour. Dark defines
+      <code>--muted: #1E1230</code>, a <em>surface</em>. Every <code>bg-muted</code> in the app turns
+      into a grey slab the first time light mode is used. A bug, not a taste call.</p>
+    </div>
+    <div class="finding finding--stop">
+      <h3>--gold on white is 1.8 : 1</h3>
+      <p><code>#FFB200</code> against white measures 1.81 : 1, far under the 4.5 : 1 floor — the
+      podium’s first place would vanish. Keep <code>#FFB200</code> as the medal fill and add
+      <code>--gold-ink: #8A5A00</code> (5.94 : 1) for anything that is text.</p>
+    </div>
+    <div class="finding finding--warn">
+      <h3>--destructive and --success both fail on white</h3>
+      <p><code>#DC595E</code> hits 3.71 : 1 and <code>#22C55E</code> roughly 2.2 : 1. Darkened here
+      for light mode only, to <code>#B3252B</code> (6.55 : 1) and <code>#157F3D</code> (5.09 : 1).
+      Their dark-mode values are untouched.</p>
+    </div>
+    <div class="finding finding--warn">
+      <h3>The nav bar is purple in both themes</h3>
+      <p><code>TopNavBar</code> is <code>bg-primary text-primary-foreground</code> and
+      <code>--primary</code> is <code>#6F3E87</code> in both blocks — so the bar itself needs no
+      light-mode work, but the orb must draw in <code>currentColor</code>, never
+      <code>var(--foreground)</code>, which would be 2.37 : 1 on that purple.</p>
+    </div>
+    <div class="finding">
+      <h3>--primary is safe in both</h3>
+      <p><code>#6F3E87</code> measures 7.69 : 1 against white and the same against its own white
+      foreground. It carries across unchanged, which is why the app still looks like itself above.</p>
+    </div>
+  </div>
+
+  <div class="swatches" aria-label="Proposed light palette">
+    <div class="sw"><i style="background:#FAF7FB"></i><span>bg<br>FAF7FB</span></div>
+    <div class="sw"><i style="background:#FFFFFF"></i><span>card<br>FFFFFF</span></div>
+    <div class="sw"><i style="background:#F3EEF7"></i><span>sunken<br>F3EEF7</span></div>
+    <div class="sw"><i style="background:#E7E0EC"></i><span>border<br>E7E0EC</span></div>
+    <div class="sw"><i style="background:#6B5F73"></i><span>muted-fg<br>6B5F73</span></div>
+    <div class="sw"><i style="background:#1B1220"></i><span>fg<br>1B1220</span></div>
+    <div class="sw"><i style="background:#6F3E87"></i><span>primary<br>6F3E87</span></div>
+    <div class="sw"><i style="background:#8A5A00"></i><span>gold-ink<br>8A5A00</span></div>
+    <div class="sw"><i style="background:#B3252B"></i><span>destructive<br>B3252B</span></div>
+    <div class="sw"><i style="background:#157F3D"></i><span>success<br>157F3D</span></div>
+  </div>
+
+  <footer>
+    Decision record · docs/visual/theme-toggle-options.html · shipped 2026-09-05
+  </footer>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+  var state = { type: 'orb', loc: 'nav', choice: 'dark', screen: 'sessions' };
+
+  /* which controls physically fit which slot */
+  var FITS = {
+    nav:     ['orb'],
+    profile: ['orb', 'shuttle', 'segment'],
+    both:    ['shuttle', 'segment'],          /* the nav always gets the orb; this picks the profile control */
+    sheet:   ['orb', 'shuttle', 'segment']
+  };
+  var DENIED = {
+    nav:  { shuttle: 'Needs 76 px — the nav slot is 44',
+            segment: 'Needs a full row — no space in the nav' },
+    both: { orb:     'The nav already has the orb — pick the profile control' }
+  };
+
+  /* ---------- control factories ---------- */
+  function makeOrb() {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'orb-btn';
+    b.setAttribute('role', 'switch'); b.dataset.toggle = 'switch';
+    b.innerHTML = '<span class="orb" aria-hidden="true"></span>';
+    return b;
+  }
+  function makeShuttle() {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'shuttle';
+    b.setAttribute('role', 'switch'); b.dataset.toggle = 'switch';
+    b.innerHTML =
+      '<span class="shuttle__stars" aria-hidden="true"></span>' +
+      '<span class="shuttle__track"><span class="shuttle__arc"><span class="shuttle__disc">' +
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<path d="M5.6 3.9a.7.7 0 0 1 .9-.75L12 4.6l5.5-1.45a.7.7 0 0 1 .9.75L15.6 15.2H8.4z" fill="currentColor"/>' +
+      '<path d="M12 4.9v10M9.2 4.2 10.4 15M14.8 4.2 13.6 15" stroke="#FFFDF8" stroke-width="1.15" stroke-linecap="round"/>' +
+      '<circle cx="12" cy="18.6" r="3.4" fill="currentColor"/></svg>' +
+      '</span></span></span>';
+    return b;
+  }
+  function makeSegment() {
+    var d = document.createElement('div');
+    d.className = 'segment'; d.dataset.seg = '';
+    d.setAttribute('role', 'radiogroup'); d.setAttribute('aria-label', 'Appearance');
+    d.innerHTML =
+      '<span class="segment__thumb" aria-hidden="true"></span>' +
+      '<button type="button" role="radio" data-choice="light">Light</button>' +
+      '<button type="button" role="radio" data-choice="auto">Auto</button>' +
+      '<button type="button" role="radio" data-choice="dark">Dark</button>';
+    return d;
+  }
+  function makeControl(kind) {
+    if (kind === 'orb') return makeOrb();
+    if (kind === 'shuttle') return makeShuttle();
+    return makeSegment();
+  }
+
+  /* ---------- theme state ---------- */
+  function resolved() {
+    return state.choice === 'auto' ? (mq.matches ? 'dark' : 'light') : state.choice;
+  }
+  function flip(el) {
+    state.choice = resolved() === 'dark' ? 'light' : 'dark';
+    if (el.classList.contains('shuttle')) {
+      el.classList.remove('is-flying'); void el.offsetWidth; el.classList.add('is-flying');
+    }
+    paint();
+  }
+  function bind(scope) {
+    scope.querySelectorAll('[data-toggle="switch"]').forEach(function (el) {
+      if (el.dataset.bound) return; el.dataset.bound = '1';
+      el.addEventListener('click', function (e) { e.stopPropagation(); flip(el); });
+    });
+    scope.querySelectorAll('[data-seg] button').forEach(function (b) {
+      if (b.dataset.bound) return; b.dataset.bound = '1';
+      b.addEventListener('click', function (e) {
+        e.stopPropagation(); state.choice = b.dataset.choice; paint();
+      });
+    });
+  }
+
+  /* ---------- phone ---------- */
+  var navSlot = document.getElementById('navSlot');
+  var sheetSlot = document.getElementById('sheetSlot');
+  var profileSlot = document.getElementById('profileSlot');
+  var sheet = document.getElementById('sheet');
+
+  function buildPhone() {
+    navSlot.innerHTML = '';
+    sheetSlot.innerHTML = '';
+    profileSlot.querySelectorAll('.mount').forEach(function (n) { n.remove(); });
+
+    function mount(host, node, white) {
+      var w = document.createElement('span');
+      w.className = 'mount';
+      w.style.display = 'flex'; w.style.alignItems = 'center';
+      if (white) w.style.color = '#fff';
+      w.appendChild(node); host.appendChild(w);
+    }
+
+    if (state.loc === 'nav' || state.loc === 'both') mount(navSlot, makeOrb(), true);
+    if (state.loc === 'profile' || state.loc === 'both') mount(profileSlot, makeControl(state.type));
+    if (state.loc === 'sheet') mount(sheetSlot, makeControl(state.type), true);
+
+    profileSlot.hidden = (state.loc === 'nav' || state.loc === 'sheet');
+    sheet.hidden = !(state.loc === 'sheet');
+    bind(document);
+  }
+
+  /* ---------- readout ---------- */
+  var TYPE_NAME = { orb: 'Nav orb', shuttle: 'Shuttle switch', segment: 'Light / Auto / Dark segment' };
+  var LOC_NAME = {
+    nav: 'the nav bar', profile: 'My Profile, above Sign out',
+    both: 'the nav bar and My Profile', sheet: 'the hamburger menu'
+  };
+  var NOTES = {
+    nav: 'Reachable from every screen, but two states only — it can never mean “follow my phone”.',
+    profile: 'Two taps from anywhere, sitting with the other account settings. Fits any control.',
+    both: 'The orb is the quick flip; the profile row owns the real setting, Auto included. One piece of state, two ways in.',
+    sheet: 'Careful — that dropdown is behind hasAdminTabs, so ordinary players would never see the toggle at all.'
+  };
+  var FILES = {
+    nav:     [['src/components/TopNavBar.tsx:145', 'new slot between the tab list and the hamburger']],
+    profile: [['src/views/ProfileView.tsx:405', 'new Appearance row above the Sign out button']],
+    both:    [['src/components/TopNavBar.tsx:145', 'orb slot'],
+              ['src/views/ProfileView.tsx:405', 'Appearance row']],
+    sheet:   [['src/components/TopNavBar.tsx:139', 'new row inside the admin dropdown']]
+  };
+  var COMMON = [
+    ['index.html:2', 'drop the hard-coded class="dark"; read the stored choice before first paint'],
+    ['src/contexts/ThemeContext.tsx', 'new — holds the choice, writes the class, persists it'],
+    ['src/index.css :root', 'fix --muted, add --gold-ink, darken --destructive and --success']
+  ];
+
+  function paintReadout() {
+    var label = state.loc === 'both' ? 'Nav orb + ' + TYPE_NAME[state.type] : TYPE_NAME[state.type];
+    document.getElementById('readout').innerHTML = '<b>' + label + '</b>, in ' + LOC_NAME[state.loc] + '.';
+    document.getElementById('readoutNote').textContent = NOTES[state.loc];
+    var ul = document.getElementById('readoutFiles');
+    ul.innerHTML = '';
+    FILES[state.loc].concat(COMMON).forEach(function (f) {
+      var li = document.createElement('li');
+      li.innerHTML = '<b>' + f[0] + '</b> &mdash; ' + f[1];
+      ul.appendChild(li);
+    });
+  }
+
+  /* ---------- paint ---------- */
+  function paint() {
+    var theme = resolved();
+    root.setAttribute('data-theme', theme);
+    var isDark = theme === 'dark';
+
+    document.querySelectorAll('[data-toggle="switch"]').forEach(function (el) {
+      el.setAttribute('aria-checked', String(isDark));
+      el.setAttribute('aria-label', isDark ? 'Dark mode' : 'Light mode');
+    });
+    document.querySelectorAll('[data-seg]').forEach(function (seg) {
+      seg.dataset.choice = state.choice === 'auto' ? 'auto' : (isDark ? 'dark' : 'light');
+      seg.querySelectorAll('button').forEach(function (b) {
+        b.setAttribute('aria-checked', String(b.dataset.choice === seg.dataset.choice));
+      });
+    });
+
+    document.querySelectorAll('#typeGroup .opt').forEach(function (o) {
+      var ok = FITS[state.loc].indexOf(o.dataset.type) !== -1;
+      o.setAttribute('aria-disabled', String(!ok));
+      o.setAttribute('aria-checked', String(ok && o.dataset.type === state.type));
+      var flag = o.querySelector('.opt__flag');
+      var why = (DENIED[state.loc] || {})[o.dataset.type];
+      if (why) { flag.textContent = why; flag.hidden = false; } else { flag.hidden = true; }
+    });
+    document.querySelectorAll('#locGroup .opt').forEach(function (o) {
+      o.setAttribute('aria-checked', String(o.dataset.loc === state.loc));
+    });
+
+    paintReadout();
+  }
+
+  /* ---------- input ---------- */
+  function activate(o, fn) {
+    o.addEventListener('click', fn);
+    o.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); }
+    });
+  }
+  document.querySelectorAll('#typeGroup .opt').forEach(function (o) {
+    activate(o, function () {
+      if (o.getAttribute('aria-disabled') === 'true') return;
+      state.type = o.dataset.type; buildPhone(); paint();
+    });
+  });
+  document.querySelectorAll('#locGroup .opt').forEach(function (o) {
+    activate(o, function () {
+      state.loc = o.dataset.loc;
+      if (FITS[state.loc].indexOf(state.type) === -1) state.type = FITS[state.loc][0];
+      if (state.loc === 'profile' || state.loc === 'both') state.screen = 'profile';
+      if (state.loc === 'nav' || state.loc === 'sheet') state.screen = 'sessions';
+      showScreen(); buildPhone(); paint();
+    });
+  });
+
+  function showScreen() {
+    document.querySelectorAll('.nav__tabs button').forEach(function (x) {
+      if (x.dataset.screen === state.screen) x.setAttribute('aria-current', 'page');
+      else x.removeAttribute('aria-current');
+    });
+    document.getElementById('screenSessions').hidden = state.screen !== 'sessions';
+    document.getElementById('screenProfile').hidden = state.screen !== 'profile';
+  }
+
+  document.querySelectorAll('.nav__tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.screen = b.dataset.screen; showScreen(); buildPhone(); paint();
+    });
+  });
+  document.getElementById('burger').addEventListener('click', function () {
+    sheet.hidden = !sheet.hidden;
+  });
+  mq.addEventListener('change', function () { if (state.choice === 'auto') paint(); });
+
+  bind(document);
+  showScreen();
+  buildPhone();
+  paint();
+})();
+</script>
+</body>
+</html>

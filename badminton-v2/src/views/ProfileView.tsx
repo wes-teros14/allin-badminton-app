@@ -10,6 +10,8 @@ import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
 import { resizeImageFile } from '@/lib/imageResize'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { useTheme } from '@/contexts/ThemeContext'
 import { Camera } from 'lucide-react'
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -230,6 +232,7 @@ export function ProfileView() {
   const { user, isLoading: authLoading } = useAuth()
   const { stats, isLoading: statsLoading, refresh } = useProfileStats(user?.id)
   const { markAllRead } = useNotifications()
+  const { theme } = useTheme()
   const [nickname, setNickname] = useState('')
   const [editingNickname, setEditingNickname] = useState(false)
   const [savingNickname, setSavingNickname] = useState(false)
@@ -401,6 +404,15 @@ export function ProfileView() {
             <span className="text-muted-foreground text-xs">edit</span>
           </button>
         )}
+      </div>
+
+      {/* Appearance */}
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-border py-1.5 pl-4 pr-1.5">
+        <div className="min-w-0">
+          <p className="text-sm text-foreground">Appearance</p>
+          <p className="text-xs text-muted-foreground">{theme === 'dark' ? 'Dark' : 'Light'}</p>
+        </div>
+        <ThemeToggle />
       </div>
 
       {/* Sign out */}

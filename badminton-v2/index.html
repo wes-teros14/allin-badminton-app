@@ -1,10 +1,25 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/PP-logo-trans.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Badminton Tayo</title>
+    <script>
+      // Applied before first paint so a light-mode player never sees a dark flash.
+      // Dark stays the default — this must match readStoredTheme() in
+      // src/contexts/ThemeContext.tsx. Change one, change the other.
+      (function () {
+        var theme = 'dark'
+        try {
+          if (localStorage.getItem('badminton-theme') === 'light') theme = 'light'
+        } catch (e) {
+          /* private mode — fall back to dark */
+        }
+        if (theme === 'dark') document.documentElement.classList.add('dark')
+        document.documentElement.style.colorScheme = theme
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>
