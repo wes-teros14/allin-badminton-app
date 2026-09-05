@@ -12,7 +12,7 @@ import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useSessionReceipts, signReceiptUrls, type SessionReceipt } from '@/hooks/useSessionReceipts'
-import { PersonalGameCard } from '@/components/MatchBoard'
+import { PersonalGameCard, SessionProgress } from '@/components/MatchBoard'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { ReceiptUploadDialog } from '@/components/ReceiptUploadDialog'
@@ -211,7 +211,7 @@ function ScheduleTab({
   registrationOpensAt: string | null
   onRegister: () => void
 }) {
-  const { matches, playerDisplayName, playerAvatarUrl, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, refresh } = usePlayerSchedule(nameSlug, sessionId)
+  const { matches, playerDisplayName, playerAvatarUrl, sessionMatchTotal, sessionMatchPlayed, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, refresh } = usePlayerSchedule(nameSlug, sessionId)
   const { status } = useRealtime(resolvedId, refresh)
   const { phoneNumber, qrCodeUrl } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
@@ -388,7 +388,14 @@ function ScheduleTab({
         </div>
       )}
 
-      <div className="max-w-sm mx-auto px-4 py-4 flex flex-col gap-3">
+      <div className="max-w-sm mx-auto px-4 py-4">
+        <SessionProgress
+          sessionPlayed={sessionMatchPlayed}
+          sessionTotal={sessionMatchTotal}
+          yourPlayed={matches.filter((m) => m.status === 'complete').length}
+          yourTotal={matches.length}
+        />
+
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-[86px] rounded-xl bg-muted animate-pulse" />
@@ -406,6 +413,7 @@ function ScheduleTab({
                 you={playerDisplayName}
                 yourAvatarUrl={playerAvatarUrl}
                 isNextUp={i === firstQueuedIndex}
+                promote={!playingMatch && i === firstQueuedIndex}
               />
             ))}
       </div>
