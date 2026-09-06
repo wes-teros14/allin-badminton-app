@@ -2,7 +2,7 @@ import { Avatar } from '@/components/Avatar'
 import type { PaymentState } from '@/lib/paymentState'
 
 /**
- * The All Matches board.
+ * The All Games board.
  *
  * Sorted by state, not by number: whatever is on court renders as a full
  * 2-versus-2 band, the next few as medium rows, the rest as one-liners, and
@@ -31,7 +31,12 @@ export interface BoardMatch {
   team2: BoardPlayer[]
 }
 
-const UP_NEXT_COUNT = 3
+/**
+ * How many games the in-play "Up next" zone previews. Before the session starts
+ * the zone is sized by the session's court count instead — exactly the games
+ * that go on at the opening whistle, no more.
+ */
+const UP_NEXT_PREVIEW = 3
 
 // ---------------------------------------------------------------------------
 // Small pieces
@@ -95,7 +100,10 @@ export function MatchupBand({ match, elapsed }: { match: BoardMatch; elapsed: st
         </span>
       </div>
 
-      <p className="mb-2.5 text-center font-mono text-[11px] font-bold tracking-[0.08em] text-muted-foreground">
+      {/* "Game N" is what a player scans a court card for, so it outranks
+          everything else on the card — full contrast and the largest text here,
+          not the 11 px muted caption it used to be. */}
+      <p className="mb-2.5 text-center font-mono text-[20px] font-bold leading-none tracking-[0.01em] tabular-nums text-foreground">
         Game {match.gameNumber}
       </p>
 
@@ -247,7 +255,7 @@ export function BoardHeader({
     <>
       {/* The title row stays clear of the top-right corner: LiveIndicator is
           absolutely positioned there and its offline state is a full button. */}
-      <h1 className="text-[17px] font-semibold tracking-[-0.01em] pr-24">{sessionName || 'All matches'}</h1>
+      <h1 className="text-[17px] font-semibold tracking-[-0.01em] pr-24">{sessionName || 'All Games'}</h1>
       {(formattedDate || statusLabel || venue) && (
         <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {[formattedDate, statusLabel, venue].filter(Boolean).join(' · ')}
@@ -310,19 +318,39 @@ export function NoScheduleYet({ paymentState, registered }: { paymentState: Paym
 export function MatchBoard({
   matches,
   sessionStarted,
+  courtCount,
+  playerFiltered = false,
   elapsedByMatchId,
 }: {
   matches: BoardMatch[]
   /** Before the session starts nothing is "next" and no court is open. */
   sessionStarted: boolean
+  /** `sessions.court_count`. Decides how many games open the night. */
+  courtCount: number
+  /**
+   * True when the list has been narrowed to one player. The zones then describe
+   * that player's games rather than the session, so they are collapsed into a
+   * single "Upcoming" list — see the comment on `grouped` below.
+   */
+  playerFiltered?: boolean
   elapsedByMatchId: Record<string, string>
 }) {
   const live = matches.filter((m) => m.status === 'playing')
   const queued = matches.filter((m) => m.status === 'queued')
   const played = matches.filter((m) => m.status === 'complete')
 
-  const upNext = queued.slice(0, UP_NEXT_COUNT)
-  const later = queued.slice(UP_NEXT_COUNT)
+  // Two courts means two games start together, so "Starts with" holds two — a
+  // fixed three claimed a third game was on court when it was still waiting.
+  const openingCount = Math.max(1, courtCount)
+  const zoneSize = sessionStarted ? UP_NEXT_PREVIEW : openingCount
+
+  // The zones rank games against the whole session's queue. Filtered to one
+  // player they lie: that player's first two games are not "first on court"
+  // unless they happen to be games 1 and 2 of the night. So a filtered list is
+  // one flat "Upcoming" run, in queue order, with no position captions.
+  const grouped = !playerFiltered
+  const upNext = grouped ? queued.slice(0, zoneSize) : queued
+  const later = grouped ? queued.slice(zoneSize) : []
   const allDone = played.length > 0 && queued.length === 0 && live.length === 0
 
   return (
@@ -338,7 +366,10 @@ export function MatchBoard({
 
       {upNext.length > 0 && (
         <section className="mt-5">
-          <ZoneHeading label={sessionStarted ? 'Up next' : 'Starts with'} count={upNext.length} />
+          <ZoneHeading
+            label={grouped ? (sessionStarted ? 'Up next' : 'Starts with') : 'Upcoming'}
+            count={upNext.length}
+          />
           {upNext.map((m, i) => (
             <div key={m.id} className="mb-1.5 flex items-center gap-2.5 rounded-xl border border-border bg-card p-2.5">
               <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-muted font-mono text-xs font-bold text-muted-foreground">
@@ -349,11 +380,13 @@ export function MatchBoard({
                 <p className="mt-1.5 truncate text-xs font-semibold">
                   {pairNames(m.team1)} vs {pairNames(m.team2)}
                 </p>
-                <p className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
-                  {sessionStarted
-                    ? i === 0 ? 'First open court' : `${i + 1} games away`
-                    : i === 0 ? 'First on court' : `Game ${i + 1} of the night`}
-                </p>
+                {grouped && (
+                  <p className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
+                    {sessionStarted
+                      ? i === 0 ? 'First open court' : `${i + 1} games away`
+                      : 'First on court'}
+                  </p>
+                )}
               </div>
             </div>
           ))}

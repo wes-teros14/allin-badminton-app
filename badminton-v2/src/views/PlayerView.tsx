@@ -32,6 +32,7 @@ interface SessionMeta {
   status: string | null
   venue: string | null
   price: number | null
+  court_count: number | null
 }
 
 export function PlayerView() {
@@ -232,7 +233,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
     setIsLoading(true)
     async function load() {
       const { data: sess } = await supabase
-        .from('sessions').select('name, date, status, venue, price').eq('id', sessionId).maybeSingle()
+        .from('sessions').select('name, date, status, venue, price, court_count').eq('id', sessionId).maybeSingle()
       if (cancelled) return
       if (sess) setSession(sess as SessionMeta)
 
@@ -350,7 +351,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
               to={`/match-schedule/session/${sessionId}`}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              ← My Matches
+              ← My Games
             </Link>
           </div>
         )}
@@ -388,7 +389,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
         ) : matches.length === 0 ? (
           <NoScheduleYet paymentState={paymentState} registered={registration != null} />
         ) : (
-          <MatchBoard matches={visible} sessionStarted={sessionStarted} elapsedByMatchId={elapsedByMatchId} />
+          <MatchBoard matches={visible} sessionStarted={sessionStarted} courtCount={session?.court_count ?? 2} playerFiltered={selectedPlayer !== ''} elapsedByMatchId={elapsedByMatchId} />
         )}
       </div>
     </div>
@@ -448,7 +449,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             to={`/match-schedule/session/${sessionId}?show=all`}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            All Matches ↗
+            All Games
           </Link>
         </div>
       )}
