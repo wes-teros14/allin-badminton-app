@@ -4,7 +4,8 @@ Updated: 2026-09-06. Overwrite this file on every update; it is never a running 
 
 ## Just done this session
 
-Naming + court-count fixes on the player match screens. **Committed? No — working tree only.**
+Naming + zone fixes on the player match screens. **Pushed**: `origin/dev` = `f3c07f7`,
+`origin/main` = `a249c38` (non-ff merge). Five commits, split by concern.
 
 - **Tabs on `/sessions/:id` renamed**: `Schedule` → **My Games**, `All matches` → **All Games**
   (`SessionPlayerDetailView.tsx`, `TAB_LABELS`).
@@ -35,7 +36,7 @@ himself.
 
 ## Recently landed (previous sessions, merged and pushed)
 
-`origin/dev` = `d2353d4`. Light mode + theme toggle (`ThemeProvider`, pre-paint script, `--gold` /
+Light mode + theme toggle (`ThemeProvider`, pre-paint script, `--gold` /
 `--gold-ink` split, all 13 hardcoded hex in `className` tokenised). All Matches board rebuilt as
 `src/components/MatchBoard.tsx` (state-sorted zones, court numbers, progress meter, empty state,
 payment banner); `GameCard`/`StatusChip` deleted. Podium + dense ranks on every ranked board; cheer
@@ -57,7 +58,11 @@ boards scored by share behind a switcher; pair eligibility unified in `lib/board
 
 ## Immediate next steps
 
-1. Commit and push this session's changes to `dev`.
+1. **Chase the stale-game bug Mark reported** on `/session/cb4ba170-…` — one surface kept showing
+   game 2 after game 3 went live. He was asked which pair of screens (`/admin` vs `/session/:id`, or
+   `/session/:id` vs `/sessions/:id`) and had not answered. First suspicion: the realtime
+   subscription on the stale surface not fanning out to every read, same shape as the court-strip
+   bug from the previous session.
 2. Open the board on a real phone with real data, especially a live session.
 3. Decide on the `Avatar` fallback and the light-hostile palette list above.
 4. Delete the merged `006-pair-winrate-leaderboard` branch.
@@ -74,5 +79,9 @@ boards scored by share behind a switcher; pair eligibility unified in `lib/board
 - Should the two `tasks/lessons.md` files be consolidated into the root one?
 - `--muted-surface` is defined only in `:root`, never in `.dark`, so it resolves near-white in dark
   mode. Nothing in `src/` uses it — fix the token or delete it?
+- **Should the uncommitted `CLAUDE.md` additions be committed?** 149 lines adding the Q&A-log rule,
+  Self-learning, LESSONS, `.env`, Deciding the Code Approach, Session memory, Visual Explanations
+  and Plain Language Recap. Left out of every push so far per the "in-progress CLAUDE.md" convention,
+  but they read as finished.
 - A community post announcing the cheers revamp **and** the theme was drafted in the 2026-09-06 chat
   but never saved to a file. Ask for it again if still wanted.
