@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Paperclip, Trash2 } from 'lucide-react'
 import { computeStatsFromResults } from '@/lib/matchResults'
@@ -470,17 +470,6 @@ function ScheduleTab({
         </div>
       )}
 
-      {!isLoading && resolvedId && sessionStatus !== 'registration_open' && (
-        <div className="flex justify-end px-4 mt-2">
-          <Link
-            to={`/match-schedule/session/${resolvedId}?show=all`}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            All Matches ↗
-          </Link>
-        </div>
-      )}
-
       {!isLoading && (playingMatch || (nextUpMatch && nextUpMatch.gameNumber <= 2)) && (
         <div className={`mx-4 mt-3 mb-1 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 ${
           playingMatch ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
@@ -607,8 +596,8 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
 type Tab = 'schedule' | 'allmatches' | 'leaderboard'
 
 const TAB_LABELS: Record<Tab, string> = {
-  schedule: 'Schedule',
-  allmatches: 'All matches',
+  schedule: 'My Games',
+  allmatches: 'All Games',
   leaderboard: 'Leaderboard',
 }
 

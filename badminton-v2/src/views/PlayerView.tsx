@@ -350,7 +350,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
               to={`/match-schedule/session/${sessionId}`}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              ← My Matches
+              ← My Games
             </Link>
           </div>
         )}
@@ -448,7 +448,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
             to={`/match-schedule/session/${sessionId}?show=all`}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            All Matches ↗
+            All Games
           </Link>
         </div>
       )}

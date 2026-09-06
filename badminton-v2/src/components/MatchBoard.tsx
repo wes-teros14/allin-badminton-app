@@ -2,7 +2,7 @@ import { Avatar } from '@/components/Avatar'
 import type { PaymentState } from '@/lib/paymentState'
 
 /**
- * The All Matches board.
+ * The All Games board.
  *
  * Sorted by state, not by number: whatever is on court renders as a full
  * 2-versus-2 band, the next few as medium rows, the rest as one-liners, and
@@ -247,7 +247,7 @@ export function BoardHeader({
     <>
       {/* The title row stays clear of the top-right corner: LiveIndicator is
           absolutely positioned there and its offline state is a full button. */}
-      <h1 className="text-[17px] font-semibold tracking-[-0.01em] pr-24">{sessionName || 'All matches'}</h1>
+      <h1 className="text-[17px] font-semibold tracking-[-0.01em] pr-24">{sessionName || 'All Games'}</h1>
       {(formattedDate || statusLabel || venue) && (
         <p className="mt-1 font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {[formattedDate, statusLabel, venue].filter(Boolean).join(' · ')}
