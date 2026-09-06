@@ -316,6 +316,7 @@ export function MatchBoard({
   matches,
   sessionStarted,
   courtCount,
+  playerFiltered = false,
   elapsedByMatchId,
 }: {
   matches: BoardMatch[]
@@ -323,6 +324,12 @@ export function MatchBoard({
   sessionStarted: boolean
   /** `sessions.court_count`. Decides how many games open the night. */
   courtCount: number
+  /**
+   * True when the list has been narrowed to one player. The zones then describe
+   * that player's games rather than the session, so they are collapsed into a
+   * single "Upcoming" list — see the comment on `grouped` below.
+   */
+  playerFiltered?: boolean
   elapsedByMatchId: Record<string, string>
 }) {
   const live = matches.filter((m) => m.status === 'playing')
@@ -333,8 +340,14 @@ export function MatchBoard({
   // fixed three claimed a third game was on court when it was still waiting.
   const openingCount = Math.max(1, courtCount)
   const zoneSize = sessionStarted ? UP_NEXT_PREVIEW : openingCount
-  const upNext = queued.slice(0, zoneSize)
-  const later = queued.slice(zoneSize)
+
+  // The zones rank games against the whole session's queue. Filtered to one
+  // player they lie: that player's first two games are not "first on court"
+  // unless they happen to be games 1 and 2 of the night. So a filtered list is
+  // one flat "Upcoming" run, in queue order, with no position captions.
+  const grouped = !playerFiltered
+  const upNext = grouped ? queued.slice(0, zoneSize) : queued
+  const later = grouped ? queued.slice(zoneSize) : []
   const allDone = played.length > 0 && queued.length === 0 && live.length === 0
 
   return (
@@ -350,7 +363,10 @@ export function MatchBoard({
 
       {upNext.length > 0 && (
         <section className="mt-5">
-          <ZoneHeading label={sessionStarted ? 'Up next' : 'Starts with'} count={upNext.length} />
+          <ZoneHeading
+            label={grouped ? (sessionStarted ? 'Up next' : 'Starts with') : 'Upcoming'}
+            count={upNext.length}
+          />
           {upNext.map((m, i) => (
             <div key={m.id} className="mb-1.5 flex items-center gap-2.5 rounded-xl border border-border bg-card p-2.5">
               <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-muted font-mono text-xs font-bold text-muted-foreground">
@@ -361,11 +377,13 @@ export function MatchBoard({
                 <p className="mt-1.5 truncate text-xs font-semibold">
                   {pairNames(m.team1)} vs {pairNames(m.team2)}
                 </p>
-                <p className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
-                  {sessionStarted
-                    ? i === 0 ? 'First open court' : `${i + 1} games away`
-                    : 'First on court'}
-                </p>
+                {grouped && (
+                  <p className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
+                    {sessionStarted
+                      ? i === 0 ? 'First open court' : `${i + 1} games away`
+                      : 'First on court'}
+                  </p>
+                )}
               </div>
             </div>
           ))}
