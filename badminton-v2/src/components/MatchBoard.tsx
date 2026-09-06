@@ -79,6 +79,20 @@ function MiniBand({ match, size }: { match: BoardMatch; size: number }) {
   )
 }
 
+/**
+ * "Game N" is what a player scans a card for, so it outranks everything else on
+ * one — full contrast and the largest text there. Shared by the live court card
+ * and the personal card: the two were identical copies, and enlarging only the
+ * first left "Your next game" behind at 11 px muted grey.
+ */
+function GameNumber({ gameNumber }: { gameNumber: number }) {
+  return (
+    <p className="mb-2.5 text-center font-mono text-[20px] font-bold leading-none tracking-[0.01em] tabular-nums text-foreground">
+      Game {gameNumber}
+    </p>
+  )
+}
+
 /** The hero. Two left, two right, a net down the middle — the shape of the game. */
 export function MatchupBand({ match, elapsed }: { match: BoardMatch; elapsed: string | null }) {
   const court = match.courtNumber ?? 1
@@ -100,12 +114,7 @@ export function MatchupBand({ match, elapsed }: { match: BoardMatch; elapsed: st
         </span>
       </div>
 
-      {/* "Game N" is what a player scans a court card for, so it outranks
-          everything else on the card — full contrast and the largest text here,
-          not the 11 px muted caption it used to be. */}
-      <p className="mb-2.5 text-center font-mono text-[20px] font-bold leading-none tracking-[0.01em] tabular-nums text-foreground">
-        Game {match.gameNumber}
-      </p>
+      <GameNumber gameNumber={match.gameNumber} />
 
       <div className="grid items-start gap-1" style={{ gridTemplateColumns: '1fr 26px 1fr' }}>
         <BandSide players={match.team1} />
@@ -584,9 +593,7 @@ export function PersonalGameCard({
             </span>
           )}
         </div>
-        <p className="mb-2.5 text-center font-mono text-[11px] font-bold tracking-[0.08em] text-muted-foreground">
-          Game {match.gameNumber}
-        </p>
+        <GameNumber gameNumber={match.gameNumber} />
         <div className="grid items-start gap-1" style={{ gridTemplateColumns: '1fr 26px 1fr' }}>
           <BandSide players={mine} />
           <div className="flex flex-col items-center justify-center pt-3.5">
