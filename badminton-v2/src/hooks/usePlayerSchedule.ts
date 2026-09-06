@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { sortMatchResults } from '@/lib/matchResults'
+import { getMatchOutcome } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 
@@ -200,9 +200,6 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
       const result: PlayerMatch[] = matchRows.map((match) => {
         const onTeam1 = match.team1_player1_id === playerId || match.team1_player2_id === playerId
 
-        let partnerNameSlug: string
-        let opp1NameSlug: string
-        let opp2NameSlug: string
         let partnerId: string
         let opp1Id: string
         let opp2Id: string
@@ -217,9 +214,9 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
           opp2Id = match.team1_player2_id
         }
 
-        partnerNameSlug = name(partnerId)
-        opp1NameSlug = name(opp1Id)
-        opp2NameSlug = name(opp2Id)
+        const partnerNameSlug = name(partnerId)
+        const opp1NameSlug = name(opp1Id)
+        const opp2NameSlug = name(opp2Id)
 
         return {
           id: match.id,
@@ -259,25 +256,24 @@ export function usePlayerSchedule(nameSlug: string, sessionIdOverride?: string |
 
           for (const playerMatch of result) {
             if (playerMatch.status !== 'complete') continue
-            const matchResults = sortMatchResults(resultMap.get(playerMatch.id))
-            if (matchResults.length === 0) continue
+            const matchOutcome = getMatchOutcome(resultMap.get(playerMatch.id))
+            if (matchOutcome == null) continue
 
             const row = matchRows.find((match) => match.id === playerMatch.id)
             if (!row) continue
 
             const onTeam1 = row.team1_player1_id === playerId || row.team1_player2_id === playerId
-            const playerTeamIndex = onTeam1 ? 1 : 2
-            const winCount = matchResults.filter((resultRow) => resultRow.winning_pair_index === playerTeamIndex).length
+            const yourSide = onTeam1 ? 'team1' : 'team2'
 
-            if (winCount === matchResults.length) {
-              playerMatch.outcome = 'won'
-              playerMatch.won = true
-            } else if (winCount === 0) {
-              playerMatch.outcome = 'lost'
-              playerMatch.won = false
-            } else {
+            if (matchOutcome === 'draw') {
               playerMatch.outcome = 'draw'
               playerMatch.won = null
+            } else if (matchOutcome === yourSide) {
+              playerMatch.outcome = 'won'
+              playerMatch.won = true
+            } else {
+              playerMatch.outcome = 'lost'
+              playerMatch.won = false
             }
           }
         }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   computeStatsFromResults,
-  getLegacyWinningPairIndex,
+  getMatchOutcome,
   isSplitMatchScoringEnabled,
   normalizeMatchResult,
   sortMatchResults,
@@ -44,13 +44,39 @@ describe('match result compatibility helpers', () => {
     ])
   })
 
-  it('keeps current one-game winner semantics by reading the earliest game', () => {
-    expect(getLegacyWinningPairIndex([{ winning_pair_index: 2 }])).toBe(2)
-    expect(getLegacyWinningPairIndex([
-      { winning_pair_index: 2, game_number: 2 },
+  it('reads a one-game match as a straight win', () => {
+    expect(getMatchOutcome([{ winning_pair_index: 2 }])).toBe('team2')
+    expect(getMatchOutcome([{ winning_pair_index: 1 }])).toBe('team1')
+  })
+
+  it('calls a split match only when one pair took every game', () => {
+    expect(getMatchOutcome([
       { winning_pair_index: 1, game_number: 1 },
-    ])).toBe(1)
-    expect(getLegacyWinningPairIndex([])).toBeNull()
+      { winning_pair_index: 1, game_number: 2 },
+    ])).toBe('team1')
+    expect(getMatchOutcome([
+      { winning_pair_index: 2, game_number: 1 },
+      { winning_pair_index: 2, game_number: 2 },
+    ])).toBe('team2')
+  })
+
+  it('calls one game each a draw, whichever pair took game 1', () => {
+    expect(getMatchOutcome([
+      { winning_pair_index: 1, game_number: 1 },
+      { winning_pair_index: 2, game_number: 2 },
+    ])).toBe('draw')
+    // The regression this replaced: reading only the earliest row made this a
+    // win for pair 2 in the All Games list while the personal card said draw.
+    expect(getMatchOutcome([
+      { winning_pair_index: 2, game_number: 1 },
+      { winning_pair_index: 1, game_number: 2 },
+    ])).toBe('draw')
+  })
+
+  it('has no outcome before the match is played', () => {
+    expect(getMatchOutcome([])).toBeNull()
+    expect(getMatchOutcome(null)).toBeNull()
+    expect(getMatchOutcome(undefined)).toBeNull()
   })
 
   it('aggregates legacy one-game results as one game for all four players', () => {

@@ -14,7 +14,7 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { formatElapsed } from '@/utils/matchTiming'
 import { useSessionReceipts } from '@/hooks/useSessionReceipts'
 import { derivePaymentState } from '@/lib/paymentState'
-import { getLegacyWinningPairIndex } from '@/lib/matchResults'
+import { getMatchOutcome, type MatchOutcome } from '@/lib/matchResults'
 import {
   BoardHeader,
   MatchBoard,
@@ -264,8 +264,9 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
         team2_player1_id: string; team2_player2_id: string
       }>
 
-      // Winners, so a finished game says who won rather than only that it ended.
-      const winnerByMatch = new Map<string, 1 | 2>()
+      // How each finished game ended, counting every row: one game each is a
+      // draw, not a win for whoever took game 1.
+      const outcomeByMatch = new Map<string, MatchOutcome>()
       if (matchRows.length > 0) {
         const { data: results } = await supabase
           .from('match_results').select('match_id, winning_pair_index, game_number')
@@ -278,8 +279,8 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
           grouped.set(r.match_id, list)
         }
         for (const [matchId, list] of grouped) {
-          const index = getLegacyWinningPairIndex(list)
-          if (index) winnerByMatch.set(matchId, index)
+          const outcome = getMatchOutcome(list)
+          if (outcome) outcomeByMatch.set(matchId, outcome)
         }
       }
 
@@ -303,7 +304,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
         status: m.status as BoardMatch['status'],
         courtNumber: m.court_number,
         startedAt: m.started_at,
-        winningPairIndex: winnerByMatch.get(m.id) ?? null,
+        outcome: outcomeByMatch.get(m.id) ?? null,
         team1: [player(m.team1_player1_id), player(m.team1_player2_id)],
         team2: [player(m.team2_player1_id), player(m.team2_player2_id)],
       })))

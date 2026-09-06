@@ -62,7 +62,7 @@ export function PlayerCourtTabs({
                 status: 'playing',
                 courtNumber: court.courtNumber,
                 startedAt: court.current.startedAt,
-                winningPairIndex: null,
+                outcome: null,
                 team1: court.current.team1,
                 team2: court.current.team2,
               }}
