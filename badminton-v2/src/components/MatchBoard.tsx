@@ -31,7 +31,12 @@ export interface BoardMatch {
   team2: BoardPlayer[]
 }
 
-const UP_NEXT_COUNT = 3
+/**
+ * How many games the in-play "Up next" zone previews. Before the session starts
+ * the zone is sized by the session's court count instead — exactly the games
+ * that go on at the opening whistle, no more.
+ */
+const UP_NEXT_PREVIEW = 3
 
 // ---------------------------------------------------------------------------
 // Small pieces
@@ -310,19 +315,26 @@ export function NoScheduleYet({ paymentState, registered }: { paymentState: Paym
 export function MatchBoard({
   matches,
   sessionStarted,
+  courtCount,
   elapsedByMatchId,
 }: {
   matches: BoardMatch[]
   /** Before the session starts nothing is "next" and no court is open. */
   sessionStarted: boolean
+  /** `sessions.court_count`. Decides how many games open the night. */
+  courtCount: number
   elapsedByMatchId: Record<string, string>
 }) {
   const live = matches.filter((m) => m.status === 'playing')
   const queued = matches.filter((m) => m.status === 'queued')
   const played = matches.filter((m) => m.status === 'complete')
 
-  const upNext = queued.slice(0, UP_NEXT_COUNT)
-  const later = queued.slice(UP_NEXT_COUNT)
+  // Two courts means two games start together, so "Starts with" holds two — a
+  // fixed three claimed a third game was on court when it was still waiting.
+  const openingCount = Math.max(1, courtCount)
+  const zoneSize = sessionStarted ? UP_NEXT_PREVIEW : openingCount
+  const upNext = queued.slice(0, zoneSize)
+  const later = queued.slice(zoneSize)
   const allDone = played.length > 0 && queued.length === 0 && live.length === 0
 
   return (
@@ -352,7 +364,7 @@ export function MatchBoard({
                 <p className="mt-1.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.09em] text-muted-foreground">
                   {sessionStarted
                     ? i === 0 ? 'First open court' : `${i + 1} games away`
-                    : i === 0 ? 'First on court' : `Game ${i + 1} of the night`}
+                    : 'First on court'}
                 </p>
               </div>
             </div>

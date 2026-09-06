@@ -32,6 +32,7 @@ interface SessionMeta {
   status: string | null
   venue: string | null
   price: number | null
+  court_count: number | null
 }
 
 export function PlayerView() {
@@ -232,7 +233,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
     setIsLoading(true)
     async function load() {
       const { data: sess } = await supabase
-        .from('sessions').select('name, date, status, venue, price').eq('id', sessionId).maybeSingle()
+        .from('sessions').select('name, date, status, venue, price, court_count').eq('id', sessionId).maybeSingle()
       if (cancelled) return
       if (sess) setSession(sess as SessionMeta)
 
@@ -388,7 +389,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
         ) : matches.length === 0 ? (
           <NoScheduleYet paymentState={paymentState} registered={registration != null} />
         ) : (
-          <MatchBoard matches={visible} sessionStarted={sessionStarted} elapsedByMatchId={elapsedByMatchId} />
+          <MatchBoard matches={visible} sessionStarted={sessionStarted} courtCount={session?.court_count ?? 2} elapsedByMatchId={elapsedByMatchId} />
         )}
       </div>
     </div>
