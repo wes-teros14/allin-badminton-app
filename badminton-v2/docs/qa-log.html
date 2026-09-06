@@ -81,6 +81,7 @@
       <li><a href="#leaderboard">Leaderboard</a></li>
       <li><a href="#theming">Theming &amp; light mode</a></li>
       <li><a href="#match-schedule">Match schedule</a></li>
+      <li><a href="#results">Results &amp; scoring</a></li>
     </ol>
   </nav>
 
@@ -887,6 +888,79 @@
       is the darkest the scale needs so white text clears 4.5&nbsp;: 1 at the lightest hues.
       Yellow-green (around 60°) is the worst case at <b>4.77&nbsp;: 1</b>; every one of the 360 hues
       was checked. Anything lighter fails there.
+    </p>
+  </div>
+
+  <h2 class="topic" id="results">Results &amp; scoring</h2>
+
+  <div class="qa">
+    <p class="q">What is the win/loss logic in My Games and All Games? If a match is split-scored it can be 2&#8209;0, 0&#8209;2 or a 1&#8209;1 draw, right?</p>
+    <p class="a">
+      Right &mdash; but only <strong>My Games</strong> knows that. <code>match_results</code> holds one row per
+      <em>game inside</em> a match (<code>winning_pair_index</code>, <code>game_number</code>), so a normal
+      match writes one row and a split-scored one writes two: <code>(1,g1)(1,g2)</code> for a 2&#8209;0,
+      <code>(2,g1)(2,g2)</code> for the reverse, and <code>(1,g1)(2,g2)</code> for a draw
+      (<code>submitSplitResult()</code>, <code>src/lib/matchResults.ts:72</code>).
+    </p>
+    <p class="a">
+      <strong>My Games counts.</strong> <code>usePlayerSchedule.ts:263</code> works out which pair you were on,
+      counts how many of the match&rsquo;s rows your pair won, then: all of them &rarr; <b>Win</b>, none &rarr;
+      <b>Loss</b>, anything in between &rarr; a <code>1&ndash;1</code> chip. All three states are reachable and
+      all three are correct.
+    </p>
+    <p class="a">
+      <strong>All Games used not to.</strong> It called <code>getLegacyWinningPairIndex()</code>, which sorted
+      the rows by <code>game_number</code>, took <em>only the first</em>, and called that pair the winner. The
+      board then printed &ldquo;X <em>beat</em> Y&rdquo; with no draw branch at all, so a 1&#8209;1 showed as a
+      win for whoever happened to take game&nbsp;1 and the other pair was greyed out as the loser. The name was
+      the tell: <em>legacy</em> &mdash; the pre-split behaviour, which entered the board in the rebuild
+      (<code>686e06e</code>) without ever gaining a draw state.
+    </p>
+    <p class="a">
+      <strong>Fixed 2026-09-06.</strong> Both views now go through one helper,
+      <code>getMatchOutcome()</code> (<code>src/lib/matchResults.ts</code>), which counts every row:
+      one pair took all of them &rarr; <code>team1</code>/<code>team2</code>, otherwise &rarr;
+      <code>draw</code>. A drawn match in the All Games list reads &ldquo;A <em>drew</em> B&rdquo; with
+      neither pair gilded and neither greyed, and the personal chip reads <b>Draw</b>.
+      <code>getLegacyWinningPairIndex()</code> is deleted, so it cannot be reached for again.
+      Walk-through: <code>docs/visual/win-loss-draw-derivation.html</code>.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">&ldquo;My Games and All Games just present the same result differently.&rdquo;</p>
+    <p>
+      They did not &mdash; they <em>computed</em> it differently, and only one of them was right. Each view
+      derived the match result from the raw rows itself: the personal card counted every row, the results list
+      read only the earliest. Two derivations of one concept, which is exactly the pattern this project already
+      banned after payment state showed different colours for the same row on three surfaces.
+    </p>
+    <p>
+      <strong>How to spot the next one:</strong> a helper named <code>getLegacy&hellip;</code> that survives the
+      feature which made it legacy. Split scoring shipped, the writer learned to write two rows, and the reader
+      was never taught to read them.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Does that draw bug affect the leaderboards too?</p>
+    <p class="a">
+      No, and it never did. The stats path was always correct. <code>computeStatsFromResults()</code>
+      (<code>src/lib/matchResults.ts:46</code>) loops <em>every</em> row, the same way My Games does, so a
+      1&#8209;1 credits each of the four players one win and two games. The gap is display-only, confined to
+      the results list on the All Games tab.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Where does a draw get recorded in the first place?</p>
+    <p class="a">
+      Split scoring is <strong>per session</strong> &mdash; <code>sessions.split_match_scoring</code>, toggled in
+      <code>SessionView.tsx:399</code>. When it is on, the admin&rsquo;s &ldquo;Who won?&rdquo; panel on
+      <code>CourtCard</code> offers three buttons instead of two: <em>&hellip;won 2-0</em>,
+      <em>1-1 Draw</em>, <em>&hellip;won 2-0</em>. With it off there are two buttons, one row is written, and a
+      draw cannot be recorded at all.
     </p>
   </div>
 

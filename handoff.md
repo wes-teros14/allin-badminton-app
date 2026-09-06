@@ -4,8 +4,9 @@ Updated: 2026-09-06. Overwrite this file on every update; it is never a running 
 
 ## Just done this session
 
-Naming + zone fixes on the player match screens. **Pushed**: `origin/dev` = `f3c07f7`,
-`origin/main` = `a249c38` (non-ff merge). Five commits, split by concern.
+Naming + zone fixes on the player match screens, then the draw bug. Everything through the game
+number is **pushed** (`origin/dev` = `84bf355`). The draw fix below is **committed? no — working tree
+only**, awaiting Mark's go-ahead to push.
 
 - **Tabs on `/sessions/:id` renamed**: `Schedule` → **My Games**, `All matches` → **All Games**
   (`SessionPlayerDetailView.tsx`, `TAB_LABELS`).
@@ -29,8 +30,16 @@ Naming + zone fixes on the player match screens. **Pushed**: `origin/dev` = `f3c
   `PersonalGameCard` held byte-identical copies of that line, so the first pass missed
   "Your next game"; both now render a shared `GameNumber` so a third copy cannot drift.
 
-**Verified**: `tsc -b` clean, `vite build` clean, eslint clean on the touched files, vitest
-**242/242**. The court-count fix was rendered in Chromium against the **dev database** as admin: a
+- **1-1 draws are no longer reported as wins.** `getMatchOutcome()` (`src/lib/matchResults.ts`)
+  counts every `match_results` row and returns `team1 | team2 | draw | null`; **both** My Games and
+  All Games call it. `BoardMatch.winningPairIndex` → `outcome`; a drawn match reads "A *drew* B",
+  neither pair gilded or greyed; the personal chip reads `Draw`, not `1–1`.
+  `getLegacyWinningPairIndex()` deleted. Also cleared the 3 pre-existing `prefer-const` errors in
+  `usePlayerSchedule.ts` while in that file. Docs: `docs/visual/win-loss-draw-derivation.html`,
+  a Results & scoring topic in `docs/qa-log.html`, and a `tasks/lessons.md` entry.
+
+**Verified**: `tsc -b` clean, `vite build` clean, eslint **fully** clean, vitest
+**245/245** (3 new draw cases). The court-count fix was rendered in Chromium against the **dev database** as admin: a
 `court_count = 2` session shows `STARTS WITH 2` / `LATER 15`, both rows `FIRST ON COURT`, no console
 errors; proved the number comes from the column, not the `?? 2` fallback, by temporarily setting the
 fallback to 9. **The filter change is not browser-verified** — Mark asked to skip e2e and test it
@@ -55,7 +64,6 @@ boards scored by share behind a switcher; pair eligibility unified in `lib/board
   `CourtTabs`, `CourtCard`, `PlayerView`, `LiveIndicator`.
 - **Light mode has never been reviewed on the leaderboard screens.** `PODIUM_TINT`
   (`border-gold bg-gold/[0.07]`) was written while the app was dark-only.
-- 3 pre-existing `prefer-const` lint errors in `src/hooks/usePlayerSchedule.ts`.
 - Nothing has been seen on a physical phone.
 
 ## Immediate next steps
