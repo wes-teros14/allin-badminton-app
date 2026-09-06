@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-05
+Last updated: 2026-09-06
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -119,7 +119,9 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - Four tabs on `/leaderboard`: **Individual** (win rate; called *Mga Lodi* until 2026-09-05), **Partners** (partnership win rate), **Cheers**, **Awards**.
 - **Both ranked boards render through one component.** `RankedBoard` / `RankPlace` in `LeaderboardView.tsx` draw a medal podium for places 1–3 and a fixed 34 px numbered chip for every place below, with a divider naming the places actually on screen. Tied and untied places go through the *same* path deliberately — the previous code drew the rank inside the card for untied places and outside it for tied ones, so the rank column never lined up. Keeping the marker column a fixed width is the fix; don't reintroduce a second rendering path for ties.
 - **Rank arithmetic lives in `src/lib/denseRank.ts`** (`assignDenseRanks`, `cutToPlaces`, `groupByRank`) and is shared. Equal rates take the same place; the next distinct rate takes the next number (1, 1, 2 — never 1, 1, 3); and the cut counts **places, not rows**, so a board may show twelve rows across ten places. Both boards must keep using it — index-based numbering next to dense ranks contradicts itself the moment anyone ties.
-- **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligiblePlayerIds()` plus `MIN_SESSIONS_PLAYED`, `RECENT_SESSIONS_WINDOW` and `BOARD_EXCLUDED`. Every surface asks that one function: Mga Lodi, Partners, Cheers, Awards, and the award badges on My Profile. The rules are 3+ sessions attended and registered for at least one of the last 4 completed sessions. Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy.
+- **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligiblePlayerIds()` plus `MIN_SESSIONS_PLAYED` and `RECENT_SESSIONS_WINDOW`. Every surface asks that one function: Individual, Partners, Cheers, Awards, and the award badges on My Profile. The rules are 3+ sessions attended and registered for at least one of the last 4 completed sessions. Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy.
+- **`ATTENDANCE_AWARD_EXCLUDED` (was `BOARD_EXCLUDED`) gates only two awards** — 📅 Most Sessions Joined and 🔥 Attendance Streak — because those are still raw counts an organiser who attends everything would hold permanently. It deliberately does **not** touch any ranked board: every board scores a rate (win rate, or a cheer share of the player's own total), and a rate cannot be won by turning up more often. It was briefly moved inside `fetchEligiblePlayerIds`, which silently excluded those accounts from Individual and Partners — boards that had never excluded anyone. Do not put it back there.
+
 - **My Profile computes its own award badges.** It has to agree with the Awards tab, so it calls the same `fetchEligiblePlayerIds` and `rankCheerShares(..., { maxPlaces: 1 })`, resolving a tie to nobody the same way. The two files diverged once already, showing badges on profiles that the leaderboard did not award. Change one, check the other.
 - First place borrows the existing `--gold` token that the award toast uses, so the app has one gold. Silver and bronze use palette values; bronze is `amber-700` rather than an orange, because an orange wash on the dark card reads as the destructive red.
 - **There are two gold tokens, and the split is deliberate.** `--gold` is the medal, border and wash colour (`#FFB200` dark, `#B87A00` light); `--gold-ink` is its text pair (`#FFB200` dark, `#8A5A00` light). One hex cannot do both jobs in light mode: as a border it needs 3 : 1, as text 4.5 : 1, and a gold dark enough for text (`#8A5A00`, 5.58 : 1) renders *darker* than the `amber-700` bronze medal below it on the podium. In dark, `#FFB200` clears both floors on `#1A1025` (10.8 : 1), so the two coincide. Use `text-gold-ink` for any gold lettering and `gold` for everything else.
@@ -162,6 +164,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **`/match-schedule/session/:id` without a slug is not a dead end.** `PlayerListViewInner`
   auto-redirects a signed-in, registered player to their own slug with `replace: true`
   (`src/views/PlayerView.tsx:216`). An admin who is not registered falls through to the picker.
+
+## Courts on player screens
+
+- **`PlayerCourtTabs` (`src/components/`) draws every court in the session, one card each**, whether or not the viewer is playing on one. It renders through `MatchupBand` from `MatchBoard.tsx` — the same card the All matches board uses for "On court now" — so a court looks identical everywhere and there is one implementation.
+- It is used by **both** `/sessions/:id` and `/match-schedule/session/:id`. It lived inside `PlayerView.tsx` while only the second route used it, so when session cards started linking to `/sessions/:id` players silently lost the overview; the single court they still saw was the `COURT n` chip on their own `PersonalGameCard`, which follows *their* game and vanishes when it ends. A per-player court chip and a session-wide court strip both say "COURT 1" — do not mistake one for the other.
+- Both routes **skip the viewer's playing match** in the personal list, because the strip above already shows that court in full. An idle court still gets a card naming what is next on it, so a two-court session never visually shrinks to one.
+- `useCourtState` carries `team1`/`team2` with avatars *alongside* the older `t1p1..t2p2` name fields. The names were kept so `LiveBoardView` (kiosk) and `CourtCard` are untouched — do not remove them without checking those two.
 
 ## Decisions made, and alternatives rejected
 
