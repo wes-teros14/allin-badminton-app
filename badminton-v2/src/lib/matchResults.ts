@@ -37,10 +37,27 @@ export function sortMatchResults(results: MatchResultLike[] | null | undefined):
     .sort((left, right) => left.game_number - right.game_number)
 }
 
-export function getLegacyWinningPairIndex(results: MatchResultLike[] | null | undefined): 1 | 2 | null {
-  const primaryResult = sortMatchResults(results)[0]
-  if (!primaryResult) return null
-  return primaryResult.winning_pair_index === 2 ? 2 : 1
+/** How a whole match ended, once every game inside it is counted. */
+export type MatchOutcome = 'team1' | 'team2' | 'draw'
+
+/**
+ * The result of a match, from all of its rows.
+ *
+ * A match holds one `match_results` row per game, so a split-scored match has
+ * two. A pair has only *beaten* the other if it took every game; one each is a
+ * draw. This is the single place that rule lives — the personal card and the
+ * All Games results list both read it, because when they each derived it
+ * themselves the list called a 1-1 a win for whoever happened to take game 1.
+ */
+export function getMatchOutcome(results: MatchResultLike[] | null | undefined): MatchOutcome | null {
+  const rows = sortMatchResults(results)
+  if (rows.length === 0) return null
+  // Anything that is not an explicit 2 counts as team 1, matching how the rest
+  // of the codebase reads winning_pair_index.
+  const team1Wins = rows.filter((row) => row.winning_pair_index !== 2).length
+  if (team1Wins === rows.length) return 'team1'
+  if (team1Wins === 0) return 'team2'
+  return 'draw'
 }
 
 export function computeStatsFromResults(

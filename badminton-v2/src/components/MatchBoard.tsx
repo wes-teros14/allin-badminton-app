@@ -1,4 +1,5 @@
 import { Avatar } from '@/components/Avatar'
+import type { MatchOutcome } from '@/lib/matchResults'
 import type { PaymentState } from '@/lib/paymentState'
 
 /**
@@ -26,7 +27,8 @@ export interface BoardMatch {
   courtNumber: number | null
   startedAt: string | null
   /** 1, 2, or null when the match has no recorded result. */
-  winningPairIndex: 1 | 2 | null
+  /** Null until the match is played. `draw` means one game each. */
+  outcome: MatchOutcome | null
   team1: BoardPlayer[]
   team2: BoardPlayer[]
 }
@@ -427,22 +429,27 @@ export function MatchBoard({
           </summary>
           <div className="mt-2.5">
             {[...played].reverse().map((m) => {
-              const winners = m.winningPairIndex === 2 ? m.team2 : m.team1
-              const losers = m.winningPairIndex === 2 ? m.team1 : m.team2
-              const hasResult = m.winningPairIndex != null
+              // A draw has no winner to promote, so neither pair is gilded and
+              // neither is greyed out — they are drawn as equals, in queue order.
+              const isDraw = m.outcome === 'draw'
+              const leading = m.outcome === 'team2' ? m.team2 : m.team1
+              const trailing = m.outcome === 'team2' ? m.team1 : m.team2
+              const verb = m.outcome == null ? 'vs' : isDraw ? 'drew' : 'beat'
               return (
                 <div key={m.id} className="flex items-center gap-2.5 border-b border-border py-2.5 last:border-b-0">
                   <span className="w-[22px] shrink-0 text-right font-mono text-[11px] font-bold text-muted-foreground">
                     {m.gameNumber}
                   </span>
-                  {winners.map((p, i) => (
+                  {leading.map((p, i) => (
                     <Avatar key={i} url={p.avatarUrl} name={p.name} size={18} />
                   ))}
-                  <span className={`min-w-0 truncate text-xs ${hasResult ? 'font-semibold text-gold-ink' : 'text-foreground'}`}>
-                    {pairNames(winners)}
+                  <span className={`min-w-0 truncate text-xs ${m.outcome == null || isDraw ? 'text-foreground' : 'font-semibold text-gold-ink'}`}>
+                    {pairNames(leading)}
                   </span>
-                  <span className="shrink-0 px-0.5 text-xs text-muted-foreground">{hasResult ? 'beat' : 'vs'}</span>
-                  <span className="min-w-0 truncate text-xs text-muted-foreground">{pairNames(losers)}</span>
+                  <span className="shrink-0 px-0.5 text-xs text-muted-foreground">{verb}</span>
+                  <span className={`min-w-0 truncate text-xs ${isDraw ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {pairNames(trailing)}
+                  </span>
                 </div>
               )
             })}
@@ -484,7 +491,7 @@ export interface PersonalMatch {
 
 function OutcomeChip({ outcome, won }: { outcome: PersonalMatch['outcome']; won: boolean | null }) {
   if (outcome === 'draw') {
-    return <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">1–1</span>
+    return <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">Draw</span>
   }
   if (won === true) {
     return <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">Win</span>

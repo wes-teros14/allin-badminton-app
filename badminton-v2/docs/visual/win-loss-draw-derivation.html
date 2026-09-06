@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Win, loss and draw — where the label comes from</title>
+<style>
+:root, [data-theme="light"] {
+  --background:#FAF7FB; --card:#FFFFFF; --card-sunken:#F3EEF7;
+  --foreground:#1B1220; --muted-foreground:#6B5F73; --border:#E7E0EC;
+  --primary:#6F3E87; --primary-foreground:#FFFFFF; --primary-subtle:#EDE0F5;
+  --gold:#B87A00; --gold-ink:#8A5A00; --destructive:#B3252B; --success:#157F3D;
+  --court2:#0E7490;
+  --grain:.035;
+}
+[data-theme="dark"] {
+  --background:#0F0A18; --card:#1A1025; --card-sunken:#1E1230;
+  --foreground:#FFFFFF; --muted-foreground:#B39DBB; --border:#2D1A40;
+  --primary:#6F3E87; --primary-foreground:#FFFFFF; --primary-subtle:#2D1B42;
+  --gold:#FFB200; --gold-ink:#FFB200; --destructive:#DC595E; --success:#22C55E;
+  --court2:#2DD4BF;
+  --grain:.05;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--background); color:var(--foreground);
+  font:400 16px/1.6 Georgia,"Iowan Old Style","Times New Roman",serif;
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:9999; pointer-events:none; opacity:var(--grain);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+.wrap{max-width:1080px;margin:0 auto;padding:56px 28px 110px}
+.eyebrow{font:500 11px/1 ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+h1{font:400 clamp(2.1rem,5.2vw,3.1rem)/1.05 Georgia,serif;letter-spacing:-.025em;margin:14px 0 0}
+h1 em{font-style:italic;color:#C79BE0}
+[data-theme="light"] h1 em{color:var(--primary)}
+.lede{max-width:64ch;margin:16px 0 0;color:var(--muted-foreground);font-size:1.0625rem}
+.rule{height:1px;background:var(--border);border:0;margin:52px 0 0;position:relative}
+.rule::after{content:"";position:absolute;left:0;top:-5px;width:1px;height:11px;background:var(--border)}
+code{font:500 .87em/1 ui-monospace,Menlo,monospace;background:var(--card-sunken);padding:2px 5px;border-radius:4px;color:var(--foreground)}
+h2.sec{font:400 1.55rem/1.2 Georgia,serif;letter-spacing:-.02em;margin:0 0 6px}
+.sec__no{font:500 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:#C79BE0;display:block;margin:34px 0 8px}
+[data-theme="light"] .sec__no{color:var(--primary)}
+p.body{max-width:66ch;color:var(--muted-foreground)}
+p.body strong{color:var(--foreground);font-weight:400}
+.mono{font:500 12px/1.5 ui-monospace,Menlo,monospace;letter-spacing:.02em}
+
+/* ---------- picker ---------- */
+.picker{display:flex;gap:10px;flex-wrap:wrap;margin:26px 0 0}
+.picker button{
+  font:500 12px/1 ui-monospace,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase;
+  background:var(--card);color:var(--muted-foreground);border:1px solid var(--border);
+  padding:13px 18px;border-radius:11px;cursor:pointer;transition:all .18s;
+}
+.picker button:hover{color:var(--foreground);border-color:var(--primary)}
+.picker button[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+
+/* ---------- the rows ---------- */
+.rows{margin:22px 0 0;border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden}
+.rows__head{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);
+  font:500 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;
+}
+.rows__head span{background:var(--card-sunken);color:var(--muted-foreground);padding:11px 14px}
+.rows__body{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border)}
+.rows__body span{background:var(--card);padding:14px;font:500 13px/1 ui-monospace,Menlo,monospace}
+.pair1{color:var(--primary)}
+[data-theme="dark"] .pair1{color:#C79BE0}
+.pair2{color:var(--court2)}
+.rows__note{background:var(--card-sunken);padding:11px 14px;color:var(--muted-foreground);font:400 13px/1.5 Georgia,serif;border-top:1px solid var(--border)}
+
+/* ---------- the two derivations ---------- */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:22px 0 0}
+@media (max-width:820px){.two{grid-template-columns:1fr}}
+.panel{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:20px;display:flex;flex-direction:column}
+.panel h3{margin:0;font:400 1.15rem/1.2 Georgia,serif;letter-spacing:-.01em}
+.panel .where{font:500 10.5px/1.5 ui-monospace,Menlo,monospace;color:var(--muted-foreground);margin:5px 0 0;word-break:break-all}
+.steps{margin:16px 0 0;padding:0;list-style:none;border-top:1px solid var(--border)}
+.steps li{padding:11px 0 11px 30px;border-bottom:1px solid var(--border);position:relative;font-size:14.5px;color:var(--muted-foreground)}
+.steps li::before{
+  content:attr(data-n);position:absolute;left:0;top:12px;
+  width:19px;height:19px;border-radius:50%;background:var(--card-sunken);color:var(--muted-foreground);
+  display:grid;place-items:center;font:600 10px/1 ui-monospace,Menlo,monospace;
+}
+.steps li.on{color:var(--foreground)}
+.steps li.on::before{background:var(--primary);color:#fff}
+.verdict{margin:18px 0 0;padding:18px;border-radius:12px;background:var(--card-sunken);text-align:center}
+.verdict__label{font:500 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground)}
+.verdict__out{margin:12px 0 0;font:400 15px/1.4 Georgia,serif}
+.chip{display:inline-block;border-radius:999px;padding:4px 13px;font:700 13px/1.5 ui-monospace,Menlo,monospace}
+.chip--win{background:color-mix(in srgb,var(--success) 16%,transparent);color:var(--success)}
+.chip--loss{background:color-mix(in srgb,var(--destructive) 16%,transparent);color:var(--destructive)}
+.chip--draw{background:var(--card);color:var(--muted-foreground);border:1px solid var(--border)}
+.beat{font:400 15px/1.5 Georgia,serif}
+.beat b{color:var(--gold-ink);font-weight:700}
+.beat s{color:var(--muted-foreground);text-decoration:none}
+.flag{
+  margin:14px 0 0;padding:12px 14px;border-radius:10px;font-size:13.5px;line-height:1.5;
+  background:color-mix(in srgb,var(--gold) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--gold) 38%,transparent);color:var(--foreground);
+}
+.flag[hidden]{display:none}
+.flag b{color:var(--gold-ink)}
+
+/* ---------- truth table ---------- */
+table{width:100%;border-collapse:collapse;margin:22px 0 0;font-size:14.5px}
+th,td{text-align:left;padding:13px 14px;border-bottom:1px solid var(--border)}
+th{font:500 10px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-foreground)}
+td:first-child{font:500 13px/1 ui-monospace,Menlo,monospace}
+tr.bad td{background:color-mix(in srgb,var(--gold) 9%,transparent)}
+.tick{color:var(--success);font-weight:700}
+.cross{color:var(--gold-ink);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Badminton Tayo · results</p>
+  <h1>Win, loss and draw —<br><em>where the label comes from</em></h1>
+  <p class="lede">
+    A match can hold more than one game, so a pair has only <em>beaten</em> the other if it took every one
+    of them. Pick an outcome below to see the rule applied. The amber note marks what the All Games list
+    used to do instead, until 2026-09-06.
+  </p>
+
+  <hr class="rule">
+
+  <span class="sec__no">01 — the table</span>
+  <h2 class="sec">One row per game, not per match</h2>
+  <p class="body">
+    <code>match_results</code> stores a row for every <em>game inside</em> a match:
+    <code>winning_pair_index</code> (1 or 2) and <code>game_number</code>. A normal match writes one
+    row. A session with <code>split_match_scoring</code> on writes <strong>two</strong>, from
+    <code>submitSplitResult()</code> — which is what makes 1&#8209;1 possible at all.
+  </p>
+
+  <div class="picker" role="group" aria-label="Choose an outcome">
+    <button data-out="2-0-t1" aria-pressed="true">Pair 1 won 2&#8209;0</button>
+    <button data-out="1-1" aria-pressed="false">1&#8209;1 draw</button>
+    <button data-out="2-0-t2" aria-pressed="false">Pair 2 won 2&#8209;0</button>
+    <button data-out="single" aria-pressed="false">No split · single game</button>
+  </div>
+
+  <div class="rows">
+    <div class="rows__head"><span>match_id</span><span>game_number</span><span>winning_pair_index</span></div>
+    <div class="rows__body" id="rowsBody"></div>
+    <p class="rows__note" id="rowsNote"></p>
+  </div>
+
+  <span class="sec__no">02 — two readings</span>
+  <h2 class="sec">Both screens, one derivation</h2>
+  <p class="body">
+    Both panels call the same helper, <code>getMatchOutcome()</code>. They differ only in what they draw
+    with the answer — a chip about you, or a line about the match.
+  </p>
+
+  <div class="two">
+
+    <div class="panel">
+      <h3>My Games</h3>
+      <p class="where">src/hooks/usePlayerSchedule.ts → getMatchOutcome() → OutcomeChip</p>
+      <ol class="steps" id="stepsMine">
+        <li data-n="1">Count the rows each pair won — <span class="mono" id="winCount">—</span></li>
+        <li data-n="2">One pair took them all → <b>Win</b> or <b>Loss</b>, whichever side you were on.</li>
+        <li data-n="3">One game each → <b>Draw</b>.</li>
+      </ol>
+      <div class="verdict">
+        <p class="verdict__label">Chip on your card</p>
+        <p class="verdict__out" id="outMine"></p>
+      </div>
+      <p class="body" style="margin:14px 0 0;font-size:13.5px">
+        Counting means every one of the three states is reachable, and the draw is drawn as
+        <code>1–1</code> rather than the word.
+      </p>
+    </div>
+
+    <div class="panel">
+      <h3>All Games</h3>
+      <p class="where">src/views/PlayerView.tsx → getMatchOutcome()</p>
+      <ol class="steps" id="stepsAll">
+        <li data-n="1">Count the rows each pair won — <span class="mono" id="firstRow">—</span></li>
+        <li data-n="2">One pair took them all → that pair <b>beat</b> the other.</li>
+        <li data-n="3">One game each → <b>drew</b>. Neither gilded, neither greyed.</li>
+      </ol>
+      <div class="verdict">
+        <p class="verdict__label">Line in the results list</p>
+        <p class="verdict__out" id="outAll"></p>
+      </div>
+      <div class="flag" id="flagAll" hidden>
+        <b>This is the case that used to break.</b> The old
+        <code>getLegacyWinningPairIndex()</code> read only the earliest row, so it named whoever took
+        game&nbsp;1 the winner and greyed out the other pair. Both pairs won a game; neither beat anyone.
+      </div>
+    </div>
+
+  </div>
+
+  <span class="sec__no">03 — the gap</span>
+  <h2 class="sec">Where they part company</h2>
+  <p class="body">
+    They no longer part company &mdash; this is the table as it now stands. The draw was the only row
+    that ever disagreed, and it is the only outcome that needs more than one <code>match_results</code>
+    row to exist, which is exactly why a function named <code>getLegacy…</code> never had to handle it.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Rows recorded</th><th>My Games</th><th>All Games</th><th>Agree?</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>(1,g1) (1,g2)</td>
+        <td>Win for pair 1</td>
+        <td>Pair 1 <em>beat</em> pair 2</td>
+        <td><span class="tick">yes</span></td>
+      </tr>
+      <tr>
+        <td>(2,g1) (2,g2)</td>
+        <td>Win for pair 2</td>
+        <td>Pair 2 <em>beat</em> pair 1</td>
+        <td><span class="tick">yes</span></td>
+      </tr>
+      <tr class="bad">
+        <td>(1,g1) (2,g2)</td>
+        <td><b>Draw</b> for both</td>
+        <td>Pair 1 <em>drew</em> pair 2</td>
+        <td><span class="tick">yes</span> <span style="color:var(--muted-foreground)">— was <span class="cross">no</span> before 2026-09-06</span></td>
+      </tr>
+      <tr>
+        <td>(1,g1) — one row</td>
+        <td>Win for pair 1</td>
+        <td>Pair 1 <em>beat</em> pair 2</td>
+        <td><span class="tick">yes</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="body" style="margin-top:26px">
+    <strong>Worth knowing:</strong> the leaderboards were never affected. They go through
+    <code>computeStatsFromResults()</code>, which has always looped every row, so a 1&#8209;1 credits
+    each player one win and two games. The bug was display-only — the results list on the All Games
+    tab, and nothing downstream of it.
+  </p>
+
+</div>
+
+<script>
+const DATA = {
+  '2-0-t1': {rows:[[1,1],[2,1]], note:'Split scoring on. Pair 1 took both games.', win:2, total:2},
+  '1-1':    {rows:[[1,1],[2,2]], note:'Split scoring on. One game each — the only outcome that needs both rows read.', win:1, total:2},
+  '2-0-t2': {rows:[[1,2],[2,2]], note:'Split scoring on. Pair 2 took both games.', win:0, total:2},
+  'single': {rows:[[1,1]],       note:'Split scoring off. One game, one row — a draw cannot be recorded.', win:1, total:1},
+};
+const P1 = 'Jerome &amp; Mark', P2 = 'Anthony &amp; Caitlin';
+
+function render(key){
+  const d = DATA[key];
+
+  document.getElementById('rowsBody').innerHTML = d.rows.map(([g,w]) =>
+    `<span class="muted">…3f91</span><span>${g}</span><span class="pair${w}">${w} &nbsp;<small>(${w===1?'Jerome &amp; Mark':'Anthony &amp; Caitlin'})</small></span>`
+  ).join('');
+  document.getElementById('rowsNote').textContent = d.note;
+
+  // --- My Games: count ---
+  document.getElementById('winCount').textContent = `you ${d.win}, them ${d.total - d.win}`;
+  let chip;
+  if (d.win === d.total)   chip = '<span class="chip chip--win">Win</span>';
+  else if (d.win === 0)    chip = '<span class="chip chip--loss">Loss</span>';
+  else                     chip = '<span class="chip chip--draw">1&ndash;1</span>';
+  document.getElementById('outMine').innerHTML = chip;
+  markStep('stepsMine', d.win === d.total || d.win === 0 ? 2 : 2);
+
+  // --- All Games: first row wins ---
+  const first = d.win === d.total ? 1 : d.win === 0 ? 2 : 0;
+  document.getElementById('firstRow').textContent = `pair 1 ${d.win}, pair 2 ${d.total - d.win}`;
+  document.getElementById('outAll').innerHTML = first === 0
+    ? `<span class="beat">${P1} <em>drew</em> ${P2}</span>`
+    : `<span class="beat"><b>${first === 1 ? P1 : P2}</b> beat <s>${first === 1 ? P2 : P1}</s></span>`;
+  markStep('stepsAll', first === 0 ? 2 : 1);
+
+  document.getElementById('flagAll').hidden = (key !== '1-1');
+}
+
+function markStep(id, upto){
+  [...document.querySelectorAll('#'+id+' li')].forEach((li,i) => li.classList.toggle('on', i <= upto));
+}
+
+document.querySelectorAll('.picker button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.picker button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+    render(b.dataset.out);
+  });
+});
+render('2-0-t1');
+</script>
+</body>
+</html>
