@@ -23,9 +23,11 @@ Naming + zone fixes on the player match screens. **Pushed**: `origin/dev` = `f3c
   position captions, no `Later`. The zone labels rank by array index, and the filtered array is not
   the session queue — game 7 was being captioned `FIRST ON COURT`. `On court now` and `Played` read
   off `status`, not position, so they are unchanged.
-- **`Game N` promoted on the live court card** (`MatchupBand`). Was an 11 px muted line under the
-  court chip; now 20 px, bold, full contrast — the largest text on the card, because that is what a
-  player scans it for. The whole phrase is enlarged, not just the digit (asked for explicitly).
+- **`Game N` promoted on both match cards.** Was an 11 px muted line under the court chip; now
+  20 px, bold, full contrast — the largest text on the card, because that is what a player scans it
+  for. The whole phrase is enlarged, not just the digit (asked for explicitly). `MatchupBand` and
+  `PersonalGameCard` held byte-identical copies of that line, so the first pass missed
+  "Your next game"; both now render a shared `GameNumber` so a third copy cannot drift.
 
 **Verified**: `tsc -b` clean, `vite build` clean, eslint clean on the touched files, vitest
 **242/242**. The court-count fix was rendered in Chromium against the **dev database** as admin: a
