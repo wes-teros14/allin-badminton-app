@@ -434,7 +434,7 @@ export function MatchBoard({
               const isDraw = m.outcome === 'draw'
               const leading = m.outcome === 'team2' ? m.team2 : m.team1
               const trailing = m.outcome === 'team2' ? m.team1 : m.team2
-              const verb = m.outcome == null ? 'vs' : isDraw ? 'drew' : 'beat'
+              const verb = m.outcome == null ? 'vs' : isDraw ? 'tied with' : 'beat'
               return (
                 <div key={m.id} className="flex items-center gap-2.5 border-b border-border py-2.5 last:border-b-0">
                   <span className="w-[22px] shrink-0 text-right font-mono text-[11px] font-bold text-muted-foreground">
@@ -446,7 +446,7 @@ export function MatchBoard({
                   <span className={`min-w-0 truncate text-xs ${m.outcome == null || isDraw ? 'text-foreground' : 'font-semibold text-gold-ink'}`}>
                     {pairNames(leading)}
                   </span>
-                  <span className="shrink-0 px-0.5 text-xs text-muted-foreground">{verb}</span>
+                  <span className="shrink-0 whitespace-nowrap px-0.5 text-xs text-muted-foreground">{verb}</span>
                   <span className={`min-w-0 truncate text-xs ${isDraw ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {pairNames(trailing)}
                   </span>

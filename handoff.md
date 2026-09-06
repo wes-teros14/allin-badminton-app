@@ -4,9 +4,9 @@ Updated: 2026-09-06. Overwrite this file on every update; it is never a running 
 
 ## Just done this session
 
-Naming + zone fixes on the player match screens, then the draw bug. Everything through the game
-number is **pushed** (`origin/dev` = `84bf355`). The draw fix below is **committed? no — working tree
-only**, awaiting Mark's go-ahead to push.
+Naming + zone fixes on the player match screens, then the draw bug. **Pushed**: `origin/dev` =
+`17f1658`, `origin/main` = `c642666`. One later wording tweak (`drew` → `tied with`) is **working
+tree only**.
 
 - **Tabs on `/sessions/:id` renamed**: `Schedule` → **My Games**, `All matches` → **All Games**
   (`SessionPlayerDetailView.tsx`, `TAB_LABELS`).
@@ -32,7 +32,7 @@ only**, awaiting Mark's go-ahead to push.
 
 - **1-1 draws are no longer reported as wins.** `getMatchOutcome()` (`src/lib/matchResults.ts`)
   counts every `match_results` row and returns `team1 | team2 | draw | null`; **both** My Games and
-  All Games call it. `BoardMatch.winningPairIndex` → `outcome`; a drawn match reads "A *drew* B",
+  All Games call it. `BoardMatch.winningPairIndex` → `outcome`; a drawn match reads "A *tied with* B",
   neither pair gilded or greyed; the personal chip reads `Draw`, not `1–1`.
   `getLegacyWinningPairIndex()` deleted. Also cleared the 3 pre-existing `prefer-const` errors in
   `usePlayerSchedule.ts` while in that file. Docs: `docs/visual/win-loss-draw-derivation.html`,

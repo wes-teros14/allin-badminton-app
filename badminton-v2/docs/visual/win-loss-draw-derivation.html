@@ -183,7 +183,7 @@ tr.bad td{background:color-mix(in srgb,var(--gold) 9%,transparent)}
       <ol class="steps" id="stepsAll">
         <li data-n="1">Count the rows each pair won — <span class="mono" id="firstRow">—</span></li>
         <li data-n="2">One pair took them all → that pair <b>beat</b> the other.</li>
-        <li data-n="3">One game each → <b>drew</b>. Neither gilded, neither greyed.</li>
+        <li data-n="3">One game each → <b>tied with</b>. Neither gilded, neither greyed.</li>
       </ol>
       <div class="verdict">
         <p class="verdict__label">Line in the results list</p>
@@ -226,7 +226,7 @@ tr.bad td{background:color-mix(in srgb,var(--gold) 9%,transparent)}
       <tr class="bad">
         <td>(1,g1) (2,g2)</td>
         <td><b>Draw</b> for both</td>
-        <td>Pair 1 <em>drew</em> pair 2</td>
+        <td>Pair 1 <em>tied with</em> pair 2</td>
         <td><span class="tick">yes</span> <span style="color:var(--muted-foreground)">— was <span class="cross">no</span> before 2026-09-06</span></td>
       </tr>
       <tr>
@@ -277,7 +277,7 @@ function render(key){
   const first = d.win === d.total ? 1 : d.win === 0 ? 2 : 0;
   document.getElementById('firstRow').textContent = `pair 1 ${d.win}, pair 2 ${d.total - d.win}`;
   document.getElementById('outAll').innerHTML = first === 0
-    ? `<span class="beat">${P1} <em>drew</em> ${P2}</span>`
+    ? `<span class="beat">${P1} <em>tied with</em> ${P2}</span>`
     : `<span class="beat"><b>${first === 1 ? P1 : P2}</b> beat <s>${first === 1 ? P2 : P1}</s></span>`;
   markStep('stepsAll', first === 0 ? 2 : 1);
 
