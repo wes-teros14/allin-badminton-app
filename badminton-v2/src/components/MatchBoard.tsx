@@ -100,7 +100,10 @@ export function MatchupBand({ match, elapsed }: { match: BoardMatch; elapsed: st
         </span>
       </div>
 
-      <p className="mb-2.5 text-center font-mono text-[11px] font-bold tracking-[0.08em] text-muted-foreground">
+      {/* "Game N" is what a player scans a court card for, so it outranks
+          everything else on the card — full contrast and the largest text here,
+          not the 11 px muted caption it used to be. */}
+      <p className="mb-2.5 text-center font-mono text-[20px] font-bold leading-none tracking-[0.01em] tabular-nums text-foreground">
         Game {match.gameNumber}
       </p>
 
