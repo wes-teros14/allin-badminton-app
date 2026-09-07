@@ -56,15 +56,25 @@ Docs written: `docs/visual/win-loss-draw-derivation.html`, a **Results & scoring
 
 ## Immediate next steps
 
-1. **The stale-game report is still open and undiagnosed.** On `/session/cb4ba170-…` one surface kept
+1. **Rotate the prod `service_role` key — still outstanding, and the key is live.** A read-only probe
+   on 2026-09-07 authenticated successfully as `service_role` against the prod project (issued
+   2026-03-18, expires 2036-03-18). It leaked via `.claude/settings.local.json`, Claude Code's
+   permission allowlist, which had recorded an approved one-off command with the key inline.
+   - The history rewrite is **not** remediation: GitHub keeps unreachable objects fetchable by old
+     SHA until it garbage-collects, and every existing clone still holds them.
+   - **Creating new API keys does not disable the legacy ones.** Only "deactivate legacy keys" in
+     the Supabase dashboard does, and that step has not been taken. This is why it may feel handled.
+   - Re-probe after rotating before believing it is fixed. See commits `e1b14fb`, `8664315`,
+     `532f6e1`.
+2. **The stale-game report is still open and undiagnosed.** On `/session/cb4ba170-…` one surface kept
    showing game 2 after game 3 had gone live. Mark was asked which pair of screens disagreed
    (`/admin` vs `/session/:id`, or `/session/:id` vs `/sessions/:id`) and never answered, so nothing
    was touched. First suspicion: the realtime subscription on the stale surface not fanning out to
    every read — same shape as the court-strip bug before it.
-2. Open the board on a real phone with real data, especially a live session.
-3. Decide on the `Avatar` fallback and the light-hostile palette list above.
-4. Delete the merged `006-pair-winrate-leaderboard` branch.
-5. Sanity-check `MIN_CHEERS_RECEIVED = 15` (`src/lib/cheerShare.ts`) against the real spread of
+3. Open the board on a real phone with real data, especially a live session.
+4. Decide on the `Avatar` fallback and the light-hostile palette list above.
+5. Delete the merged `006-pair-winrate-leaderboard` branch.
+6. Sanity-check `MIN_CHEERS_RECEIVED = 15` (`src/lib/cheerShare.ts`) against the real spread of
    `player_cheer_stats.cheers_received` — it was an estimate, not a measurement.
 
 ## Open questions
