@@ -5,8 +5,7 @@ Updated: 2026-09-06. Overwrite this file on every update; it is never a running 
 ## Just done this session
 
 Naming + zone fixes on the player match screens, then the draw bug. **Pushed**: `origin/dev` =
-`17f1658`, `origin/main` = `c642666`. One later wording tweak (`drew` → `tied with`) is **working
-tree only**.
+`0fdeb14`, `origin/main` = `a32c638`. The two items below the rule are **working tree only**.
 
 - **Tabs on `/sessions/:id` renamed**: `Schedule` → **My Games**, `All matches` → **All Games**
   (`SessionPlayerDetailView.tsx`, `TAB_LABELS`).
@@ -38,8 +37,22 @@ tree only**.
   `usePlayerSchedule.ts` while in that file. Docs: `docs/visual/win-loss-draw-derivation.html`,
   a Results & scoring topic in `docs/qa-log.html`, and a `tasks/lessons.md` entry.
 
+---
+
+- **Nav bar underlined two tabs at once.** `pathname.startsWith('/session')` also matched
+  `/sessions`, so Admin lit up on the player session list. New `src/lib/navMatch.ts` exports
+  `isUnder(pathname, base)`, which stops at a segment boundary; all eight tabs use it.
+  `src/__tests__/navMatch.test.ts` asserts exactly one tab is active on every route in the table.
+  The helper lives in `lib/`, not the component — exported from `TopNavBar.tsx` the test would not
+  collect, because importing it pulls in `AuthContext` → `supabase` and vitest has no env.
+- **Payment help text no longer assumes GCash, and no longer names the admin.** Step 2 is one line:
+  "A GCash or bank transfer screenshot is enough." Step 3's title went `Wes confirms it` →
+  `Admin confirms it` and its body dropped both "against GCash" and "he". **Copy rule: no personal
+  names in UI text, bank/GCash are the assumed methods (not cash), and keep helper lines to one
+  sentence.**
+
 **Verified**: `tsc -b` clean, `vite build` clean, eslint **fully** clean, vitest
-**245/245** (3 new draw cases). The court-count fix was rendered in Chromium against the **dev database** as admin: a
+**251/251** (3 draw cases, 6 nav-match cases). The court-count fix was rendered in Chromium against the **dev database** as admin: a
 `court_count = 2` session shows `STARTS WITH 2` / `LATER 15`, both rows `FIRST ON COURT`, no console
 errors; proved the number comes from the column, not the `?? 2` fallback, by temporarily setting the
 fallback to 9. **The filter change is not browser-verified** — Mark asked to skip e2e and test it

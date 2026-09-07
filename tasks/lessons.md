@@ -407,3 +407,23 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   **Fix**: One helper, `getMatchOutcome()` in `src/lib/matchResults.ts`, returning `'team1' | 'team2' | 'draw' | null` by counting every row. **Both** views now call it — `usePlayerSchedule` was rewritten onto it even though its own logic was already correct, because two correct copies still drift. A drawn match reads "A *tied with* B" with neither pair gilded and neither greyed; the personal chip reads `Draw` rather than `1–1`, so both surfaces use one word. `getLegacyWinningPairIndex()` is **deleted**, not left in place — a helper that returns a plausible wrong answer is worse than no helper.
   **Verified**: `tsc -b`, eslint and vitest 245/245 (3 new cases: 2-0 both ways, and a draw asserted from *both* orderings of game 1, which is precisely what the old code got wrong).
   **Rule**: When a feature teaches the writer a new shape, grep every reader before calling it shipped — `submitSplitResult` gained a second row and one of its three consumers never noticed. And treat `legacy` in a symbol name as a live defect report: it names code that outlived the assumption it was built on, so either delete it or prove every caller still wants the old behaviour.
+
+---
+
+## Clicking Sessions also underlined Admin (2026-09-07)
+
+- **Symptom**: On desktop, the nav bar underlined **two** tabs at once — Sessions and Admin — whenever an admin was on `/sessions`.
+  **Root cause**: `TopNavBar.tsx:44` read `pathname.startsWith('/admin') || pathname.startsWith('/session')`. The second clause was meant to catch `/session/:sessionId`, the admin session manager. But `'/sessions'.startsWith('/session')` is **true** — `/session` is a literal prefix of `/sessions` — so every player-facing session route also lit the admin tab. This is the plural/singular routing trap already written down in `project_memory.md`; it had simply never been checked in the nav bar.
+  **Fix**: `isUnder(pathname, base)` in the new `src/lib/navMatch.ts` — `pathname === base || pathname.startsWith(base + '/')` — so a match can only end on a segment boundary. All eight tabs use it, not just the broken one, and `src/__tests__/navMatch.test.ts` asserts **exactly one** tab is active on every route in the table.
+  **A second lesson from the same fix**: the helper was first exported from `TopNavBar.tsx` and the test would not even collect — importing the component pulls in `AuthContext` → `supabase`, which throws `supabaseUrl is required` with no env in vitest. A pure helper that needs testing does not belong in a component file.
+  **Rule**: `startsWith` on a path is a substring test, not a route test. Any prefix comparison against a URL must stop at `/`, or the shorter of two sibling routes silently swallows the longer. When a codebase has near-twin paths — this one has `/session` vs `/sessions` and `/finance` vs `/finance/:id` — grep every `startsWith('/` before trusting the set.
+
+---
+
+## UI copy named the admin personally and assumed cash (2026-09-07)
+
+- **Symptom**: Not a defect, a copy correction. The payment steps read "Wes confirms it" and "Wes will mark you paid once he's checked", and my rewrite of the step-2 helper offered "Paid in cash or another way?"
+  **What was wrong**: Two things. A personal name in product copy breaks the moment anyone else administers a session — the string is hardcoded, not read from a profile. And cash is not a common method here; **bank transfer and GCash are**, so leading with cash as the alternative pointed players at the rarest path.
+  **Fix**: `Wes confirms it` → `Admin confirms it`; "he checks your receipt" → "the admin checks your receipt"; step 2 → "A GCash or bank transfer screenshot is enough." Two remaining `Wes` strings in the repo are a code comment in `pairStats.ts` and a test fixture nickname — neither is UI.
+  **A third correction on the same line**: I had padded step 2 with "Paid another way? Skip this — the admin will mark you paid once they've checked." Mark cut it back to the one sentence. The skip path is real, but a helper line under a button is not where an edge case earns its space; it made the common case harder to read to serve the rare one.
+  **Rule**: No personal names in UI copy — write the role (`the admin`), and use they/them for it. When naming payment methods, GCash and bank transfer are the defaults; do not offer cash as the representative alternative.
