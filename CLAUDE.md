@@ -92,3 +92,152 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+
+## Q&A log: `docs/qa-log.html`
+
+Whenever I ask a question about how the code works, why something is designed the way it is, or you
+explain project logic to me — **append it to `docs/qa-log.html`** before finishing your turn. It is a
+single self-contained HTML file, grouped by topic (not chronological), and it is the reference I use
+when explaining this project to other people.
+
+- Add the question in my words, and a **short** answer — a few sentences, not the full chat reply.
+  Include a concrete example, file path or measured number wherever one exists.
+- Put it under the existing topic heading it belongs to; add a new heading only if none fits, and
+  update the table of contents when you do.
+- **Record corrections prominently.** If an earlier answer of mine turns out to be wrong, do not
+  quietly replace it — mark it as a correction and say what was wrong, in the amber callout style
+  already used. Those entries are the most valuable ones in the file: they stop the same wrong
+  conclusion being reached twice.
+- Skip purely mechanical exchanges ("run this command", "what did that error say") — the file is for
+  explanations that would otherwise have to be re-derived, not a transcript.
+
+## Self-learning
+
+When I correct you or you catch yourself making a mistake, before continuing, add the lesson as a one-line rule under #LESSONS so it never happens again.
+
+## LESSONS
+
+- (Claude adds rules here)
+- A route tells you what mounts, not what it does on mount. Before calling navigation broken, open the component and look for redirect effects — don't conclude from the route table alone.
+- Never parse `getComputedStyle(...).color` with a digit regex; Chromium returns `oklch()`/`oklab()`. Paint it into a 1x1 canvas and read `getImageData`.
+- When auditing colours, sweep Tailwind arbitrary values too: `grep -rEo "(text|bg|border|fill|stroke|ring)-\[#[0-9A-Fa-f]{3,8}\]"`.
+- Never nest a `<button>` inside a `<button>` — the HTML parser closes the outer one and silently truncates its contents. Use `<div role="radio|button" tabindex="0">` for a clickable row that contains controls.
+- Write large file payloads with the Write tool, not a bash heredoc; heredocs over ~80 lines fail in this shell with `unexpected EOF`.
+- When asked where something should go in the app, give a way to choose (an interactive mock) rather than a single prescription, unless only one option is actually viable.
+
+## .env Files
+
+Never read `.env` files directly. Assume they contain sensitive credentials.
+
+If you need configuration information, use another approach first, such as inspecting the application's configuration code, identifying the expected environment variable names, or asking me for the required value instead of accessing the `.env` file.
+
+## Deciding the Code Approach
+
+When choosing an implementation, prioritize correctness, maintainability, readability, and long term quality over execution time or development effort. Do not reject a better solution solely because it is more complex or would take longer to implement. Since you are an AI, do not use human effort estimates as a deciding factor unless I explicitly ask you to optimize for development time or implementation cost.
+
+## Session memory: `project_memory.md` and `handoff.md`
+
+Both live in project root folder. Always read and write them there — don't create copies elsewhere. Together they replace re-explaining project history at the start of every session.
+
+**`project_memory.md`** is the durable record. **`handoff.md`** is the current snapshot. They're not interchangeable: something belongs in one or the other, never both, and never neither.
+
+### At the start of every session
+
+1. Read `project_memory.md` and `handoff.md` before doing anything else — before opening any code, before answering the user's request.
+2. Treat `handoff.md` as the most recent snapshot — pick up exactly where it says work left off, don't re-derive it from git log or guesswork.
+3. If something in the handoff is unclear, stale, or conflicts with the new request, ask before proceeding rather than silently picking an interpretation.
+
+
+### At the end of every session — or whenever asked to "update memory" / "wrap up"
+
+Update **both** files:
+
+**`project_memory.md` — edit, don't append.**
+- Long-term knowledge only: key decisions and *why* they were made, established conventions/naming/architecture, permanent project facts (goals, constraints, stack, stakeholders), and things tried and rejected (with the reason, so they don't get re-proposed later).
+- Revise stale entries in place. An endlessly growing append-only log is not this file's job — if a decision changed, edit the entry that described the old one.
+- Organize by topic/section, not chronologically. Keep a `Last updated: [date]` line at the top.
+- Never put transient status here (e.g. "currently working on X") — that's `handoff.md`'s job, and putting it here means it never gets cleaned up.
+
+**`handoff.md` — overwrite, don't append.**
+- This file reflects only the *current* moment. Every update replaces its previous contents; it is never a running history.
+- Include: date/time of update, what was just done this session, current state (what's working, what's broken, what's in progress), the immediate next step(s), and any open question the next session needs answered before continuing.
+- A handful of short bullets per section — no paragraphs, no restating what's already durable enough to belong in `project_memory.md` instead.
+
+### Style rules for both
+
+- Concise. No filler, no repeating content that already lives in the other file.
+- Bullets and short headers, not prose.
+- Never invent information to fill a gap — mark anything uncertain as "unclear" rather than guessing, since a wrong guess here compounds every session that reads it afterward.
+
+
+## Visual Explanations
+
+Create a self contained HTML file under `/docs/visual/` whenever an explanation
+involves several moving parts, layered structure, a sequence of steps, or
+relationships that are hard to follow as plain prose. Do this proactively
+without waiting to be asked.
+
+**Rules**
+- One file per topic. Descriptive kebab case names, e.g.
+  `auth-token-lifecycle.html`, `deployment-environments-compared.html`
+- Single file only. Inline all CSS and JS. No external stylesheets, CDN links,
+  build steps, or asset folders. The file must render correctly when opened
+  directly from disk with no network access.
+- The visual is the primary artifact. Keep supporting prose short and place it
+  around the diagram.
+- Overwrite the existing file when revisiting a topic rather than creating a
+  versioned copy.
+- Reply in chat with the file path plus a two or three sentence summary. Do not
+  duplicate the full explanation in the chat response.
+
+**Skip this for** single concept questions, quick syntax lookups, and anything
+fully answerable in a short chat reply.
+
+
+## Plain Language Recap
+End every technical explanation with a short plain language section before
+finishing your turn. This is for me, not for a stakeholder, so it applies even
+when the explanation was already fairly simple.
+
+**Before writing the recap:** scan the full explanation, not just its last
+section, and decide whether it covered one core idea or several distinct
+sub-points (separate steps, separate causes, separate components). That
+decision picks the format below.
+
+**Format — single concept**
+    ---
+    **In plain terms**
+    [One or two sentences with no jargon]
+    **Think of it like:** [One analogy carried through to the end]
+    **Example:** [One concrete case, real numbers or real names where possible]
+
+**Format — multiple parts**
+    ---
+    **In plain terms**
+    1. [Sub-point one, no jargon]
+       **Think of it like:** [This part, in the shared analogy world]
+       **Example:** [One concrete case for this part]
+    2. [Sub-point two, no jargon]
+       **Think of it like:** [This part, same analogy world, next piece]
+       **Example:** [One concrete case for this part]
+    3. [Sub-point three, no jargon]
+       **Think of it like:** [This part, same analogy world, next piece]
+       **Example:** [One concrete case for this part]
+
+**Rules**
+- Anchor the analogy in something everyday such as a kitchen, a mailroom, a
+  filing cabinet, or a delivery service. Keep the analogy world free of
+  technical words. If the analogy needs jargon to work, it has failed.
+- Stay inside one analogy world for the whole recap, even in multi-part
+  format. Each numbered part gets its own "Think of it like" line, but all of
+  them must be different corners of the same world (e.g. different stations
+  in the same kitchen), never a new unrelated analogy per part.
+- Numbered parts should map to sub-points actually covered in the
+  explanation, in the order they were covered, not a restructuring.
+- Close the last numbered part with a bridge phrase that ties the analogy
+  back to the actual concept, so the recap
+
+These rules are self contained and do not depend on any skill being loaded. If a
+plain language or analogy skill is available in the session, follow its structure
+instead, since it holds the agreed wording for terms I have already covered.

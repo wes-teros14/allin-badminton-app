@@ -26,3 +26,16 @@ npm-debug.log*
 *.sw?
 /.claude/settings.local.json
 /.mcp.json
+
+# Generated knowledge graph — 100 MB, graph.json alone is 20 MB.
+# Regenerate with `graphify update .`; never commit it.
+graphify-out/
+badminton-v2/graphify-out/
+*.graphify-bak
+
+# Root-level Vite cache (the real deps live in badminton-v2/node_modules)
+/node_modules
+
+# Machine-local Claude permissions. Holds pasted shell commands, which is how a
+# Supabase service_role key ended up in this repo's history — see project_memory.md.
+.claude/settings.local.json
