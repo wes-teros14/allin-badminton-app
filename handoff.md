@@ -4,7 +4,7 @@ Updated: 2026-09-07. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Everything is pushed and clean.** `origin/dev` = `3a5c907`, `origin/main` = `115ba80`
+- **Everything is pushed and clean.** `origin/dev` = `4dfd600`, `origin/main` = `e2c6fdc`
   (non-ff merge). Nothing in flight.
 - Working tree holds only the three deliberate exclusions — `.claude/settings.json`,
   `.claude/settings.local.json`, `CLAUDE.md` — plus an untracked `todo.md` that this session did not
@@ -13,7 +13,7 @@ Updated: 2026-09-07. Overwrite this file on every update; it is never a running 
 
 ## Done this session (2026-09-06/07)
 
-All on the player match screens, in eleven commits from `cbcba67` to `3a5c907`.
+All on the player match screens, in eleven commits from `952b791` to `4dfd600`.
 
 - **Vocabulary**: tabs on `/sessions/:id` are now `My Games` / `All Games`; the duplicate
   `All Matches ↗` link on that page removed.
