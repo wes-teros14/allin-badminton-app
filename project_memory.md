@@ -239,7 +239,14 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   and present on `dev`, `main` and several pushed feature branches. `service_role` bypasses all RLS.
   **The only real remediation is rotating the key in the Supabase dashboard** — history rewriting
   does not help once it is pushed. As of 2026-09-07 the file is untracked and gitignored so it cannot
-  leak again, but the historical commits still contain it. Rotation status: **not done.**
+  leak again, but the historical commits still contain it.
+  **Rotation status: NOT done — verified live on 2026-09-07.** A read-only `GET /rest/v1/` against
+  the prod project with that key returned **200 OK**, so it still authenticates as `service_role`.
+  The key was issued 2026-03-18 and does not expire until 2036-03-18. Legacy keys can no longer be
+  rotated in place; the fix is Settings → API Keys → create `sb_publishable`/`sb_secret`, migrate,
+  then **deactivate the legacy keys** — and it is that last step that neutralises this one. Creating
+  new keys alone leaves the old ones working, which is the easy way to believe this is handled when
+  it is not. Re-probe before believing it is fixed.
 - Root `node_modules/` held only a Vite cache; it and `graphify-out/` (100 MB) are now gitignored,
   so `git status` is finally quiet.
 - The `supabase` MCP server currently fails to connect with HTTP 401 (`AUTH_HEADER_REJECTED`). Unrelated to app code, but it means DB inspection has to go through the CLI or the dashboard.
