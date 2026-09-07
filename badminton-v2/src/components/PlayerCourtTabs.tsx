@@ -85,7 +85,7 @@ export function PlayerCourtTabs({
             </div>
             {court.next ? (
               <p className="text-xs text-muted-foreground">
-                Next up — <span className="font-semibold text-foreground">Game {court.next.gameNumber}</span>
+                Next in queue — <span className="font-semibold text-foreground">Game {court.next.gameNumber}</span>
                 {' · '}{court.next.t1p1} &amp; {court.next.t1p2} vs {court.next.t2p1} &amp; {court.next.t2p2}
               </p>
             ) : (

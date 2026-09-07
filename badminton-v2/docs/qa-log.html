@@ -82,6 +82,7 @@
       <li><a href="#theming">Theming &amp; light mode</a></li>
       <li><a href="#match-schedule">Match schedule</a></li>
       <li><a href="#results">Results &amp; scoring</a></li>
+      <li><a href="#live-board">Live board &amp; performance</a></li>
     </ol>
   </nav>
 
@@ -961,6 +962,125 @@
       <code>CourtCard</code> offers three buttons instead of two: <em>&hellip;won 2-0</em>,
       <em>1-1 Draw</em>, <em>&hellip;won 2-0</em>. With it off there are two buttons, one row is written, and a
       draw cannot be recorded at all.
+    </p>
+  </div>
+
+  <h2 class="topic" id="live-board">Live board &amp; performance</h2>
+
+  <div class="qa">
+    <p class="q">
+      The live board is too slow when updating games. It takes 3 to 5 seconds to show the next match even
+      when there is internet. Can we store the scheduled matches on the device so there is no lag?
+    </p>
+    <p class="a">
+      The lag was real but it was not a caching problem &mdash; it was <strong>seven network round trips,
+      one after another</strong>, and nothing on screen changed until the last one landed. At roughly
+      500&nbsp;ms each that is 3.5&nbsp;s, which matches the reported number exactly.
+      <code>handleFinish</code> awaited four writes, then <code>refresh()</code> ran three more reads.
+    </p>
+    <p class="a">
+      <strong>Four of the seven asked for something already known.</strong> Trip 3 selected &ldquo;the next
+      queued match&rdquo; when that match was already on screen as <code>data.next</code> &mdash; a query for a
+      value sitting in the component&rsquo;s own props. Trips 5&ndash;7 re-read the session row (unchanged),
+      the match list (the outcome was already known) and all sixteen player profiles (static all evening).
+    </p>
+    <p class="a">
+      <strong>A cache would not have fixed it,</strong> which is the important part. The schedule was already
+      being fetched every five seconds and thrown away; the cost was that the UI <em>awaited the network
+      before painting</em>. The fix was to stop re-asking and to overlap what remained: the complete-the-match
+      write and the record-the-result write now go out together, the &ldquo;next queued&rdquo; query is gone,
+      profiles come from a 60-second cache, and the reconcile reads <code>matches</code> and
+      <code>sessions</code> in parallel. <strong>Seven trips down to three.</strong>
+    </p>
+    <p class="a">
+      Measured on the dev session, one real finish: <code>t+0ms</code> POST match_results ‖ PATCH matches,
+      <code>t+334ms</code> PATCH matches (promote), <code>t+526ms</code> GET matches ‖ GET sessions &mdash;
+      with no profiles query anywhere. Diagram:
+      <code>docs/visual/finish-match-latency.html</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why is it not instant, then? What would it take to get to zero?</p>
+    <p class="a">
+      Two of the three remaining trips are genuine writes, and the board should not claim a game is finished
+      before the server has accepted it. Getting to zero means painting the next game <em>before</em> the
+      write returns &mdash; an optimistic update. That additionally needs the three writes folded into one
+      Postgres function, because of the double-promotion race below: optimism would turn a rare invisible
+      server-side glitch into a board confidently showing a game nobody is playing. Deliberately deferred; see
+      <code>project_memory.md</code>.
+    </p>
+  </div>
+
+  <div class="correction">
+    <p class="q">Correction &mdash; &ldquo;Next up&rdquo; on the second court was naming the wrong game.</p>
+    <p class="a">
+      <code>buildCourtSlots</code> gave court&nbsp;<em>N</em> the match at <code>queued[N-1]</code>, so court 1
+      previewed the head of the queue and court&nbsp;2 previewed the one behind it. But promotion always takes
+      the <em>head</em> and gives it to whichever court finishes &mdash; never to a court that was already idle.
+      So court 2&rsquo;s preview named a game that could never land there next, and it was wrong on every court
+      but the first in any two-court session. Visible to players on an idle court via
+      <code>PlayerCourtTabs</code>.
+    </p>
+    <p class="a">
+      <strong>The instructive part:</strong> the obvious fix &mdash; change it to <code>queued[0]</code> and
+      call it correct &mdash; is only half right. Under one shared queue there is <em>no</em> correct per-court
+      <code>next</code> at all, because the answer depends on which court finishes, which is unknowable in
+      advance. The real error was framing a queue-level fact as a per-court promise. So every court now previews
+      the head and the copy reads <strong>&ldquo;Next in queue&rdquo;</strong> instead of &ldquo;Next up&rdquo;:
+      a true statement about the queue rather than a false prediction about a court.
+    </p>
+    <p class="a">
+      This also had to be fixed <em>before</em> deleting trip 3, or the finish would have promoted
+      <code>queued[1]</code> whenever court 2 finished a game.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">If I edit the games on my phone, will the board still pick up the right next match?</p>
+    <p class="a">
+      Yes, but it needed two guards, because both savings work by trusting a copy the device already holds.
+      Cross-device sync itself is untouched &mdash; same realtime listeners, same 5-second poll.
+    </p>
+    <p class="a">
+      <strong>The queue copy.</strong> <code>data.next</code> is the tablet&rsquo;s own view, so reordering the
+      queue on the admin phone and tapping Finish a second later could promote the stale head. Two fallbacks: if
+      a reload is in flight (<code>isReloading</code>) the head is re-read from the server first, and the promote
+      itself carries <code>.eq('status','queued')</code> so a match another device already took updates zero rows
+      and is detected instead of being put on a second court. The same <code>isReloading</code> gate covers the
+      commoner case of both courts finishing within a second of each other.
+    </p>
+    <p class="a">
+      <strong>The profile copy.</strong> Caching by player id means an id already known is never re-read, so a
+      nickname or avatar edited mid-session would never appear &mdash; where the old 5-second poll picked it up.
+      Hence the 60-second TTL: eleven of every twelve ticks still skip the query and the worst case is a minute
+      late rather than never. A <em>substituted</em> player is an unknown id and is always fetched. The TTL
+      restarts only on a full re-read, never on a partial top-up, or a trickle of substitutions would keep
+      pushing the window out and an edit could hide indefinitely.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does this touch player phones? I only have one public live board, on a tablet.</p>
+    <p class="a">
+      Because <code>useCourtState</code> is mounted by three views, not one: the tablet
+      (<code>LiveBoardView</code>), <code>PlayerView</code> and <code>SessionPlayerDetailView</code>. So every
+      player&rsquo;s phone was also re-fetching sixteen profiles every five seconds, and the cache and the
+      parallel read help them too. The finish path itself (<code>CourtCard</code>) is tablet-only and
+      admin-gated. The one player-visible change is the &ldquo;Next in queue&rdquo; wording above.
+      <strong>A change in that hook is never kiosk-only</strong> &mdash; check a phone as well as the tablet.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Anything still broken that this did not fix?</p>
+    <p class="a">
+      <strong>Double promotion.</strong> Two devices finishing two <em>different</em> courts within the same
+      second can both read the same queue head and both promote it, leaving one court empty with no error
+      anywhere. The <code>.eq('status','queued')</code> guard now catches this from the tablet&rsquo;s side, but
+      the real fix is one transaction with <code>FOR UPDATE SKIP LOCKED</code> &mdash; the deferred RPC.
+      <code>useAdminActions.markDone</code> also still keeps its own copy of the old four-step algorithm, so the
+      admin screen has not had any of this applied to it.
     </p>
   </div>
 

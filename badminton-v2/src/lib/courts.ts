@@ -55,7 +55,16 @@ export function buildCourtSlots<T>(
       courtNumber,
       label: labels[courtNumber] || defaultCourtLabel(courtNumber),
       current: currentByCourt.get(courtNumber) ?? null,
-      next: queued[index] ?? null,
+      /**
+       * The head of the shared queue — deliberately the same match for every
+       * court, because promotion goes to whichever court finishes next. It is
+       * NOT a per-court reservation.
+       *
+       * This was `queued[index]`, which made court 2 preview `queued[1]` — a
+       * game that could never land there next. It read as a per-court promise
+       * and was wrong on every court but the first.
+       */
+      next: queued[0] ?? null,
     }
   })
 }

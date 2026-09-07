@@ -4,83 +4,124 @@ Updated: 2026-09-07. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Everything is pushed and clean.** `origin/dev` = `4dfd600`, `origin/main` = `e2c6fdc`
-  (non-ff merge). Nothing in flight.
-- Working tree holds only the three deliberate exclusions — `.claude/settings.json`,
-  `.claude/settings.local.json`, `CLAUDE.md` — plus an untracked `todo.md` that this session did not
-  create and did not touch.
-- `tsc -b` clean, `vite build` clean, eslint clean across the repo, vitest **251/251**.
+- **On branch `007-live-board-latency`, 3 commits, nothing pushed.** Base is `f6c4547` on `dev`.
+  Full rollback is `git checkout dev` (verified — see below).
+- `dev` is **1 commit ahead of `origin/dev`** (`f6c4547`, from a parallel session). That was already
+  true when this session started; it was not created here.
+- `tsc -b` clean, `vite build` clean, vitest **262/262** (was 251; +11 new). eslint unchanged — the
+  single `ProfileView.tsx:257` warning is pre-existing, confirmed against a stashed tree.
+- Working tree clean apart from the untracked `todo.md`, which this session did not create or touch.
 
-## Done this session (2026-09-06/07)
+## Done this session
 
-All on the player match screens, in eleven commits from `952b791` to `4dfd600`.
+Live-board finish latency: **7 sequential round trips → 3.** Measured 526 ms end to end against the
+dev project, down from the reported 3–5 s. Three commits, layered so they revert newest-first.
 
-- **Vocabulary**: tabs on `/sessions/:id` are now `My Games` / `All Games`; the duplicate
-  `All Matches ↗` link on that page removed.
-- **`Starts with` sized by `sessions.court_count`**, not a hardcoded 3. `Up next` stays at 3 —
-  different claim, see `project_memory.md`.
-- **Zones suppressed when the board is filtered to one player** — they rank by array position, and a
-  filtered array is not the session queue.
-- **`Game N` is now the headline on both match cards**, via a shared `GameNumber` component.
-- **1-1 draws no longer reported as wins.** `getMatchOutcome()` is the single derivation; both views
-  call it; `getLegacyWinningPairIndex()` deleted. The row reads "A tied with B".
-- **Nav bar underlined two tabs at once** — `startsWith('/session')` also matched `/sessions`. Fixed
-  with `isUnder()` in `src/lib/navMatch.ts`, used by all eight tabs, with 6 tests.
-- **Payment copy**: no personal names, GCash/bank rather than cash, one-sentence helper.
-- Cleared the 3 long-standing `prefer-const` errors in `usePlayerSchedule.ts`.
+1. `63a3443` `fix(live-board)` — `next` is the shared queue head, not a per-court reservation.
+   `buildCourtSlots` gave court N `queued[N-1]`, so court 2 previewed a game that could never land
+   there next. Copy: *Next up* → *Next in queue*. **Player-visible**, on an idle court. This had to
+   land first, or deleting the "next queued" query would promote the wrong game on court 2.
+2. `6835fec` `perf(live-board)` — profiles from a 60 s TTL cache (`src/lib/profileCache.ts`, new);
+   `sessions` and `matches` read in parallel; `settle()` moved into `.finally` so a thrown load
+   cannot wedge `isReloading` or `isLoading`.
+3. `0df6c0f` `perf(live-board)` — the complete-match and record-result writes now overlap; the
+   "find next queued match" SELECT deleted in favour of the `data.next` prop, guarded by
+   `isReloading` and a new `.eq('status','queued')` on the promote; a rejected finish now says so
+   (`toast.info`) instead of silently doing nothing; dropped the duplicate local `formatElapsed`.
 
-Docs written: `docs/visual/win-loss-draw-derivation.html`, a **Results & scoring** topic in
-`docs/qa-log.html` (with a Correction callout), and four `tasks/lessons.md` entries.
+Writing the profile-cache tests caught a real bug before it shipped: "never fetched" was
+`fetchedAt === 0` compared as a timestamp, so cold start only read as expired because `Date.now()`
+is large — fine in production, wrong under any injected clock. Now `number | null`.
+
+Docs: `badminton-v2/docs/visual/finish-match-latency.html` (new), a **Live board & performance**
+topic in `docs/qa-log.html` with a correction callout for the `queued[index]` bug, three
+`tasks/lessons.md` entries, and `project_memory.md` updated.
+
+## Verified, and how
+
+- **3 round trips**, in the browser against dev Supabase: `t+0ms` POST match_results ‖ PATCH matches
+  (complete), `t+334ms` PATCH matches (promote), `t+526ms` GET matches ‖ GET sessions — with no
+  profiles query. Board advanced to the correct next game.
+- **A poll tick is now one round trip** (`GET matches` ‖ `GET sessions`, same millisecond, profiles
+  absent) rather than three sequential reads.
+- **Both courts read "Next in queue — Game 1"** on `/sessions/:id`; court 2 previously said Game 2.
+- **Rollback tested, not assumed.** Reverting commit 3 alone → builds, 262 pass. Reverting 3+2 →
+  builds, 252 pass. Reverting all three → builds, 251 pass, and `git diff dev -- badminton-v2/src`
+  is **empty**, so a full revert is byte-identical to `dev`.
+- Dev data was modified to run the live test (promoted game 1 to court 1, finished it) and
+  **restored exactly**: `unfinish_match` to reverse `player_stats`/`player_pair_stats` and delete the
+  result rows, then every match reset from a pre-captured snapshot. Confirmed all 20 back to
+  `queued`, 0 result rows, snapshot-identical.
 
 ## Not verified
 
-- **Nothing this session was seen rendered except the court-count fix.** Mark asked to skip e2e from
-  the filter change onward and verify himself. The draw row, the filtered zones, the nav fix and the
-  payment copy are covered by unit tests and the compiler only.
-- **No 1-1 draw has ever been seen on screen.** It needs a session with `split_match_scoring` on and
-  a drawn match recorded. The derivation is unit-tested from both orderings of game 1.
-- Nothing has been seen on a physical phone.
+- **Nothing seen on the actual tablet or a physical phone.** All measurement was in the in-app
+  browser against the dev project.
+- **Neither sync guard has been exercised live.** The two tests that matter: (a) reorder the queue on
+  the admin phone, then tap Finish on the tablet within a second — the promoted game must be the new
+  head, not the old one; (b) change a nickname or avatar mid-session — it must appear on tablet and
+  phone within about a minute.
+- **Split scoring is untested against this change.** The dev session has `split_match_scoring: false`,
+  so the two-row `submitSplitResult` path inside the new `Promise.all` never ran. It is the one
+  branch of `handleFinish` with no live coverage.
+- Two courts finishing within a second of each other (the `isReloading` fallback) was not staged.
+
+## Immediate next steps
+
+1. **Rotate the prod `service_role` key — still outstanding, and the key is live.** A read-only probe
+   on 2026-09-07 authenticated successfully as `service_role` against the prod project (issued
+   2026-03-18, expires 2036-03-18). It leaked via `.claude/settings.local.json`, Claude Code's
+   permission allowlist, which had recorded an approved one-off command with the key inline.
+   - The history rewrite is **not** remediation: GitHub keeps unreachable objects fetchable by old
+     SHA until it garbage-collects, and every existing clone still holds them.
+   - **Creating new API keys does not disable the legacy ones.** Only "deactivate legacy keys" in
+     the Supabase dashboard does, and that step has not been taken. This is why it may feel handled.
+   - Re-probe after rotating before believing it is fixed. See commits `e1b14fb`, `8664315`,
+     `532f6e1`.
+2. **Run the live board on the tablet during a real session** and judge whether ~1.5 s is enough. If
+   it still drags, the recorded next step is applying the confirmed write outcome locally instead of
+   refetching — `project_memory.md` → Decisions, "Deferred step 1". Do **not** jump to optimistic
+   painting without the `finish_match` RPC; optimism turns the double-promotion race into a board
+   confidently showing a game nobody is playing.
+3. Test the split-scoring finish path (needs a session with `split_match_scoring` on).
+4. Merge `007-live-board-latency` → `dev` once it has been seen working.
+5. **The stale-game report is still open and undiagnosed.** On `/session/cb4ba170-…` one surface kept
+   showing game 2 after game 3 had gone live. Mark was asked which pair of screens disagreed
+   (`/admin` vs `/session/:id`, or `/session/:id` vs `/sessions/:id`) and never answered, so nothing
+   was touched. **New lead from this session:** `PlayerView.tsx` mounts `useRealtime` twice (`:216`
+   and `:411`) on the same default channel topic `live-board-${sessionId}`. If both mount together
+   that is two subscriptions on one topic, which is the right shape for a surface that stops
+   updating.
+6. Decide on `useAdminActions.markDone` (`:77-130`) — it still holds a duplicate of the old
+   four-step finish and keeps the double-promotion race. Natural pair to the deferred RPC.
+7. Open the board on a real phone with real data, especially a live session.
+8. Decide on the `Avatar` fallback and the light-hostile palette list.
+9. Delete the merged `006-pair-winrate-leaderboard` branch.
+10. Sanity-check `MIN_CHEERS_RECEIVED = 15` (`src/lib/cheerShare.ts`) against the real spread of
+    `player_cheer_stats.cheers_received` — it was an estimate, not a measurement.
 
 ## Known, not fixed
 
 - **`Avatar.tsx` fallback is weak** — `bg-muted` + one initial, so every Ana/Ate/Alex is the same
-  grey circle. Conspicuous now the board leads with 48 px faces. Mock of the fix (hue from name,
-  white letter) is in `docs/visual/match-schedule-a1-progressive.html`, fallback toggle.
+  grey circle. Mock of the fix is in `docs/visual/match-schedule-a1-progressive.html`.
 - **Nine Tailwind palette text colours are light-hostile** on admin screens — `text-amber-400`
   1.72:1, `text-green-500` 2.22:1, etc. Mostly `MatchGeneratorPanel`, plus `FinanceView`,
   `CourtTabs`, `CourtCard`, `PlayerView`, `LiveIndicator`.
-- **Light mode has never been reviewed on the leaderboard screens.** `PODIUM_TINT`
-  (`border-gold bg-gold/[0.07]`) was written while the app was dark-only.
+- **Light mode has never been reviewed on the leaderboard screens.**
+- **The kiosk has no connection indicator** — `LiveBoardView.tsx:10` discards `useRealtime`'s
+  `status`, which every other consumer destructures. If the gym wifi drops, the tablet shows a stale
+  board with a pulsing LIVE badge and no warning.
 - The `supabase` MCP server has failed to connect all session (HTTP 401, `AUTH_HEADER_REJECTED`), so
-  no DB inspection was possible — use the CLI or dashboard until it is fixed.
-
-## Immediate next steps
-
-1. **The stale-game report is still open and undiagnosed.** On `/session/cb4ba170-…` one surface kept
-   showing game 2 after game 3 had gone live. Mark was asked which pair of screens disagreed
-   (`/admin` vs `/session/:id`, or `/session/:id` vs `/sessions/:id`) and never answered, so nothing
-   was touched. First suspicion: the realtime subscription on the stale surface not fanning out to
-   every read — same shape as the court-strip bug before it.
-2. Open the board on a real phone with real data, especially a live session.
-3. Decide on the `Avatar` fallback and the light-hostile palette list above.
-4. Delete the merged `006-pair-winrate-leaderboard` branch.
-5. Sanity-check `MIN_CHEERS_RECEIVED = 15` (`src/lib/cheerShare.ts`) against the real spread of
-   `player_cheer_stats.cheers_received` — it was an estimate, not a measurement.
+  DB inspection went through the app's own client in the browser instead.
 
 ## Open questions
 
-- **Should the uncommitted `CLAUDE.md` additions be committed?** 149 lines adding the Q&A-log rule,
-  Self-learning, LESSONS, `.env`, Deciding the Code Approach, Session memory, Visual Explanations and
-  Plain Language Recap. Held back from every push per the "in-progress CLAUDE.md" convention, but
-  they read as finished — and they only take effect elsewhere once committed. Raised twice, undecided.
-- **Should the `Draw` chip on My Games instead read `Tied`,** now that the All Games row says
-  "tied with"? Mark picked "tied with" for the row knowing the chip says "Draw". A chip is a category
-  label and a row is a sentence, so the mismatch may be fine.
-- **Should `ScheduleView` get the empty state and the payment banner?** It has neither; both are
-  exported from `MatchBoard.tsx` and take plain props. `/sessions/:id` does not need the banner — its
-  GCash block sits right above the list.
-- Should the theme orb also go on the nav bar? It draws in `currentColor`, so it can, with no rewrite.
-- Should `/sessions` show `setup` sessions to admins? Still flagged, still undecided.
+- **Should the uncommitted `CLAUDE.md` additions be committed?** Still held back, still undecided.
+  Raised three times now.
+- Should the `Draw` chip on My Games read `Tied`, now that the All Games row says "tied with"?
+- Should `ScheduleView` get the empty state and the payment banner?
+- Should the theme orb also go on the nav bar?
+- Should `/sessions` show `setup` sessions to admins?
 - Should the two `tasks/lessons.md` files be consolidated into the root one?
 - `--muted-surface` is defined only in `:root`, never in `.dark`, so it resolves near-white in dark
   mode. Nothing in `src/` uses it — fix the token or delete it?

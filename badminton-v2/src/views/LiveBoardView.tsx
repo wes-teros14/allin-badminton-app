@@ -6,7 +6,7 @@ import { CourtCard } from '@/components/CourtCard'
 
 export function LiveBoardView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
-  const { courts, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, refresh } = useCourtState(sessionIdParam)
+  const { courts, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, isReloading, refresh } = useCourtState(sessionIdParam)
   useRealtime(sessionId, refresh)
   const [isPortrait, setIsPortrait] = useState(false)
 
@@ -57,6 +57,7 @@ export function LiveBoardView() {
               data={{ current: court.current, next: court.next }}
               sessionId={sessionId}
               isLoading={isLoading}
+              isReloading={isReloading}
               refresh={refresh}
               splitScoring={splitMatchScoring}
             />
