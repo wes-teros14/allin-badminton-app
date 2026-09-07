@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import type { CourtData } from '@/hooks/useCourtState'
-import { completedMatchUpdate, elapsedSecondsFromStartedAt, playingMatchUpdate } from '@/utils/matchTiming'
+import {
+  completedMatchUpdate,
+  elapsedSecondsFromStartedAt,
+  formatElapsed,
+  playingMatchUpdate,
+} from '@/utils/matchTiming'
 import { submitSplitResult, type SplitOutcome } from '@/lib/matchResults'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -11,18 +17,14 @@ interface Props {
   data: CourtData
   sessionId: string | null
   isLoading: boolean
+  /** True while a reload is in flight — see the promote fallback in `handleFinish`. */
+  isReloading: boolean
   refresh: () => void
   splitScoring: boolean
 }
 
-function formatElapsed(seconds: number) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refresh, splitScoring }: Props) {
-  const { current } = data
+export function CourtCard({ courtNumber, label, data, sessionId, isLoading, isReloading, refresh, splitScoring }: Props) {
+  const { current, next } = data
   const { role } = useAuth()
   const isAdmin = role === 'admin' || role === 'moderator'
   const [confirmingFinish, setConfirmingFinish] = useState(false)
@@ -43,61 +45,112 @@ export function CourtCard({ courtNumber, label, data, sessionId, isLoading, refr
     return () => clearInterval(intervalId)
   }, [current, confirmingFinish])
 
+  /**
+   * Move one queued match onto this court.
+   *
+   * The `.eq('status', 'queued')` guard is what makes it safe to promote an id
+   * we already held rather than one we just read: if another device promoted
+   * that match first, this updates zero rows and reports false instead of
+   * putting the same game on two courts.
+   */
+  async function promoteMatch(matchId: string): Promise<boolean> {
+    const { data: promoted, error } = await supabase
+      .from('matches')
+      .update(playingMatchUpdate(courtNumber))
+      .eq('id', matchId)
+      .eq('status', 'queued')
+      .select('id')
+
+    return !error && !!promoted && promoted.length > 0
+  }
+
+  /** Re-read the true queue head and promote it. One extra round trip; the fallback path only. */
+  async function promoteQueueHeadFromServer(sid: string): Promise<boolean> {
+    const { data: nextMatch } = await supabase
+      .from('matches')
+      .select('id')
+      .eq('session_id', sid)
+      .eq('status', 'queued')
+      .order('queue_position')
+      .limit(1)
+      .maybeSingle()
+
+    if (!nextMatch) return true // queue really is empty — nothing to promote
+    return promoteMatch((nextMatch as { id: string }).id)
+  }
+
   async function handleFinish(winningPairIndex: 1 | 2 | null, splitOutcome?: SplitOutcome) {
     if (!current || !sessionId || isSaving) return
     setIsSaving(true)
 
     try {
-      // 1. Mark current match complete — only if still 'playing' (atomic guard against concurrent double-finish)
-      const { data: completed, error: e1 } = await supabase
-        .from('matches')
-        .update(completedMatchUpdate(current.startedAt) as never)
-        .eq('id', current.id)
-        .eq('status', 'playing')
-        .select('id')
-      if (e1 || !completed || completed.length === 0) return
-
-      // 2. Record result (skip if not recording)
-      if (splitOutcome) {
-        const { error } = await submitSplitResult(current.id, splitOutcome)
-        if (error) {
-          // Log the error but do NOT bail — match is already complete.
-          // Fall through to promote next match so the queue does not stall.
-          // Admin can re-enter the result manually later.
-          console.error('Failed to record split result', error)
-        }
-      } else if (winningPairIndex !== null) {
-        const { error: resultError } = await supabase.from('match_results').insert({
-          match_id: current.id,
-          winning_pair_index: winningPairIndex,
-          game_number: 1,
-        })
-        if (resultError) {
-          console.error('Failed to record result', resultError)
-          // Fall through to promote next match; log for admin awareness.
-        }
-      }
-
-      // 3. Find next queued match
-      const { data: nextMatch } = await supabase
-        .from('matches')
-        .select('id')
-        .eq('session_id', sessionId)
-        .eq('status', 'queued')
-        .order('queue_position')
-        .limit(1)
-        .maybeSingle()
-
-      if (nextMatch) {
-        // 4. Assign to this court
-        await supabase
+      // 1. Mark the match complete AND record the result, in one round trip.
+      //    Neither write reads the other's outcome, so there is nothing to
+      //    sequence. The `.eq('status', 'playing')` guard still protects against
+      //    a concurrent double-finish, and the match_results unique index on
+      //    (match_id, game_number) rejects a duplicate result row if another
+      //    device recorded this match first — so firing them together cannot
+      //    double-record.
+      const [completeWrite, resultError] = await Promise.all([
+        supabase
           .from('matches')
-          .update(playingMatchUpdate(courtNumber))
-          .eq('id', (nextMatch as { id: string }).id)
-      } else {
-        // Check if other court still has a playing match
-        // Auto-close disabled: admin closes the session manually
+          .update(completedMatchUpdate(current.startedAt) as never)
+          .eq('id', current.id)
+          .eq('status', 'playing')
+          .select('id'),
+        splitOutcome
+          ? submitSplitResult(current.id, splitOutcome).then(({ error }) => error)
+          : winningPairIndex !== null
+            ? supabase
+                .from('match_results')
+                .insert({ match_id: current.id, winning_pair_index: winningPairIndex, game_number: 1 })
+                .then(({ error }) => error)
+            : Promise.resolve(null),
+      ])
+
+      const { data: completed, error: completeError } = completeWrite
+
+      if (completeError) {
+        toast.error(`Could not finish the game — ${completeError.message}`)
+        return
       }
+
+      // Zero rows means the match was no longer 'playing': another device
+      // finished it first. Benign, so say so plainly rather than showing an
+      // error — but do say something. This used to return silently, so the
+      // admin tapped a winner and watched nothing happen.
+      if (!completed || completed.length === 0) {
+        toast.info('That game was already finished')
+        refresh()
+        return
+      }
+
+      if (resultError) {
+        // Do NOT bail — the match is already complete. Fall through to promote
+        // the next match so the queue does not stall; the admin can re-enter
+        // the result later.
+        console.error('Failed to record result', resultError)
+        toast.error('Game finished, but the result was not saved — re-enter it from the admin screen')
+      }
+
+      // 2. Promote the next game onto this court.
+      //    The queue head is normally already on screen as `data.next`, so this
+      //    needs no read at all. Two things can make that copy untrustworthy,
+      //    and both fall back to re-reading it:
+      //      - a reload is in flight, so the queue may be mid-change (e.g. the
+      //        admin just reordered it from their phone, or the other court
+      //        finished a moment ago and took this head)
+      //      - the promote itself updates zero rows, meaning someone got there first
+      if (isReloading) {
+        await promoteQueueHeadFromServer(sessionId)
+      } else if (next) {
+        const promoted = await promoteMatch(next.id)
+        if (!promoted && !(await promoteQueueHeadFromServer(sessionId))) {
+          console.warn('Could not promote a next match onto court', courtNumber)
+        }
+      }
+      // `next` null with a trusted queue means the queue is genuinely empty.
+      // Auto-close stays disabled: the admin closes the session manually.
 
       refresh()
     } finally {
