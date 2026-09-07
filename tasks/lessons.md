@@ -427,3 +427,23 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   **Fix**: `Wes confirms it` → `Admin confirms it`; "he checks your receipt" → "the admin checks your receipt"; step 2 → "A GCash or bank transfer screenshot is enough." Two remaining `Wes` strings in the repo are a code comment in `pairStats.ts` and a test fixture nickname — neither is UI.
   **A third correction on the same line**: I had padded step 2 with "Paid another way? Skip this — the admin will mark you paid once they've checked." Mark cut it back to the one sentence. The skip path is real, but a helper line under a button is not where an edge case earns its space; it made the common case harder to read to serve the rare one.
   **Rule**: No personal names in UI copy — write the role (`the admin`), and use they/them for it. When naming payment methods, GCash and bank transfer are the defaults; do not offer cash as the representative alternative.
+
+---
+
+## I deleted the local Claude settings file while untracking it (2026-09-07)
+
+- **Symptom**: `.claude/settings.local.json` vanished from disk. It held 53 approved-permission entries; the restored copy has 52 (one dropped deliberately) and **68 lines of uncommitted additions from this session are gone for good**.
+  **Root cause**: `git rm --cached` only unstages — it does not delete the working file, which is why I believed it was safe. But the file was **tracked**, so committing that removal recorded a deletion, and the very next thing I did was `git checkout main` → `git merge dev` → `git checkout dev`. Checking out `main` (where the file was still tracked) materialised it; the merge applied the deletion; the checkout back to `dev` left the tree with no such file. The removal was safe in isolation and destructive in the sequence I actually ran.
+  **Fix**: recovered the last committed version with `git show <sha>:<path>`, stripped the one allowlist entry carrying the credential, and wrote it back — now gitignored, so it is out of git's hands entirely.
+  **Rule**: `git rm --cached` on a **tracked** file is only non-destructive until you change branches. Before untracking anything, copy the working file somewhere outside the repo first — the scratchpad exists for this. And never chain an untrack commit straight into a branch switch; verify the working tree in between.
+  **Second rule**: I claimed "one command undoes that if you disagree: `git add -f`". That was wrong the moment the file was gone — `git add -f` cannot re-add a file that no longer exists. Do not offer an undo without checking it still works.
+
+---
+
+## A production service_role key was committed for five months (2026-09-07)
+
+- **Symptom**: A Supabase `service_role` JWT for the **production** project (`ensdfitpeyreunihkqkh`) sat in `.claude/settings.local.json`, committed in `7b9c46b` (2026-04-05) and present on `dev`, `main` and several pushed branches. `service_role` bypasses all RLS.
+  **Root cause**: not a misplaced config value. `settings.local.json` is Claude Code's **permission allowlist** — a record of *approved command text*, stored verbatim so the same command matches next time. The entry was `Bash(SERVICE_ROLE_KEY="eyJ...")`: someone ran a one-off command with the key as an inline env prefix and approved it permanently. The tell that it was ad-hoc rather than `npm run seed` is the variable name — the allowlist says `SERVICE_ROLE_KEY`, the seed script reads `SUPABASE_SERVICE_ROLE_KEY`.
+  **The repo was already doing this right**: `.env.example` documents `SUPABASE_SERVICE_ROLE_KEY`, `scripts/seed-test-users.ts` reads it from `process.env` and its failure message says "Add to .env", and `.gitignore` has covered `badminton-v2/.env*` all along. The designed home existed; the key simply never went there.
+  **Fix applied**: file untracked and gitignored, credential entry stripped from the restored copy. **Rotation in the Supabase dashboard is the only real remediation and is NOT yet done** — a pushed secret cannot be un-pushed.
+  **Rule**: never put a secret on a command line — not as an inline `VAR=...` prefix, not as a flag. It is captured by the shell history *and* by the permission allowlist, and the allowlist was a tracked file. Load secrets from `.env` and invoke the script that reads it. Corollary: a `VITE_`-prefixed variable is bundled into client JS, so a service_role key must never carry that prefix.
