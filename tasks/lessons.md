@@ -457,3 +457,35 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   **Verification that actually proves it**: not "does the file look clean" but `git log --all -S "<signature fragment>"` returning nothing, plus a sweep of every commit for any JWT-shaped string. Both were empty afterwards.
   **Things easy to forget**: `filter-repo` deletes the `origin` remote on purpose — re-add it. It ignores nothing, so merged feature branches keep the old objects unless force-pushed or deleted. And every SHA quoted in docs dies: `project_memory.md`, `tasks/lessons.md`, `handoff.md` and `docs/qa-log.html` all cited commits, and `.git/filter-repo/commit-map` is what translates old → new.
   **Rule**: a history rewrite is damage limitation, never remediation. GitHub keeps unreachable objects fetchable by old SHA until it garbage-collects, and every existing clone still has them, so **the secret is only dead once it is rotated at the source.** Do the rewrite if you like, but never let it close the ticket.
+
+---
+
+## The live board took 3-5 s to show the next game, and no cache would have fixed it (2026-09-07)
+
+- **Symptom**: tapping a winner on `/live-board` took 3-5 seconds to show the next match, on good internet. Mark's first instinct — and mine when I wrote the plan — was to keep the schedule on the device.
+  **Root cause**: seven sequential network round trips in `handleFinish`, four of them asking for something already held. Four awaited writes, then `refresh()` ran three more reads. At ~500 ms each that is 3.5 s, which matched the reported number exactly.
+  **Why a cache was the wrong diagnosis**: the schedule was *already* being fetched every five seconds and discarded. The cost was not a cache miss, it was that the UI **awaited the network before painting**. Adding persistence would have removed none of the seven trips. The sharpest example: trip 3 selected "the next queued match" while that match was already on screen as the `data.next` prop.
+  **Fix**: parallelise the complete-match and record-result writes (independent, and the `match_results (match_id, game_number)` unique index makes a concurrent duplicate impossible); delete the "next queued" query in favour of `data.next`; serve profiles from a 60 s TTL cache; read `matches` and `sessions` in parallel on reconcile. Seven trips to three, measured at 526 ms end to end.
+  **Rule**: before optimising a data layer, count the round trips and ask how many are *sequential* and how many are *redundant*. "It feels slow, add a cache" skips the measurement. A stated remedy is a hypothesis, not the requirement — the requirement was "no lag when finishing a game".
+  **Second rule**: when a proposed fix turns out not to address the reported problem, say so explicitly and deliver the thing that does. Do not quietly build the requested mechanism because it was requested.
+
+---
+
+## `next` was a per-court promise about a shared queue (2026-09-07)
+
+- **Symptom**: on an idle court, `PlayerCourtTabs` named the wrong upcoming game — court 2 read "Next up — Game 4" when Game 3 was actually next.
+  **Root cause**: `buildCourtSlots` set `next: queued[index]`, giving court 1 the queue head and court 2 the one behind it. But promotion takes the head and gives it to whichever court *finishes* — never to a court that was already idle.
+  **The half-fix I nearly shipped**: change it to `queued[0]`. That gets the right value for the wrong reason. Under one shared FIFO there is **no correct per-court `next`**, because the answer depends on which court finishes next, which is unknowable in advance. The bug was the framing, not the index.
+  **Fix**: every court previews the head, and the copy reads "Next in queue" rather than "Next up" — a true statement about the queue instead of a false prediction about a court.
+  **Rule**: when a derived field is wrong, check whether the *question* is well-posed before correcting the answer. A per-item projection of a shared-resource fact is usually a category error, and picking a better value leaves the lie in place.
+  **Ordering note**: this had to land *before* deleting the "next queued" query, or a finish on court 2 would have promoted `queued[1]`.
+
+---
+
+## "Never fetched" encoded as a timestamp only worked because `Date.now()` is large (2026-09-07)
+
+- **Symptom**: three unit tests failed the moment the profile cache had tests — a cold cache reported `isFullRefresh: false`, so `fetchedAt` was never set and the TTL never started.
+  **Root cause**: I initialised `fetchedAt: 0` to mean "never read", then tested expiry as `nowMs - cache.fetchedAt >= ttlMs`. With real `Date.now()` (~1.7e12) that is trivially true, so production would have worked. With the small injected clocks the tests use (`1_000`), `1000 - 0 >= 60_000` is false and the cold-start path silently inverted.
+  **Fix**: `fetchedAt: number | null`, with `null` meaning never, checked explicitly.
+  **Rule**: do not encode a sentinel state as an in-band value of the same type, especially not a timestamp — the check then depends on the magnitude of the clock rather than on the state. This one was invisible in production and would have surfaced only when someone injected a clock.
+  **Meta-rule**: this is the payoff for extracting the logic into `src/lib/` as a pure function. Left inline in the hook, it would have been untestable (node-only vitest, no DOM) and would have shipped.

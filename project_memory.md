@@ -209,6 +209,33 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - It is used by **both** `/sessions/:id` and `/match-schedule/session/:id`. It lived inside `PlayerView.tsx` while only the second route used it, so when session cards started linking to `/sessions/:id` players silently lost the overview; the single court they still saw was the `COURT n` chip on their own `PersonalGameCard`, which follows *their* game and vanishes when it ends. A per-player court chip and a session-wide court strip both say "COURT 1" — do not mistake one for the other.
 - Both routes **skip the viewer's playing match** in the personal list, because the strip above already shows that court in full. An idle court still gets a card naming what is next on it, so a two-court session never visually shrinks to one.
 - `useCourtState` carries `team1`/`team2` with avatars *alongside* the older `t1p1..t2p2` name fields. The names were kept so `LiveBoardView` (kiosk) and `CourtCard` are untouched — do not remove them without checking those two.
+- **A change in `useCourtState` is never kiosk-only.** Three views mount it: `LiveBoardView` (the
+  tablet), `PlayerView` and `SessionPlayerDetailView` (both player phones). Every player's phone runs
+  the 5-second poll too. Verify on a phone as well as the tablet. `CourtCard` by contrast is rendered
+  only by `LiveBoardView` and is admin-gated — and `CourtTabs.tsx:44` defines a *different* local
+  function also called `CourtCard`, used on the admin screen. Do not confuse the two.
+- **`next` on a court slot is the shared queue head, not a per-court reservation.** `buildCourtSlots`
+  gives every court `queued[0]`, because promotion takes the head and hands it to whichever court
+  *finishes* — never to a court that was already idle. It used to be `queued[index]`, so court 2
+  named a game that could never land there next. The fix is not "use `queued[0]` instead": under one
+  shared FIFO there is **no correct per-court `next`**, which is why the copy reads *Next in queue*
+  rather than *Next up* — a fact about the queue instead of a prediction about a court. Do not
+  reintroduce a per-court preview.
+- **Player names and avatars come from a 60-second TTL cache** (`src/lib/profileCache.ts`), not a
+  fetch per refresh. Two rules hold it together, each with a failure mode attached: only ids the
+  cache has never seen are fetched (which is what keeps a mid-session *substitution* working), and
+  the TTL restarts **only** on a full re-read, never on a partial top-up (otherwise a trickle of
+  substitutions pushes the window out forever and an *edited* nickname or avatar hides indefinitely).
+  Caching forever is the version that quietly breaks. `fetchedAt` is deliberately `number | null`
+  rather than `0`-means-never: as a plain timestamp comparison, cold start only reads as expired
+  because `Date.now()` is large — invisible in production, wrong under any injected clock.
+- **The kiosk finish path is 3 round trips and the local queue is never authoritative.** The two
+  writes overlap, the promote uses the `data.next` prop instead of re-reading, and the reconcile
+  reads `matches` and `sessions` in parallel. Because `data.next` is the tablet's own copy, two
+  guards keep it honest: `isReloading` (a reload in flight means the queue may be mid-change, so
+  re-read the head) and `.eq('status','queued')` on the promote (a match another device already took
+  updates zero rows and is detected instead of landing on a second court). Keep both if you touch
+  this — without them, reordering the queue from the admin phone can promote the stale head.
 
 ## UI copy
 
@@ -229,10 +256,41 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 - **Admin shortcut on `/sessions` (2026-09-04)** — chose a 44 × 44 icon button pinned to each card's bottom-right corner. Rejected: an inline "Manage" pill in the badge row (the row already carries up to two `shrink-0` pills at 384 px, so a third squeezes the title), and a full-width admin strip under a hairline rule (correct and explicit, but ~45 px taller per card). The corner button was picked because it costs the list no height and never collides with the pills. Revisit the strip if other moderators start using it, or if a second admin action joins the card.
 - **The card is one `<Link>`.** An anchor cannot contain an anchor, so any in-card control is either a `<button>` calling `navigate()` with `stopPropagation()`, or an absolutely positioned sibling outside the link. The sibling form is preferred — no event plumbing and correct tab order for free.
+- **Finish-match latency: 7 round trips cut to 3 (2026-09-07); the further cuts were deliberately
+  deferred, not rejected.** The board took 3–5 s to show the next game. It was never a caching
+  problem — the schedule was already being fetched every 5 s and discarded; the cost was that the UI
+  awaited the network before painting. A `localStorage` snapshot was requested and would have removed
+  **none** of the seven trips. Shipped instead: overlap the complete+result writes, delete the
+  "next queued match" query in favour of the `data.next` prop, cache profiles, read
+  `matches`‖`sessions` on reconcile. Measured 526 ms end to end.
+  **Deferred step 1 (~10 lines):** after the writes return the outcome is *known* — match A complete,
+  match B playing on this court — so applying that locally instead of calling `refresh()` drops the
+  reconcile trip and lands near 1 s. This is *not* optimistic painting: nothing is guessed, it merely
+  declines to re-ask the server to repeat what it just said. Requires keeping the `queued` array in
+  state so every court's `next` advances too, or `next` goes stale until the next poll tick.
+  **Deferred step 2 (zero delay):** paint before the write returns. This additionally needs a
+  `finish_match` Postgres function, because optimism turns the double-promotion race below into a
+  board confidently showing a game nobody is playing. Do not do step 2 without the RPC.
+  Judge either only after a real session shows whether 3 trips is enough. Diagram:
+  `badminton-v2/docs/visual/finish-match-latency.html`.
 - **Documentation standards** (from `_bmad/_memory/tech-writer-sidecar/`): CommonMark, Mermaid v10+ syntax, and **no time estimates** in generated docs.
 - **Visual explanations** go in self-contained single-file HTML under `docs/visual/`, no CDN links, must render from disk offline.
 
 ## Known warts / unclear
+
+- **Double promotion is still possible from the admin screen.** Two devices finishing two *different*
+  courts within the same second can both read the same queue head and both promote it, leaving one
+  court empty with no error anywhere. `CourtCard` now detects this via `.eq('status','queued')`, but
+  `useAdminActions.markDone` (`:77-130`) still holds its own copy of the old four-step algorithm and
+  has had none of the 2026-09-07 work applied. The real fix is one transaction with
+  `FOR UPDATE SKIP LOCKED` — the deferred `finish_match` RPC — which should also collapse the two
+  duplicate implementations into one.
+- **`moveUp` / `moveDown` are not atomic** (`useAdminActions.ts:43-75`): three sequential updates
+  using `queue_position: 9999` as a sentinel, so mid-reorder the server's own ordering is briefly
+  half-written. A concurrent finish can then pick its next game from an inconsistent order.
+- **The kiosk has no connection indicator.** `LiveBoardView.tsx:10` discards `useRealtime`'s `status`,
+  which every other consumer destructures — so if the gym wifi drops, the tablet shows a stale board
+  with a pulsing LIVE badge and no warning.
 
 - **A Supabase `service_role` key for the *production* project is in git history.** It sits inside a
   permission-allowlist string in `.claude/settings.local.json`, committed in `1d72e9b` (2026-04-05)

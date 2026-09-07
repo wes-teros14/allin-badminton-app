@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finishing a match — where the 3–5 seconds went</title>
+<style>
+  :root {
+    --bg: #FAF8FC;
+    --card: #FFFFFF;
+    --ink: #1F1533;
+    --muted: #6B6480;
+    --border: #E4DEEC;
+    --primary: #6F3E87;
+    --court2: #1F6F6B;
+    --waste: #B3252B;
+    --waste-bg: #FDECEC;
+    --keep-bg: #EFE9F4;
+    --amber-bg: #FFFBEB;
+    --amber-border: #F59E0B;
+    --amber-ink: #78350F;
+    --good: #1F6F4A;
+    --good-bg: #E8F5EE;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 24px 72px;
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 28px; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 32px; font-size: 15px; }
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); margin: 40px 0 14px; font-weight: 700;
+  }
+  p { margin: 0 0 14px; }
+  code {
+    font: 500 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #F3EFF7; padding: 1px 5px; border-radius: 4px;
+  }
+  .panel {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px 24px; margin-bottom: 18px;
+  }
+  .panel > h3 {
+    margin: 0 0 4px; font-size: 17px; display: flex; align-items: baseline;
+    gap: 10px; flex-wrap: wrap;
+  }
+  .tally {
+    font: 600 12px/1 ui-monospace, monospace; padding: 4px 9px; border-radius: 999px;
+    background: var(--waste-bg); color: var(--waste); letter-spacing: 0.03em;
+  }
+  .tally.after { background: var(--good-bg); color: var(--good); }
+  .panel > .note { color: var(--muted); font-size: 13.5px; margin: 0 0 20px; }
+
+  /* ---- Waterfall: a fixed grid of RTT columns, bars offset into them ---- */
+  .fall { display: grid; gap: 7px; overflow-x: auto; }
+  .lane {
+    display: grid;
+    grid-template-columns: 210px repeat(7, minmax(46px, 1fr));
+    align-items: center; gap: 0; min-width: 620px;
+  }
+  .lane .label {
+    font-size: 13px; padding-right: 14px; text-align: right;
+    white-space: nowrap; color: var(--ink);
+  }
+  .lane .label.waste { color: var(--waste); }
+  .lane .label.waste::after { content: " ✕"; font-size: 11px; }
+  .bar {
+    grid-column: var(--col) / span 1;
+    height: 30px; border-radius: 7px;
+    background: var(--keep-bg); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font: 600 11px/1 ui-monospace, monospace; letter-spacing: 0.02em;
+    color: var(--primary); padding: 0 6px; overflow: hidden;
+  }
+  .bar.waste { background: var(--waste-bg); border-color: #F3C9CB; color: var(--waste); }
+  .bar.write { background: #E9E2F2; color: var(--primary); }
+  .bar.pair { height: 14px; }
+  .stack { grid-column: var(--col) / span 1; display: grid; gap: 2px; }
+  .axis {
+    display: grid; grid-template-columns: 210px repeat(7, minmax(46px, 1fr));
+    margin-top: 10px; min-width: 620px;
+  }
+  .axis span {
+    font: 600 10px/1 ui-monospace, monospace; color: var(--muted);
+    text-align: center; letter-spacing: 0.04em;
+  }
+  .axis .label { text-align: right; padding-right: 14px; }
+
+  .measured {
+    background: var(--good-bg); border: 1px solid #C6E2D2;
+    border-left: 4px solid var(--good); border-radius: 12px;
+    padding: 16px 20px; margin: 18px 0; color: #14432C;
+  }
+  .measured table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  .measured td {
+    padding: 4px 10px 4px 0; font: 500 13px/1.5 ui-monospace, monospace;
+    vertical-align: top; border: 0;
+  }
+  .measured td:first-child { color: var(--good); white-space: nowrap; }
+
+  .amber {
+    background: var(--amber-bg); border: 1px solid var(--border);
+    border-left: 4px solid var(--amber-border); border-radius: 12px;
+    padding: 16px 20px; margin: 18px 0; color: var(--amber-ink);
+  }
+  .amber strong { color: #5C2A0B; }
+  .legend {
+    display: flex; gap: 20px; flex-wrap: wrap; margin: 22px 0 0;
+    font-size: 12.5px; color: var(--muted);
+  }
+  .legend i {
+    display: inline-block; width: 22px; height: 11px; border-radius: 4px;
+    vertical-align: -1px; margin-right: 6px; border: 1px solid var(--border);
+  }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .cols h4 { margin: 0 0 8px; font-size: 14px; }
+  .cols p { font-size: 13.5px; color: var(--muted); margin: 0 0 10px; }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Finishing a match — where the 3–5 seconds went</h1>
+  <p class="sub">
+    The live board took 3–5 seconds to show the next game after tapping a winner, on good internet.
+    It was never a caching problem: it was seven network round trips, one after another, four of
+    which asked for something already in hand.
+  </p>
+
+  <h2>Before — seven trips, nothing on screen until the last one lands</h2>
+
+  <div class="panel">
+    <h3>The old <code>handleFinish</code> <span class="tally">7 × RTT ≈ 3.5 s</span></h3>
+    <p class="note">
+      Four awaited writes, then <code>refresh()</code> ran three more reads. Every bar waits for the
+      one above it to finish.
+    </p>
+
+    <div class="fall">
+      <div class="lane"><span class="label">UPDATE matches → complete</span>
+        <div class="bar write" style="--col:2">PATCH</div></div>
+      <div class="lane"><span class="label">INSERT match_results</span>
+        <div class="bar write" style="--col:3">POST</div></div>
+      <div class="lane"><span class="label waste">SELECT next queued match</span>
+        <div class="bar waste" style="--col:4">GET</div></div>
+      <div class="lane"><span class="label">UPDATE matches → promote</span>
+        <div class="bar write" style="--col:5">PATCH</div></div>
+      <div class="lane"><span class="label waste">SELECT sessions</span>
+        <div class="bar waste" style="--col:6">GET</div></div>
+      <div class="lane"><span class="label">SELECT matches</span>
+        <div class="bar" style="--col:7">GET</div></div>
+      <div class="lane"><span class="label waste">SELECT profiles</span>
+        <div class="bar waste" style="--col:8">GET</div></div>
+      <div class="axis">
+        <span class="label">round trip</span>
+        <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:#E9E2F2"></i>a real write or read</span>
+      <span><i style="background:var(--waste-bg);border-color:#F3C9CB"></i>asking for something already known</span>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="panel" style="margin:0">
+      <h4>Why trip 3 was the sharpest waste</h4>
+      <p>
+        The next game was already on screen as <code>data.next</code>. The query asked the server for
+        a value sitting in the component's own props.
+      </p>
+    </div>
+    <div class="panel" style="margin:0">
+      <h4>Why trips 5–7 were waste</h4>
+      <p>
+        <code>refresh()</code> re-read the session row (unchanged), the match list (outcome already
+        known) and all sixteen player profiles (static all evening) — every five seconds, on the
+        tablet <em>and</em> every player's phone.
+      </p>
+    </div>
+  </div>
+
+  <h2>After — three trips, and the middle no longer looks broken</h2>
+
+  <div class="panel">
+    <h3>The new <code>handleFinish</code> <span class="tally after">3 × RTT ≈ 1.5 s</span></h3>
+    <p class="note">
+      Independent calls now overlap, the redundant reads are gone, and the profile fetch disappears
+      entirely behind a 60-second cache.
+    </p>
+
+    <div class="fall">
+      <div class="lane">
+        <span class="label">complete <b>‖</b> record result</span>
+        <div class="stack" style="--col:2">
+          <div class="bar write pair">PATCH matches</div>
+          <div class="bar write pair">POST match_results</div>
+        </div>
+      </div>
+      <div class="lane">
+        <span class="label">promote, from <code>data.next</code></span>
+        <div class="bar write" style="--col:3">PATCH</div>
+      </div>
+      <div class="lane">
+        <span class="label">reconcile: matches <b>‖</b> sessions</span>
+        <div class="stack" style="--col:4">
+          <div class="bar pair">GET matches</div>
+          <div class="bar pair">GET sessions</div>
+        </div>
+      </div>
+      <div class="axis">
+        <span class="label">round trip</span>
+        <span>1</span><span>2</span><span>3</span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="measured">
+    <strong>Measured end to end</strong> on the dev session, one real finish:
+    <table>
+      <tr><td>t + 0 ms</td><td>POST match_results ‖ PATCH matches (complete) — same millisecond</td></tr>
+      <tr><td>t + 334 ms</td><td>PATCH matches (promote) — no SELECT before it</td></tr>
+      <tr><td>t + 526 ms</td><td>GET matches ‖ GET sessions — and no profiles query anywhere</td></tr>
+    </table>
+    <p style="margin:10px 0 0">
+      The board advanced to the correct next game. On the gym's slower network the same three trips
+      land around 1.5&nbsp;s rather than 3–5&nbsp;s.
+    </p>
+  </div>
+
+  <h2>The ceiling, and why it isn't zero</h2>
+  <p>
+    Trips 1 and 2 are genuine writes; the board cannot honestly change until the server has accepted
+    them. Removing them means painting the next game <em>before</em> the write returns — an optimistic
+    update — which also needs the three writes folded into one transaction, because otherwise two
+    devices finishing two courts in the same second can both promote the same game and quietly leave
+    a court empty. That is a larger change and is deliberately not done here.
+  </p>
+
+  <h2>Two places this trades a re-read for a local copy</h2>
+  <p>
+    Both savings work by trusting something the device already holds. Copies go stale, so each one
+    has a rule for when to stop trusting it.
+  </p>
+
+  <div class="amber">
+    <strong>The profile cache expires after 60 seconds.</strong> Caching by player id means an id
+    already known is never re-read — so a nickname or avatar edited mid-session would never appear,
+    where previously the 5-second poll picked it up. A <em>substituted</em> player is a new id and is
+    always fetched. The TTL restarts only on a full re-read, never on a partial top-up: otherwise a
+    trickle of substitutions would keep pushing the window out and an edit could hide indefinitely.
+  </div>
+
+  <div class="amber">
+    <strong>The promote falls back to a read when the queue may be moving.</strong>
+    <code>data.next</code> is the tablet's own copy, so reordering the queue on the admin phone and
+    tapping Finish a moment later could promote the stale head. Two guards: if a reload is in flight
+    (<code>isReloading</code>) the queue head is re-read from the server first, and the promote itself
+    carries <code>.eq('status','queued')</code> so a match another device already took updates zero
+    rows and is detected rather than being put on a second court.
+  </div>
+
+  <h2>One bug fixed on the way, visible to players</h2>
+  <p>
+    <code>buildCourtSlots</code> gave court <em>N</em> the match at <code>queued[N-1]</code>, so court 1
+    previewed the head of the queue and court 2 previewed the one behind it. Promotion always takes
+    the head and gives it to whichever court finishes, so court 2's preview named a game that could
+    never land there next. Every court now previews the head, and the wording changed from
+    <em>“Next up”</em> to <em>“Next in queue”</em> — a true statement about the queue instead of a
+    false prediction about a court.
+  </p>
+
+</main>
+</body>
+</html>
