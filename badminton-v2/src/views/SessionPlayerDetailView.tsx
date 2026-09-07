@@ -381,7 +381,7 @@ function ScheduleTab({
               >
                 {paymentState === 'unpaid' && (
                   <p className="mb-2.5 text-xs leading-relaxed text-muted-foreground">
-                    A screenshot from GCash is enough.
+                    A GCash or bank transfer screenshot is enough.
                   </p>
                 )}
                 <SubmittedReceipts
@@ -408,10 +408,10 @@ function ScheduleTab({
                 )}
               </PayStep>
 
-              <PayStep n={3} state={paymentState === 'submitted' ? 'on' : 'off'} title="Wes confirms it" last>
+              <PayStep n={3} state={paymentState === 'submitted' ? 'on' : 'off'} title="Admin confirms it" last>
                 {paymentState === 'submitted' && (
                   <p className="text-xs leading-relaxed text-muted-foreground">
-                    Nothing more to do — he checks your receipt against GCash, then marks it paid.
+                    Nothing more to do — the admin checks your receipt, then marks it paid.
                   </p>
                 )}
               </PayStep>
