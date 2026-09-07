@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useNotifications } from '@/contexts/NotificationContext'
+import { isUnder } from '@/lib/navMatch'
 import ppLogo from '@/assets/pp-logo.jpeg'
 
 export function TopNavBar() {
@@ -17,21 +18,21 @@ export function TopNavBar() {
     {
       label: 'Sessions',
       href: '/sessions',
-      active: pathname.startsWith('/sessions'),
+      active: isUnder(pathname, '/sessions'),
       show: true,
       badge: false,
     },
     {
       label: 'Leaderboard',
       href: '/leaderboard',
-      active: pathname.startsWith('/leaderboard'),
+      active: isUnder(pathname, '/leaderboard'),
       show: true,
       badge: false,
     },
     {
       label: 'My Profile',
       href: '/profile',
-      active: pathname.startsWith('/profile'),
+      active: isUnder(pathname, '/profile'),
       show: true,
       badge: unreadCount > 0,
     },
@@ -41,35 +42,35 @@ export function TopNavBar() {
     {
       label: 'Admin',
       href: '/admin',
-      active: pathname.startsWith('/admin') || pathname.startsWith('/session'),
+      active: isUnder(pathname, '/admin') || isUnder(pathname, '/session'),
       show: role === 'admin' || role === 'moderator',
       badge: false,
     },
     {
       label: 'Players',
       href: '/players',
-      active: pathname.startsWith('/players'),
+      active: isUnder(pathname, '/players'),
       show: role === 'admin',
       badge: false,
     },
     {
       label: 'Inventory',
       href: '/inventory',
-      active: pathname.startsWith('/inventory'),
+      active: isUnder(pathname, '/inventory'),
       show: role === 'admin',
       badge: false,
     },
     {
       label: 'Finance',
       href: '/finance',
-      active: pathname.startsWith('/finance'),
+      active: isUnder(pathname, '/finance'),
       show: role === 'admin',
       badge: false,
     },
     {
       label: 'Payment Settings',
       href: '/payment-settings',
-      active: pathname.startsWith('/payment-settings'),
+      active: isUnder(pathname, '/payment-settings'),
       show: role === 'admin',
       badge: false,
     },
