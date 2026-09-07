@@ -52,10 +52,18 @@ topic in `docs/qa-log.html` with a correction callout for the `queued[index]` bu
 - **Rollback tested, not assumed.** Reverting commit 3 alone → builds, 262 pass. Reverting 3+2 →
   builds, 252 pass. Reverting all three → builds, 251 pass, and `git diff dev -- badminton-v2/src`
   is **empty**, so a full revert is byte-identical to `dev`.
-- Dev data was modified to run the live test (promoted game 1 to court 1, finished it) and
-  **restored exactly**: `unfinish_match` to reverse `player_stats`/`player_pair_stats` and delete the
-  result rows, then every match reset from a pre-captured snapshot. Confirmed all 20 back to
-  `queued`, 0 result rows, snapshot-identical.
+- **Split scoring verified on localhost (Mark enabled it after the push).** Both branches, each still
+  **3 round trips** — the two-row insert is a single POST, so split costs no more than a normal
+  finish. A **1-1 draw** wrote `(g1→pair1, g2→pair2)`, which derives as `draw`; a **2-0** wrote
+  `(g1→pair1, g2→pair1)`, deriving as `team1`. Match `complete` with a duration, board advanced to
+  the right next game, no console errors. Timeline: `POST match_results (201)` ‖ `PATCH matches (200)`
+  at the same millisecond, `PATCH` promote at +282 ms, `GET matches` ‖ `GET sessions` at +450 ms.
+- **The 60 s profile TTL was observed working**: exactly one `profiles` fetch in a ~22 s window
+  (at t+17 s), where the old code would have made four or five.
+- Dev data was modified for both tests and **restored exactly** each time: `unfinish_match` to
+  reverse `player_stats`/`player_pair_stats` and delete the result rows, then every match reset from
+  a pre-captured snapshot. Verified snapshot-identical, with Mark's own four completed games and
+  their result rows left untouched.
 
 ## Not verified
 
@@ -65,10 +73,12 @@ topic in `docs/qa-log.html` with a correction callout for the `queued[index]` bu
   the admin phone, then tap Finish on the tablet within a second — the promoted game must be the new
   head, not the old one; (b) change a nickname or avatar mid-session — it must appear on tablet and
   phone within about a minute.
-- **Split scoring is untested against this change.** The dev session has `split_match_scoring: false`,
-  so the two-row `submitSplitResult` path inside the new `Promise.all` never ran. It is the one
-  branch of `handleFinish` with no live coverage.
 - Two courts finishing within a second of each other (the `isReloading` fallback) was not staged.
+- **A realtime fan-out is visible but was left alone.** One finish produced three refresh cascades
+  within ~100 ms (t+450, +455, +534) — the write's own `refresh()` plus the realtime pings. Each is
+  now 2 parallel queries instead of 3 sequential, so it is far cheaper than before and does not
+  affect correctness, but coalescing `useRealtime` (a ~250 ms trailing timer) would collapse them to
+  one. Deliberately out of scope for this pass; it benefits all five `useRealtime` callers.
 
 ## Immediate next steps
 
@@ -87,9 +97,8 @@ topic in `docs/qa-log.html` with a correction callout for the `queued[index]` bu
    refetching — `project_memory.md` → Decisions, "Deferred step 1". Do **not** jump to optimistic
    painting without the `finish_match` RPC; optimism turns the double-promotion race into a board
    confidently showing a game nobody is playing.
-3. **Test the split-scoring finish path on production** (needs a session with `split_match_scoring`
-   on). This is the one branch of `handleFinish` that is live but has never been run — see
-   *Not verified*. Worth doing before a session that uses split scoring, not during one.
+3. Consider coalescing `useRealtime` (~250 ms trailing timer). One finish currently fires three
+   refresh cascades in ~100 ms; each is cheap now, but one would do. Benefits all five callers.
 4. **The stale-game report is still open and undiagnosed.** On `/session/cb4ba170-…` one surface kept
    showing game 2 after game 3 had gone live. Mark was asked which pair of screens disagreed
    (`/admin` vs `/session/:id`, or `/session/:id` vs `/sessions/:id`) and never answered, so nothing
