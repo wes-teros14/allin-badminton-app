@@ -40,6 +40,17 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - Supabase prod project ref: `ensdfitpeyreunihkqkh` (`npm run supabase:link:prod`).
 - Production URL: **badmintontayo.mrkws.com**. The old `all-in-badminton-app.vercel.app` URL is superseded.
 - Never read `.env`. If a value is needed, infer the variable name from config code or ask.
+- **`.env` is the only home for secrets, and the repo is already set up for it.** `.env.example`
+  documents `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`; Vite
+  auto-loads `.env.development` for `npm run dev` and `.env.production` for `npm run build`;
+  `.gitignore` has covered `badminton-v2/.env*` from the start.
+- **`service_role` is for scripts only, never the app.** `scripts/seed-test-users.ts` reads
+  `process.env.SUPABASE_SERVICE_ROLE_KEY`; the browser bundle only ever uses
+  `import.meta.env.VITE_SUPABASE_ANON_KEY`. A `VITE_`-prefixed variable is compiled into client JS,
+  so a service_role key must never carry that prefix.
+- **Never pass a secret on a command line** — not as an inline `VAR=...` prefix, not as a flag. It is
+  captured by shell history *and* by Claude Code's permission allowlist. Run the script that reads
+  `.env` instead.
 
 ## Branching and commits
 
