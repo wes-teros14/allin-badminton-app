@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-06
+Last updated: 2026-09-07
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -61,6 +61,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - `/sessions` (**plural**) is the player-facing list; `/sessions/:id` is the player detail view.
 - `/session/:id` (**singular**) is the admin session management page.
 - The near-identical paths are easy to mix up; always check plurality before linking.
+- **Never compare a path with a bare `startsWith`.** `'/sessions'.startsWith('/session')` is true, so
+  the nav bar underlined Admin on the player's own session list for as long as that clause existed.
+  `isUnder(pathname, base)` in `src/lib/navMatch.ts` is the only matcher to use — it accepts `base`
+  itself or anything under `base + '/'`, so a match can only end on a segment boundary. All eight
+  `TopNavBar` tabs go through it, not just the one that broke.
 
 ## Session lifecycle
 
@@ -72,6 +77,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Data conventions worth not relearning
 
 - **One derivation helper per concept.** Payment state goes through `src/lib/paymentState.ts` (`derivePaymentState`) on all three surfaces — sessions list, session card, admin panel — because divergent copies previously showed different colours for the same row (FR-020). Same pattern for `sessionStatusStyle.ts` and `sessionStamp.ts`.
+- **A match's result comes from `getMatchOutcome()`** (`src/lib/matchResults.ts`), returning `'team1' | 'team2' | 'draw' | null`. `match_results` holds **one row per game inside a match**, so a split-scored match has two; a pair has beaten the other only if it took *every* row, and one game each is a draw. The personal card and the All Games list each derived this themselves until 2026-09-06, and the list read only the earliest row — so a 1-1 was shown as a win for whoever took game 1. `getLegacyWinningPairIndex()` was deleted rather than left available. Both surfaces now call the one helper even though one of the two copies had been correct: two correct copies still drift.
 - **Date formatting**: always `'en-US'` and always append `'T00:00:00'` to a bare `YYYY-MM-DD`. Parsed bare, it is UTC midnight and renders as the previous day anywhere west of Greenwich.
 - **Unbounded reads need paging.** Any query whose result set can exceed one screen uses `.range()` with a stable `.order()`, plus a `{ count: 'exact', head: true }` cross-check that throws on mismatch. PostgREST silently truncates at `db_max_rows` (1000) with no error. The pair leaderboard was the first such query in the codebase.
 - **Invariants belong in the database.** Anything an algorithm guarantees can still be violated by a hand-edit form, so the check goes in a Postgres `CHECK` plus a shared validator for a readable error (see `matches_distinct_players_check`, migration 079, and `src/lib/matchPlayers.ts`).
@@ -103,7 +109,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 ## Testing
 
-- `npm run test:unit` — vitest, `include: ['src/**/*.test.ts']`, `environment: 'node'`. **Node only: there is no DOM or React Testing Library setup**, so pure functions get unit tests and components do not. Extracting logic into a testable helper is the established response to this.
+- `npm run test:unit` — vitest, `include: ['src/**/*.test.ts']`, `environment: 'node'`. **Node only: there is no DOM or React Testing Library setup**, so pure functions get unit tests and components do not. Extracting logic into a testable helper is the established response to this — and the helper must live in `src/lib/`, not be exported from the component. A test importing a view or component pulls in `AuthContext` → `src/lib/supabase.ts`, which calls `createClient` at module scope and throws `supabaseUrl is required` with no env: the file fails to *collect*, reporting "no tests" rather than a failure. This is why `navMatch.ts` is a lib module.
 - `npm run test:e2e` — Playwright, `tests/*.spec.ts`, boots the dev server itself and needs a live Supabase plus `npm run seed` data.
 - `npm run build` runs `tsc -b && vite build`. Vercel uses the same strict flags, so an unused import that is harmless in the editor fails the deploy.
 - To verify a UI change without Supabase reachable: launch Chromium via Playwright, stub `**/auth/v1/**` and `**/rest/v1/**` with `page.route`, and patch `localStorage.getItem` to answer any `sb-*-auth-token` lookup with a fake session. This renders the real component against fixed data and is how the admin-shortcut work was verified.
@@ -148,6 +154,24 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Zone wording is status-dependent.** Before `in_progress` the headings read *Starts with* /
   *First on court*; after, *Up next* / *First open court*. Nothing is "next" and no court is open
   before the session starts.
+- **`Starts with` holds exactly `sessions.court_count` games; `Up next` previews three.** These are
+  two different claims, which is why one literal could not serve both: before the whistle the zone
+  states what actually goes on court, and that number is the court count; during play it is just a
+  queue preview, where three is arbitrary but harmless. With the zone capped at the court count,
+  `Game N of the night` became unreachable and every row in it reads *First on court*.
+- **The zones are suppressed when the board is filtered to one player** (`playerFiltered`), because
+  they rank by position in the array `MatchBoard` is handed — and a filtered array is not the session
+  queue. Game 7 was captioned *First on court* simply for being that player's earliest. A filtered
+  list is one flat *Upcoming* run in queue order with no position captions. `On court now` and
+  `Played` are unaffected: they read `status`, not position.
+- **`Game N` is the largest text on a match card** (20 px, bold, full contrast) — it is what a player
+  scans the card for. Both `MatchupBand` and `PersonalGameCard` render the shared `GameNumber`
+  component; they previously held byte-identical copies of the line and one was left behind when the
+  other was changed.
+- **The tabs on `/sessions/:id` are `My Games` / `All Games` / `Leaderboard`** (`TAB_LABELS` in
+  `SessionPlayerDetailView.tsx`). The player vocabulary is *games*, not *matches* or *schedule*. The
+  `All Matches ↗` link that sat below the receipt block on that page is gone — it duplicated the tab
+  directly above it. The one on `/match-schedule/:nameSlug` stays, because that page has no tab bar.
 - **The payment banner links to `/sessions/:id`, it does not repeat the receipt upload.** Payment
   otherwise lives entirely on `SessionPlayerDetailView`, so a player could study their games all
   night without being told they still owe. One derivation, one upload flow.
@@ -171,6 +195,21 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - It is used by **both** `/sessions/:id` and `/match-schedule/session/:id`. It lived inside `PlayerView.tsx` while only the second route used it, so when session cards started linking to `/sessions/:id` players silently lost the overview; the single court they still saw was the `COURT n` chip on their own `PersonalGameCard`, which follows *their* game and vanishes when it ends. A per-player court chip and a session-wide court strip both say "COURT 1" — do not mistake one for the other.
 - Both routes **skip the viewer's playing match** in the personal list, because the strip above already shows that court in full. An idle court still gets a card naming what is next on it, so a two-court session never visually shrinks to one.
 - `useCourtState` carries `team1`/`team2` with avatars *alongside* the older `t1p1..t2p2` name fields. The names were kept so `LiveBoardView` (kiosk) and `CourtCard` are untouched — do not remove them without checking those two.
+
+## UI copy
+
+- **No personal names in UI text.** Write the role — `the admin`, `Admin confirms it` — and use
+  they/them for it. The payment steps hardcoded "Wes confirms it" and "he checks your receipt"; the
+  string is not read from a profile, so it breaks the moment anyone else administers a session.
+- **GCash and bank transfer are the assumed payment methods.** Do not offer cash as the
+  representative alternative — it is the rare path. Step 2's helper is one line: "A GCash or bank
+  transfer screenshot is enough."
+- **A helper line under a button stays one sentence.** An edge case does not earn space there; it
+  makes the common case harder to read. (An admin *can* mark a player paid with no receipt, so the
+  skip path is real — it just does not belong in that line.)
+- **Past tense, and unambiguous.** The results list reads "A beat B" or "A tied with B". `drew` was
+  correct past tense but can be read as *drawn against*; `draw` would have been wrong tense
+  altogether next to `beat`.
 
 ## Decisions made, and alternatives rejected
 
