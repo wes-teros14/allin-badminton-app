@@ -44,6 +44,9 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Branching and commits
 
 - Flow is `<nnn>-<feature-slug>` → `dev` → `main`. Feature branches are cut from `dev`.
+- **Scan `.claude/settings*.json` before ever staging one.** The allowlist records whole shell
+  commands verbatim, so any secret pasted into a command is captured there. `settings.local.json` is
+  gitignored for this reason; `settings.json` (hooks only) is tracked.
 - Merges into `main` are **non-fast-forward** with the message form:
   `Merge branch 'dev' into main — <short summary>`
 - Commits use conventional prefixes with a scope: `feat(leaderboard):`, `fix(sessions):`, `refactor(leaderboard):`.
@@ -220,6 +223,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 ## Known warts / unclear
 
-- `node_modules/` shows as untracked at the repo root rather than ignored. Unclear whether that is deliberate; it has not caused a problem, but it means `git status` is always noisy.
+- **A Supabase `service_role` key for the *production* project is in git history.** It sits inside a
+  permission-allowlist string in `.claude/settings.local.json`, committed in `7b9c46b` (2026-04-05)
+  and present on `dev`, `main` and several pushed feature branches. `service_role` bypasses all RLS.
+  **The only real remediation is rotating the key in the Supabase dashboard** — history rewriting
+  does not help once it is pushed. As of 2026-09-07 the file is untracked and gitignored so it cannot
+  leak again, but the historical commits still contain it. Rotation status: **not done.**
+- Root `node_modules/` held only a Vite cache; it and `graphify-out/` (100 MB) are now gitignored,
+  so `git status` is finally quiet.
 - The `supabase` MCP server currently fails to connect with HTTP 401 (`AUTH_HEADER_REJECTED`). Unrelated to app code, but it means DB inspection has to go through the CLI or the dashboard.
 - Two `tasks/lessons.md` files exist (see Repo layout). Unclear whether the `badminton-v2/` copy should be merged into the root one or deleted.
