@@ -4,13 +4,17 @@ Updated: 2026-09-07. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **On branch `007-live-board-latency`, 3 commits, nothing pushed.** Base is `f6c4547` on `dev`.
-  Full rollback is `git checkout dev` (verified — see below).
-- `dev` is **1 commit ahead of `origin/dev`** (`f6c4547`, from a parallel session). That was already
-  true when this session started; it was not created here.
+- **Pushed and live.** `origin/dev` = `80e9ba8`, `origin/main` = `5608908` (non-ff merge:
+  *"Merge branch 'dev' into main — live-board finish cut from 7 round trips to 3"*). This means
+  **it is deployed to production** at badmintontayo.mrkws.com.
 - `tsc -b` clean, `vite build` clean, vitest **262/262** (was 251; +11 new). eslint unchanged — the
   single `ProfileView.tsx:257` warning is pre-existing, confirmed against a stashed tree.
 - Working tree clean apart from the untracked `todo.md`, which this session did not create or touch.
+- **Rollback anchors.** The local branch `007-live-board-latency` is kept at `80e9ba8` as a marker;
+  the pre-change point is `f6c4547`. To back out on production:
+  `git revert -m 1 5608908` on `main` undoes the whole merge, or revert the three commits
+  newest-first (`0df6c0f` → `6835fec` → `63a3443`) to drop one layer at a time. All four states were
+  built and tested before pushing — see *Verified*.
 
 ## Done this session
 
@@ -83,21 +87,22 @@ topic in `docs/qa-log.html` with a correction callout for the `queued[index]` bu
    refetching — `project_memory.md` → Decisions, "Deferred step 1". Do **not** jump to optimistic
    painting without the `finish_match` RPC; optimism turns the double-promotion race into a board
    confidently showing a game nobody is playing.
-3. Test the split-scoring finish path (needs a session with `split_match_scoring` on).
-4. Merge `007-live-board-latency` → `dev` once it has been seen working.
-5. **The stale-game report is still open and undiagnosed.** On `/session/cb4ba170-…` one surface kept
+3. **Test the split-scoring finish path on production** (needs a session with `split_match_scoring`
+   on). This is the one branch of `handleFinish` that is live but has never been run — see
+   *Not verified*. Worth doing before a session that uses split scoring, not during one.
+4. **The stale-game report is still open and undiagnosed.** On `/session/cb4ba170-…` one surface kept
    showing game 2 after game 3 had gone live. Mark was asked which pair of screens disagreed
    (`/admin` vs `/session/:id`, or `/session/:id` vs `/sessions/:id`) and never answered, so nothing
    was touched. **New lead from this session:** `PlayerView.tsx` mounts `useRealtime` twice (`:216`
    and `:411`) on the same default channel topic `live-board-${sessionId}`. If both mount together
    that is two subscriptions on one topic, which is the right shape for a surface that stops
    updating.
-6. Decide on `useAdminActions.markDone` (`:77-130`) — it still holds a duplicate of the old
+5. Decide on `useAdminActions.markDone` (`:77-130`) — it still holds a duplicate of the old
    four-step finish and keeps the double-promotion race. Natural pair to the deferred RPC.
-7. Open the board on a real phone with real data, especially a live session.
-8. Decide on the `Avatar` fallback and the light-hostile palette list.
-9. Delete the merged `006-pair-winrate-leaderboard` branch.
-10. Sanity-check `MIN_CHEERS_RECEIVED = 15` (`src/lib/cheerShare.ts`) against the real spread of
+6. Open the board on a real phone with real data, especially a live session.
+7. Decide on the `Avatar` fallback and the light-hostile palette list.
+8. Delete the merged `006-pair-winrate-leaderboard` branch.
+9. Sanity-check `MIN_CHEERS_RECEIVED = 15` (`src/lib/cheerShare.ts`) against the real spread of
     `player_cheer_stats.cheers_received` — it was an estimate, not a measurement.
 
 ## Known, not fixed
