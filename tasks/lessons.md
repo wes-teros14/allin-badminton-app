@@ -442,8 +442,18 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 
 ## A production service_role key was committed for five months (2026-09-07)
 
-- **Symptom**: A Supabase `service_role` JWT for the **production** project (`ensdfitpeyreunihkqkh`) sat in `.claude/settings.local.json`, committed in `7b9c46b` (2026-04-05) and present on `dev`, `main` and several pushed branches. `service_role` bypasses all RLS.
+- **Symptom**: A Supabase `service_role` JWT for the **production** project (`ensdfitpeyreunihkqkh`) sat in `.claude/settings.local.json`, committed in `1d72e9b` (2026-04-05) and present on `dev`, `main` and several pushed branches. `service_role` bypasses all RLS.
   **Root cause**: not a misplaced config value. `settings.local.json` is Claude Code's **permission allowlist** — a record of *approved command text*, stored verbatim so the same command matches next time. The entry was `Bash(SERVICE_ROLE_KEY="eyJ...")`: someone ran a one-off command with the key as an inline env prefix and approved it permanently. The tell that it was ad-hoc rather than `npm run seed` is the variable name — the allowlist says `SERVICE_ROLE_KEY`, the seed script reads `SUPABASE_SERVICE_ROLE_KEY`.
   **The repo was already doing this right**: `.env.example` documents `SUPABASE_SERVICE_ROLE_KEY`, `scripts/seed-test-users.ts` reads it from `process.env` and its failure message says "Add to .env", and `.gitignore` has covered `badminton-v2/.env*` all along. The designed home existed; the key simply never went there.
   **Fix applied**: file untracked and gitignored, credential entry stripped from the restored copy. **Rotation in the Supabase dashboard is the only real remediation and is NOT yet done** — a pushed secret cannot be un-pushed.
   **Rule**: never put a secret on a command line — not as an inline `VAR=...` prefix, not as a flag. It is captured by the shell history *and* by the permission allowlist, and the allowlist was a tracked file. Load secrets from `.env` and invoke the script that reads it. Corollary: a `VITE_`-prefixed variable is bundled into client JS, so a service_role key must never carry that prefix.
+
+---
+
+## Rewriting history to remove a secret (2026-09-07)
+
+- **What was done**: `git filter-repo --replace-text --force` over the whole repo, redacting the production `service_role` JWT to `***REMOVED-SERVICE-ROLE-KEY-ROTATE-IN-SUPABASE***`. All 530 commits preserved with new SHAs; `dev` and `main` force-pushed; the two merged remote branches (`003-registration-payment-qr`, `005-payment-receipt-upload`) deleted because they still held the old objects.
+  **Order that made it safe**: take a verified `git bundle create --all` backup *first* (6.5 MB, restores every ref), prune stale worktrees, then rewrite locally and verify before touching the remote. Everything up to the force-push is reversible from the bundle.
+  **Verification that actually proves it**: not "does the file look clean" but `git log --all -S "<signature fragment>"` returning nothing, plus a sweep of every commit for any JWT-shaped string. Both were empty afterwards.
+  **Things easy to forget**: `filter-repo` deletes the `origin` remote on purpose — re-add it. It ignores nothing, so merged feature branches keep the old objects unless force-pushed or deleted. And every SHA quoted in docs dies: `project_memory.md`, `tasks/lessons.md`, `handoff.md` and `docs/qa-log.html` all cited commits, and `.git/filter-repo/commit-map` is what translates old → new.
+  **Rule**: a history rewrite is damage limitation, never remediation. GitHub keeps unreachable objects fetchable by old SHA until it garbage-collects, and every existing clone still has them, so **the secret is only dead once it is rotated at the source.** Do the rewrite if you like, but never let it close the ticket.

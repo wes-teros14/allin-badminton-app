@@ -235,11 +235,17 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Known warts / unclear
 
 - **A Supabase `service_role` key for the *production* project is in git history.** It sits inside a
-  permission-allowlist string in `.claude/settings.local.json`, committed in `7b9c46b` (2026-04-05)
+  permission-allowlist string in `.claude/settings.local.json`, committed in `1d72e9b` (2026-04-05)
   and present on `dev`, `main` and several pushed feature branches. `service_role` bypasses all RLS.
   **The only real remediation is rotating the key in the Supabase dashboard** — history rewriting
   does not help once it is pushed. As of 2026-09-07 the file is untracked and gitignored so it cannot
   leak again, but the historical commits still contain it.
+  **History rewritten 2026-09-07** with `git filter-repo --replace-text`: the JWT is replaced by
+  `***REMOVED-SERVICE-ROLE-KEY-ROTATE-IN-SUPABASE***` in the two commits that carried it, all 530
+  commits kept (new SHAs throughout), `dev` and `main` force-pushed, and the two merged remote
+  branches that still held the old objects deleted. **This does not make the key safe:** GitHub keeps
+  unreachable objects fetchable by old SHA until it garbage-collects, and any existing clone still
+  has them.
   **Rotation status: NOT done — verified live on 2026-09-07.** A read-only `GET /rest/v1/` against
   the prod project with that key returned **200 OK**, so it still authenticates as `service_role`.
   The key was issued 2026-03-18 and does not expire until 2036-03-18. Legacy keys can no longer be
