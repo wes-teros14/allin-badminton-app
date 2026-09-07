@@ -1001,6 +1001,48 @@
   </div>
 
   <div class="qa">
+    <p class="q">Does split scoring cost an extra trip, since it writes two rows instead of one?</p>
+    <p class="a">
+      No &mdash; <strong>split scoring is the same three round trips</strong>. <code>submitSplitResult</code>
+      passes both rows to a single <code>.insert([&hellip;])</code>, so two rows cost one POST. Verified on
+      localhost: a <strong>1&#8209;1 draw</strong> wrote <code>(g1&rarr;pair1, g2&rarr;pair2)</code> and a
+      <strong>2&#8209;0</strong> wrote <code>(g1&rarr;pair1, g2&rarr;pair1)</code>, deriving as
+      <code>draw</code> and <code>team1</code> respectively via <code>getMatchOutcome()</code>. Same
+      timeline as a normal finish: <code>POST match_results</code> ‖ <code>PATCH matches</code> at the same
+      millisecond, promote at +282&nbsp;ms, reconcile at +450&nbsp;ms.
+    </p>
+  </div>
+
+  <div class="correction">
+    <p class="q">
+      Correction &mdash; I briefly thought the parallel writes had introduced a &ldquo;silent
+      half-finish&rdquo; bug. They had not; my query was broken.
+    </p>
+    <p class="a">
+      While checking split scoring I queried <code>match_results</code> and got an empty array for four
+      matches that were <code>status = 'complete'</code> &mdash; the exact signature of a completed match
+      with no result recorded. Having just parallelised the complete-match write with the result insert, I
+      assumed my change had caused it and went looking for an RLS race on the insert policy.
+    </p>
+    <p class="a">
+      <strong>The query was selecting <code>created_at</code>; the column is <code>completed_at</code></strong>
+      (migration 007). PostgREST rejected the request, <code>data</code> came back <code>null</code>, and my
+      <code>res || []</code> turned a hard error into &ldquo;no rows&rdquo;. The rows were there the whole
+      time &mdash; one per match, correct. What exposed it was a second query that happened to also select
+      <code>id</code> and returned four rows, contradicting the first.
+    </p>
+    <p class="a">
+      <strong>Two rules out of it.</strong> Never write <code>(data || [])</code> on a Supabase query while
+      diagnosing &mdash; destructure <code>{ data, error }</code> and surface the error, because an empty
+      result and a failed request are opposite findings that <code>||</code> makes identical. And before
+      blaming a just-shipped change for a data anomaly, check the change's <em>mechanism</em>: the
+      <code>match_results</code> insert policy is <code>WITH CHECK (true)</code> with no reference to match
+      status, so no ordering of those two writes could ever drop a row. Reading the policy would have
+      cleared the change in one step.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Why is it not instant, then? What would it take to get to zero?</p>
     <p class="a">
       Two of the three remaining trips are genuine writes, and the board should not claim a game is finished

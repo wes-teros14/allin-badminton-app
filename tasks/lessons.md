@@ -489,3 +489,13 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   **Fix**: `fetchedAt: number | null`, with `null` meaning never, checked explicitly.
   **Rule**: do not encode a sentinel state as an in-band value of the same type, especially not a timestamp — the check then depends on the magnitude of the clock rather than on the state. This one was invisible in production and would have surfaced only when someone injected a clock.
   **Meta-rule**: this is the payoff for extracting the logic into `src/lib/` as a pure function. Left inline in the hook, it would have been untestable (node-only vitest, no DOM) and would have shipped.
+
+---
+
+## I read a PostgREST column error as "zero rows" and nearly reported a phantom bug (2026-09-07)
+
+- **Symptom**: while verifying split scoring I queried `match_results` and got an empty array for four matches that were `status = 'complete'`. That is the "silent half-finish" signature, and since I had just parallelised the complete-match write with the result insert, I concluded my own change had introduced it and started hunting for an RLS race on the insert policy.
+  **Root cause**: my query selected `created_at`. The column is `completed_at` (migration 007). PostgREST rejected the request, `data` came back `null`, and I had written `res || []` — so a **hard error was laundered into "no rows"**. The rows existed all along, one per match, exactly as they should have been.
+  **What stopped it**: a later query that happened to also select `id` returned 4 rows, contradicting the first. Two disagreeing reads is what exposed it, not any reasoning about the code.
+  **Rule**: never write `(data || [])` on a Supabase query while diagnosing. Destructure `{ data, error }` and surface `error` — an empty result and a failed request are opposite findings and the `||` makes them identical. Especially when the empty result is *evidence for the bug you already suspect*: that is the moment the shortcut costs the most.
+  **Second rule**: before blaming a just-shipped change for a data anomaly, check whether the anomaly is consistent with the change's *mechanism*. The `match_results` insert policy is `WITH CHECK (true)` with no reference to match status, so no ordering of those two writes could ever have dropped a row. Reading the policy first would have cleared my change in one step instead of after a reproduction attempt.
