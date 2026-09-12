@@ -176,7 +176,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   optimised around them. A pinned game leaves as an ordinary `GeneratedMatch`; lock, boards and the DB
   `CHECK` are untouched.
 - **UI is Option A: a *Fixed Opening Games* section inside the generator Settings**, one row per
-  `sessions.court_count` (those are the games that start together). Pins are a prefix — game 2's
+  `sessions.court_count` (those are the games that start together). **Closed by default** (2026-09-12)
+  as a `<details>` like *Scoring Weights*, with a gold *N pinned* chip on the summary and an effect that
+  opens it whenever `pinnedCount > 0` — a pin that is set but out of sight would silently fix game 1
+  every week. Rejected: an "Advanced" switch hiding it with Scoring Weights, and a link under the
+  Generate button (`badminton-v2/docs/visual/fixed-opening-games-hidden-options.html`). Pins are a prefix — game 2's
   checkbox is disabled until game 1 is pinned, and unpinning game 1 clears game 2. Stored as
   `settings.pinnedGames: Array<MatchSlots | null>`, which reaches `sessions.generator_settings` on lock
   like every other setting. Rejected: pinning from the preview (needs edit-before-lock, which does not

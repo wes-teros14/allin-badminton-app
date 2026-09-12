@@ -22,6 +22,11 @@ Updated: 2026-09-12. Overwrite this file on every update; it is never a running 
 
 ## Done this session
 
+**Fixed Opening Games collapsed by default** — pushed to `dev` and `main`. `<details>` closed unless
+pins exist (`pinsOpen` state + effect on `pinnedCount`), gold *N pinned* chip on the summary. Verified in
+the browser: closed on open, tick Pin → close → chip reads *1 pinned*. Auto-open on locked-stage load
+was not exercised (needs a lock); the effect is three lines.
+
 **Swap instead of block in match edit forms** — pushed to `dev` and `main`. Picking a
 player already in the match now trades the two slots ("Name ⇄ swap" option) in all three forms: the
 generator panel's locked list, the pinned-games rows, and `CourtTabs` (court card + queue, which was a
