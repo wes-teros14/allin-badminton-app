@@ -22,7 +22,7 @@ Updated: 2026-09-12. Overwrite this file on every update; it is never a running 
 
 ## Done this session
 
-**Swap instead of block in match edit forms** — committed on `dev`, not yet pushed (ask). Picking a
+**Swap instead of block in match edit forms** — pushed to `dev` and `main`. Picking a
 player already in the match now trades the two slots ("Name ⇄ swap" option) in all three forms: the
 generator panel's locked list, the pinned-games rows, and `CourtTabs` (court card + queue, which was a
 second unguarded copy and now shares `EditFormInline`). `assignSlot` in `src/lib/matchSlots.ts`,
