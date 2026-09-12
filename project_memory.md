@@ -96,6 +96,16 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Unbounded reads need paging.** Any query whose result set can exceed one screen uses `.range()` with a stable `.order()`, plus a `{ count: 'exact', head: true }` cross-check that throws on mismatch. PostgREST silently truncates at `db_max_rows` (1000) with no error. The pair leaderboard was the first such query in the codebase.
 - **Invariants belong in the database.** Anything an algorithm guarantees can still be violated by a hand-edit form, so the check goes in a Postgres `CHECK` plus a shared validator for a readable error (see `matches_distinct_players_check`, migration 079, and `src/lib/matchPlayers.ts`).
 - **Nicknames are not unique.** `profiles.nickname` is free text; `disambiguateDisplayNames` qualifies collisions ("Alexis (Cruz)") so two people don't collapse into one on screen.
+- **A roster level is a per-session override that sticks.** `session_registrations.level` (and `gender`)
+  win over `profiles` wherever both `useRoster` and `useRegisteredPlayers` read `r.level ?? profile.level`.
+  Once an admin touches a row's dropdown the override exists, and later edits on `/players` no longer reach
+  that session — which is how a preview can show "L:8" for a player who reads 4 on `/players`. The Roster
+  header's *Use profile levels* button (2026-09-12) **clears** stale overrides to `null` rather than copying
+  the profile value in, so the row follows `/players` again from then on. It skips players with no profile
+  level (nothing to reset to, and a blank level makes the generator refuse). `playersWithStaleLevel` in
+  `src/lib/rosterLevels.ts` is the one definition of "differs". Placement options that were rejected — a
+  footer row with Undo, and per-row "profile N" badges — are kept in
+  `badminton-v2/docs/visual/roster-reset-levels-options.html`.
 
 ## Theming
 

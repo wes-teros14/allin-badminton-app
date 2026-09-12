@@ -1169,6 +1169,27 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">The preview said Anthony &amp; Jerome were L:8, but Jerome is a 4 on <code>/players</code> &mdash; is the team total wrong?</p>
+    <p class="a">
+      The arithmetic is right; the input is the surprise. A roster row's level is a <em>per-session override</em>
+      (<code>session_registrations.level</code>), and <code>useRegisteredPlayers</code> reads
+      <code>r.level ?? profile.level</code> &mdash; the override wins whenever it is set
+      (<code>src/hooks/useRegisteredPlayers.ts:40</code>). The Roster panel shows the same value, so Jerome read 3
+      there too, and 3 + 5 = 8. Once an override exists it sticks for that session even if the profile is later
+      edited on <code>/players</code>. The fix being designed is a roster action that clears overrides so the
+      profile level takes over again: <code>docs/visual/roster-reset-levels-options.html</code>.
+    </p>
+    <p class="a">
+      <strong>Shipped (2026-09-12)</strong> as Option A: a <em>Use profile levels</em> button in the Roster header
+      (editable mode, roster open), two-tap to confirm, disabled when nothing differs. It <em>clears</em> the
+      override (<code>level = null</code>) rather than copying the profile value in, so the row keeps following
+      <code>/players</code> if the profile changes again. Rows with no profile level are skipped — blanking them
+      would only make the generator refuse to run. The count comes from <code>playersWithStaleLevel</code> in
+      <code>src/lib/rosterLevels.ts</code>.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>

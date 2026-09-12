@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { RECEIPTS_BUCKET } from '@/lib/receipts'
+import { playersWithStaleLevel } from '@/lib/rosterLevels'
 import type { SessionReceipt } from '@/hooks/useSessionReceipts'
 
 export interface RosterPlayer {
@@ -10,7 +11,10 @@ export interface RosterPlayer {
   nameSlug: string
   nickname: string | null
   gender: 'M' | 'F' | null
+  /** Effective level: the session override when set, else the profile level. */
   level: number | null
+  /** The level on /players, untouched by session overrides. */
+  profileLevel: number | null
   /** Payment CONFIRMED by an admin. Sole input to revenue — do not repurpose. */
   paid: boolean
   /** Non-dismissed receipts. Feeds the derived "awaiting confirmation" state. */
@@ -50,6 +54,8 @@ interface RosterState {
   addPlayer: (playerId: string) => Promise<void>
   removePlayer: (registrationId: string) => Promise<void>
   updateSessionOverride: (registrationId: string, gender: 'M' | 'F' | null, level: number | null) => Promise<void>
+  /** Clears every stale level override so those rows follow /players again. Resolves to the ids reset. */
+  resetLevelsToProfile: () => Promise<string[]>
   updatePaid: (registrationId: string, paid: boolean) => Promise<void>
   receiptsFor: (playerId: string) => SessionReceipt[]
   dismissReceipt: (receiptId: string) => Promise<void>
@@ -127,6 +133,7 @@ export function useRoster(sessionId: string | undefined, onChange?: () => void):
         nickname: p?.nickname ?? null,
         gender: (r.gender ?? p?.gender ?? null) as 'M' | 'F' | null,
         level: r.level ?? p?.level ?? null,
+        profileLevel: p?.level ?? null,
         paid: r.paid ?? false,
         activeReceiptCount: playerReceipts.filter((x) => x.dismissedAt === null).length,
         totalReceiptCount: playerReceipts.length,
@@ -214,6 +221,23 @@ export function useRoster(sessionId: string | undefined, onChange?: () => void):
     onChange?.()
   }
 
+  // Clearing the override (rather than copying the profile value into it) means
+  // the row keeps following /players if the profile is edited again later.
+  async function resetLevelsToProfile(): Promise<string[]> {
+    const stale = playersWithStaleLevel(players)
+    if (stale.length === 0) return []
+    const ids = stale.map((p) => p.registrationId)
+    const { error } = await supabase
+      .from('session_registrations')
+      .update({ level: null } as never)
+      .in('id', ids)
+    if (error) { toast.error(error.message); return [] }
+    const idSet = new Set(ids)
+    setPlayers((prev) => prev.map((p) => idSet.has(p.registrationId) ? { ...p, level: p.profileLevel } : p))
+    onChange?.()
+    return ids
+  }
+
   /**
    * The ONLY writer of `paid`. Setting true is an admin's explicit
    * confirmation; nothing a player does can reach this.
@@ -255,6 +279,7 @@ export function useRoster(sessionId: string | undefined, onChange?: () => void):
     addPlayer,
     removePlayer,
     updateSessionOverride,
+    resetLevelsToProfile,
     updatePaid,
     receiptsFor,
     dismissReceipt,

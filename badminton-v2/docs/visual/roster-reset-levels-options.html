@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roster — three ways to reset session levels to the /players profile levels</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 84px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 0 12px 10px; }
+  .head { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 8px; font-weight: 700; font-size: 15px; }
+  .head .caret { color: var(--muted-fg); font-size: 12px; font-weight: 400; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  li:last-child { border-bottom: 0; }
+  li .name { flex: 1; font-weight: 600; min-width: 0; }
+  .mf { display: flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .mf span { padding: 2px 6px; color: var(--muted-fg); font-weight: 600; font-size: 11px; }
+  .mf span.on { background: var(--brand); color: var(--brand-fg); }
+  .lvl { height: 24px; width: 46px; border-radius: 4px; border: 1px solid var(--border); background: var(--input); color: var(--fg); font-size: 12px; padding: 0 4px; }
+  .lvl.changed { border-color: var(--diff); box-shadow: 0 0 0 1px var(--diff) inset; }
+  .x { color: var(--danger); font-weight: 700; padding: 0 4px; }
+  .badge { font-size: 10px; color: var(--diff); border: 1px solid rgba(79,209,197,.5); border-radius: 4px; padding: 0 4px; white-space: nowrap; }
+
+  .btn { border: 1px solid var(--border); background: transparent; color: var(--fg); border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
+  .btn.ghost { border: 0; color: var(--muted-fg); text-decoration: underline; text-underline-offset: 2px; padding: 0; font-weight: 500; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; margin-top: 4px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted-fg); }
+  .toast { margin-top: 10px; background: #2A1D3A; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12px; display: flex; justify-content: space-between; gap: 8px; }
+  .toast[hidden] { display: none; }
+  .note { color: var(--muted-fg); font-size: 11.5px; margin: 8px 0 0; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Roster &mdash; three ways to reset session levels to the <code>/players</code> profile levels</h1>
+  <p class="sub">
+    Each roster row's level is a <em>per-session override</em> (<code>session_registrations.level</code>), falling back
+    to the profile level from <code>/players</code> when empty. Once an override is set it sticks for that session,
+    which is how Jerome could read 3 here and 4 on <code>/players</code>. All three mocks start with three rows that
+    differ from their profile (John 2 → 3, Jerome 3 → 4, Bogs 4 → 3). Click the buttons; <em>Reset mock</em>
+    starts over.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>One button in the header, tap twice to confirm</h2>
+      <p class="why">Sits beside the collapse caret, always visible, never takes a row. First tap arms it
+        (&ldquo;Confirm? (3)&rdquo;), second tap applies &mdash; the same two-tap pattern as <em>Lock Schedule</em>.
+        Changed rows flash their new value; nothing tells you <em>what</em> will change before you tap.</p>
+      <div class="phone"><div class="card">
+        <div class="head"><span>Roster (16), Male (12), Female (4)</span>
+          <span style="display:flex;gap:8px;align-items:center"><button class="btn" id="a-btn" onclick="armA()">Use profile levels</button><span class="caret">&#9650;</span></span></div>
+        <ul id="a-list"></ul>
+        <p class="note" id="a-note"></p>
+      </div></div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Footer row under the list with a count and Undo</h2>
+      <p class="why">A hairline rule, then &ldquo;3 levels differ from /players&rdquo; and a <em>Reset</em> button
+        on the right. The count is the confirmation: 0 differences greys the button out. Applying shows a toast
+        with <em>Undo</em>, so a mis-tap costs one more tap instead of a second confirm up front.</p>
+      <div class="phone"><div class="card">
+        <div class="head"><span>Roster (16), Male (12), Female (4)</span><span class="caret">&#9650;</span></div>
+        <ul id="b-list"></ul>
+        <div class="foot"><span id="b-count"></span><button class="btn primary" id="b-btn" onclick="applyB()">Reset to profile levels</button></div>
+        <div class="toast" id="b-toast" hidden><span id="b-toast-text"></span><button class="btn ghost" onclick="undoB()">Undo</button></div>
+      </div></div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Per-row hint, then one action for all</h2>
+      <p class="why">Every row whose level differs shows a small <em>profile 4</em> badge next to the select,
+        so the mismatch is visible while you are looking at the player. The header button reads
+        &ldquo;Reset 3&rdquo; and applies them all. Most informative; the badges cost a little row width on
+        the rows that differ.</p>
+      <div class="phone"><div class="card">
+        <div class="head"><span>Roster (16), Male (12), Female (4)</span>
+          <span style="display:flex;gap:8px;align-items:center"><button class="btn" id="c-btn" onclick="applyC()"></button><span class="caret">&#9650;</span></span></div>
+        <ul id="c-list"></ul>
+        <p class="note">Badge = the value on /players. Tapping a badge could also reset just that row.</p>
+      </div></div>
+    </div>
+
+  </div>
+
+  <p style="margin-top:18px"><button class="btn" style="color:#18181B;border-color:#ccc" onclick="resetAll()">Reset mock</button></p>
+
+  <table>
+    <tr><th></th><th>A &mdash; header, two-tap</th><th>B &mdash; footer + Undo</th><th>C &mdash; per-row badges</th></tr>
+    <tr><td>Shows what will change before acting</td><td>No (count only after arming)</td><td>Count only</td><td>Yes, per row</td></tr>
+    <tr><td>Mis-tap protection</td><td>Second tap</td><td>Undo after</td><td>Button names the count; could add Undo too</td></tr>
+    <tr><td>Space cost</td><td>None</td><td>One footer row</td><td>Badges on differing rows only</td></tr>
+    <tr><td>Header gets crowded on 384 px?</td><td>Slightly &mdash; long title + button + caret</td><td>No</td><td>Slightly (short label helps)</td></tr>
+    <tr><td>Extra reads</td><td colspan="3">Same for all: <code>useRoster</code> already loads both the registration override and the profile; the diff is a client-side comparison, and the write is one <code>update ... set level = null</code> per differing row (clearing the override makes the fallback take over).</td></tr>
+    <tr><td>Also reset gender?</td><td colspan="3">Not asked. Same mechanism would work; the mocks only touch level.</td></tr>
+  </table>
+
+</div>
+
+<script>
+  const BASE = [
+    ['John','M',2,3],['Luis','M',3,3],['Aian','F',2,2],['David','M',3,3],['AJ','M',4,4],['Kurt','M',3,3],
+    ['Steph','F',3,3],['Wes','M',2,2],['Jaz','F',1,1],['Bon J.','M',1,1],['Caitlin','F',3,3],['Ronwald','M',3,3],
+    ['Jerome','M',3,4],['Bogs','M',4,3],['Sim','M',3,3],['Anthony','M',5,5],
+  ]; // name, gender, session level, profile level
+  const state = {};
+  function fresh(){ return BASE.map(([n,g,s,p])=>({n,g,s,p})); }
+  const sel = (v, cls='') => `<select class="lvl ${cls}"><option ${v===''?'selected':''}>—</option>${[1,2,3,4,5,6,7,8,9,10].map(l=>`<option ${l===v?'selected':''}>${l}</option>`).join('')}</select>`;
+  const mf = g => `<span class="mf"><span class="${g==='M'?'on':''}">M</span><span class="${g==='F'?'on':''}">F</span></span>`;
+  const diffs = rows => rows.filter(r=>r.s!==r.p).length;
+
+  /* A */
+  let aArmed=false, aTimer=null;
+  function renderA(){
+    const rows=state.a;
+    document.getElementById('a-list').innerHTML = rows.map(r=>`<li><span class="name">${r.n}</span>${mf(r.g)}${sel(r.s, r.flash?'changed':'')}<span class="x">✕</span></li>`).join('');
+    const d=diffs(rows), b=document.getElementById('a-btn');
+    b.textContent = aArmed ? `Confirm? (${d})` : 'Use profile levels'; b.disabled = d===0 && !aArmed;
+    document.getElementById('a-note').textContent = d ? `${d} rows differ from /players` : 'All rows match /players';
+  }
+  function armA(){
+    if(!aArmed){ aArmed=true; renderA(); aTimer=setTimeout(()=>{aArmed=false;renderA();},5000); return; }
+    clearTimeout(aTimer); aArmed=false;
+    state.a.forEach(r=>{ if(r.s!==r.p){ r.s=r.p; r.flash=true; } }); renderA();
+    setTimeout(()=>{ state.a.forEach(r=>r.flash=false); renderA(); }, 1500);
+  }
+
+  /* B */
+  let bPrev=null;
+  function renderB(){
+    const rows=state.b, d=diffs(rows);
+    document.getElementById('b-list').innerHTML = rows.map(r=>`<li><span class="name">${r.n}</span>${mf(r.g)}${sel(r.s)}<span class="x">✕</span></li>`).join('');
+    document.getElementById('b-count').textContent = d ? `${d} levels differ from /players` : 'Levels match /players';
+    document.getElementById('b-btn').disabled = d===0;
+  }
+  function applyB(){
+    bPrev = state.b.map(r=>({...r}));
+    const d=diffs(state.b); state.b.forEach(r=>r.s=r.p); renderB();
+    document.getElementById('b-toast-text').textContent = `Reset ${d} levels to their /players values`;
+    document.getElementById('b-toast').hidden=false;
+  }
+  function undoB(){ if(bPrev){ state.b=bPrev; bPrev=null; renderB(); } document.getElementById('b-toast').hidden=true; }
+
+  /* C */
+  function renderC(){
+    const rows=state.c, d=diffs(rows);
+    document.getElementById('c-list').innerHTML = rows.map(r=>`<li><span class="name">${r.n}</span>${mf(r.g)}${r.s!==r.p?`<span class="badge" onclick="resetOneC('${r.n}')">profile ${r.p}</span>`:''}${sel(r.s, r.s!==r.p?'changed':'')}<span class="x">✕</span></li>`).join('');
+    const b=document.getElementById('c-btn'); b.textContent = d ? `Reset ${d} to profile` : 'Levels match profile'; b.disabled = d===0;
+  }
+  function applyC(){ state.c.forEach(r=>r.s=r.p); renderC(); }
+  function resetOneC(n){ const r=state.c.find(x=>x.n===n); if(r) r.s=r.p; renderC(); }
+
+  function resetAll(){ state.a=fresh(); state.b=fresh(); state.c=fresh(); aArmed=false; bPrev=null; document.getElementById('b-toast').hidden=true; renderA(); renderB(); renderC(); }
+  resetAll();
+</script>
+</body>
+</html>
