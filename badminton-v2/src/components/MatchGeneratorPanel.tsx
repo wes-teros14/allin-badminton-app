@@ -16,6 +16,7 @@ import {
   computeMatchType,
   type GeneratedMatch,
   type AuditData,
+  type PinnedMatch,
 } from '@/lib/matchGenerator'
 
 const MATCH_TYPE_COLOR: Record<string, string> = {
@@ -31,6 +32,25 @@ interface Props {
   sessionStatus?: string
   onLock?: (matches: GeneratedMatch[]) => Promise<boolean>
   rosterVersion?: number
+  courtCount?: number
+}
+
+interface MatchSlots {
+  t1p1: string
+  t1p2: string
+  t2p1: string
+  t2p2: string
+}
+
+const EMPTY_SLOTS: MatchSlots = { t1p1: '', t1p2: '', t2p1: '', t2p2: '' }
+
+function countPinnedPrefix(rows: Array<MatchSlots | null> | undefined): number {
+  let n = 0
+  for (const row of rows ?? []) {
+    if (!row) break
+    n++
+  }
+  return n
 }
 
 interface Settings {
@@ -39,6 +59,9 @@ interface Settings {
   maxConsecutiveGames: number
   maxSpreadLimit: number
   disableGenderRules: boolean
+  // Fixed opening games: index i = game i+1; null = engine picks. Always a
+  // prefix — game 2 cannot be pinned unless game 1 is.
+  pinnedGames: Array<MatchSlots | null>
   // Optimizer
   numTrials: number
   numStarts: number
@@ -65,6 +88,7 @@ const DEFAULTS: Settings = {
   maxConsecutiveGames: 1,
   maxSpreadLimit: 2,
   disableGenderRules: false,
+  pinnedGames: [],
   idealRestGames: 2,
   earlyRestWindow: 20,
   numTrials: 2000,
@@ -91,7 +115,7 @@ export function buildRosterVersion(players: Array<{ id: string; gender: 'M' | 'F
     .join('|')
 }
 
-export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVersion }: Props) {
+export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVersion, courtCount = 2 }: Props) {
   const { players, isLoading } = useRegisteredPlayers(sessionId, rosterVersion)
   const [stage, setStage] = useState<'idle' | 'generating' | 'preview' | 'locking' | 'locked'>('idle')
   const [isRegenerating, setIsRegenerating] = useState(false)
@@ -105,7 +129,9 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
   const previousRosterVersionRef = useRef<string | null>(null)
   const [lockedMatchMeta, setLockedMatchMeta] = useState<Array<{ id: string; status: string }>>([])
   const [editingGameNumber, setEditingGameNumber] = useState<number | null>(null)
-  const [editForm, setEditForm] = useState({ t1p1: '', t1p2: '', t2p1: '', t2p2: '' })
+  const [editForm, setEditForm] = useState<MatchSlots>(EMPTY_SLOTS)
+  // How many leading games in `matches` were pinned when they were produced.
+  const [appliedPinCount, setAppliedPinCount] = useState(0)
 
   // Load existing locked matches from DB if session is already locked
   useEffect(() => {
@@ -139,7 +165,9 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
         setStage('locked')
       }
       if (!sessionRes.error && sessionRes.data?.generator_settings) {
-        setSettings((prev) => ({ ...prev, ...(sessionRes.data.generator_settings as Partial<Settings>) }))
+        const loaded = sessionRes.data.generator_settings as Partial<Settings>
+        setSettings((prev) => ({ ...prev, ...loaded }))
+        setAppliedPinCount(countPinnedPrefix(loaded.pinnedGames))
       }
     }
     loadLocked()
@@ -224,6 +252,9 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
       return
     }
 
+    const pinnedMatches = resolvePinnedMatches()
+    if (pinnedMatches === null) return
+
     if (generateTimerRef.current) {
       clearTimeout(generateTimerRef.current)
       generateTimerRef.current = null
@@ -268,24 +299,92 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
         earlyRestReward: w('earlyRestReward', settings.earlyRestReward),
       }
 
-      const result = generateScheduleOptimized(players, {
-        numMatches: effectiveNumMatches,
-        maxConsecutiveGames: settings.maxConsecutiveGames,
-        maxSpreadLimit: settings.maxSpreadLimit,
-        disableGenderRules: settings.disableGenderRules,
-        wishlistPairs,
-        weights: scoreWeights,
-        numTrials: settings.numTrials,
-        numStarts: settings.numStarts,
-        idealRestGames: settings.idealRestGames,
-        earlyRestWindow: settings.earlyRestWindow,
-      })
-      setMatches(result.matches)
-      setAudit(result.audit)
-      setStage('preview')
+      try {
+        const result = generateScheduleOptimized(players, {
+          numMatches: effectiveNumMatches,
+          maxConsecutiveGames: settings.maxConsecutiveGames,
+          maxSpreadLimit: settings.maxSpreadLimit,
+          disableGenderRules: settings.disableGenderRules,
+          wishlistPairs,
+          weights: scoreWeights,
+          numTrials: settings.numTrials,
+          numStarts: settings.numStarts,
+          idealRestGames: settings.idealRestGames,
+          earlyRestWindow: settings.earlyRestWindow,
+          pinnedMatches,
+        })
+        setMatches(result.matches)
+        setAudit(result.audit)
+        setAppliedPinCount(pinnedMatches.length)
+        setStage('preview')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not generate a schedule')
+        if (!fromPreview) setStage('idle')
+      }
       setIsRegenerating(false)
       generateTimerRef.current = null
     }, 50)
+  }
+
+  /**
+   * Turns the settings rows into engine pins. Returns null (after a toast)
+   * when a pin cannot be honoured; soft problems only warn.
+   */
+  function resolvePinnedMatches(): PinnedMatch[] | null {
+    const rows = settings.pinnedGames.slice(0, courtCount)
+    const registered = new Set(players.map((p) => p.id))
+    const levelOf = new Map(players.map((p) => [p.id, p.level ?? 5]))
+    const pins: PinnedMatch[] = []
+    const seen = new Map<string, number>()
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      if (!row) break
+      const game = i + 1
+      const ids = [row.t1p1, row.t1p2, row.t2p1, row.t2p2]
+
+      if (ids.some((id) => !id)) {
+        toast.error(`Game ${game}: fill all four slots or untick Pin`)
+        return null
+      }
+      const validation = validateMatchPlayers(ids, (id) => nameMap.get(id) ?? 'This player')
+      if (!validation.ok) {
+        toast.error(`Game ${game}: ${validation.message}`)
+        return null
+      }
+      const missing = ids.find((id) => !registered.has(id))
+      if (missing) {
+        toast.error(`Game ${game}: ${nameMap.get(missing) ?? 'a pinned player'} is no longer registered`)
+        return null
+      }
+
+      for (const id of ids) {
+        const earlier = seen.get(id)
+        if (earlier !== undefined) {
+          toast.warning(`${nameMap.get(id) ?? 'A player'} is in both Game ${earlier} and Game ${game} — they start at the same time`)
+        }
+        seen.set(id, game)
+      }
+      const levels = ids.map((id) => Math.round(levelOf.get(id) ?? 5))
+      const spread = Math.max(...levels) - Math.min(...levels)
+      if (spread > settings.maxSpreadLimit) {
+        toast.warning(`Game ${game} exceeds the skill gap limit (spread ${spread})`)
+      }
+
+      pins.push({ team1: [row.t1p1, row.t1p2], team2: [row.t2p1, row.t2p2] })
+    }
+    return pins
+  }
+
+  function setPinnedGame(index: number, slots: MatchSlots | null) {
+    setSettings((prev) => {
+      const next = [...prev.pinnedGames]
+      while (next.length <= index) next.push(null)
+      next[index] = slots
+      // Keep pins a prefix: unpinning game N also unpins everything after it.
+      if (slots === null) next.length = index
+      return { ...prev, pinnedGames: next }
+    })
   }
 
   function handleEditStart(m: GeneratedMatch) {
@@ -414,6 +513,45 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                 onChange={(v) => set('disableGenderRules', v)}
                 help="When checked, gender is ignored when forming matches — any 4 players can be grouped together. Gender-based penalties (Mixed Doubles, 2Mvs2F, 3-1 uneven) are not applied. Auto-enabled if any player has no gender assigned."
               />
+            </div>
+
+            <hr />
+
+            {/* Fixed Opening Games */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Fixed Opening Games
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Pick the players for the games that start together. The engine fills the rest around them.
+              </p>
+              {Array.from({ length: courtCount }, (_, i) => {
+                const slots = settings.pinnedGames[i] ?? null
+                const previousPinned = i === 0 || settings.pinnedGames[i - 1] != null
+                return (
+                  <div key={i} className="rounded-md border p-2 space-y-2">
+                    <div className="flex items-center gap-2 text-xs">
+                      <CheckField
+                        label="Pin"
+                        checked={slots !== null}
+                        disabled={!previousPinned}
+                        help={previousPinned ? undefined : `Pin Game ${i} first`}
+                        onChange={(v) => setPinnedGame(i, v ? EMPTY_SLOTS : null)}
+                      />
+                      <span className="font-medium">Game {i + 1}</span>
+                      <span className="ml-auto text-muted-foreground">{slots ? 'fixed' : 'engine picks'}</span>
+                    </div>
+                    {slots && (
+                      <FourSlotPicker
+                        value={slots}
+                        onChange={(next) => setPinnedGame(i, next)}
+                        players={players}
+                        name={name}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             <hr />
@@ -653,6 +791,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
               {matches.map((m) => (
                 <li key={m.gameNumber} className="text-sm py-1 border-b last:border-0">
                   <span className="font-medium text-muted-foreground mr-2">{m.gameNumber}.</span>
+                  {m.gameNumber <= appliedPinCount && <PinnedChip />}
                   <span className={`text-xs font-semibold mr-2 ${MATCH_TYPE_COLOR[m.type] ?? 'text-muted-foreground'}`}>[{m.type}]</span>
                   {name(m.team1Player1)} &amp; {name(m.team1Player2)}
                   <span className="text-muted-foreground mx-1">(L:{m.team1Level})</span>
@@ -740,58 +879,13 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                     const meta = lockedMatchMeta[idx]
                     const isQueued = !meta || meta.status === 'queued'
                     const isEditing = editingGameNumber === m.gameNumber
-                    const chosenIds = [editForm.t1p1, editForm.t1p2, editForm.t2p1, editForm.t2p2].filter(Boolean)
                     const matchType = computeMatchType(m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2, genderMap)
                     return (
                       <li key={m.gameNumber} className="py-1.5 border-b last:border-0">
                         {isEditing ? (
                           <div className="space-y-2 text-xs">
                             <p className="font-medium text-muted-foreground">Game {m.gameNumber} — Edit Players</p>
-                            <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
-                              <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2 space-y-1">
-                                <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wide mb-1">Team 1</p>
-                                {(['t1p1', 't1p2'] as const).map((key, si) => (
-                                  <select
-                                    key={key}
-                                    value={editForm[key]}
-                                    onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                                    className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
-                                  >
-                                    <option value="">— P{si + 1} —</option>
-                                    {players.map((p) => {
-                                      const taken = p.id !== editForm[key] && chosenIds.includes(p.id)
-                                      return (
-                                        <option key={p.id} value={p.id} disabled={taken}>
-                                          {taken ? `${name(p.id)} — already in this match` : name(p.id)}
-                                        </option>
-                                      )
-                                    })}
-                                  </select>
-                                ))}
-                              </div>
-                              <span className="text-xs font-bold text-muted-foreground text-center">vs</span>
-                              <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2 space-y-1">
-                                <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wide mb-1">Team 2</p>
-                                {(['t2p1', 't2p2'] as const).map((key, si) => (
-                                  <select
-                                    key={key}
-                                    value={editForm[key]}
-                                    onChange={(e) => setEditForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                                    className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
-                                  >
-                                    <option value="">— P{si + 1} —</option>
-                                    {players.map((p) => {
-                                      const taken = p.id !== editForm[key] && chosenIds.includes(p.id)
-                                      return (
-                                        <option key={p.id} value={p.id} disabled={taken}>
-                                          {taken ? `${name(p.id)} — already in this match` : name(p.id)}
-                                        </option>
-                                      )
-                                    })}
-                                  </select>
-                                ))}
-                              </div>
-                            </div>
+                            <FourSlotPicker value={editForm} onChange={setEditForm} players={players} name={name} />
                             <div className="flex gap-2">
                               <Button size="sm" className="h-7 text-xs" onClick={() => handleEditSave(m.gameNumber)}>Save</Button>
                               <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleEditCancel}>Cancel</Button>
@@ -801,6 +895,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                           <div className="flex items-center justify-between gap-2 text-sm">
                             <span>
                               <span className="font-medium text-muted-foreground mr-2">{m.gameNumber}.</span>
+                              {m.gameNumber <= appliedPinCount && <PinnedChip />}
                               <span className={`text-xs font-semibold mr-2 ${MATCH_TYPE_COLOR[matchType] ?? 'text-muted-foreground'}`}>[{matchType}]</span>
                               {name(m.team1Player1)} &amp; {name(m.team1Player2)}
                               <span className="text-muted-foreground mx-2">vs</span>
@@ -891,6 +986,62 @@ function CheckField({
       />
       {label}
     </label>
+  )
+}
+
+function PinnedChip() {
+  return (
+    <span className="mr-2 rounded border border-gold/40 px-1 text-[10px] font-bold uppercase tracking-wide text-gold-ink">
+      Pinned
+    </span>
+  )
+}
+
+/**
+ * Four dropdowns in Team 1 / Team 2 boxes. A player already chosen in one of
+ * the other three slots is disabled, so the same person cannot be picked twice.
+ */
+function FourSlotPicker({
+  value, onChange, players, name,
+}: {
+  value: MatchSlots
+  onChange: (next: MatchSlots) => void
+  players: Array<{ id: string }>
+  name: (id: string) => string
+}) {
+  const chosenIds = [value.t1p1, value.t1p2, value.t2p1, value.t2p2].filter(Boolean)
+  const renderSelect = (key: keyof MatchSlots, slotIndex: number) => (
+    <select
+      key={key}
+      value={value[key]}
+      onChange={(e) => onChange({ ...value, [key]: e.target.value })}
+      className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
+    >
+      <option value="">— P{slotIndex + 1} —</option>
+      {players.map((p) => {
+        const taken = p.id !== value[key] && chosenIds.includes(p.id)
+        return (
+          <option key={p.id} value={p.id} disabled={taken}>
+            {taken ? `${name(p.id)} — already in this match` : name(p.id)}
+          </option>
+        )
+      })}
+    </select>
+  )
+  return (
+    <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+      <div className="rounded-md border border-blue-500/30 bg-blue-500/5 p-2 space-y-1">
+        <p className="text-[10px] font-semibold text-blue-500 uppercase tracking-wide mb-1">Team 1</p>
+        {renderSelect('t1p1', 0)}
+        {renderSelect('t1p2', 1)}
+      </div>
+      <span className="text-xs font-bold text-muted-foreground text-center">vs</span>
+      <div className="rounded-md border border-orange-500/30 bg-orange-500/5 p-2 space-y-1">
+        <p className="text-[10px] font-semibold text-orange-500 uppercase tracking-wide mb-1">Team 2</p>
+        {renderSelect('t2p1', 0)}
+        {renderSelect('t2p2', 1)}
+      </div>
+    </div>
   )
 }
 
