@@ -530,7 +530,7 @@ export function SessionView() {
       {session.status === 'registration_closed' && (
         <div className="space-y-4">
           <RosterPanel sessionId={session.id} editable onRosterChange={() => setRosterVersion((v) => v + 1)} />
-          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} rosterVersion={rosterVersion} />
+          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} onLock={lockSchedule} rosterVersion={rosterVersion} courtCount={session.court_count ?? 2} />
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -550,7 +550,7 @@ export function SessionView() {
 
       {session.status === 'schedule_locked' && (
         <div className="space-y-4">
-          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} />
+          <MatchGeneratorPanel sessionId={session.id} sessionStatus={session.status} courtCount={session.court_count ?? 2} />
           <div className="flex items-center gap-2">
             <input
               type="checkbox"

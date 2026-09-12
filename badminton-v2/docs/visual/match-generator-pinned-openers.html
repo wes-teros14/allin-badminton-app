@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match generator — where hand-picked opening games would hook in</title>
+<style>
+  :root {
+    --bg: #FAF9FB; --card: #FFFFFF; --ink: #18181B; --dim: #52525B; --primary: #6F3E87;
+    --border: #E4E4E7; --pin: #B87A00; --pin-bg: #FFF7E6; --ok: #1F6F6B; --ok-bg: #E8F5F4;
+    --warn-bg: #FFFBEB; --warn: #78350F;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 40px 24px 80px; background: var(--bg); color: var(--ink);
+    font: 400 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 28px; color: var(--dim); }
+  h2 { margin: 36px 0 12px; font-size: 18px; border-bottom: 2px solid var(--primary); padding-bottom: 6px; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--border);
+    padding: 2px 5px; border-radius: 5px; }
+
+  /* pipeline */
+  .pipe { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 14px; }
+  .phase { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; position: relative; }
+  .phase .n { font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .phase h3 { margin: 4px 0 8px; font-size: 16px; }
+  .phase p { margin: 0 0 8px; color: var(--dim); font-size: 14px; }
+  .phase .fn { font-size: 12.5px; color: var(--dim); }
+  .hook { margin-top: 12px; background: var(--pin-bg); border: 1px solid var(--pin); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; }
+  .hook .tag { display: inline-block; font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--pin); margin-bottom: 4px; }
+  .arrow { display: none; }
+  @media (max-width: 760px) { .pipe { grid-template-columns: 1fr; } }
+
+  /* matrix */
+  .matrix { display: grid; grid-template-columns: 70px repeat(4, 1fr); gap: 4px; max-width: 520px; margin: 12px 0; font-size: 13px; }
+  .matrix .h { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; align-self: end; }
+  .matrix .row { color: var(--dim); }
+  .matrix .cell { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; text-align: center; }
+  .matrix .pinned { background: var(--pin-bg); border-color: var(--pin); font-weight: 600; }
+  .matrix .free { background: var(--ok-bg); border-color: var(--ok); }
+  .legend { display: flex; gap: 18px; font-size: 13px; color: var(--dim); margin-top: 6px; }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; border: 1px solid; }
+  .legend .lp::before { background: var(--pin-bg); border-color: var(--pin); }
+  .legend .lf::before { background: var(--ok-bg); border-color: var(--ok); }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  .warn { background: var(--warn-bg); color: var(--warn); border-left: 4px solid #F59E0B; border-radius: 10px; padding: 12px 14px; font-size: 14px; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Hand-picked opening games — where they would hook into the generator</h1>
+  <p class="sub">
+    Feasibility sketch, no code changed. The engine is <code>src/lib/matchGenerator.ts</code>; the admin drives it
+    from <code>src/components/MatchGeneratorPanel.tsx</code>. Amber boxes are the touch points a
+    &ldquo;fixed game 1 (and 2)&rdquo; setting would need.
+  </p>
+
+  <h2>The engine is three phases over one matrix</h2>
+  <div class="pipe">
+    <div class="phase">
+      <div class="n">Phase 1</div>
+      <h3>Assignment &mdash; who plays in each game</h3>
+      <p>Builds a <code>string[][]</code>: one row per game, four player ids per row. Each player gets a target
+        game count first, then rows are filled most-games-remaining-first, skipping anyone who just played.</p>
+      <div class="fn"><code>buildAssignment()</code> &middot; <code>findValidGroup()</code> &middot; <code>pickGroup()</code></div>
+      <div class="hook"><span class="tag">Hook 1</span>Seed rows 0&hellip;k&minus;1 with the pinned groups before the loop starts,
+        subtract one from each pinned player&rsquo;s remaining count, and seed <code>prevMatchPlayers</code> from the last pin so
+        game k+1 still avoids back-to-back play.</div>
+    </div>
+    <div class="phase">
+      <div class="n">Phase 3 (runs on the matrix)</div>
+      <h3>Optimisation &mdash; shuffle until the score stops improving</h3>
+      <p>Simulated annealing, 50 starts &times; 2000 trials by default. Two moves only: swap one player between two
+        rows (<code>mutateCrossSwap</code>) or swap two whole rows (<code>mutateRowSwap</code>).</p>
+      <div class="fn"><code>optimizeAssignment()</code> &middot; <code>evaluateSessionScore()</code></div>
+      <div class="hook"><span class="tag">Hook 2</span>Both moves draw their row indices at random from <code>[0, length)</code>.
+        Change that to <code>[k, length)</code> and a pinned row can never be touched. The scorer needs no change &mdash; it
+        should keep seeing the pinned games so rest, streaks and fairness are optimised <em>around</em> them.</div>
+    </div>
+    <div class="phase">
+      <div class="n">Phase 2 (runs last, per row)</div>
+      <h3>Team formation &mdash; which 2 v 2 split</h3>
+      <p>For each row of four, tries the three possible splits and keeps the one with the smallest level difference.
+        This is where the four ids become <code>team1</code> / <code>team2</code>.</p>
+      <div class="fn"><code>formTeams()</code> &middot; <code>assignmentToMatches()</code></div>
+      <div class="hook"><span class="tag">Hook 3</span>A pinned row must skip this step and keep the split the admin chose,
+        otherwise &ldquo;A &amp; B vs C &amp; D&rdquo; could come back as &ldquo;A &amp; C vs B &amp; D&rdquo;. Pinned rows carry their
+        ids already in team order and are passed through as-is.</div>
+    </div>
+  </div>
+
+  <h2>What the matrix looks like with two pinned games</h2>
+  <div class="matrix">
+    <div class="h"></div><div class="h">slot 1</div><div class="h">slot 2</div><div class="h">slot 3</div><div class="h">slot 4</div>
+    <div class="row">Game 1</div><div class="cell pinned">Ana</div><div class="cell pinned">Boyet</div><div class="cell pinned">Chito</div><div class="cell pinned">Dan</div>
+    <div class="row">Game 2</div><div class="cell pinned">Ella</div><div class="cell pinned">Fe</div><div class="cell pinned">Gino</div><div class="cell pinned">Hal</div>
+    <div class="row">Game 3</div><div class="cell free">?</div><div class="cell free">?</div><div class="cell free">?</div><div class="cell free">?</div>
+    <div class="row">&hellip;</div><div class="cell free">?</div><div class="cell free">?</div><div class="cell free">?</div><div class="cell free">?</div>
+    <div class="row">Game 20</div><div class="cell free">?</div><div class="cell free">?</div><div class="cell free">?</div><div class="cell free">?</div>
+  </div>
+  <div class="legend"><span class="lp">fixed by the admin, never mutated</span><span class="lf">filled and optimised by the engine</span></div>
+  <p style="color:var(--dim);font-size:14px">
+    Fairness still holds by construction: Ana has already used one of her five games, so Phase 1 hands her four more, the same
+    as everyone else. The pinned rows count in every score term, so the engine will naturally rest Ana through games 2&ndash;3.
+  </p>
+
+  <h2>Edge cases the setting has to answer</h2>
+  <table>
+    <tr><th>Case</th><th>What happens today</th><th>Proposed handling</th></tr>
+    <tr><td>Same player in two slots of one pinned game</td><td>Blocked on the edit form by <code>validateMatchPlayers</code>; DB has <code>matches_distinct_players_check</code></td><td>Reuse the same validator on the pin form; disable already-chosen players in the other three dropdowns, as the edit form does</td></tr>
+    <tr><td>Same player in pinned game 1 <em>and</em> game 2</td><td>n/a</td><td>Allow, but warn &mdash; with two courts these start together, so that player would be double-booked. Scorer would also charge a streak penalty, but as a constant it cannot steer anything</td></tr>
+    <tr><td>Pinned four exceed the level-spread limit</td><td>Engine never emits such a row; SA refuses swaps that would</td><td>Allow, warn in the preview. It is the admin&rsquo;s explicit choice; the spread penalty becomes a constant</td></tr>
+    <tr><td>A pinned player is removed from the roster before locking</td><td>Roster overrides sync live into the panel</td><td>Refuse to generate with a toast naming the player; the pin must be cleared or replaced</td></tr>
+    <tr><td>Admin presses &ldquo;Generate Again&rdquo;</td><td>Whole schedule is re-rolled</td><td>Pins survive &mdash; they live in <code>generator_settings</code> alongside the other sliders, which is already saved per session and restored on reload</td></tr>
+    <tr><td>How many games can be pinned</td><td>n/a</td><td>Up to <code>sessions.court_count</code>. Those are the games that start at the same whistle; pinning game 3 is a different idea (&ldquo;first on deck&rdquo;) and not what was asked</td></tr>
+  </table>
+
+  <div class="warn">
+    Nothing downstream changes. A pinned game leaves the engine as an ordinary <code>GeneratedMatch</code>, so
+    <code>lockSchedule</code>, the match board, the live board and the DB constraint all treat it like any other row.
+  </div>
+
+</div>
+</body>
+</html>
