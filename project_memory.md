@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-07
+Last updated: 2026-09-12
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -151,6 +151,35 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **The Cheers tab shows one category at a time**, behind a six-way switcher. Six stacked boards meant up to eighteen medals per screen — a gold that repeats six times is decoration, not a placing — and the tab measured 3,920 px with only three qualifying players. One at a time it is 1,600 px with exactly one gold. Do not restore the stacked layout.
 - **The six cheer types live in `src/lib/cheerTypes.ts`** (`CHEER_CATEGORIES`, `signatureCheer`) with slug, emoji, name, short label and bar colour. Both the leaderboard switcher and the profile bar read it, so a seventh type is added once. Bar colours are fixed hex tuned against `--card`, not tokens — revisit if a light theme lands.
 - **My Profile carries a "Cheered for" card** between Sign out and Awards: strongest cheer type, its share, and a bar splitting the player's cheers across all six. It replaced a Cheers section that repeated the same six percentages as stat cards.
+
+## Match generator
+
+- **The engine is three phases over one matrix** (`src/lib/matchGenerator.ts`): `buildAssignment` fills
+  `string[][]` (one row per game, four ids), simulated annealing mutates it with exactly two moves
+  (`mutateCrossSwap`, `mutateRowSwap`), and `formTeams` picks each row's 2 v 2 split by level. Fairness
+  is by construction in phase 1; everything else is the scorer.
+- **Pinned opening games (2026-09-12).** `GenerateOptions.pinnedMatches: PinnedMatch[]` fixes games
+  1..k with the admin's exact team split. Three hooks, nothing else: rows seeded first (each pinned
+  player's target decremented, `prevMatchPlayers` seeded from the last pin), both mutators draw from
+  `[k, length)`, and `assignmentToMatches` passes rows `< k` through `formPinnedTeams` instead of
+  `formTeams`. **The scorer deliberately still sees pinned rows** so rest, streaks and fairness are
+  optimised around them. A pinned game leaves as an ordinary `GeneratedMatch`; lock, boards and the DB
+  `CHECK` are untouched.
+- **UI is Option A: a *Fixed Opening Games* section inside the generator Settings**, one row per
+  `sessions.court_count` (those are the games that start together). Pins are a prefix — game 2's
+  checkbox is disabled until game 1 is pinned, and unpinning game 1 clears game 2. Stored as
+  `settings.pinnedGames: Array<MatchSlots | null>`, which reaches `sessions.generator_settings` on lock
+  like every other setting. Rejected: pinning from the preview (needs edit-before-lock, which does not
+  exist) and an always-visible card (two cards of height every week for a rare action). Mocks in
+  `badminton-v2/docs/visual/seed-match-options.html`.
+- **Warn, don't block, on the admin's explicit choices**: the same player in two pinned games, or a
+  pinned four over `maxSpreadLimit`, both `toast.warning` and proceed. Blocked with `toast.error`: a
+  half-filled pin, a repeated player (via `validateMatchPlayers`), or a pinned player no longer
+  registered. The engine throws on the same conditions as a last line of defence.
+- **`FourSlotPicker`** is the one four-dropdown Team 1 / Team 2 component; the locked-stage edit form and
+  the pin rows both use it. It was inlined twice before — do not add a third copy.
+- `generateSchedule` (single-pass) is kept only for tests and API compatibility; the app calls
+  `generateScheduleOptimized`.
 
 ## Match schedule board
 

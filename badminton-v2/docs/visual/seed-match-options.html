@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seed matches — three places the pin controls could live</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    /* app dark theme */
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFFFFF; --gold: #FFB200;
+    --blue: #3B82F6; --orange: #F97316; --input: #2A1D3A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 820px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 60px; }
+
+  /* phone frame with the app panel inside */
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .card h3 { margin: 0 0 10px; font-size: 16px; }
+  .meta { color: var(--muted-fg); font-size: 13px; margin: 0 0 10px; }
+  .link { background: none; border: 0; color: var(--muted-fg); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; padding: 0; cursor: pointer; }
+  .settings { border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; font-size: 13px; }
+  .sec { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-fg); margin: 0 0 8px; }
+  .slider { display: flex; justify-content: space-between; color: var(--muted-fg); font-size: 12px; padding: 4px 0; }
+  .slider b { color: var(--fg); font-weight: 500; }
+  .slider .bar { flex: 1; height: 4px; background: var(--input); border-radius: 2px; margin: 8px 10px 0; position: relative; }
+  .slider .bar i { position: absolute; left: 0; top: 0; height: 100%; width: 40%; background: var(--brand); border-radius: 2px; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 10px 0; }
+  .btn { width: 100%; border: 0; border-radius: 8px; padding: 10px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 10px; }
+  .btn.primary { background: var(--brand); color: var(--brand-fg); }
+  .btn.outline { background: transparent; color: var(--fg); border: 1px solid var(--border); }
+  .btn.sm { width: auto; padding: 4px 10px; font-size: 12px; margin: 0; }
+  .help { color: var(--muted-fg); font-size: 11.5px; margin: 0 0 8px; }
+
+  /* pin row: checkbox + 4-select picker (Option A) */
+  .pinrow { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 8px; }
+  .pinrow .head { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .pinrow .head label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .pinrow .head .state { margin-left: auto; color: var(--muted-fg); font-size: 11.5px; }
+  input[type=checkbox] { accent-color: var(--brand); width: 14px; height: 14px; }
+  .picker { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; }
+  .team { border-radius: 6px; padding: 6px; }
+  .team.t1 { border: 1px solid rgba(59,130,246,.3); background: rgba(59,130,246,.05); }
+  .team.t2 { border: 1px solid rgba(249,115,22,.3); background: rgba(249,115,22,.05); }
+  .team p { margin: 0 0 4px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .team.t1 p { color: var(--blue); } .team.t2 p { color: var(--orange); }
+  .vs { font-size: 11px; font-weight: 700; color: var(--muted-fg); }
+  select { width: 100%; height: 30px; border-radius: 6px; border: 1px solid var(--border); background: var(--input); color: var(--fg); font-size: 12px; padding: 0 6px; margin-bottom: 4px; }
+  select:last-child { margin-bottom: 0; }
+
+  /* preview list (Option B) */
+  .list { list-style: none; margin: 10px 0 0; padding: 0; max-height: 330px; overflow: auto; }
+  .list li { padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .list li:last-child { border-bottom: 0; }
+  .list .n { color: var(--muted-fg); width: 18px; }
+  .list .type { font-size: 11px; font-weight: 600; color: #22C55E; }
+  .list .names { flex: 1; }
+  .list .names span { color: var(--muted-fg); margin: 0 4px; }
+  .pinbtn { border: 1px solid var(--border); background: transparent; color: var(--muted-fg); border-radius: 6px; padding: 2px 8px; font-size: 11px; cursor: pointer; white-space: nowrap; }
+  .pinbtn.on { border-color: var(--gold); color: var(--gold); background: rgba(255,178,0,.08); }
+  li.pinned { background: rgba(255,178,0,.05); margin: 0 -6px; padding-left: 6px; padding-right: 6px; border-radius: 6px; }
+  .chip { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); border: 1px solid rgba(255,178,0,.4); border-radius: 4px; padding: 0 5px; margin-right: 6px; }
+  .ghost { background: none; border: 0; color: var(--muted-fg); font-size: 11px; cursor: pointer; padding: 2px 6px; }
+  .note { color: var(--muted-fg); font-size: 11.5px; margin-top: 8px; }
+
+  /* opening-game cards (Option C) */
+  .opener { border: 1px solid var(--border); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+  .opener .top { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+  .opener .top .g { font-weight: 700; font-size: 15px; }
+  .opener .empty { color: var(--muted-fg); font-size: 12.5px; margin-top: 6px; }
+  .band { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; margin-top: 8px; font-size: 13px; }
+  .band .side { text-align: center; line-height: 1.3; }
+  .band .side small { display: block; color: var(--muted-fg); font-size: 11px; }
+  .band .vs { text-align: center; }
+  .opener.set { border-color: rgba(255,178,0,.5); background: rgba(255,178,0,.04); }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Seed matches &mdash; three places the pin controls could live</h1>
+  <p class="sub">
+    Same feature, same engine hooks, three different homes on the admin&rsquo;s <em>Match Schedule</em> panel
+    (<code>MatchGeneratorPanel</code>, phone width). All three are clickable: tick, pin, set and regenerate to feel
+    the flow. The picker itself is the existing four-dropdown edit form in every case &mdash; only <em>where</em> it
+    appears and <em>when</em> you reach it changes.
+  </p>
+
+  <div class="options">
+
+    <!-- ───────────── Option A ───────────── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Inside Settings, before you generate</h2>
+      <p class="why">A <em>Fixed Opening Games</em> section next to the other generator rules. Tick <em>Pin</em> on a game,
+        fill four slots, then Generate. Hidden until Settings is expanded, so the default panel is unchanged.</p>
+      <div class="phone">
+        <div class="card">
+          <h3>Match Schedule</h3>
+          <p class="meta">16 players registered</p>
+          <button class="link">Hide Settings &#9650;</button>
+          <div class="settings">
+            <p class="sec">Match Rules</p>
+            <div class="slider"><span>Number of Matches</span><b>20</b></div>
+            <div class="slider"><span>Max Consecutive Games</span><b>1</b></div>
+            <div class="slider"><span>Max Skill Gap per Match</span><b>2</b></div>
+            <hr>
+            <p class="sec">Fixed Opening Games</p>
+            <p class="help">Pick the players for the games that start together. The engine fills the rest around them.</p>
+            <div class="pinrow" id="a-g1">
+              <div class="head"><label><input type="checkbox" onchange="toggleA(1,this.checked)"> Pin</label><span>Game 1</span><span class="state">engine picks</span></div>
+              <div class="picker" hidden></div>
+            </div>
+            <div class="pinrow" id="a-g2">
+              <div class="head"><label><input type="checkbox" onchange="toggleA(2,this.checked)"> Pin</label><span>Game 2</span><span class="state">engine picks</span></div>
+              <div class="picker" hidden></div>
+            </div>
+            <hr>
+            <p class="sec">Optimizer</p>
+            <div class="slider"><span>Optimizer Restarts</span><b>50</b></div>
+            <div class="slider"><span>Trials per Restart</span><b>2000</b></div>
+          </div>
+          <button class="btn primary">Generate Schedule (50&times;2000)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────────── Option B ───────────── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Pin from the preview, after you generate</h2>
+      <p class="why">Generate first. Games 1&ndash;2 in the preview get a <em>Pin</em> toggle beside <em>Edit</em>. Pin a
+        generated game you like as-is, or edit it and then pin it. <em>Generate Again</em> keeps pinned rows.</p>
+      <div class="phone">
+        <div class="card">
+          <h3>Match Schedule</h3>
+          <p class="meta">16 players registered</p>
+          <button class="link">Settings &#9660;</button>
+          <button class="btn outline" onclick="regenB()">Generate Again (50&times;2000)</button>
+          <ul class="list" id="b-list"></ul>
+          <p class="note" id="b-note">Nothing pinned &mdash; Generate Again re-rolls all 20 games.</p>
+          <button class="btn primary">Lock Schedule</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────────── Option C ───────────── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Its own card above the Generate button</h2>
+      <p class="why">Always visible, not tucked in Settings. One card per court showing the opening game in the same
+        2&nbsp;v&nbsp;2 style the players see. <em>Set</em> opens the picker inline; <em>Clear</em> hands it back to the engine.</p>
+      <div class="phone">
+        <div class="card">
+          <h3>Match Schedule</h3>
+          <p class="meta">16 players registered</p>
+          <button class="link">Settings &#9660;</button>
+          <p class="sec" style="margin-top:12px">Opening games <span style="font-weight:400;text-transform:none;letter-spacing:0">&mdash; 2 courts</span></p>
+          <div class="opener" id="c-g1"></div>
+          <div class="opener" id="c-g2"></div>
+          <button class="btn primary">Generate Schedule (50&times;2000)</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; in Settings</th><th>B &mdash; in the preview</th><th>C &mdash; own card</th></tr>
+    <tr><td>When you pin</td><td>Before generating</td><td>After a first generate</td><td>Before generating</td></tr>
+    <tr><td>Discoverable?</td><td>Low &mdash; behind the Settings toggle, with 20 other knobs</td><td>Medium &mdash; you see it once you have a preview</td><td>High &mdash; always on the panel</td></tr>
+    <tr><td>Vertical cost on the default panel</td><td>None</td><td>None (one small button per row)</td><td>~2 cards, always</td></tr>
+    <tr><td>Can pin a generated game you happen to like</td><td>No &mdash; you retype it</td><td>Yes, one tap</td><td>No &mdash; you retype it</td></tr>
+    <tr><td>Extra work beyond the engine hooks</td><td>Smallest &mdash; one settings section, reuses the edit form</td><td>Edit-in-preview is new (today Edit only works after lock) plus the pin toggle</td><td>New card component; picker reused</td></tr>
+    <tr><td>Where the pins are stored</td><td colspan="3">Same in all three: in <code>settings</code>, saved to <code>sessions.generator_settings</code> on lock, so they survive Generate Again.</td></tr>
+    <tr><td>Fits best when</td><td>Pinning is rare and deliberate</td><td>You usually want to tweak what the engine gave you</td><td>You pin most weeks and want it in your face</td></tr>
+  </table>
+
+</div>
+
+<script>
+  const ROSTER = ['Ana','Boyet','Chito','Dan','Ella','Fe','Gino','Hal','Ivy','Jax','Kim','Lito','Mara','Nico','Oli','Pia'];
+  const LEVEL = Object.fromEntries(ROSTER.map((n,i)=>[n, 3 + (i % 6)]));
+
+  function pickerHTML(prefix, values){
+    const opts = (sel)=> '<option value="">— pick —</option>' + ROSTER.map(n=>`<option ${n===sel?'selected':''}>${n}</option>`).join('');
+    const v = values || ['','','',''];
+    return `<div class="team t1"><p>Team 1</p><select>${opts(v[0])}</select><select>${opts(v[1])}</select></div>
+            <span class="vs">vs</span>
+            <div class="team t2"><p>Team 2</p><select>${opts(v[2])}</select><select>${opts(v[3])}</select></div>`;
+  }
+
+  /* Option A */
+  function toggleA(g, on){
+    const row = document.getElementById('a-g'+g);
+    const p = row.querySelector('.picker');
+    p.hidden = !on;
+    if (on && !p.innerHTML) p.innerHTML = pickerHTML('a'+g);
+    row.querySelector('.state').textContent = on ? 'fixed' : 'engine picks';
+  }
+
+  /* Option B */
+  let bGames = [], bPinned = new Set();
+  function randomGame(){
+    const s = [...ROSTER].sort(()=>Math.random()-.5).slice(0,4);
+    return s;
+  }
+  function regenB(){
+    bGames = bGames.length ? bGames.map((g,i)=> bPinned.has(i) ? g : randomGame()) : Array.from({length:6}, randomGame);
+    renderB();
+  }
+  function togglePinB(i){ bPinned.has(i) ? bPinned.delete(i) : bPinned.add(i); renderB(); }
+  function renderB(){
+    const ul = document.getElementById('b-list');
+    ul.innerHTML = bGames.map((g,i)=>{
+      const on = bPinned.has(i);
+      const pinnable = i < 2;
+      return `<li class="${on?'pinned':''}"><span class="n">${i+1}.</span>
+        <span class="names">${on?'<span class="chip">Pinned</span>':''}${g[0]} &amp; ${g[1]}<span>vs</span>${g[2]} &amp; ${g[3]}</span>
+        ${pinnable ? `<button class="pinbtn ${on?'on':''}" onclick="togglePinB(${i})">${on?'Pinned':'Pin'}</button>` : ''}
+        <button class="ghost">Edit</button></li>`;
+    }).join('') + '<li><span class="n"></span><span class="names" style="color:var(--muted-fg)">&hellip; 14 more</span></li>';
+    document.getElementById('b-note').textContent = bPinned.size
+      ? `${bPinned.size} pinned — Generate Again keeps ${[...bPinned].sort().map(i=>'Game '+(i+1)).join(' and ')}, re-rolls the rest.`
+      : 'Nothing pinned — Generate Again re-rolls all 20 games.';
+  }
+  regenB();
+
+  /* Option C */
+  const cState = {1:null, 2:null};
+  function renderC(g){
+    const el = document.getElementById('c-g'+g);
+    const v = cState[g];
+    if (v === 'editing'){
+      el.classList.remove('set');
+      el.innerHTML = `<div class="top"><span class="g">Game ${g}</span><span style="color:var(--muted-fg);font-size:12px">Court ${g}</span></div>
+        <div class="picker" id="c-pick-${g}">${pickerHTML('c'+g, ['','','',''])}</div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn primary sm" onclick="saveC(${g})">Save</button>
+          <button class="btn outline sm" onclick="cState[${g}]=null;renderC(${g})">Cancel</button></div>`;
+      return;
+    }
+    if (v){
+      el.classList.add('set');
+      const lv = (a,b)=> LEVEL[a]+LEVEL[b];
+      el.innerHTML = `<div class="top"><span class="g"><span class="chip">Pinned</span>Game ${g}</span>
+          <span><button class="ghost" onclick="cState[${g}]='editing';renderC(${g})">Change</button><button class="ghost" onclick="cState[${g}]=null;renderC(${g})">Clear</button></span></div>
+        <div class="band"><div class="side">${v[0]} &amp; ${v[1]}<small>level ${lv(v[0],v[1])}</small></div><div class="vs">VS</div><div class="side">${v[2]} &amp; ${v[3]}<small>level ${lv(v[2],v[3])}</small></div></div>`;
+      return;
+    }
+    el.classList.remove('set');
+    el.innerHTML = `<div class="top"><span class="g">Game ${g}</span><button class="btn outline sm" onclick="cState[${g}]='editing';renderC(${g})">Set</button></div>
+      <p class="empty">Engine picks &mdash; tap Set to fix this game.</p>`;
+  }
+  function saveC(g){
+    const sels = [...document.querySelectorAll(`#c-pick-${g} select`)].map(s=>s.value);
+    if (sels.some(v=>!v) || new Set(sels).size < 4){ alert('Fill all four slots with different players.'); return; }
+    cState[g] = sels; renderC(g);
+  }
+  renderC(1); renderC(2);
+</script>
+</body>
+</html>

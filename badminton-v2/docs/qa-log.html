@@ -83,6 +83,7 @@
       <li><a href="#match-schedule">Match schedule</a></li>
       <li><a href="#results">Results &amp; scoring</a></li>
       <li><a href="#live-board">Live board &amp; performance</a></li>
+      <li><a href="#match-generator">Match generator</a></li>
     </ol>
   </nav>
 
@@ -1123,6 +1124,48 @@
       the real fix is one transaction with <code>FOR UPDATE SKIP LOCKED</code> &mdash; the deferred RPC.
       <code>useAdminActions.markDone</code> also still keeps its own copy of the old four-step algorithm, so the
       admin screen has not had any of this applied to it.
+    </p>
+  </div>
+
+  <h2 class="topic" id="match-generator">Match generator</h2>
+
+  <div class="qa">
+    <p class="q">Could I hand-pick game 1 (or games 1 and 2) and let the engine generate the rest?</p>
+    <p class="a">
+      Yes, and it fits the engine&rsquo;s shape rather than fighting it. <code>generateScheduleOptimized</code>
+      (<code>src/lib/matchGenerator.ts</code>) works on one matrix &mdash; one row per game, four player ids per
+      row &mdash; and only ever changes it through two moves: swap a player between two rows, or swap two rows.
+      Pinning is therefore three small hooks: seed the first <em>k</em> rows before <code>buildAssignment</code>
+      fills the rest (subtracting a game from each pinned player&rsquo;s target so fairness still holds), draw the
+      mutation indices from <code>[k, length)</code> so the annealer never touches a pinned row, and let pinned
+      rows skip <code>formTeams</code> so the admin&rsquo;s 2 v 2 split is kept instead of re-derived by level.
+    </p>
+    <p class="a">
+      The scorer needs no change and should keep seeing the pinned games, so rest spacing, streaks and
+      participation are optimised <em>around</em> them. Nothing downstream changes either &mdash; a pinned game
+      leaves the engine as an ordinary <code>GeneratedMatch</code>. The setting would live in
+      <code>sessions.generator_settings</code> next to the sliders, so it survives &ldquo;Generate Again&rdquo; and a
+      reload. Sensible cap: <code>court_count</code> games, since those are the ones that start together.
+      Diagram: <code>docs/visual/match-generator-pinned-openers.html</code>.
+    </p>
+    <p class="a">
+      <strong>Shipped (2026-09-12)</strong> as the <em>Fixed Opening Games</em> section inside the generator&rsquo;s
+      Settings (Option A of <code>docs/visual/seed-match-options.html</code>). One row per court; game 2 cannot be
+      pinned unless game 1 is. Engine option is <code>pinnedMatches</code>; the panel stores rows in
+      <code>settings.pinnedGames</code>. Verified against the dev DB: a pinned &ldquo;L:4 vs L:8&rdquo; split survived
+      <code>formTeams</code>, participation stayed 5 each, and after lock + cold reload rows 1&ndash;2 of
+      <code>matches</code> held the pinned ids in pinned order.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Do I have to pin the opening games, or can the engine still pick everything?</p>
+    <p class="a">
+      Pinning is optional. With nothing ticked, <code>pinnedMatches</code> is empty and every code path is
+      identical to before &mdash; the mutation fence starts at row 0, no row bypasses <code>formTeams</code>, and
+      <code>buildAssignment</code> seeds nothing. Test <code>P7</code> in
+      <code>src/__tests__/matchGenerator.pinned.test.ts</code> holds that contract. Unticking <em>Pin</em> on a game
+      hands it straight back to the engine, and unticking game 1 also clears game 2 so pins are always a prefix.
     </p>
   </div>
 
