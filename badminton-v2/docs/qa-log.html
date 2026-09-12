@@ -1170,6 +1170,21 @@
   </div>
 
   <div class="qa">
+    <p class="q">Swapping two players in a match edit meant parking a stranger in a slot first &mdash; can it just swap?</p>
+    <p class="a">
+      It does now (2026-09-12). The four dropdowns used to disable anyone already in the match (&ldquo;Steph &mdash;
+      already in this match&rdquo;), which protected the four-different-players rule but blocked the one edit admins
+      actually make. A player who holds another slot is now listed as &ldquo;Steph &nbsp;&#8646; swap&rdquo;; picking
+      them trades the two slots and both flash teal. <code>assignSlot</code> in <code>src/lib/matchSlots.ts</code>
+      is the one rule: a swap only permutes the same four ids, so the distinct-players invariant cannot break, and
+      substitution is unchanged. It applies in all three edit forms &mdash; the generator panel&rsquo;s locked list,
+      the pinned-games rows, and the live court view (<code>CourtTabs</code>, whose queue form was a second copy of
+      its own court form and now shares it). The two rejected designs &mdash; tap-two-slots, and a three-row pairing
+      picker &mdash; are kept in <code>docs/visual/match-edit-swap-options.html</code>.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">The preview said Anthony &amp; Jerome were L:8, but Jerome is a 4 on <code>/players</code> &mdash; is the team total wrong?</p>
     <p class="a">
       The arithmetic is right; the input is the surprise. A roster row's level is a <em>per-session override</em>

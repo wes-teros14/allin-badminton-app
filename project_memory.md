@@ -187,7 +187,15 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   half-filled pin, a repeated player (via `validateMatchPlayers`), or a pinned player no longer
   registered. The engine throws on the same conditions as a last line of defence.
 - **`FourSlotPicker`** is the one four-dropdown Team 1 / Team 2 component; the locked-stage edit form and
-  the pin rows both use it. It was inlined twice before — do not add a third copy.
+  the pin rows both use it. It was inlined twice before — do not add a third copy. `CourtTabs` has its
+  own `PlayerSelect` + `EditFormInline` for the live court view (different field names, `t1p1Id`), used by
+  both the court card and the queue — the queue used to carry a byte-identical copy with no guard.
+- **Picking a player who already holds a slot swaps, it does not block (2026-09-12).** `assignSlot`
+  (`src/lib/matchSlots.ts`) is the single rule for every four-slot form: same player elsewhere → the two
+  slots trade; otherwise substitute. The option reads "Name ⇄ swap" instead of being disabled. A swap only
+  permutes the same four ids, so `matches_distinct_players_check` and `validateMatchPlayers` are never at
+  risk. Rejected: tap-two-slots (a new gesture, needs a cancel) and a three-row 2v2 pairing picker (most
+  direct but ~110 px taller) — both in `badminton-v2/docs/visual/match-edit-swap-options.html`.
 - `generateSchedule` (single-pass) is kept only for tests and API compatibility; the app calls
   `generateScheduleOptimized`.
 

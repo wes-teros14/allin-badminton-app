@@ -11,7 +11,7 @@ Updated: 2026-09-12. Overwrite this file on every update; it is never a running 
 - **Rollback anchors.** Before seed matches: `main` `55c6eee`, `dev` `46fb328`. `git revert -m 1
   60dc008` backs seed matches out; `git revert -m 1 <newest merge on main>` backs the roster button out.
 - `npm run build` clean, `npm run lint` clean apart from the pre-existing `ProfileView.tsx:257`
-  warning, vitest **277/277** (262 + 11 pinned-game tests + 4 `rosterLevels` tests).
+  warning, vitest **283/283** (262 + 11 pinned-game + 4 `rosterLevels` + 6 `matchSlots` tests).
 - Earlier this session the local `dev` was reset to the force-pushed `origin/dev` (the 2026-09-07
   history rewrite). **Local `main` turned out to still be on the old history** and was reset to
   `origin/main` before merging — see the 2026-09-12 entry in `tasks/lessons.md`. Both local branches
@@ -21,6 +21,15 @@ Updated: 2026-09-12. Overwrite this file on every update; it is never a running 
   of `temporary_files/*`, and untracked `temp/`. These are the user's, not part of the feature.
 
 ## Done this session
+
+**Swap instead of block in match edit forms** — pushed to `dev` and `main`. Picking a
+player already in the match now trades the two slots ("Name ⇄ swap" option) in all three forms: the
+generator panel's locked list, the pinned-games rows, and `CourtTabs` (court card + queue, which was a
+second unguarded copy and now shares `EditFormInline`). `assignSlot` in `src/lib/matchSlots.ts`,
+`MatchSlots`/`EMPTY_SLOTS` moved there, 6 tests (283 total). Verified in the browser on the locked list:
+Game 4 Raych & Gellie vs Jillmarie & Tin V → pick "Tin V ⇄ swap" in Raych's slot → Tin V & Gellie vs
+Jillmarie & Raych, both slots flashed, cancelled without saving. `CourtTabs` form verified by type-check
+and the shared helper only — not exercised in the browser.
 
 **Use profile levels (roster)** — pushed after seed matches. A per-session level override sticks once set,
 so a preview could read L:8 for a player who is a 4 on `/players`; not a generator bug. New header button
