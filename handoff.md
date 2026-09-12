@@ -4,12 +4,18 @@ Updated: 2026-09-12. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Branch `007-seed-matches`, cut from `dev` at `46fb328`. Nothing committed yet** — the whole
-  feature is in the working tree, alongside pre-existing uncommitted work (see below).
+- **Pushed and live.** `origin/dev` = `b887a52`, `origin/main` = `60dc008` (non-ff merge:
+  *"Merge branch 'dev' into main — pin the opening games in the match generator"*). **Deployed to
+  production** at badmintontayo.mrkws.com. Feature commits on `007-seed-matches`: `4ec1734` engine +
+  tests, `d975a6c` panel + view, `3b0eb13` docs.
+- **Rollback anchors.** Pre-feature `main` is `55c6eee`, pre-feature `dev` is `46fb328`.
+  `git revert -m 1 60dc008` on `main` backs the whole feature out.
 - `npm run build` clean, `npm run lint` clean apart from the pre-existing `ProfileView.tsx:257`
   warning, vitest **273/273** (262 + 11 new in `matchGenerator.pinned.test.ts`).
 - Earlier this session the local `dev` was reset to the force-pushed `origin/dev` (the 2026-09-07
-  history rewrite). Local commits were content-identical; nothing lost.
+  history rewrite). **Local `main` turned out to still be on the old history** and was reset to
+  `origin/main` before merging — see the 2026-09-12 entry in `tasks/lessons.md`. Both local branches
+  now match their upstreams.
 - Working tree also carries, **from before this session**: two new `tasks/lessons.md` entries (root:
   shuttle inventory; `badminton-v2/`: migration 079 blocked by a duplicate-player row), the deletion
   of `temporary_files/*`, and untracked `temp/`. These are the user's, not part of the feature.
@@ -56,8 +62,8 @@ In the in-app browser against the dev project, session `bce6f898…` (16 players
 
 ## Immediate next steps
 
-1. **Commit** on `007-seed-matches` — engine + tests as one commit, panel + view as a second, docs as
-   a third — then merge to `dev`, then non-ff to `main`. Ask before pushing.
+1. **Watch the first real session with pins** — the section was only driven from the desktop pane.
+   Delete the merged `007-seed-matches` branch when happy.
 2. Rotate the prod `service_role` key — still outstanding (see `project_memory.md` → Known warts).
    Nothing this session touched it.
 3. Everything from the 2026-09-07 handoff still stands: tablet check of the 3-round-trip finish,
