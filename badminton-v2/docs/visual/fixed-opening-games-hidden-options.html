@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fixed Opening Games — three ways to hide it by default</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted-fg: #B39DBB;
+    --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 96px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .card h3 { margin: 0 0 8px; font-size: 16px; }
+  .meta { color: var(--muted-fg); font-size: 13px; margin: 0 0 8px; }
+  .link { background: none; border: 0; color: var(--muted-fg); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; padding: 0; cursor: pointer; }
+  .settings { border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; font-size: 13px; }
+  .sec { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-fg); margin: 0 0 8px; }
+  .slider { display: flex; justify-content: space-between; color: var(--muted-fg); font-size: 12px; padding: 4px 0; }
+  .slider b { color: var(--fg); font-weight: 500; }
+  hr { border: 0; border-top: 1px solid var(--border); margin: 10px 0; }
+  .btn { width: 100%; border: 0; border-radius: 8px; padding: 10px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 10px; }
+  .btn.primary { background: var(--brand); color: var(--brand-fg); }
+  .help { color: var(--muted-fg); font-size: 11.5px; margin: 0 0 8px; }
+  .pinrow { border: 1px solid var(--border); border-radius: 8px; padding: 8px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .pinrow label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .pinrow .state { margin-left: auto; color: var(--muted-fg); font-size: 11.5px; }
+  input[type=checkbox] { accent-color: var(--brand); width: 14px; height: 14px; }
+  .count { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); border: 1px solid rgba(255,178,0,.4); border-radius: 4px; padding: 0 5px; vertical-align: 1px; }
+  summary { cursor: pointer; list-style: none; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-fg); user-select: none; }
+  summary::-webkit-details-marker { display: none; }
+  details[open] summary .car::after { content: "▲"; } summary .car::after { content: "▼"; margin-left: 4px; }
+  .adv { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted-fg); cursor: pointer; }
+  .ghost { background: none; border: 0; color: var(--muted-fg); font-size: 12px; padding: 6px 0 0; cursor: pointer; width: 100%; text-align: center; }
+  .ghost b { color: var(--fg); font-weight: 600; }
+  .inline-section { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; margin-top: 10px; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Fixed Opening Games &mdash; three ways to hide it by default</h1>
+  <p class="sub">
+    Pinning is rare, so the two rows should not sit in the middle of the Settings panel every week. In every mock the
+    section starts hidden; open it, tick a Pin, and watch how each option signals &ldquo;something is pinned&rdquo; once
+    it is closed again &mdash; a hidden pin that silently fixes game 1 is the failure to design against.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Collapsible block inside Settings, like Scoring Weights</h2>
+      <p class="why">Stays where it is, but becomes a <code>&lt;details&gt;</code> that is closed by default &mdash;
+        the same treatment <em>Scoring Weights</em> already gets at the bottom of the panel. The summary line carries
+        a gold <em>2 pinned</em> chip whenever pins exist, and the block opens itself on load if any are set.
+        Smallest change, consistent with the panel&rsquo;s own idiom.</p>
+      <div class="phone"><div class="card">
+        <h3>Match Schedule</h3>
+        <p class="meta">16 players registered</p>
+        <button class="link">Hide Settings &#9650;</button>
+        <div class="settings">
+          <p class="sec">Match Rules</p>
+          <div class="slider"><span>Number of Matches</span><b>20</b></div>
+          <div class="slider"><span>Max Consecutive Games</span><b>1</b></div>
+          <div class="slider"><span>Max Skill Gap per Match</span><b>2</b></div>
+          <hr>
+          <details id="a-details">
+            <summary>Fixed Opening Games<span class="car"></span><span class="count" id="a-count" hidden></span></summary>
+            <p class="help" style="margin-top:8px">Pick the players for the games that start together. The engine fills the rest around them.</p>
+            <div class="pinrow"><label><input type="checkbox" onchange="pin('a',0,this.checked)"> Pin</label><span>Game 1</span><span class="state">engine picks</span></div>
+            <div class="pinrow"><label><input type="checkbox" onchange="pin('a',1,this.checked)"> Pin</label><span>Game 2</span><span class="state">engine picks</span></div>
+          </details>
+          <hr>
+          <p class="sec">Optimizer</p>
+          <div class="slider"><span>Optimizer Restarts</span><b>50</b></div>
+          <hr>
+          <details><summary>Scoring Weights<span class="car"></span></summary></details>
+        </div>
+        <button class="btn primary">Generate Schedule (50&times;2000)</button>
+      </div></div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Behind an &ldquo;Advanced&rdquo; switch at the top of Settings</h2>
+      <p class="why">Settings gains one checkbox, <em>Show advanced</em>, off by default. Off, the panel shows only
+        Match Rules and Optimizer; on, it also shows Fixed Opening Games <em>and</em> Scoring Weights &mdash; the two
+        things a normal week never touches. The switch remembers itself in <code>localStorage</code>. Cleanest panel,
+        but a pin can only be seen after flipping the switch, so the count also appears next to the switch.</p>
+      <div class="phone"><div class="card">
+        <h3>Match Schedule</h3>
+        <p class="meta">16 players registered</p>
+        <button class="link">Hide Settings &#9650;</button>
+        <div class="settings">
+          <label class="adv"><input type="checkbox" id="b-adv" onchange="renderB()"> Show advanced<span class="count" id="b-count" hidden></span></label>
+          <hr>
+          <p class="sec">Match Rules</p>
+          <div class="slider"><span>Number of Matches</span><b>20</b></div>
+          <div class="slider"><span>Max Consecutive Games</span><b>1</b></div>
+          <div class="slider"><span>Max Skill Gap per Match</span><b>2</b></div>
+          <div id="b-section" hidden>
+            <hr>
+            <p class="sec">Fixed Opening Games</p>
+            <p class="help">Pick the players for the games that start together. The engine fills the rest around them.</p>
+            <div class="pinrow"><label><input type="checkbox" onchange="pin('b',0,this.checked)"> Pin</label><span>Game 1</span><span class="state">engine picks</span></div>
+            <div class="pinrow"><label><input type="checkbox" onchange="pin('b',1,this.checked)"> Pin</label><span>Game 2</span><span class="state">engine picks</span></div>
+          </div>
+          <hr>
+          <p class="sec">Optimizer</p>
+          <div class="slider"><span>Optimizer Restarts</span><b>50</b></div>
+          <div id="b-weights" hidden><hr><p class="sec">Scoring Weights</p><div class="slider"><span>Fairness Penalty</span><b>5000</b></div></div>
+        </div>
+        <button class="btn primary">Generate Schedule (50&times;2000)</button>
+      </div></div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>A one-line link under the Generate button, outside Settings</h2>
+      <p class="why">Nothing in Settings at all. Under the Generate button sits a quiet text link, <em>Pin opening
+        games&hellip;</em>, that expands the two rows inline right above where you act. Once anything is pinned the
+        line reads <em>2 opening games pinned &middot; edit</em> in gold, so it is visible without opening anything.
+        Most discoverable at the moment of use; costs one text line always.</p>
+      <div class="phone"><div class="card">
+        <h3>Match Schedule</h3>
+        <p class="meta">16 players registered</p>
+        <button class="link">Settings &#9660;</button>
+        <div id="c-section" class="inline-section" hidden>
+          <p class="sec">Fixed Opening Games</p>
+          <p class="help">Pick the players for the games that start together. The engine fills the rest around them.</p>
+          <div class="pinrow"><label><input type="checkbox" onchange="pin('c',0,this.checked)"> Pin</label><span>Game 1</span><span class="state">engine picks</span></div>
+          <div class="pinrow"><label><input type="checkbox" onchange="pin('c',1,this.checked)"> Pin</label><span>Game 2</span><span class="state">engine picks</span></div>
+        </div>
+        <button class="btn primary">Generate Schedule (50&times;2000)</button>
+        <button class="ghost" id="c-link" onclick="toggleC()">Pin opening games&hellip;</button>
+      </div></div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; collapsible in Settings</th><th>B &mdash; Advanced switch</th><th>C &mdash; link under Generate</th></tr>
+    <tr><td>Taps to reach it</td><td>2 (Settings, then the block)</td><td>2 (Settings, then Advanced)</td><td>1</td></tr>
+    <tr><td>Visible when a pin is active but closed</td><td>Gold chip on the summary; block auto-opens on load</td><td>Gold chip next to the switch</td><td>The link itself turns gold and names the count</td></tr>
+    <tr><td>Panel height when unused</td><td>One summary line inside Settings</td><td>One checkbox line inside Settings</td><td>One text line under the button, always</td></tr>
+    <tr><td>Matches an existing pattern</td><td>Yes &mdash; identical to <em>Scoring Weights</em></td><td>No &mdash; new concept, but it also tidies Scoring Weights away</td><td>No &mdash; new placement (undoes Option A of the earlier round)</td></tr>
+    <tr><td>Remembers itself</td><td>Open state derives from pins, nothing to store</td><td><code>localStorage</code> flag</td><td>Open state derives from pins</td></tr>
+    <tr><td>Code touched</td><td>Wrap the section in <code>&lt;details open={pinned&gt;0}&gt;</code>, add the chip</td><td>New checkbox + flag, gate two sections</td><td>Move the section out of Settings, add the link and gold state</td></tr>
+  </table>
+
+</div>
+
+<script>
+  const pins = { a: [false,false], b: [false,false], c: [false,false] };
+  const n = k => pins[k].filter(Boolean).length;
+  function pin(k, i, v){
+    pins[k][i] = v;
+    const row = [...document.querySelectorAll(`#${k==='a'?'a-details':k==='b'?'b-section':'c-section'} .pinrow`)][i];
+    row.querySelector('.state').textContent = v ? 'fixed' : 'engine picks';
+    ({a: renderA, b: renderB, c: renderC})[k]();
+  }
+  function renderA(){ const c = document.getElementById('a-count'); c.hidden = n('a')===0; c.textContent = `${n('a')} pinned`; }
+  function renderB(){
+    const on = document.getElementById('b-adv').checked;
+    document.getElementById('b-section').hidden = !on; document.getElementById('b-weights').hidden = !on;
+    const c = document.getElementById('b-count'); c.hidden = n('b')===0; c.textContent = `${n('b')} pinned`;
+  }
+  let cOpen = false;
+  function toggleC(){ cOpen = !cOpen; renderC(); }
+  function renderC(){
+    document.getElementById('c-section').hidden = !cOpen;
+    const l = document.getElementById('c-link'), k = n('c');
+    l.innerHTML = cOpen ? 'Hide opening games ▴' : (k ? `<b style="color:var(--gold)">${k} opening game${k>1?'s':''} pinned</b> · edit` : 'Pin opening games…');
+  }
+  renderA(); renderB(); renderC();
+</script>
+</body>
+</html>

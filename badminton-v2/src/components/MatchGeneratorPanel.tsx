@@ -124,6 +124,13 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
   const [editForm, setEditForm] = useState<MatchSlots>(EMPTY_SLOTS)
   // How many leading games in `matches` were pinned when they were produced.
   const [appliedPinCount, setAppliedPinCount] = useState(0)
+  const [pinsOpen, setPinsOpen] = useState(false)
+  const pinnedCount = countPinnedPrefix(settings.pinnedGames)
+
+  // A pin that is set but out of sight would silently fix game 1 every week.
+  useEffect(() => {
+    if (pinnedCount > 0) setPinsOpen(true)
+  }, [pinnedCount])
 
   // Load existing locked matches from DB if session is already locked
   useEffect(() => {
@@ -509,14 +516,20 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
 
             <hr />
 
-            {/* Fixed Opening Games */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Fixed Opening Games
-              </p>
-              <p className="text-[11px] text-muted-foreground">
+            {/* Fixed Opening Games — rare, so closed unless something is pinned */}
+            <details open={pinsOpen} onToggle={(e) => setPinsOpen(e.currentTarget.open)}>
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground select-none">
+                Fixed Opening Games {pinsOpen ? '▲' : '▼'}
+                {pinnedCount > 0 && (
+                  <span className="ml-2 rounded border border-gold/40 px-1 text-[10px] font-bold tracking-wide text-gold-ink">
+                    {pinnedCount} pinned
+                  </span>
+                )}
+              </summary>
+              <p className="mt-1 mb-2 text-[11px] text-muted-foreground">
                 Pick the players for the games that start together. The engine fills the rest around them.
               </p>
+              <div className="space-y-2">
               {Array.from({ length: courtCount }, (_, i) => {
                 const slots = settings.pinnedGames[i] ?? null
                 const previousPinned = i === 0 || settings.pinnedGames[i - 1] != null
@@ -544,7 +557,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                   </div>
                 )
               })}
-            </div>
+              </div>
+            </details>
 
             <hr />
 
