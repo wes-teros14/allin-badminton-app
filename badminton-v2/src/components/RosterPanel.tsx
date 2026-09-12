@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from 'sonner'
 import { useRoster } from '@/hooks/useRoster'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { playersWithStaleLevel } from '@/lib/rosterLevels'
 import { derivePaymentState, type PaymentState } from '@/lib/paymentState'
 import { ReceiptViewerDialog } from '@/components/ReceiptViewerDialog'
 
@@ -29,7 +31,7 @@ interface Props {
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export function RosterPanel({ sessionId, editable = false, paymentOnly = false, onRosterChange }: Props) {
-  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, updatePaid, receiptsFor, dismissReceipt } =
+  const { players, unregisteredPlayers, isLoading, addPlayer, removePlayer, updateSessionOverride, resetLevelsToProfile, updatePaid, receiptsFor, dismissReceipt } =
     useRoster(sessionId, onRosterChange)
   const { role } = useAuth()
   const [open, setOpen] = useState(false)
@@ -38,6 +40,9 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
   const [addSearch, setAddSearch] = useState('')
   const [viewingPlayerId, setViewingPlayerId] = useState<string | null>(null)
   const removeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [confirmingReset, setConfirmingReset] = useState(false)
+  const [flashedIds, setFlashedIds] = useState<Set<string>>(new Set())
+  const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Defence in depth. RLS is the real enforcement — a moderator's SELECT on
   // session_receipts returns nothing and their createSignedUrl is refused —
@@ -55,6 +60,22 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
       setPendingRemove(null)
       removePlayer(registrationId)
     }
+  }
+
+  // Same two-tap pattern as Lock Schedule and the per-row remove.
+  async function handleResetLevelsClick() {
+    if (!confirmingReset) {
+      setConfirmingReset(true)
+      resetTimerRef.current = setTimeout(() => setConfirmingReset(false), 5000)
+      return
+    }
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+    setConfirmingReset(false)
+    const ids = await resetLevelsToProfile()
+    if (ids.length === 0) return
+    setFlashedIds(new Set(ids))
+    setTimeout(() => setFlashedIds(new Set()), 1500)
+    toast.success(`Reset ${ids.length} ${ids.length === 1 ? 'level' : 'levels'} to their /players values`)
   }
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading roster…</div>
@@ -157,13 +178,28 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
 
   const maleCount = players.filter((p) => p.gender === 'M').length
   const femaleCount = players.filter((p) => p.gender === 'F').length
+  const staleLevelCount = playersWithStaleLevel(players).length
 
   return (
     <Card>
       <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between gap-2">
           <span>Roster ({players.length}), Male ({maleCount}), Female ({femaleCount})</span>
-          <span className="text-sm text-muted-foreground">{open ? '▲' : '▼'}</span>
+          <span className="flex items-center gap-2 shrink-0">
+            {editable && open && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[11px]"
+                disabled={staleLevelCount === 0 && !confirmingReset}
+                title="Clear this session's level overrides so every row uses the level set on /players"
+                onClick={(e) => { e.stopPropagation(); void handleResetLevelsClick() }}
+              >
+                {confirmingReset ? `Confirm? (${staleLevelCount})` : 'Use profile levels'}
+              </Button>
+            )}
+            <span className="text-sm text-muted-foreground">{open ? '▲' : '▼'}</span>
+          </span>
         </CardTitle>
       </CardHeader>
       {open && <CardContent className="pt-2 pb-3 px-3">
@@ -203,7 +239,9 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
                     <select
                       value={player.level ?? ''}
                       onChange={(e) => updateSessionOverride(player.registrationId, player.gender, e.target.value ? +e.target.value : null)}
-                      className="h-6 rounded border border-input bg-background text-foreground px-1 w-11 shrink-0"
+                      className={`h-6 rounded border bg-background text-foreground px-1 w-11 shrink-0 transition-colors ${
+                        flashedIds.has(player.registrationId) ? 'border-court2 ring-1 ring-court2' : 'border-input'
+                      }`}
                     >
                       <option value="">—</option>
                       {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}

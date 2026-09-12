@@ -4,14 +4,14 @@ Updated: 2026-09-12. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Pushed and live.** `origin/dev` = `b887a52`, `origin/main` = `60dc008` (non-ff merge:
-  *"Merge branch 'dev' into main — pin the opening games in the match generator"*). **Deployed to
-  production** at badmintontayo.mrkws.com. Feature commits on `007-seed-matches`: `4ec1734` engine +
-  tests, `d975a6c` panel + view, `3b0eb13` docs.
-- **Rollback anchors.** Pre-feature `main` is `55c6eee`, pre-feature `dev` is `46fb328`.
-  `git revert -m 1 60dc008` on `main` backs the whole feature out.
+- **Pushed and live, twice today.** Seed matches: `origin/main` merge `60dc008` (feature commits
+  `4ec1734` engine + tests, `d975a6c` panel + view, `3b0eb13` docs). Then *Use profile levels*: one
+  commit on `dev`, merged non-ff to `main` — see `git log -3 main`. **Deployed to production** at
+  badmintontayo.mrkws.com.
+- **Rollback anchors.** Before seed matches: `main` `55c6eee`, `dev` `46fb328`. `git revert -m 1
+  60dc008` backs seed matches out; `git revert -m 1 <newest merge on main>` backs the roster button out.
 - `npm run build` clean, `npm run lint` clean apart from the pre-existing `ProfileView.tsx:257`
-  warning, vitest **273/273** (262 + 11 new in `matchGenerator.pinned.test.ts`).
+  warning, vitest **277/277** (262 + 11 pinned-game tests + 4 `rosterLevels` tests).
 - Earlier this session the local `dev` was reset to the force-pushed `origin/dev` (the 2026-09-07
   history rewrite). **Local `main` turned out to still be on the old history** and was reset to
   `origin/main` before merging — see the 2026-09-12 entry in `tasks/lessons.md`. Both local branches
@@ -21,6 +21,14 @@ Updated: 2026-09-12. Overwrite this file on every update; it is never a running 
   of `temporary_files/*`, and untracked `temp/`. These are the user's, not part of the feature.
 
 ## Done this session
+
+**Use profile levels (roster)** — pushed after seed matches. A per-session level override sticks once set,
+so a preview could read L:8 for a player who is a 4 on `/players`; not a generator bug. New header button
+on the Roster (editable, open) clears every stale override in one `update … in(ids)`, two-tap confirm,
+teal flash on the rows that changed, success toast. `RosterPlayer.profileLevel` added,
+`useRoster.resetLevelsToProfile()`, `src/lib/rosterLevels.ts` + 4 tests (277 total). Verified on the dev
+session: two overrides set → *Confirm? (2)* → rows back to profile values → cold reload still shows them
+(override is null in the DB). Title wraps to two lines at 375 px — known, accepted (Option A trade-off).
 
 **Seed matches** — the admin can fix the players *and* the team split of games 1..`court_count`
 before generating; the engine fills and optimises the rest around them. Plan: `seedmatch.md` (root).
@@ -45,8 +53,9 @@ In the in-app browser against the dev project, session `bce6f898…` (16 players
   preview rows 1–2 exact, in order, both chipped *Pinned*; game 2 rendered **L:4 vs L:8**, which
   `formTeams` would have rebalanced — proof the split was kept. Participation 5 each, 0 streaks.
 - *Generate Again* ×3 → rows 1–2 unchanged, row 3 onward re-rolled.
-- Gellie in both pins → `toast.warning` and generation proceeded. One empty slot → `toast.error`, no
-  generation. Untick game 1 → game 2 cleared and disabled. Nothing pinned → 0 chips, normal output.
+- Gellie in both pins → `toast.warning` and generation proceeded. A pinned four with spread 5 against a
+  limit of 2 → `toast.warning` *"Game 1 exceeds the skill gap limit (spread 5)"* and generation proceeded.
+  One empty slot → `toast.error`, no generation. Untick game 1 → game 2 cleared and disabled. Nothing pinned → 0 chips, normal output.
 - Lock → *Unlock Schedule* visible; **cold reload** of `/session/:id` rebuilt rows 1–2 from the
   `matches` table in pinned order with chips (chips come from `generator_settings.pinnedGames`).
 - Session **unlocked afterwards** (matches deleted, status back to `registration_closed`).
@@ -56,7 +65,6 @@ In the in-app browser against the dev project, session `bce6f898…` (16 players
 ## Not verified
 
 - Not seen on a real phone; the admin panel is phone-width but was driven from the desktop pane.
-- Spread-limit warning was not exercised (this roster's levels made it hard to isolate).
 - "Pinned player removed from roster" path was not exercised in the browser; only the guard code.
 - `courtCount = 1` and `> 2` rendering of the section.
 
