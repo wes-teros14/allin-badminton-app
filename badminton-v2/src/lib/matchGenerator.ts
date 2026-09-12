@@ -8,7 +8,14 @@
  * Fairness is guaranteed by construction (Phase 1).
  * Team balance is locally optimal (Phase 2).
  * Global quality is optimized via SA (Phase 3).
+ *
+ * Pinned games: the admin may fix the first k games (players AND team split).
+ * They are seeded as rows 0..k-1 of the matrix, excluded from every mutation,
+ * and bypass team formation — but they are still scored, so the rest of the
+ * schedule is optimized around them.
  */
+
+import { findDuplicatePlayerIds } from './matchPlayers'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,6 +40,11 @@ export interface GeneratedMatch {
   team2Level: number  // sum of team 2 levels
 }
 
+export interface PinnedMatch {
+  team1: [string, string]
+  team2: [string, string]
+}
+
 export interface GenerateOptions {
   numMatches?: number           // default: ceil(n*8/4)
   maxConsecutiveGames?: number  // default: 1 (no consecutive games)
@@ -42,6 +54,7 @@ export interface GenerateOptions {
   weights?: ScoreWeights
   idealRestGames?: number       // default: 2 (ideal games between a player's matches)
   earlyRestWindow?: number      // default: 4 (reward clean rest in first N matches)
+  pinnedMatches?: PinnedMatch[] // fixed games 1..k, in order; default: none
 }
 
 export interface ScoreWeights {
@@ -167,6 +180,36 @@ function getSpread(group: string[], levelMap: Map<string, number>): number {
 }
 
 // ---------------------------------------------------------------------------
+// Utility: pinned games → matrix rows in team order [t1p1, t1p2, t2p1, t2p2]
+// ---------------------------------------------------------------------------
+
+/**
+ * The panel validates before calling; these throws are the last line of
+ * defence and keep the engine's contract precise.
+ */
+function normalisePins(
+  pins: PinnedMatch[] | undefined,
+  playerIds: string[],
+  numMatches: number,
+): string[][] {
+  if (!pins || pins.length === 0) return []
+  if (pins.length > numMatches) {
+    throw new Error(`More pinned games (${pins.length}) than matches (${numMatches})`)
+  }
+  const known = new Set(playerIds)
+  return pins.map((pin, i) => {
+    const row = [pin.team1[0], pin.team1[1], pin.team2[0], pin.team2[1]]
+    if (findDuplicatePlayerIds(row).length > 0) {
+      throw new Error(`Pinned game ${i + 1} repeats a player`)
+    }
+    if (row.some((id) => !known.has(id))) {
+      throw new Error(`Pinned game ${i + 1} names a player who is not in this session`)
+    }
+    return row
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Phase 1: Assignment Matrix
 // ---------------------------------------------------------------------------
 
@@ -176,6 +219,8 @@ function getSpread(group: string[], levelMap: Map<string, number>): number {
  *
  * @param allowRelaxSpread  When true, relaxes spread as last resort to fill all slots.
  *                          SA optimizer passes false to guarantee hard spread constraints.
+ * @param pinnedRows        Fixed rows seeded as games 1..k. Their players have
+ *                          already used one of their target games.
  */
 function buildAssignment(
   playerIds: string[],
@@ -185,6 +230,7 @@ function buildAssignment(
   maxSpreadLimit: number,
   disableGenderRules: boolean,
   allowRelaxSpread = true,
+  pinnedRows: string[][] = [],
 ): string[][] {
   const n = playerIds.length
   const totalSlots = numMatches * 4
@@ -197,11 +243,14 @@ function buildAssignment(
   shuffled.forEach((id, i) => {
     remaining.set(id, i < remainder ? base + 1 : base)
   })
+  for (const row of pinnedRows) {
+    for (const id of row) remaining.set(id, Math.max(0, remaining.get(id)! - 1))
+  }
 
-  const schedule: string[][] = []
-  const prevMatchPlayers = new Set<string>()
+  const schedule: string[][] = pinnedRows.map((row) => [...row])
+  const prevMatchPlayers = new Set<string>(pinnedRows[pinnedRows.length - 1] ?? [])
 
-  for (let m = 0; m < numMatches; m++) {
+  for (let m = pinnedRows.length; m < numMatches; m++) {
     // Sort candidates: most remaining games first, then deprioritize players
     // who just played (streak avoidance), then random tiebreak
     const candidates = fisherYatesShuffle([...remaining.entries()])
@@ -357,17 +406,38 @@ function formTeams(
   return best!
 }
 
+/** A pinned row is already in team order; keep the admin's split verbatim. */
+function formPinnedTeams(
+  group: string[],
+  levelMap: Map<string, number>,
+  genderMap: Map<string, string>,
+): FormedMatch {
+  const [a, b, c, d] = group
+  const level = (id: string) => levelMap.get(id) ?? 5
+  return {
+    team1: [a, b],
+    team2: [c, d],
+    type: computeMatchType(a, b, c, d, genderMap),
+    team1Level: Math.round(level(a) + level(b)),
+    team2Level: Math.round(level(c) + level(d)),
+  }
+}
+
 /**
  * Converts an assignment matrix into GeneratedMatch[] by forming teams for each group.
+ * The first `pinnedCount` rows keep their stored split instead of being re-formed.
  */
 function assignmentToMatches(
   assignment: string[][],
   levelMap: Map<string, number>,
   genderMap: Map<string, string>,
   disableGenderRules: boolean,
+  pinnedCount = 0,
 ): GeneratedMatch[] {
   return assignment.map((group, i) => {
-    const formed = formTeams(group, levelMap, genderMap, disableGenderRules)
+    const formed = i < pinnedCount
+      ? formPinnedTeams(group, levelMap, genderMap)
+      : formTeams(group, levelMap, genderMap, disableGenderRules)
     return {
       gameNumber: i + 1,
       team1Player1: formed.team1[0],
@@ -387,17 +457,20 @@ function assignmentToMatches(
 
 /**
  * Cross-match player swap: swap one player from match i with one from match j.
+ * Rows below `lockedRows` are never chosen.
  */
 function mutateCrossSwap(
   assignment: string[][],
   levelMap: Map<string, number>,
   maxSpreadLimit: number,
+  lockedRows = 0,
 ): boolean {
-  if (assignment.length < 2) return false
+  const free = assignment.length - lockedRows
+  if (free < 2) return false
 
-  const i = Math.floor(Math.random() * assignment.length)
-  let j = Math.floor(Math.random() * assignment.length)
-  while (j === i) j = Math.floor(Math.random() * assignment.length)
+  const i = lockedRows + Math.floor(Math.random() * free)
+  let j = lockedRows + Math.floor(Math.random() * free)
+  while (j === i) j = lockedRows + Math.floor(Math.random() * free)
 
   const si = Math.floor(Math.random() * 4)
   const sj = Math.floor(Math.random() * 4)
@@ -421,12 +494,14 @@ function mutateCrossSwap(
 
 /**
  * Row swap: swap the positions of two matches (for streak optimization).
+ * Rows below `lockedRows` are never chosen.
  */
-function mutateRowSwap(assignment: string[][]): boolean {
-  if (assignment.length < 2) return false
-  const i = Math.floor(Math.random() * assignment.length)
-  let j = Math.floor(Math.random() * assignment.length)
-  while (j === i) j = Math.floor(Math.random() * assignment.length)
+function mutateRowSwap(assignment: string[][], lockedRows = 0): boolean {
+  const free = assignment.length - lockedRows
+  if (free < 2) return false
+  const i = lockedRows + Math.floor(Math.random() * free)
+  let j = lockedRows + Math.floor(Math.random() * free)
+  while (j === i) j = lockedRows + Math.floor(Math.random() * free)
   ;[assignment[i], assignment[j]] = [assignment[j], assignment[i]]
   return true
 }
@@ -447,9 +522,10 @@ function optimizeAssignment(
   weights: ScoreWeights,
   idealRestGames = 2,
   earlyRestWindow = 4,
+  lockedRows = 0,
 ): { assignment: string[][]; audit: AuditData } {
   const scoreAssignment = (a: string[][]) => {
-    const matches = assignmentToMatches(a, levelMap, genderMap, disableGenderRules)
+    const matches = assignmentToMatches(a, levelMap, genderMap, disableGenderRules, lockedRows)
     return evaluateSessionScore(matches, levelMap, wishlistPairs, maxConsecutiveGames,
       weights, maxSpreadLimit, playerIds, disableGenderRules, idealRestGames, earlyRestWindow)
   }
@@ -468,8 +544,8 @@ function optimizeAssignment(
     const candidate = current.map((g) => [...g])
 
     const applied = Math.random() < 0.80
-      ? mutateCrossSwap(candidate, levelMap, maxSpreadLimit)
-      : mutateRowSwap(candidate)
+      ? mutateCrossSwap(candidate, levelMap, maxSpreadLimit, lockedRows)
+      : mutateRowSwap(candidate, lockedRows)
 
     if (!applied) { temperature *= coolingRate; continue }
 
@@ -699,6 +775,7 @@ export function generateSchedule(
   const levelMap  = new Map(players.map((p) => [p.id, p.level ?? 5]))
 
   const adjustedNumMatches = numMatches
+  const pinnedRows = normalisePins(options.pinnedMatches, playerIds, adjustedNumMatches)
 
   const scoreMatches = (m: GeneratedMatch[]) =>
     evaluateSessionScore(m, levelMap, wishlistPairs, maxConsecutiveGames,
@@ -713,8 +790,9 @@ export function generateSchedule(
   for (let t = 0; t < NUM_TRIALS; t++) {
     const assignment = buildAssignment(
       playerIds, adjustedNumMatches, levelMap, genderMap, maxSpreadLimit, disableGenderRules,
+      true, pinnedRows,
     )
-    const matches = assignmentToMatches(assignment, levelMap, genderMap, disableGenderRules)
+    const matches = assignmentToMatches(assignment, levelMap, genderMap, disableGenderRules, pinnedRows.length)
     const { score } = scoreMatches(matches)
 
     if (score > bestScore) {
@@ -766,6 +844,8 @@ export function generateScheduleOptimized(
   const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
 
   const adjustedNumMatches = numMatches
+  const pinnedRows = normalisePins(options.pinnedMatches, playerIds, adjustedNumMatches)
+  const pinnedCount = pinnedRows.length
 
   const NUM_STARTS = numStarts
   const trialsPerStart = numTrials
@@ -783,19 +863,19 @@ export function generateScheduleOptimized(
     // Phase 1: Build assignment — never relax spread (SA preserves it)
     const assignment = buildAssignment(
       playerIds, adjustedNumMatches, levelMap, genderMap,
-      maxSpreadLimit, disableGenderRules, false,
+      maxSpreadLimit, disableGenderRules, false, pinnedRows,
     )
 
     // Phase 3: SA optimization
     const { assignment: optimized, audit } = optimizeAssignment(
       assignment, playerIds, levelMap, genderMap, disableGenderRules,
       maxSpreadLimit, trialsPerStart, wishlistPairs, maxConsecutiveGames, weights,
-      idealRestGames, earlyRestWindow,
+      idealRestGames, earlyRestWindow, pinnedCount,
     )
 
     if (audit.score > bestAudit.score) {
       bestAudit = audit
-      bestMatches = assignmentToMatches(optimized, levelMap, genderMap, disableGenderRules)
+      bestMatches = assignmentToMatches(optimized, levelMap, genderMap, disableGenderRules, pinnedCount)
 
       decisions.length = 0
       for (let i = 0; i < optimized.length; i++) {
