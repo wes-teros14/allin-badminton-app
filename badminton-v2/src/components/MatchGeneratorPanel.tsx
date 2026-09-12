@@ -9,6 +9,7 @@ import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { supabase } from '@/lib/supabase'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { validateMatchPlayers } from '@/lib/matchPlayers'
+import { assignSlot, EMPTY_SLOTS, type MatchSlots, type SlotKey } from '@/lib/matchSlots'
 import type { Json } from '@/types/database'
 import {
   generateScheduleOptimized,
@@ -34,15 +35,6 @@ interface Props {
   rosterVersion?: number
   courtCount?: number
 }
-
-interface MatchSlots {
-  t1p1: string
-  t1p2: string
-  t2p1: string
-  t2p2: string
-}
-
-const EMPTY_SLOTS: MatchSlots = { t1p1: '', t1p2: '', t2p1: '', t2p2: '' }
 
 function countPinnedPrefix(rows: Array<MatchSlots | null> | undefined): number {
   let n = 0
@@ -998,8 +990,9 @@ function PinnedChip() {
 }
 
 /**
- * Four dropdowns in Team 1 / Team 2 boxes. A player already chosen in one of
- * the other three slots is disabled, so the same person cannot be picked twice.
+ * Four dropdowns in Team 1 / Team 2 boxes. Picking a player who already holds
+ * another slot swaps the two, so no one has to be parked on a stranger first;
+ * the swapped pair flashes briefly so the second move is not missed.
  */
 function FourSlotPicker({
   value, onChange, players, name,
@@ -1009,20 +1002,37 @@ function FourSlotPicker({
   players: Array<{ id: string }>
   name: (id: string) => string
 }) {
-  const chosenIds = [value.t1p1, value.t1p2, value.t2p1, value.t2p2].filter(Boolean)
-  const renderSelect = (key: keyof MatchSlots, slotIndex: number) => (
+  const [flashed, setFlashed] = useState<SlotKey[]>([])
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (flashTimerRef.current) clearTimeout(flashTimerRef.current) }, [])
+
+  const inMatch = new Set([value.t1p1, value.t1p2, value.t2p1, value.t2p2].filter(Boolean))
+
+  const handleChange = (key: SlotKey, id: string) => {
+    const { next, swappedWith } = assignSlot(value, key, id)
+    onChange(next)
+    if (swappedWith) {
+      setFlashed([key, swappedWith])
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
+      flashTimerRef.current = setTimeout(() => setFlashed([]), 1200)
+    }
+  }
+
+  const renderSelect = (key: SlotKey, slotIndex: number) => (
     <select
       key={key}
       value={value[key]}
-      onChange={(e) => onChange({ ...value, [key]: e.target.value })}
-      className="w-full h-8 rounded border border-input bg-background text-foreground px-2 text-xs"
+      onChange={(e) => handleChange(key, e.target.value)}
+      className={`w-full h-8 rounded border bg-background text-foreground px-2 text-xs transition-colors ${
+        flashed.includes(key) ? 'border-court2 ring-1 ring-court2' : 'border-input'
+      }`}
     >
       <option value="">— P{slotIndex + 1} —</option>
       {players.map((p) => {
-        const taken = p.id !== value[key] && chosenIds.includes(p.id)
+        const elsewhere = p.id !== value[key] && inMatch.has(p.id)
         return (
-          <option key={p.id} value={p.id} disabled={taken}>
-            {taken ? `${name(p.id)} — already in this match` : name(p.id)}
+          <option key={p.id} value={p.id}>
+            {elsewhere ? `${name(p.id)}  ⇄ swap` : name(p.id)}
           </option>
         )
       })}

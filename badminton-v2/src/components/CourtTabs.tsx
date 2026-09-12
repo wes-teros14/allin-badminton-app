@@ -9,6 +9,7 @@ import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
 import type { SplitOutcome } from '@/lib/matchResults'
 import { getEligibleSubstitutes } from '@/lib/substitutes'
 import { validateMatchPlayers } from '@/lib/matchPlayers'
+import { assignSlot, type MatchSlots, type SlotKey } from '@/lib/matchSlots'
 
 function formatElapsed(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -257,7 +258,7 @@ function PlayerSelect({
   players: Array<{ id: string; displayName: string }>
   disabled?: boolean
   placeholder: string
-  /** Players already in one of this match's other three slots. */
+  /** Players already in one of this match's other three slots; picking one swaps. */
   takenIds?: string[]
 }) {
   return (
@@ -269,10 +270,10 @@ function PlayerSelect({
     >
       <option value="">{placeholder}</option>
       {players.map((p) => {
-        const taken = p.id !== value && takenIds.includes(p.id)
+        const elsewhere = p.id !== value && takenIds.includes(p.id)
         return (
-          <option key={p.id} value={p.id} disabled={taken}>
-            {taken ? `${p.displayName} — already in this match` : p.displayName}
+          <option key={p.id} value={p.id}>
+            {elsewhere ? `${p.displayName}  ⇄ swap` : p.displayName}
           </option>
         )
       })}
@@ -344,18 +345,26 @@ export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDo
     onDone()
   }
 
+  const toSlots = (f: EditForm): MatchSlots => ({ t1p1: f.t1p1Id, t1p2: f.t1p2Id, t2p1: f.t2p1Id, t2p2: f.t2p2Id })
+  const fromSlots = (sl: MatchSlots): EditForm => ({ t1p1Id: sl.t1p1, t1p2Id: sl.t1p2, t2p1Id: sl.t2p1, t2p2Id: sl.t2p2 })
+
+  // Picking a player who already holds another slot swaps the two.
+  function changeSlot(key: SlotKey, id: string) {
+    setEditForm((f) => fromSlots(assignSlot(toSlots(f), key, id).next))
+  }
+
   function EditFormInline({ matchId }: { matchId: string }) {
     const chosenIds = [editForm.t1p1Id, editForm.t1p2Id, editForm.t2p1Id, editForm.t2p2Id].filter(Boolean)
     return (
       <div className="space-y-2 mt-3">
         <div className="flex gap-2">
-          <PlayerSelect value={editForm.t1p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 1" takenIds={chosenIds} />
-          <PlayerSelect value={editForm.t1p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 2" takenIds={chosenIds} />
+          <PlayerSelect value={editForm.t1p1Id} onChange={(id) => changeSlot('t1p1', id)} players={players} disabled={isSaving} placeholder="Player 1" takenIds={chosenIds} />
+          <PlayerSelect value={editForm.t1p2Id} onChange={(id) => changeSlot('t1p2', id)} players={players} disabled={isSaving} placeholder="Player 2" takenIds={chosenIds} />
         </div>
         <p className="text-xs text-muted-foreground text-center">vs</p>
         <div className="flex gap-2">
-          <PlayerSelect value={editForm.t2p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 3" takenIds={chosenIds} />
-          <PlayerSelect value={editForm.t2p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 4" takenIds={chosenIds} />
+          <PlayerSelect value={editForm.t2p1Id} onChange={(id) => changeSlot('t2p1', id)} players={players} disabled={isSaving} placeholder="Player 3" takenIds={chosenIds} />
+          <PlayerSelect value={editForm.t2p2Id} onChange={(id) => changeSlot('t2p2', id)} players={players} disabled={isSaving} placeholder="Player 4" takenIds={chosenIds} />
         </div>
         <div className="flex gap-2">
           <button onClick={() => handleSave(matchId)} disabled={isSaving || !editForm.t1p1Id || !editForm.t1p2Id || !editForm.t2p1Id || !editForm.t2p2Id} className="flex-1 py-1.5 rounded bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50">Save</button>
@@ -462,33 +471,7 @@ export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDo
               return (
                 <div key={m.id} className="py-3">
                   {editingId === m.id ? (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <PlayerSelect value={editForm.t1p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 1" />
-                        <PlayerSelect value={editForm.t1p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t1p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 2" />
-                      </div>
-                      <p className="text-xs text-muted-foreground text-center">vs</p>
-                      <div className="flex gap-2">
-                        <PlayerSelect value={editForm.t2p1Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p1Id: id }))} players={players} disabled={isSaving} placeholder="Player 3" />
-                        <PlayerSelect value={editForm.t2p2Id} onChange={(id) => setEditForm((f) => ({ ...f, t2p2Id: id }))} players={players} disabled={isSaving} placeholder="Player 4" />
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSave(m.id)}
-                          disabled={isSaving || !editForm.t1p1Id || !editForm.t1p2Id || !editForm.t2p1Id || !editForm.t2p2Id}
-                          className="flex-1 py-1.5 rounded bg-primary text-primary-foreground text-sm font-semibold disabled:opacity-50"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          disabled={isSaving}
-                          className="flex-1 py-1.5 rounded border border-border text-sm text-muted-foreground disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
+                    <EditFormInline matchId={m.id} />
                   ) : (
                     <div className="flex items-start gap-3">
                       <span className="w-20 shrink-0 whitespace-nowrap text-lg font-bold text-muted-foreground">Game {m.gameNumber}</span>

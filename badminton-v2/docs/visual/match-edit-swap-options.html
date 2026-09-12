@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match edit — three ways to swap players without the "already in this match" detour</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted-fg: #B39DBB;
+    --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --blue: #3B82F6; --orange: #F97316; --gold: #FFB200; --teal: #4FD1C5;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 880px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 96px; }
+  .task { font-size: 12.5px; color: var(--dim); margin: 0 0 10px; padding: 8px 10px; background: #fff; border: 1px dashed var(--line); border-radius: 8px; }
+  .task b { color: var(--ink); }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .title { color: var(--muted-fg); font-weight: 600; font-size: 12px; margin: 0 0 8px; }
+  .grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+  .team { border-radius: 6px; padding: 8px; }
+  .team.t1 { border: 1px solid rgba(59,130,246,.3); background: rgba(59,130,246,.05); }
+  .team.t2 { border: 1px solid rgba(249,115,22,.3); background: rgba(249,115,22,.05); }
+  .team p { margin: 0 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .team.t1 p { color: var(--blue); } .team.t2 p { color: var(--orange); }
+  .vs { font-size: 11px; font-weight: 700; color: var(--muted-fg); }
+  select, .slot { width: 100%; height: 34px; border-radius: 6px; border: 1px solid var(--border); background: var(--input); color: var(--fg); font-size: 13px; padding: 0 8px; margin-bottom: 6px; }
+  select:last-child, .slot:last-child { margin-bottom: 0; }
+  .slot { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; }
+  .slot .h { color: var(--muted-fg); font-size: 14px; }
+  .slot.sel { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+  .slot.target { border-color: var(--teal); }
+  .slot.flash { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+  select.flash { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal) inset; }
+  .btns { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+  .btn { border: 1px solid var(--border); background: transparent; color: var(--fg); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn.primary { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
+  .btn.ghost { border: 0; color: var(--muted-fg); }
+  .hint { color: var(--muted-fg); font-size: 11.5px; margin: 8px 0 0; min-height: 16px; }
+  .result { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12.5px; }
+  .result span { color: var(--muted-fg); margin: 0 4px; }
+
+  /* option C pairings */
+  .pair { display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; cursor: pointer; font-size: 13px; }
+  .pair.on { border-color: var(--gold); background: rgba(255,178,0,.06); }
+  .pair .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--muted-fg); flex-shrink: 0; }
+  .pair.on .dot { background: var(--gold); border-color: var(--gold); }
+  .pair .lv { margin-left: auto; color: var(--muted-fg); font-size: 11px; white-space: nowrap; }
+  .sub2 { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-fg); margin: 12px 0 6px; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Match edit &mdash; three ways to swap players without the &ldquo;already in this match&rdquo; detour</h1>
+  <p class="sub">
+    Today each of the four dropdowns disables anyone already in the match, so moving Bogs to Team 2 means parking
+    a stranger in his slot first. The guard is right (four <em>different</em> players) but it blocks the one edit
+    admins actually make. Every mock starts as <b>Bogs &amp; Wes vs John &amp; Steph</b>; the task is to swap
+    Bogs and Steph. The result line under each shows what would be saved. <em>Reset mock</em> starts over.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Choosing a teammate swaps instead of blocking</h2>
+      <p class="why">Same four dropdowns. A player already in the match is no longer disabled &mdash; the option reads
+        &ldquo;Steph &nbsp;&#8646; swap&rdquo;, and picking it puts Steph here and sends Bogs to Steph&rsquo;s old slot.
+        Nothing new to learn, one tap per swap, and the four-different-players rule can never be broken because a
+        swap keeps the set intact. Substitutions work exactly as before.</p>
+      <p class="task">Try: in Team 1&rsquo;s first dropdown pick <b>Steph &#8646; swap</b>.</p>
+      <div class="phone"><div class="card">
+        <p class="title">Game 1 — Edit Players</p>
+        <div class="grid" id="a-grid"></div>
+        <div class="btns"><button class="btn primary">Save</button><button class="btn ghost">Cancel</button></div>
+        <p class="hint" id="a-hint"></p>
+        <div class="result" id="a-result"></div>
+      </div></div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Tap one slot, then another, to swap them</h2>
+      <p class="why">The four slots are tappable rows with a &#8646; handle. Tap Bogs (it lights up gold), tap Steph
+        (teal targets), they trade places. Tap the name text instead to open the roster for a substitute. Explicit and
+        obvious once seen, but it is a second gesture next to the dropdown, and a half-finished swap needs a way out
+        (tap the same slot again, or Cancel).</p>
+      <p class="task">Try: tap <b>Bogs</b>, then tap <b>Steph</b>.</p>
+      <div class="phone"><div class="card">
+        <p class="title">Game 1 — Edit Players</p>
+        <div class="grid" id="b-grid"></div>
+        <div class="btns"><button class="btn primary">Save</button><button class="btn ghost">Cancel</button><button class="btn ghost" id="b-cancel-swap" hidden onclick="bSel=null;renderB()">Cancel swap</button></div>
+        <p class="hint" id="b-hint">Tap a slot to start a swap, or tap a name to substitute.</p>
+        <div class="result" id="b-result"></div>
+      </div></div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Pick the pairing; dropdowns only for substitutes</h2>
+      <p class="why">Four players can only be split 2 v 2 in <b>three</b> ways, so the form shows those three as
+        rows with their level totals and the current one selected. Any cross-team swap is one tap on a row &mdash;
+        &ldquo;swap Bogs and Steph&rdquo; is just the row where Bogs &amp; John face Wes &amp; Steph. The dropdowns
+        move below, used only to bring someone new in. Most direct for the common case; the form gets taller.</p>
+      <p class="task">Try: tap the <b>Bogs &amp; John vs Wes &amp; Steph</b> row.</p>
+      <div class="phone"><div class="card">
+        <p class="title">Game 1 — Edit Players</p>
+        <div class="sub2" style="margin-top:0">Pairing</div>
+        <div id="c-pairs"></div>
+        <div class="sub2">Players</div>
+        <div class="grid" id="c-grid"></div>
+        <div class="btns"><button class="btn primary">Save</button><button class="btn ghost">Cancel</button></div>
+        <p class="hint">Change a player above and the three pairings update.</p>
+        <div class="result" id="c-result"></div>
+      </div></div>
+    </div>
+
+  </div>
+
+  <p style="margin-top:18px"><button class="btn" style="color:#18181B;border-color:#ccc" onclick="resetAll()">Reset mock</button></p>
+
+  <table>
+    <tr><th></th><th>A &mdash; swap via dropdown</th><th>B &mdash; tap two slots</th><th>C &mdash; pairing rows</th></tr>
+    <tr><td>Taps to swap Bogs &amp; Steph</td><td>2 (open dropdown, pick)</td><td>2 (tap, tap)</td><td>1</td></tr>
+    <tr><td>Swap within a team (Bogs &#8646; Wes)</td><td>Works, but changes nothing that matters</td><td>Works</td><td>Not offered &mdash; order inside a team has no meaning</td></tr>
+    <tr><td>Substitute a player from the roster</td><td>Same dropdown as today</td><td>Tap the name &rarr; picker</td><td>Dropdowns below the pairings</td></tr>
+    <tr><td>Can the four-different-players rule be broken?</td><td colspan="3">No in all three. A swap only permutes the same four ids; substitution keeps the existing disable-if-chosen guard and <code>validateMatchPlayers</code> still runs on Save.</td></tr>
+    <tr><td>New UI to learn</td><td>None &mdash; only a new kind of option in a familiar list</td><td>A tap-to-select gesture</td><td>A radio list; the level totals per row are a bonus</td></tr>
+    <tr><td>Form height (384 px)</td><td>Unchanged</td><td>Unchanged</td><td>+3 rows (~110 px)</td></tr>
+    <tr><td>Code touched</td><td>The option renderer + a swap branch in <code>onChange</code> of <code>FourSlotPicker</code></td><td>New slot component + selection state; picker becomes a modal/inline list</td><td>New pairing list above <code>FourSlotPicker</code>; enumerate the 3 splits, level sums from the roster</td></tr>
+    <tr><td>Where it applies</td><td colspan="3">Both users of <code>FourSlotPicker</code>: the locked-schedule edit form (the case here) and the Fixed Opening Games pin rows.</td></tr>
+  </table>
+
+</div>
+
+<script>
+  const ROSTER = ['John','Luis','Aian','David','AJ','Kurt','Steph','Wes','Jaz','Bon J.','Caitlin','Ronwald','Jerome','Bogs','Sim','Anthony'];
+  const LEVEL = {John:3,Luis:3,Aian:2,David:3,AJ:4,Kurt:3,Steph:3,Wes:2,Jaz:1,'Bon J.':1,Caitlin:3,Ronwald:3,Jerome:3,Bogs:4,Sim:3,Anthony:5};
+  const START = ['Bogs','Wes','John','Steph']; // t1p1,t1p2,t2p1,t2p2
+  const KEYS = ['t1p1','t1p2','t2p1','t2p2'];
+  const lv = n => LEVEL[n] ?? 5;
+  const resultLine = s => `${s[0]} &amp; ${s[1]} <span>(L:${lv(s[0])+lv(s[1])})</span><span>vs</span>${s[2]} &amp; ${s[3]} <span>(L:${lv(s[2])+lv(s[3])})</span>`;
+  function teamsHTML(inner1, inner2){ return `<div class="team t1"><p>Team 1</p>${inner1}</div><span class="vs">vs</span><div class="team t2"><p>Team 2</p>${inner2}</div>`; }
+
+  /* ── A: swap-in-dropdown ── */
+  let A = [...START], aFlash = new Set();
+  function aSelect(i, cls){
+    const cur = A[i];
+    const opts = ROSTER.map(n => {
+      const j = A.indexOf(n);
+      if (n === cur) return `<option value="${n}" selected>${n}</option>`;
+      if (j !== -1) return `<option value="${n}">${n}  ⇄ swap</option>`;
+      return `<option value="${n}">${n}</option>`;
+    }).join('');
+    return `<select class="${cls}" onchange="aChange(${i}, this.value)"><option value="">— P${(i%2)+1} —</option>${opts}</select>`;
+  }
+  function renderA(){
+    const c = i => aFlash.has(i) ? 'flash' : '';
+    document.getElementById('a-grid').innerHTML = teamsHTML(aSelect(0,c(0))+aSelect(1,c(1)), aSelect(2,c(2))+aSelect(3,c(3)));
+    document.getElementById('a-result').innerHTML = resultLine(A);
+  }
+  function aChange(i, v){
+    const j = A.indexOf(v);
+    if (j !== -1 && j !== i){ [A[i], A[j]] = [A[j], A[i]]; aFlash = new Set([i,j]);
+      document.getElementById('a-hint').textContent = `Swapped ${A[j]} ⇄ ${A[i]}.`;
+      setTimeout(()=>{ aFlash = new Set(); renderA(); }, 1200);
+    } else { A[i] = v; document.getElementById('a-hint').textContent = `Substituted ${v}.`; }
+    renderA();
+  }
+
+  /* ── B: tap two slots ── */
+  let B = [...START], bSel = null, bFlash = new Set();
+  function renderB(){
+    const slot = i => `<div class="slot ${bSel===i?'sel':''} ${bSel!==null&&bSel!==i?'target':''} ${bFlash.has(i)?'flash':''}" onclick="bTap(${i})"><span onclick="event.stopPropagation(); bSub(${i})">${B[i]}</span><span class="h">⇄</span></div>`;
+    document.getElementById('b-grid').innerHTML = teamsHTML(slot(0)+slot(1), slot(2)+slot(3));
+    document.getElementById('b-cancel-swap').hidden = bSel === null;
+    document.getElementById('b-hint').textContent = bSel === null ? 'Tap a slot to start a swap, or tap a name to substitute.' : `Swapping ${B[bSel]} — now tap the slot to trade with.`;
+    document.getElementById('b-result').innerHTML = resultLine(B);
+  }
+  function bTap(i){
+    if (bSel === null){ bSel = i; renderB(); return; }
+    if (bSel === i){ bSel = null; renderB(); return; }
+    [B[i], B[bSel]] = [B[bSel], B[i]]; bFlash = new Set([i,bSel]); bSel = null; renderB();
+    setTimeout(()=>{ bFlash = new Set(); renderB(); }, 1200);
+  }
+  function bSub(i){
+    const free = ROSTER.filter(n => !B.includes(n));
+    const pick = prompt(`Substitute ${B[i]} with one of:\n${free.join(', ')}`, free[0]);
+    if (pick && free.includes(pick)){ B[i] = pick; bSel = null; renderB(); }
+  }
+
+  /* ── C: pairing rows ── */
+  let C = [...START];
+  function splits(s){
+    const [a,b,c,d] = s;
+    return [[a,b,c,d],[a,c,b,d],[a,d,b,c]];
+  }
+  const same = (x,y) => x.slice(0,2).sort().join()===y.slice(0,2).sort().join() && x.slice(2).sort().join()===y.slice(2).sort().join();
+  function renderC(){
+    document.getElementById('c-pairs').innerHTML = splits(C).map((sp,k) => {
+      const on = same(sp, C);
+      return `<div class="pair ${on?'on':''}" onclick="cPick(${k})"><span class="dot"></span>${sp[0]} &amp; ${sp[1]} <span style="color:var(--muted-fg)">vs</span> ${sp[2]} &amp; ${sp[3]}<span class="lv">L:${lv(sp[0])+lv(sp[1])} v ${lv(sp[2])+lv(sp[3])}</span></div>`;
+    }).join('');
+    const sel = i => `<select onchange="cSub(${i}, this.value)">${ROSTER.map(n => { const taken = n!==C[i] && C.includes(n); return `<option value="${n}" ${n===C[i]?'selected':''} ${taken?'disabled':''}>${n}${taken?' — already in this match':''}</option>`; }).join('')}</select>`;
+    document.getElementById('c-grid').innerHTML = teamsHTML(sel(0)+sel(1), sel(2)+sel(3));
+    document.getElementById('c-result').innerHTML = resultLine(C);
+  }
+  function cPick(k){ C = splits(C)[k]; renderC(); }
+  function cSub(i, v){ C[i] = v; renderC(); }
+
+  function resetAll(){ A=[...START]; B=[...START]; C=[...START]; bSel=null; aFlash=new Set(); bFlash=new Set(); document.getElementById('a-hint').textContent=''; renderA(); renderB(); renderC(); }
+  resetAll();
+</script>
+</body>
+</html>
