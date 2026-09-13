@@ -49,10 +49,12 @@ double-booking hard block + `overlapPenalty`. Reasons and measurements are in `t
 
 ## Open question
 
-- **The repeat-partnership surcharge is not built and rests on an unverified hunch.** The Aian & Sim
-  case was visible because they were *partners* in both games, not just both present. Whether short
-  gaps actually cluster on repeated partnerships has never been checked against a full session.
-- The audit tile shows a count with no floor beside it. "1 repeat" reads like a failure when it is in
-  fact optimal; showing "minimum possible is 1" would fix that.
+- **Nothing blocking.** The two items previously listed here are closed: the audit tile now shows its
+  arithmetic floor (`forcedOpeningRepeats`), and the repeat-partnership surcharge was dropped because
+  it was already handled — an opening repeat that is also a partner repeat is charged by both weights
+  independently (800 + 150 vs 800). Whether 150 is the right premium is a slider, not a feature.
+- Only unit-tested, not seen rendering: the tile's `n / min m` form. The dev session has 16 players so
+  its floor is 0, and court count is not editable once registration closes.
 - `Max Consecutive Games` ≥ 2 on 2 courts silently permits unplayable schedules and nothing warns.
-  Low priority — the default is 1 and has never been changed.
+  Low priority — the default is 1 and has never been changed, and nothing now guards it since
+  `overlapPenalty` was dropped (it only mattered at 3+ courts, which this project never runs).

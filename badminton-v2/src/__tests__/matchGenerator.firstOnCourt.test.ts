@@ -4,6 +4,7 @@ import {
   generateScheduleOptimized,
   firstOnCourtGames,
   openingGameLimit,
+  forcedOpeningRepeats,
   DEFAULT_WEIGHTS,
 } from '@/lib/matchGenerator'
 import type { GeneratedMatch, PlayerInput } from '@/lib/matchGenerator'
@@ -92,7 +93,23 @@ describe('First on court — the window', () => {
     expect(openingGameLimit(3)).toBe(6)    // games 1-6
   })
 
-  it('F1.3 — a court count of 0 or junk is treated as 1', () => {
+  it('F1.3 — some repeats are forced when the window holds more seats than the roster', () => {
+    // Window seats = openingGameLimit * 4. Anything past the roster must go to
+    // someone playing twice, so a count at the floor is optimal, not a failure.
+    expect(forcedOpeningRepeats(2, 16)).toBe(0)   // 16 seats, 16 players
+    expect(forcedOpeningRepeats(2, 15)).toBe(1)   // the real session shape
+    expect(forcedOpeningRepeats(2, 14)).toBe(2)
+    expect(forcedOpeningRepeats(1, 15)).toBe(0)   // 8 seats, plenty of players
+    expect(forcedOpeningRepeats(3, 15)).toBe(9)   // 24 seats
+  })
+
+  it('F1.4 — the floor never goes negative on a big roster or junk input', () => {
+    expect(forcedOpeningRepeats(2, 40)).toBe(0)
+    expect(forcedOpeningRepeats(2, 0)).toBe(16)
+    expect(forcedOpeningRepeats(2, -5)).toBe(16)
+  })
+
+  it('F1.5 — a court count of 0 or junk is treated as 1', () => {
     expect(firstOnCourtGames(0)).toBe(1)
     expect(openingGameLimit(0)).toBe(2)
     expect(firstOnCourtGames(-3)).toBe(1)
@@ -164,6 +181,7 @@ describe('First on court — generated schedules', () => {
       numTrials: 400, numStarts: 5,
     }))
     const best = Math.min(...runs.map((r) => r.audit.openingRepeats))
+    expect(best).toBe(forcedOpeningRepeats(2, FIFTEEN.length))
     expect(best).toBe(1)
   })
 
