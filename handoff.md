@@ -4,50 +4,55 @@ Updated: 2026-09-13. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Pushed to `dev` and `main`.** Commit `c49fd6b` on `dev`, merged non-ff as `e9c2950` on `main`.
-  Rollback anchor: `git revert -m 1 e9c2950`. Local `main` was **14 commits stale** again (still on
-  `55c6eee`) and was reset to `origin/main` before the merge — same trap as 2026-09-12, check this
-  every time. Untracked and deliberately not committed: `todo.md` and `.claude/launch.json`.
+- **Pushed to `dev` and `main`.** The match generator now has the **First-on-court rule**.
 - `npm run build` clean, `npm run lint` clean apart from the pre-existing `ProfileView.tsx:257`
-  warning, vitest **288/288** (283 + 5 new `partitionBySwap` tests).
-- Previous work (seed matches, *Use profile levels*, swap-instead-of-block, collapsed Fixed Opening
-  Games) is all merged to `main` and deployed at badmintontayo.mrkws.com. Rollback anchor for the
-  swap feature: `git revert -m 1 60dc008`.
+  warning, vitest **303/303** (288 baseline + 15 new in `matchGenerator.firstOnCourt.test.ts`).
+- Untracked and deliberately not committed: `todo.md` (root) and `.claude/launch.json` — the latter
+  now actually starts the dev server (`npm run dev` in `badminton-v2`) rather than only attaching.
 
 ## Done this session
 
-**Swap rows in the player dropdowns are now visually distinct** — option D of
-`badminton-v2/docs/visual/swap-option-row-styles.html`, which offers five treatments (the file is
-the record of what was rejected and why). Players already in the match are:
+**The First-on-court rule** — from a real schedule where Aian & Sim played Game 1 and Game 4, which
+on 2 courts is zero rest but which the scorer was *rewarding* with a +300 `earlyRestReward`.
 
-- hoisted into their own `<optgroup>` — *In this match — picking swaps*, above *Everyone else*;
-- prefixed `⇄ `;
-- painted `--swap-ink` on a `--primary-subtle` band.
+```
+firstOnCourt = games 1 .. courtCount      // they all start together
+gameLimit    = courtCount * 2             // the first two rounds
+penalise P if P is in firstOnCourt AND appears again at or below gameLimit
+cost = openingRepeatPenalty * (gameLimit - gap)
+```
 
-Three markers, not one, because the iOS and Android pickers discard `<option>` styling entirely —
-only the group header and the arrow reach a phone.
+- `src/lib/matchGenerator.ts` — `courtCount` option (**default 1**, so every existing caller is
+  unchanged), `firstOnCourtGames()` / `openingGameLimit()`, the `openingRepeatPenalty` weight
+  (**400**), the `openingRepeats` audit counter, and the rule in `evaluateSessionScore`.
+  `buildAssignment` also filters openers out of the pool inside the window, so the rule never has to
+  outbid the gender weights on score.
+- `src/components/MatchGeneratorPanel.tsx` — passes `courtCount` through, one weight slider, the
+  *First-on-Court Repeats (by game N)* audit tile, one Scoring Math row.
+- **Verified in the running app** against the 15-player dev session: tile read 1, hand-checked
+  against the breakdown (Jax in games 1 and 4). 1 is the arithmetic floor — games 1–4 hold 16 seats
+  against 15 players, so one repeat is forced.
 
-- `src/components/playerOptions.tsx` (new) — `renderPlayerOptions`, shared by both edit forms.
-- `src/lib/matchSlots.ts` — `partitionBySwap`, the group labels and the `⇄` prefix live here.
-- `src/index.css` — `--swap-ink` (`#6F3E87` / `#D8B4F0`), `--color-swap-ink`, and the
-  `select.player-select` `color-scheme` pin. **See `tasks/lessons.md` (2026-09-13)** — dark mode was
-  opening *white* native popups, so the first colour I picked was at 1.8:1.
-- Both call sites now render from the shared helper: `FourSlotPicker` in `MatchGeneratorPanel.tsx`
-  and `PlayerSelect` in `CourtTabs.tsx`.
+**Two pre-existing tests changed, both justified in `tasks/todo.md`:** S2's expected value moved by
+exactly `4 × openingRepeatPenalty` (the rule fires at 1 court by design); 5.6 now sweeps seeds and
+asserts ≥95% rather than hard-asserting gender validity — verified the pre-change engine fails on the
+**same 1-in-40 seed**, so it was passing by luck, not regressed.
 
-**Verified in the browser** on the locked list, Game 1 — the group, the arrow and the purple band
-render in **both** themes; cancelled without saving. The `CourtTabs` copy was *not* exercised (needs
-a live session) — it shares `renderPlayerOptions` verbatim and is covered by the type-check only.
+**Built then reverted at the user's direction** — do not re-propose without asking: scaling the
+general rest target by court count, `idealRestGames` default 1, raising `restSpacingPenalty`, and the
+double-booking hard block + `overlapPenalty`. Reasons and measurements are in `tasks/todo.md` and
+`docs/qa-log.html`. The two diagrams in `docs/visual/` carry a banner saying their remedy did not ship.
 
 ## Next step
 
-- Nothing outstanding. Vercel deploys `main`, so the restyle should be live at
-  badmintontayo.mrkws.com — not confirmed in production yet.
+- Nothing outstanding. Vercel deploys `main`.
 
 ## Open question
 
-- The swapped-pair flash in `FourSlotPicker` is still `--court2` teal while the dropdown marker is
-  now purple: two colours for one concept. Left alone deliberately (it ships already, and the user
-  asked only about the dropdown). Worth asking whether the flash should move to `--swap-ink` too.
-- `.claude/launch.json` attaches the Browser pane to an already-running dev server on 5173. Left
-  untracked — delete it or commit it, whichever the user prefers.
+- **The repeat-partnership surcharge is not built and rests on an unverified hunch.** The Aian & Sim
+  case was visible because they were *partners* in both games, not just both present. Whether short
+  gaps actually cluster on repeated partnerships has never been checked against a full session.
+- The audit tile shows a count with no floor beside it. "1 repeat" reads like a failure when it is in
+  fact optimal; showing "minimum possible is 1" would fix that.
+- `Max Consecutive Games` ≥ 2 on 2 courts silently permits unplayable schedules and nothing warns.
+  Low priority — the default is 1 and has never been changed.

@@ -1241,6 +1241,284 @@
     </p>
   </div>
 
+
+  <div class="correction">
+    <p class="label">Correction — 2026-09-13</p>
+    <p class="q">Do we have a rule that a Game 1 or Game 2 player should not be in Game 4? Games 1 and 2 run at the same time, so a Game 1 player in Game 4 gets no rest.</p>
+    <p>
+      No rule exists, and the earlier framing of &ldquo;Ideal Rest Between Games&rdquo; in this log was wrong: the
+      setting does <em>not</em> mean games of rest. <code>evaluateSessionScore</code> measures rest as the
+      difference between two <em>queue positions</em> and targets
+      <code>idealGap = idealRestGames + 1</code> = <strong>3</strong>. Aian &amp; Sim in Game&nbsp;1 and
+      Game&nbsp;4 is a gap of exactly 3, so it takes <strong>no penalty at all</strong> and collects the
+      <code>earlyRestReward</code> of <strong>+300</strong> for meeting ideal. The engine is not tolerating
+      that pairing, it is rewarding it.
+    </p>
+    <p>
+      On two courts the queue is not a line. Games 1 and 2 start together; Game&nbsp;3 goes to the first court
+      that frees and Game&nbsp;4 to the second, so <strong>Game&nbsp;1 ends as Game&nbsp;4 begins</strong> —
+      zero real rest. A game at 0-based index <code>i</code> plays in round <code>floor(i / courtCount)</code>,
+      so with 2 courts a queue gap of 3 is <em>0</em> games of rest, gap 4 is 1, and you need a gap of
+      <strong>6</strong> before the pair has genuinely sat out two games. Every gap from 3 upward scores
+      identically, so the annealer has no reason to prefer the good spacing over the bad.
+    </p>
+    <p>
+      <strong>Is it only considered at the start?</strong> The app only <em>checks</em> it at the start —
+      <code>resolvePinnedMatches</code> fires a <code>toast.warning</code> (&ldquo;they start at the same
+      time&rdquo;) when one player sits in two pinned opening games. That is the single court-aware line in the
+      scheduling path, and it is a warning, not a block. The condition itself is not confined to the opening:
+      two games are in flight all night, so Games 5 and 6 collide exactly as 1 and 2 do. The opening is just the
+      one point where the overlap is exact rather than drifting with game length.
+    </p>
+    <p>
+      <code>courtCount</code> is already a prop on <code>MatchGeneratorPanel</code> (used for the pinned-game
+      rows) but is <strong>never passed into <code>generateScheduleOptimized</code></strong>. The engine, the
+      streak counter and <code>RestSpacingChart</code> in the audit panel are all court-blind — which is why the
+      chart paints that gap-3 row green. The one-line conversion would be
+      <code>idealGap = (idealRestGames + 1) &times; courtCount</code>. Diagram:
+      <code>docs/visual/rest-spacing-vs-parallel-courts.html</code>. Reviewed only, nothing changed.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Can the same player be scheduled into Game 1 and Game 2 — on two courts at once?</p>
+    <p class="a">
+      Nothing hard-stops it. It is only the soft <code>streakWeight</code> of <strong>&minus;1000</strong>:
+      <code>buildAssignment</code> uses &ldquo;played last game&rdquo; merely as a sort tiebreak <em>below</em>
+      remaining games, and <code>mutateCrossSwap</code> carries no streak guard. Worse, &minus;1000 is smaller
+      than <code>fairnessWeight</code> at <strong>5000</strong>, so a schedule that double-books one player in
+      order to close a participation gap of 1 scores <em>higher</em> than a legal one. The annealer is not
+      misbehaving; it is taking the deal the weights offer. The only guard rails are inside a single row
+      (<code>validateMatchPlayers</code> and the <code>matches_distinct_players_check</code> constraint from
+      migration 079), which say nothing about two different rows that run simultaneously.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Which games are guaranteed to overlap in time? Is it just the opening pair?</p>
+    <p class="a">
+      Any two games whose <strong>queue indices differ by less than <code>court_count</code></strong> — and
+      this holds regardless of how long the games run. Promotion is: the head of the shared queue goes to
+      whichever court frees next, so the set of games in flight is always the <code>court_count</code> most
+      recently <em>started</em> ones. At 2 courts that makes <em>every</em> adjacent pair simultaneous — G5 and
+      G6 collide exactly as G1 and G2 do, and so do G2 and G3. Note this is stricter than a
+      &ldquo;rounds&rdquo; model: <code>floor(i / court_count)</code> puts G2 and G3 in different rounds even
+      though they demonstrably overlap, so the gap rule is the one to enforce against, not the round number.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">If we fix the rest maths, how much rest can players actually get?</p>
+    <p class="a">
+      About <strong>one game</strong>, and that is a ceiling, not a target. With the standard shape — 16
+      players, 20 matches, 2 courts — each player plays 5 games spread across 20 queue slots, so their average
+      gap is ~4, and real rest is <code>gap / court_count &minus; 1</code> = <strong>1</strong>. The default
+      <code>idealRestGames: 2</code> is therefore asking for something the session shape forbids; once the
+      target is scaled by court count the deviation counter can never reach zero, and the honest default is 1.
+      Making the scorer court-aware does not buy more rest — it buys correct <em>ranking</em>, so the engine
+      stops treating G1&rarr;G4 (zero rest) as identical to G1&rarr;G7 (two games off) and spends its
+      optimisation budget on the difference.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Should &ldquo;this player is in two simultaneous games&rdquo; be a database constraint, like the distinct-players check?</p>
+    <p class="a">
+      No, despite the precedent of <code>matches_distinct_players_check</code> (migration 079). That rule is a
+      fact about a single stored row and can never stop being true. Simultaneity is not: both
+      <code>queue_position</code> and <code>court_number</code> change during live play — the admin reorders the
+      queue and swaps courts from the Courts tab — so which two rows run together is a runtime property, not a
+      durable one. It belongs in the generator as a hard constraint on <code>buildAssignment</code> and the two
+      mutation functions, with a scorer penalty as a backstop for the
+      <code>candidates.slice(0, 4)</code> fallback path.
+    </p>
+  </div>
+
+  <div class="correction">
+    <p class="label">Correction — 2026-09-13</p>
+    <p class="q">Most of the time we are only 14 pax on 14 matches, 4 games each. Does that change the rest-spacing recommendation?</p>
+    <p>
+      Yes, and it overturns the &ldquo;make zero rest a hard constraint&rdquo; advice given earlier the same day.
+      At 14 players / 14 matches / 2 courts a fully-rested schedule <strong>does not exist</strong>.
+    </p>
+    <p>
+      14 matches on 2 courts is <strong>7 rounds</strong>; each round 8 of the 14 play and 6 sit, and each
+      player plays 4 of the 7 rounds. To avoid every back-to-back a player needs 4 non-adjacent rounds out of 7,
+      and there is exactly one such pattern: rounds <strong>1, 3, 5, 7</strong>. Those four rounds hold
+      4&nbsp;&times;&nbsp;8 = 32 seats; a clean player takes 4, and anyone not clean sits out at most 3 rounds
+      so still takes at least 1. With <code>x</code> clean players,
+      <code>32 &ge; 4x + (14 &minus; x)</code> &rarr; <code>x &le; 6</code>.
+    </p>
+    <p>
+      <strong>So at most 6 of 14 can have a clean night, and at least 8 must take a zero-rest transition.</strong>
+      The best reachable schedule is 6 clean and 8 with exactly one back-to-back each. Average queue gap is
+      ~4.3, so ~1 game of rest remains the norm and <code>idealRestGames: 1</code> is still the honest default.
+    </p>
+    <p>
+      The consequence is that zero rest can only be <em>placed and distributed</em>, never prevented — which
+      exposes the real hole. <code>evaluateSessionScore</code> sums rest deviations <strong>globally</strong>,
+      so a schedule where 8 people take one hit each scores <em>identically</em> to one where 3 people take
+      three hits each. Per-player convexity (penalise each player&rsquo;s shortfall as <code>under&sup2;</code>,
+      or make a player&rsquo;s second zero-rest transition cost several times the first) is therefore the
+      highest-value change at this session size. The only thing that stays a <em>hard</em> constraint is
+      <code>gap &lt; courtCount</code> — two courts at once — which is trivially satisfiable since a round
+      needs just 8 distinct players out of 14.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Does raising <code>restSpacingPenalty</code> risk breaking fairness?</p>
+    <p class="a">
+      No, because at both real session shapes fairness has nothing to do. 14&nbsp;&times;&nbsp;4 = 56 = 14
+      matches &times; 4 slots, and 16&nbsp;&times;&nbsp;5 = 80 = 20 matches &times; 4 — both divide exactly, so
+      <code>buildAssignment</code> gives every player the same target and the participation gap is 0 by
+      construction. <code>fairnessWeight</code> (5000) never gets to compete. Rest spacing only has to
+      out-argue <code>imbalancePenalty</code> (300 per level of team difference) and
+      <code>repeatPartnerPenalty</code> (150) — which at its shipped value of <strong>30</strong> it loses
+      every time.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Should the audit panel show anything new?</p>
+    <p class="a">
+      The <strong>arithmetic floor</strong>, next to the actual count: <em>&ldquo;8 of 14 players have a
+      zero-rest transition — minimum possible is 8.&rdquo;</em> Without it there is no way to tell a good
+      schedule from a bad one, which is exactly the position the Game&nbsp;1/Game&nbsp;4 screenshot left us in.
+      A raw count of 8 looks alarming and is in fact optimal; a count of 8 spread over only 3 players is a bad
+      night that scores the same today.
+    </p>
+  </div>
+
+  <div class="correction">
+    <p class="label">Correction — 2026-09-13 (supersedes the &ldquo;at least 8 of 14&rdquo; entry above)</p>
+    <p class="q">In today&rsquo;s actual session only Sim and Aian got back to back. That doesn&rsquo;t match &ldquo;at least 8 of 14 must.&rdquo;</p>
+    <p>
+      The observation is right and the earlier bound was wrong. It was derived by chopping 14 games into 7
+      fixed rounds of 2 — the round model that the entry <em>above it</em> had already established is
+      incorrect. The queue promotes one game at a time as a court frees, so games never pair into fixed rounds.
+      Redone with the sliding-window model:
+    </p>
+    <p>
+      <strong>Gap 1</strong> — guaranteed overlap, physically impossible, must be hard-blocked.
+      <strong>Gap 2</strong> — zero rest, same court, invariant. <strong>Avoidable for all 14</strong>: the
+      construction <code>game g = {g, g+3, g+7, g+11} mod 14</code> gives every player gaps &ge; 3 (it is
+      degenerate for partner variety, but it proves nobody need be forced back-to-back).
+      <strong>Gap 3</strong> — rest equals whatever stagger exists between the two courts; <strong>at least 6
+      of 14 must carry one</strong>, because a player with every gap &ge; 4 spans &ge; 12 of the 14 slots and
+      so must start in game 1 or 2, and those two games hold only 8 seats.
+      <strong>Gap 4</strong> — a full game off; at most 8 players can have all gaps this wide.
+    </p>
+    <p>
+      <strong>So why did only one pair stand out?</strong> Two reasons. Gap 3 is a gamble, not a constant — its
+      rest is entirely the court stagger, so it is invisible on a night where one court runs long, and six or
+      more players almost certainly had one. And Aian &amp; Sim were <em>partners</em> in both game 1 and game
+      4, so two names moved together and it read as &ldquo;they never left the court&rdquo;, where six players
+      at the same gap with different partners read as nothing. That repeat partnership cost only
+      <code>repeatPartnerPenalty</code> 150 against the +300 rest bonus — net positive for the engine.
+    </p>
+    <p>
+      Net effect on the plan: the fix gets <em>easier</em>. Gap 2 can be hard-blocked outright rather than
+      priced (the earlier entry said it had to be a weight). The weight belongs on gap 3, which is exactly
+      where the original instinct pointed. And short gaps for a <em>repeated pair</em> should be weighted
+      harder than short gaps generally — that is the visible failure mode.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How should the opening-games penalty be defined, and does the app already know what &ldquo;first on court&rdquo; means?</p>
+    <p class="a">
+      It already does, under that exact name — the generator is just the one place that doesn&rsquo;t read it.
+      <code>MatchBoard.tsx:355</code> has <code>const openingCount = Math.max(1, courtCount)</code> and renders
+      the literal caption <strong>&ldquo;First on court&rdquo;</strong>; <code>courts.ts:82</code>
+      (<code>buildStartingCourtAssignments</code>) does <code>matches.slice(0, courtCount)</code> for the same
+      idea. A third copy inside the scorer would be the divergent-copy pattern this repo has already paid for
+      twice, so the rule should go through one shared helper that both existing call sites move onto.
+    </p>
+    <p class="a">
+      The rule itself: <code>firstOnCourt = games 1..courtCount</code>,
+      <code>gameLimit = courtCount &times; 2</code>, and penalise a player who is in
+      <code>firstOnCourt</code> <em>and</em> appears again in a game &le; <code>gameLimit</code>. At 2 courts
+      that is &ldquo;in games 1&ndash;2 and again in games 3&ndash;4&rdquo;. It catches every real case —
+      gaps 1, 2 and 3 — and the only pair it misses (games 3 &amp; 4, gap 1) is physically impossible and
+      already covered by the hard block. It scales without special-casing: 1 court &rarr; games 1 &amp; 2,
+      3 courts &rarr; a repeat between {1,2,3} and {4,5,6}.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why can&rsquo;t the opening penalty just be a flat &ldquo;any repeat in games 1&ndash;4 is bad&rdquo;?</p>
+    <p class="a">
+      Because two repeats there are <strong>forced</strong> — games 1&ndash;4 hold 16 seats and a session has
+      14 players — and the schedule that shipped already picked the <em>best</em> forced option. Within games
+      1&ndash;4 the only legal repeats are gap 2 (Game 1&rarr;3, Game 2&rarr;4) and gap 3 (Game 1&rarr;4);
+      gap 1 is physically impossible. Both of Aian &amp; Sim&rsquo;s repeats landed on Game 1 &rarr; Game 4,
+      the widest available. A flat penalty scores that identically to Game 1 &rarr; Game 3 — a same-court
+      restart — so the annealer would have no reason to keep the good one. <strong>The penalty has to shrink
+      as the gap widens</strong> or the change can produce something worse than what it replaced.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">If we add the opening penalty, is that enough on its own?</p>
+    <p class="a">
+      No — it has to out-weigh the reward it is fighting. Today that pairing takes <strong>no</strong> rest
+      penalty (gap 3 equals the court-blind <code>idealGap</code> of 3) <em>and</em> collects
+      <code>earlyRestReward</code> of <strong>+300</strong>. Bolting a 200-point opening penalty on top leaves
+      it at <strong>net +100 — still profitable</strong>, so the engine would carry on doing it. The fix is to
+      court-scale <code>idealGap</code> first, which stops the bonus firing at all; the opening rule then sits
+      on top of a scoreboard that is finally telling the truth. Stacking a penalty to cancel a reward that
+      should not exist is unreadable six months later.
+    </p>
+  </div>
+
+  <div class="correction">
+    <p class="label">Correction — 2026-09-13 (supersedes every rest-spacing entry above)</p>
+    <p class="q">What actually shipped out of the whole Game 1 / Game 4 investigation?</p>
+    <p>
+      <strong>Only the First-on-court rule.</strong> Everything else explored above &mdash; scaling the
+      general rest target by court count, defaulting <code>idealRestGames</code> to 1, raising
+      <code>restSpacingPenalty</code>, and a hard block plus <code>overlapPenalty</code> for
+      double-booking &mdash; was built, measured, and then <strong>reverted at the user's direction</strong>.
+      The general rest maths is court-blind exactly as it always was:
+      <code>idealGap = idealRestGames + 1</code>, panel default 2, <code>RestSpacingChart</code> unchanged.
+      <code>MatchBoard.tsx</code> and <code>courts.ts</code> were not touched at all.
+    </p>
+    <p>
+      <strong>The rule that shipped:</strong> <code>firstOnCourt = games 1..courtCount</code>,
+      <code>gameLimit = courtCount &times; 2</code>; a player in <code>firstOnCourt</code> who reappears at
+      or below <code>gameLimit</code> is charged
+      <code>openingRepeatPenalty &times; (gameLimit &minus; gap)</code>. Graded rather than flat, because at
+      14&ndash;15 players the window holds 16 seats and at least one repeat is <em>forced</em> &mdash; a flat
+      penalty would give the optimiser no reason to prefer Game&nbsp;1&nbsp;&rarr;&nbsp;4 (the widest
+      option) over Game&nbsp;1&nbsp;&rarr;&nbsp;3 (a same-court restart), and could produce something worse
+      than what it replaced. It is also enforced inside <code>buildAssignment</code>, not only priced, so it
+      never has to outbid the gender weights (100&ndash;250) on score.
+    </p>
+    <p>
+      <strong>Why the default weight is 400.</strong> Because the general target stayed court-blind,
+      <code>earlyRestReward</code> still pays <strong>+300</strong> for a gap-3 pairing at 2 courts. Anything
+      at or below 300 leaves that pairing profitable and changes no decision. Measured at 15 players / 15
+      matches / 2 courts, 8 runs each: repeats fall from <strong>1.63</strong> with the weight off to
+      <strong>1.00</strong> at any weight from 200 up &mdash; and 1.00 is the arithmetic floor. 400 was
+      chosen over 600 because it reached the same floor with fewer repeat partnerships.
+    </p>
+    <p>
+      <strong>Why there is no double-booking penalty.</strong> It was added, then removed once measured. At
+      1 or 2 courts, &ldquo;two games overlap&rdquo; and &ldquo;two consecutive games&rdquo; are the same
+      condition, so <code>Max Consecutive Games: 1</code> already prevents it &mdash; switching the penalty
+      off changed nothing (0 occurrences either way). It would only earn its place at <strong>3+ courts</strong>
+      (where a gap of 2 overlaps but is not consecutive) or if <code>Max Consecutive Games</code> were raised
+      to 2 &mdash; at which point 6 runs produced <strong>8 double-bookings while Streak Violations read
+      0</strong>. This project never runs 3 courts, so it was dropped. If that ever changes, the cleaner fix
+      is to cap or warn on the Max Consecutive Games slider rather than re-add a hidden penalty.
+    </p>
+    <p>
+      The two diagrams from this investigation carry a banner saying the remedy they describe was not
+      shipped; their arithmetic is still correct and worth reading. The shipped design is recorded in
+      <code>tasks/todo.md</code>.
+    </p>
+  </div>
 </div>
 </body>
 </html>

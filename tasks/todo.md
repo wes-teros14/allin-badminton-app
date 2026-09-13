@@ -1,67 +1,105 @@
-# Light/dark mode — Nav orb in My Profile
+# Match generator — the First-on-court rule
 
-Chosen from `badminton-v2/docs/visual/theme-toggle-options.html`:
-**Nav orb control, in an Appearance row above Sign out on My Profile.**
+**Status:** implemented and verified 2026-09-13, **uncommitted**.
 
-## Plan
+Scope note: a court-aware rest model (scaling `idealGap` by court count) and a hard block on
+double-booking were built first, then **reverted in full at the user's direction**. `MatchBoard.tsx`,
+`courts.ts` and the general rest maths are untouched — `git diff` shows only the engine, the panel,
+and tests. What ships is the rule below and the minimum `courtCount` plumbing it needs.
 
-- [x] `index.html` — drop the hard-coded `class="dark"`; add a pre-paint inline script so a
-      light-mode user never sees a dark flash. Dark stays the default: only an explicit
-      `light` in storage turns the lights on.
-- [x] `src/contexts/ThemeContext.tsx` (new) — `'light' | 'dark'`, writes the class onto
-      `documentElement`, sets `color-scheme`, persists to `localStorage`. Matches the
-      `AuthContext` shape exactly (provider + `useTheme` in the same file).
-- [x] `src/hooks/useTheme.ts` (new) — thin re-export, matching `src/hooks/useAuth.ts`.
-- [x] `src/App.tsx` — mount `ThemeProvider` above `<Routes>`, not inside `PlayerLayout`:
-      `/live-board`, `/live-board/:sessionId` and `/register` never mount that layout.
-- [x] `src/components/ThemeToggle.tsx` (new) — the 44 x 44 orb button.
-- [x] `src/index.css` — `.theme-orb` styles; fix the light token block; give
-      `.live-board-dark` its own `--muted-foreground`.
-- [x] `src/views/ProfileView.tsx` — Appearance row directly above the Sign out button.
-- [x] Verify: `tsc -b`, `vite build`, `npm run test:unit`, and both themes rendered in Chromium.
-- [x] Commit, push `dev`, merge `dev` into `main` non-fast-forward, push `main`.
+Diagrams (written during the reverted work; the arithmetic still holds, the fix described in them
+does not): `badminton-v2/docs/visual/rest-spacing-vs-parallel-courts.html`,
+`badminton-v2/docs/visual/rest-rules-scaling-by-court-count.html`.
+Q&A trail: `badminton-v2/docs/qa-log.html`, Match generator section.
 
-## Token changes, and why each one is necessary
+## The rule
 
-Measured against the surfaces they actually land on. Only tokens the app really uses are touched.
+```
+firstOnCourt = games 1 .. courtCount        // they all start together
+gameLimit    = courtCount * 2               // the first two rounds
 
-| Token | Light was | Light now | Why |
-|---|---|---|---|
-| `--muted` | `#6B7280` | `#F1ECF6` | **The critical one.** It is a mid-grey *text* colour in the light block and a *surface* in the dark block. The app uses it as a surface **106 times** (`bg-muted`) and as text **0 times**, so every skeleton, hover state and table header would have rendered as a grey slab. |
-| `--gold` | `#FFB200` | `#B87A00` | Used as `border-gold` + `bg-gold/[0.07]` on the podium. `#FFB200` on white is 1.81 : 1 — the first-place medal border would be invisible. `#B87A00` is 3.61 : 1, clearing the 3 : 1 floor for non-text UI. |
-| `--destructive` | `#DC595E` | `#B3252B` | 3.71 : 1 on white fails AA for the `text-destructive` Sign out button and the unpaid pills. `#B3252B` is 6.55 : 1. |
-| `--background` | `#FFFFFF` | `#FAF7FB` | `--card` is also white, so cards had nothing but a border separating them from the page. A barely-violet ground matches the brand and gives the cards a surface to sit on. |
-| `--foreground`, `--card-foreground`, `--popover-foreground` | `#18181B` / `oklch(.145 0 0)` | `#1B1220` | Three near-blacks doing one job, none matching. One violet-tinted near-black at 17.1 : 1 on the new ground. |
-| `--ring` | `oklch(.708 0 0)` | `#6F3E87` | Dark mode already uses `--primary` for the focus ring; light used a grey that barely reads. |
-| `.live-board-dark --muted-foreground` | (inherited) | `#B39DBB` | **Regression guard.** `LiveBoardView` uses `text-muted-foreground` three times and the scoped block never defined it — it worked only because `<html>` was always `.dark`. Without this the projector board gets dark-grey text on a near-black ground. |
+penalise P if P is in firstOnCourt AND appears again at or below gameLimit
+```
 
-Left alone deliberately: `--success`, `--primary-hover`, `--primary-pressed` and `--muted-surface`
-have **zero** usages in `src/`, so their light values cannot break anything. `--primary #6F3E87`
-already measures 7.69 : 1 against white and needs no change.
+1 court → games 1 & 2 · 2 courts → games 1–4 · 3 courts → {1,2,3} against {4,5,6}.
 
-## Review
+`MatchBoard.tsx:355` already captions these games **"First on court"**; the rule reuses that
+definition rather than inventing a second one.
 
-**Shipped.** Nav orb in an Appearance row above Sign out on My Profile. Dark stays the default —
-only an explicit `light` in `localStorage['badminton-theme']` turns the lights on, so no existing
-player's app changes appearance until they choose to.
+## What shipped
 
-**Verified**
-- `tsc -b` and `vite build` clean; vitest **242 / 242**.
-- `/profile` rendered in Chromium against stubbed Supabase in both themes: 44 x 44 button, orb
-  geometry correct in each state (22 px crescent rotated -25 deg -> 29.2 px box; 0.52 scaled disc ->
-  11.4 px box, rays as box-shadows), `aria-checked` and `aria-label` both flip, the choice persists
-  to `localStorage`, zero page errors.
-- `/live-board` rendered with `<html>` in light mode: still `#0F0A18` with white text and
-  `--muted-foreground: #B39DBB`. The regression guard works.
+- [x] `GenerateOptions.courtCount`, **default 1**, threaded through `generateSchedule`,
+      `generateScheduleOptimized`, `optimizeAssignment`, `buildAssignment` and the final re-score.
+- [x] `firstOnCourtGames(courtCount)` and `openingGameLimit(courtCount)` exported.
+- [x] Configurable weight `openingRepeatPenalty`, default **400**, with a slider and a
+      `disabledWeights` checkbox like every other tunable weight.
+- [x] **Graded by gap** — cost is `openingRepeatPenalty × (gameLimit − gap)`, so game 1 → 4 costs 400
+      and game 1 → 3 costs 800. Required: with 14–15 players the window holds 16 seats so a repeat is
+      forced, and a flat penalty would let the optimiser pick the worse one.
+- [x] **Enforced during construction as well as priced.** `buildAssignment` filters openers out of the
+      candidate pool inside the window, so the rule never has to outbid the gender weights (100–250)
+      on score. A gender/spread-valid group is sought in the filtered pool *then* the full one before
+      any fallback slice — otherwise at 8 players the filter leaves exactly 4 candidates and the slice
+      returns a gender-invalid row.
+- [x] Audit counter `openingRepeats`, counted **unconditionally** (not inside the weight guard), shown
+      as the tile *First-on-Court Repeats (by game N)* plus a Scoring Math row.
 
-**Not verified**
-- Nothing has been seen on a physical phone.
-- The podium's new light gold `#B87A00` has been computed (3.61 : 1 on white) but never rendered
-  against real leaderboard data.
+## Why the default is 400
 
-**Found but deliberately not fixed**
-- `text-amber-600 dark:text-amber-500` in `MySessionsView.tsx:123` and
-  `SessionPlayerDetailView.tsx:290` now actually take their light branch for the first time.
-  Amber-600 on white is roughly 3.3 : 1 at `text-xs`, under the 4.5 : 1 floor. It is a
-  deliberately-authored light/dark pair, so it is flagged in `handoff.md` rather than changed here.
-- 3 pre-existing `prefer-const` errors in `src/hooks/usePlayerSchedule.ts`, unrelated to this work.
+The general rest target is court-blind, so `earlyRestReward` still pays **+300** for a gap-3 pairing
+at 2 courts. Anything at or below 300 leaves that pairing profitable and changes no decision. 400 is
+the smallest round value that clears it; test F2.6 pins the relationship. 600 was tried first and cost
+more repeat partnerships for the same result.
+
+## Verification
+
+- [x] **303 tests passing**, build clean, lint clean apart from the pre-existing
+      `ProfileView.tsx:257` warning. 15 new tests in `matchGenerator.firstOnCourt.test.ts`.
+- [x] Measured, 15 players / 15 matches / 2 courts, 8 runs per weight. The window holds 16 seats
+      against 15 players, so **1 repeat is forced — that is the floor**:
+
+      | openingRepeatPenalty | openingRepeats |
+      |---|---|
+      | 0 (off) | **1.63** |
+      | 200 | 1.00 |
+      | **400 (default)** | **1.00** |
+      | 1200 | 1.00 |
+
+- [x] **Exercised end to end** against the 15-player dev session. Tile reads
+      *First-on-Court Repeats (by game 4): 1*, and hand-checking the breakdown confirms it (Jax in
+      game 1 and game 4). Back-compat confirmed: that session's stored `generator_settings` predate
+      `openingRepeatPenalty` and the spread merge supplied the default — no migration needed.
+
+## Two pre-existing tests changed, and why
+
+- **S2** (`matchGenerator.scoring.test.ts`) — expected value moved by exactly
+  `4 players × openingRepeatPenalty`. At 1 court the window is games 1–2, so the rule fires on that
+  fixture by design. Intended behaviour change, not a test bent to pass.
+- **5.6** (gender composition) — was `expect(...).toBe(true)` under one seeded LCG. Gender is **not** a
+  hard guarantee: when no gender-valid group exists in any pool, `buildAssignment` falls back to an
+  unfiltered slice. Measured across seeds 1..40 that fires for exactly **1 seed — and for the same 1
+  seed on the pre-change engine**, verified by restoring `HEAD`'s `matchGenerator.ts` and re-running.
+  Identical rate; the change only moved seed 42 from the lucky side to the unlucky side. Now sweeps
+  and asserts ≥ 95% valid, with the measurement recorded inline.
+
+## Not done
+
+- [ ] **Surcharge when the short gap is a repeated partnership.** Never requested, and it rests on one
+      reading of a 5-row screenshot — short gaps clustering on repeat partnerships has not been
+      confirmed against a full session.
+- [ ] Show the arithmetic floor beside the count (*"1 repeat — minimum possible is 1"*), so a
+      non-zero tile can be read as optimal rather than as a failure.
+- [ ] Extend the `resolvePinnedMatches` warning for a pinned player landing inside `gameLimit`, which
+      cannot be optimised away because pinned rows are locked.
+
+## Open questions
+
+- [ ] **Today's actual session has not been inspected** — only the 5-row screenshot. The Supabase MCP
+      server failed auth (`AUTH_HEADER_REJECTED`) this session. Need either the MCP token fixed or a
+      screenshot of the generator's Rest Spacing chart to confirm: how many players had gap 3, whether
+      any had gap 2, and whether short gaps cluster on repeated partnerships.
+- [ ] The screenshot showed **15 distinct names** across games 1–5, but sessions are usually 14. If
+      today really had 15 players, only **1** repeat was forced in games 1–4, not 2 — meaning the
+      generator used one more than it needed. Was Ronwald or Steph a late sub?
+- [ ] Where the unavoidable short gaps should sit. Front-loading them (players are fresh) is at least
+      as defensible as protecting the opening. Not decided.

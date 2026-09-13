@@ -73,6 +73,7 @@ interface Settings {
   unevenGenderPenalty: number
   restSpacingPenalty: number
   earlyRestReward: number
+  openingRepeatPenalty: number
   disabledWeights: string[]
 }
 
@@ -98,6 +99,7 @@ const DEFAULTS: Settings = {
   unevenGenderPenalty: DEFAULT_WEIGHTS.unevenGenderPenalty,
   restSpacingPenalty: DEFAULT_WEIGHTS.restSpacingPenalty,
   earlyRestReward: DEFAULT_WEIGHTS.earlyRestReward,
+  openingRepeatPenalty: DEFAULT_WEIGHTS.openingRepeatPenalty,
   disabledWeights: [],
 }
 
@@ -297,11 +299,13 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
         unevenGenderPenalty: w('unevenGenderPenalty', settings.unevenGenderPenalty),
         restSpacingPenalty: w('restSpacingPenalty', settings.restSpacingPenalty),
         earlyRestReward: w('earlyRestReward', settings.earlyRestReward),
+        openingRepeatPenalty: w('openingRepeatPenalty', settings.openingRepeatPenalty),
       }
 
       try {
         const result = generateScheduleOptimized(players, {
           numMatches: effectiveNumMatches,
+          courtCount,
           maxConsecutiveGames: settings.maxConsecutiveGames,
           maxSpreadLimit: settings.maxSpreadLimit,
           disableGenderRules: settings.disableGenderRules,
@@ -618,6 +622,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                     { key: 'mixedDoublesPenalty',  label: 'Mixed Doubles Penalty',   help: 'Per MF vs MF match' },
                     { key: 'imbalancePenalty',     label: 'Level Imbalance Penalty', help: 'Per level diff between the two teams (e.g. team1=7 vs team2=11 → diff=4). Measures how competitive the match is.' },
                     { key: 'restSpacingPenalty',   label: 'Rest Spacing Penalty',    help: 'Per deviation from ideal rest games between matches' },
+                    { key: 'openingRepeatPenalty', label: 'First-on-Court Repeat',   help: 'Games 1..court count all start together. Charged per game short of the opening window (court count x 2) when one of those players is back on inside it, so a wider gap always costs less. With 14-15 players at least one such repeat is forced — what this changes is which one the engine picks.' },
                     { key: 'wishlistReward',       label: 'Wishlist Reward',         help: 'Per wishlist pair granted' },
                     { key: 'earlyRestReward',      label: 'Clean Start Reward',       help: 'Bonus per player appearance in the first N games (Early Rest Window) where rest gap ≥ ideal' },
                   ] as const
@@ -687,6 +692,13 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">
                   <AuditMetric label="Optimizer Score"       value={audit.score.toLocaleString()} highlight />
+                  <AuditMetric
+                    label={`First-on-Court Repeats (by game ${courtCount * 2})`}
+                    value={audit.openingRepeats}
+                    delta={audit.openingRepeats === 0
+                      ? { text: 'None', good: true }
+                      : { text: `${audit.openingRepeats} back on early`, good: false }}
+                  />
                   <AuditMetric label="Game Count Violations" value={audit.participationGap} delta={audit.participationGap === 0 ? { text: 'Perfect', good: true } : { text: 'Uneven', good: false }} />
                   <AuditMetric label="Streak Violations"     value={audit.streakViolations} />
                   <AuditMetric label="Partners Repeated"     value={audit.repeatPartners} />
@@ -710,6 +722,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                     <ScoringRow label={`Skill Gap Violations (${audit.wideGaps} × ${settings.spreadPenalty})`}       value={-(audit.wideGaps * settings.spreadPenalty)} />
                     <ScoringRow label={`Mixed Doubles (${audit.mixedDoubles} × ${settings.mixedDoublesPenalty})`}       value={-(audit.mixedDoubles * settings.mixedDoublesPenalty)} />
                     <ScoringRow label={`Rest Spacing (${audit.restSpacingDeviations} × ${settings.restSpacingPenalty})`} value={-(audit.restSpacingDeviations * settings.restSpacingPenalty)} />
+                    <ScoringRow label={`First-on-Court Repeats (${audit.openingRepeats} × ${settings.openingRepeatPenalty}+)`} value={-(audit.openingRepeats * settings.openingRepeatPenalty)} />
                     <ScoringRow label={`Clean Start Reward (${audit.earlyRestClean} × ${settings.earlyRestReward})`} value={audit.earlyRestClean * settings.earlyRestReward} />
                     <ScoringRow label={`Wishes Granted (${audit.wishesGranted} × ${settings.wishlistReward})`}       value={audit.wishesGranted * settings.wishlistReward} />
                     <div className="border-t pt-1 flex justify-between font-bold text-foreground">

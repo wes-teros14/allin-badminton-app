@@ -62,7 +62,12 @@ describe('Scoring: evaluateSessionScore', () => {
     expect(result.streakViolations).toBe(4)
     expect(result.repeatPartners).toBe(0)
     // Also penalizes rest spacing: 4 players each gap=1 vs idealGap=3, under=2 each → 8*restSpacingPenalty
-    expect(result.score).toBe(2 * 500 - 4 * W.streakWeight - 8 * W.restSpacingPenalty)
+    // And the First-on-court rule: at 1 court the openers are game 1 and the
+    // window ends at game 2, so all 4 are back on inside it, 1 game short each.
+    expect(result.openingRepeats).toBe(4)
+    expect(result.score).toBe(
+      2 * 500 - 4 * W.streakWeight - 8 * W.restSpacingPenalty - 4 * W.openingRepeatPenalty,
+    )
   })
 
   it('S3 — repeat partner → exactly 1 repeat', () => {

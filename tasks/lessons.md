@@ -511,3 +511,45 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   **Rule**: never colour an `<option>` without pinning `color-scheme` on the select first, and prefer setting the option's background alongside its colour — that is the only version whose contrast you can actually compute.
   **Verification rule**: reading back `getComputedStyle(option).color` proves the rule applied, not that it is legible. Native popups render outside the DOM, so the only check is opening one and looking at it in both themes.
 
+
+---
+
+## A new scorer parameter threaded everywhere except the final re-score (2026-09-13)
+
+- **Symptom**: after making the match generator court-aware, a 14-player / 14-game / 2-court schedule
+  reported `restSpacingDeviations: 0` while every one of the 14 players had gaps below the ideal of 4.
+  The optimiser was clearly doing court-aware work — `courtOverlaps` was 0 and no player was in adjacent
+  games — but the audit said the rest spacing was perfect. All 305 tests passed.
+  **Root cause**: `generateScheduleOptimized` scores a schedule in two different places. The SA loop
+  scores via `optimizeAssignment`, which I had threaded `courtCount` through. But the function ends with
+  a separate *"Re-score final formed matches"* call that builds the `finalAudit` actually returned — and
+  I had missed it, so it defaulted to `courtCount = 1`. The returned schedule was court-aware; the
+  number describing it was not.
+  **Fix**: pass `courtCount` to the final `evaluateSessionScore` call too.
+  **Rule**: when adding a parameter to a scoring function, grep for *every* call site rather than
+  following the main path — a "re-score at the end for display" is easy to miss precisely because it is
+  outside the loop you were editing, and a defaulted parameter fails silently instead of loudly.
+  **Verification rule that caught it**: re-score the returned artifact independently and assert it equals
+  the returned audit. `expect(audit.score).toBe(evaluateSessionScore(matches, ...).score)` is now a test
+  (C3.5). A tempting alternative — asserting `restSpacingDeviations > 0` — would have been a worse test,
+  because it encodes an expectation rather than an invariant.
+  **Second lesson**: the bug was only visible because I printed real per-player gaps instead of trusting
+  the audit field. When a metric reports a suspiciously perfect number, print the underlying data before
+  believing it.
+
+---
+
+## Raising `restSpacingPenalty` buys almost nothing and costs partnerships (2026-09-13)
+
+- **Symptom**: not a bug — a recommendation I made that the measurements contradicted. I had advised
+  raising `restSpacingPenalty` from 30 to ~150 on the grounds that at 30 it "loses every trade" against
+  `imbalancePenalty` (300 per level) and `repeatPartnerPenalty` (150).
+  **What the data showed** (14 players, 14 games, 2 courts, 8 runs per setting): going 30 → 150 reduced
+  short gaps from 17.00 to 15.25 out of 42, while repeat partnerships went 1.00 → 2.38 and gender-split
+  matches 2.13 → 3.00. At 300 it was worse still — 3.63 repeat partnerships for no further rest gain.
+  **Root cause**: with 4 games each across 14 slots the average gap is ~4.3, so the schedule is already
+  near the physical ceiling. The rest gradient is nearly flat there, and extra weight just buys noise at
+  the cost of everything else.
+  **Rule**: a weight that "loses every trade" is not automatically underweighted — check whether there is
+  anything left to win first. Sweep the weight against the metrics it competes with before changing a
+  default, and keep the sweep cheap (8 runs per value was enough for the ordering to be obvious).
