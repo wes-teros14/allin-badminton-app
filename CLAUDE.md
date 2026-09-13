@@ -127,6 +127,10 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - Write large file payloads with the Write tool, not a bash heredoc; heredocs over ~80 lines fail in this shell with `unexpected EOF`.
 - When asked where something should go in the app, give a way to choose (an interactive mock) rather than a single prescription, unless only one option is actually viable.
 - Never colour an <option> without first pinning color-scheme on the select. Chromium takes the popup background from the used color-scheme, which is light unless declared — so a dark-theme colour lands on a white popup. Safer still: set the option background too, so contrast holds whatever the popup does.
+- An audit counter must never live inside its own `if (weight > 0)` guard — penalise conditionally, count unconditionally. A disabled weight then still reports the truth instead of a silent zero. (Made this mistake twice in one session.)
+- When threading a new parameter through a scoring path, grep every call site. A "re-score at the end for display" sits outside the loop you are editing and defaults silently — the returned artifact was court-aware while the number describing it was not.
+- Before changing a default weight because it "loses every trade", sweep it and measure. Near a physical ceiling the gradient is flat, and extra weight buys noise at the cost of every metric it outranks.
+- A test that hard-asserts an invariant the engine only satisfies probabilistically is passing by luck. Before "fixing" one that your change broke, measure the pre-change failure rate on the same seeds — identical rate means you exposed a latent flake, not caused a regression.
 
 ## .env Files
 

@@ -10,7 +10,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 - Web app for running weekly badminton sessions: registration, payments, match scheduling, live scoring, leaderboards, finance.
 - Single operator/admin (repo owner) plus players who use it on phones. Mobile-first is the default assumption, not an afterthought — the player list views render inside `max-w-sm` (384 px).
-- Standard session shape: **16 players, 20 matches**. Not 15.
+- Standard session shape: **14 players, 14 matches, 4 games each** most of the time; the larger shape is **16 players, 20 matches, 5 each**. Never 15. Both divide exactly, so participation gap is 0 by construction and `fairnessWeight` is not what competes with rest spacing.
 - Replaces an earlier single-file Python app, kept for reference at `old_badminton_web_app.py` and `old_app_references/`.
 
 ## Stack
