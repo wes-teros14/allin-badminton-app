@@ -47,6 +47,7 @@ export interface PinnedMatch {
 
 export interface GenerateOptions {
   numMatches?: number           // default: ceil(n*8/4)
+  courtCount?: number           // default: 1 (see "First on court" below)
   maxConsecutiveGames?: number  // default: 1 (no consecutive games)
   disableGenderRules?: boolean  // default: false (auto-true if any player has null gender)
   maxSpreadLimit?: number       // default: 3 (max integer level diff in one match)
@@ -69,6 +70,7 @@ export interface ScoreWeights {
   unevenGenderPenalty: number  // default: 500  — per 3M+1F or 3F+1M match
   restSpacingPenalty: number   // default: 30   — per game short of ideal rest
   earlyRestReward: number      // default: 100  — bonus per clean gap in early window
+  openingRepeatPenalty: number // default: 400  — per game short, for a First-on-court repeat
 }
 
 export interface AuditData {
@@ -84,6 +86,7 @@ export interface AuditData {
   unevenGenderMatches: number  // 3M+1F or 3F+1M matches
   restSpacingDeviations: number // total deviation from ideal rest spacing
   earlyRestClean: number        // clean gaps rewarded in early window
+  openingRepeats: number        // First-on-court players back inside the opening window
 }
 
 export interface MatchDecision {
@@ -114,6 +117,36 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
   unevenGenderPenalty: 250,
   restSpacingPenalty: 30,
   earlyRestReward: 300,
+  openingRepeatPenalty: 400,
+}
+
+// ---------------------------------------------------------------------------
+// First on court
+//
+// The games that open the night start together, one per court — the same set
+// MatchBoard captions "First on court". While they are running the courts are
+// still in lockstep, so a player from one of them who reappears inside the
+// first two rounds is back on with no real break.
+//
+//   firstOnCourt = games 1 .. courtCount
+//   gameLimit    = courtCount * 2
+//
+// At courtCount = 1 (the default) this is games 1 and 2, and everything below
+// reduces to "do not open the night making someone play twice in a row".
+// ---------------------------------------------------------------------------
+
+function courts(courtCount: number): number {
+  return Math.max(1, Math.trunc(courtCount) || 1)
+}
+
+/** How many games open the night — one per court, all starting together. */
+export function firstOnCourtGames(courtCount: number): number {
+  return courts(courtCount)
+}
+
+/** Last game of the opening window: the first two rounds. */
+export function openingGameLimit(courtCount: number): number {
+  return courts(courtCount) * 2
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +264,7 @@ function buildAssignment(
   disableGenderRules: boolean,
   allowRelaxSpread = true,
   pinnedRows: string[][] = [],
+  courtCount = 1,
 ): string[][] {
   const n = playerIds.length
   const totalSlots = numMatches * 4
@@ -250,6 +284,11 @@ function buildAssignment(
   const schedule: string[][] = pinnedRows.map((row) => [...row])
   const prevMatchPlayers = new Set<string>(pinnedRows[pinnedRows.length - 1] ?? [])
 
+  // The First-on-court rule is applied while building, not only priced
+  // afterwards, so it never has to outbid the gender and partner weights.
+  const firstOnCourt = firstOnCourtGames(courtCount)
+  const openingLimit = openingGameLimit(courtCount)
+
   for (let m = pinnedRows.length; m < numMatches; m++) {
     // Sort candidates: most remaining games first, then deprioritize players
     // who just played (streak avoidance), then random tiebreak
@@ -266,21 +305,40 @@ function buildAssignment(
       })
       .map(([id]) => id)
 
-    const group = findValidGroup(
-      candidates, levelMap, genderMap, maxSpreadLimit, disableGenderRules, allowRelaxSpread,
-    )
+    // Inside the opening window, prefer candidates who are not already in one
+    // of the First-on-court games.
+    let preferred = candidates
+    if (m >= firstOnCourt && m < openingLimit) {
+      const openers = new Set<string>()
+      for (const row of schedule.slice(0, firstOnCourt)) {
+        for (const id of row) openers.add(id)
+      }
+      preferred = candidates.filter((id) => !openers.has(id))
+    }
+
+    // A group satisfying gender and spread is sought in the tighter pool first,
+    // then the full one. This ordering matters: with 8 players the opening
+    // filter leaves exactly 4 candidates, and slicing there would hand back a
+    // gender-invalid row while a valid one was still available unfiltered.
+    const pools = preferred === candidates ? [candidates] : [preferred, candidates]
+    let group: string[] | null = null
+    for (const pool of pools) {
+      group = findValidGroup(
+        pool, levelMap, genderMap, maxSpreadLimit, disableGenderRules, allowRelaxSpread,
+      )
+      if (group) break
+    }
+    if (!group) {
+      for (const pool of pools) {
+        if (pool.length >= 4) { group = pool.slice(0, 4); break }
+      }
+    }
 
     if (group) {
       schedule.push(group)
       for (const id of group) remaining.set(id, remaining.get(id)! - 1)
       prevMatchPlayers.clear()
       for (const id of group) prevMatchPlayers.add(id)
-    } else if (candidates.length >= 4) {
-      const fallback = candidates.slice(0, 4)
-      schedule.push(fallback)
-      for (const id of fallback) remaining.set(id, remaining.get(id)! - 1)
-      prevMatchPlayers.clear()
-      for (const id of fallback) prevMatchPlayers.add(id)
     }
   }
 
@@ -523,11 +581,13 @@ function optimizeAssignment(
   idealRestGames = 2,
   earlyRestWindow = 4,
   lockedRows = 0,
+  courtCount = 1,
 ): { assignment: string[][]; audit: AuditData } {
   const scoreAssignment = (a: string[][]) => {
     const matches = assignmentToMatches(a, levelMap, genderMap, disableGenderRules, lockedRows)
     return evaluateSessionScore(matches, levelMap, wishlistPairs, maxConsecutiveGames,
-      weights, maxSpreadLimit, playerIds, disableGenderRules, idealRestGames, earlyRestWindow)
+      weights, maxSpreadLimit, playerIds, disableGenderRules, idealRestGames, earlyRestWindow,
+      courtCount)
   }
 
   let current = assignment.map((g) => [...g])
@@ -582,6 +642,7 @@ export function evaluateSessionScore(
   disableGenderRules?: boolean,
   idealRestGames = 2,
   earlyRestWindow = 4,
+  courtCount = 1,
 ): AuditData {
   let score = matches.length * 500
   const audit: Omit<AuditData, 'score'> = {
@@ -596,6 +657,7 @@ export function evaluateSessionScore(
     unevenGenderMatches: 0,
     restSpacingDeviations: 0,
     earlyRestClean: 0,
+    openingRepeats: 0,
   }
 
   const partnerCounts        = new Map<string, number>()
@@ -728,6 +790,36 @@ export function evaluateSessionScore(
     }
   }
 
+  // First-on-court repeat: a player from games 1..courtCount who turns up again
+  // at or below courtCount * 2. Graded by how far short of the window limit the
+  // second game falls, so a wider gap always costs less — with 14-15 players the
+  // window holds 16 seats and at least one repeat is forced, and a flat penalty
+  // would give the optimiser no reason to prefer the widest one.
+  {
+    const firstOnCourt = firstOnCourtGames(courtCount)
+    const gameLimit = openingGameLimit(courtCount)
+    const playerGameIndices = new Map<string, number[]>()
+    for (let mi = 0; mi < matches.length && mi < gameLimit; mi++) {
+      const m = matches[mi]
+      for (const p of [m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2]) {
+        let indices = playerGameIndices.get(p)
+        if (!indices) { indices = []; playerGameIndices.set(p, indices) }
+        indices.push(mi)
+      }
+    }
+    for (const indices of playerGameIndices.values()) {
+      const opener = indices.find((i) => i < firstOnCourt)
+      if (opener === undefined) continue
+      for (const later of indices) {
+        if (later <= opener) continue
+        // Counted whether or not the weight is on: a disabled weight must not
+        // be able to make the audit read zero over a schedule full of them.
+        audit.openingRepeats++
+        score -= weights.openingRepeatPenalty * (gameLimit - (later - opener))
+      }
+    }
+  }
+
   if (individualGameCounts.size > 0) {
     const counts = [...individualGameCounts.values()]
     const gap = Math.max(...counts) - Math.min(...counts)
@@ -759,6 +851,7 @@ export function generateSchedule(
 
   const {
     numMatches = Math.ceil((n * 8) / 4),
+    courtCount = 1,
     maxConsecutiveGames = 1,
     maxSpreadLimit = 3,
     wishlistPairs = [],
@@ -779,7 +872,8 @@ export function generateSchedule(
 
   const scoreMatches = (m: GeneratedMatch[]) =>
     evaluateSessionScore(m, levelMap, wishlistPairs, maxConsecutiveGames,
-      weights, maxSpreadLimit, playerIds, disableGenderRules, idealRestGames, earlyRestWindow)
+      weights, maxSpreadLimit, playerIds, disableGenderRules, idealRestGames, earlyRestWindow,
+      courtCount)
 
   // Try multiple random assignments, keep the best
   const NUM_TRIALS = 30
@@ -790,7 +884,7 @@ export function generateSchedule(
   for (let t = 0; t < NUM_TRIALS; t++) {
     const assignment = buildAssignment(
       playerIds, adjustedNumMatches, levelMap, genderMap, maxSpreadLimit, disableGenderRules,
-      true, pinnedRows,
+      true, pinnedRows, courtCount,
     )
     const matches = assignmentToMatches(assignment, levelMap, genderMap, disableGenderRules, pinnedRows.length)
     const { score } = scoreMatches(matches)
@@ -828,6 +922,7 @@ export function generateScheduleOptimized(
     numTrials = 50,
     numStarts = 15,
     numMatches = Math.ceil((players.length * 8) / 4),
+    courtCount = 1,
     wishlistPairs = [],
     weights = DEFAULT_WEIGHTS,
     maxConsecutiveGames = 1,
@@ -855,7 +950,7 @@ export function generateScheduleOptimized(
     score: -Infinity, streakViolations: 0, repeatPartners: 0,
     wishesGranted: 0, levelGaps: 0, participationGap: 0, wideGaps: 0,
     mixedDoubles: 0, genderSplitMatches: 0, unevenGenderMatches: 0,
-    restSpacingDeviations: 0, earlyRestClean: 0,
+    restSpacingDeviations: 0, earlyRestClean: 0, openingRepeats: 0,
   }
   const decisions: MatchDecision[] = []
 
@@ -863,14 +958,14 @@ export function generateScheduleOptimized(
     // Phase 1: Build assignment — never relax spread (SA preserves it)
     const assignment = buildAssignment(
       playerIds, adjustedNumMatches, levelMap, genderMap,
-      maxSpreadLimit, disableGenderRules, false, pinnedRows,
+      maxSpreadLimit, disableGenderRules, false, pinnedRows, courtCount,
     )
 
     // Phase 3: SA optimization
     const { assignment: optimized, audit } = optimizeAssignment(
       assignment, playerIds, levelMap, genderMap, disableGenderRules,
       maxSpreadLimit, trialsPerStart, wishlistPairs, maxConsecutiveGames, weights,
-      idealRestGames, earlyRestWindow, pinnedCount,
+      idealRestGames, earlyRestWindow, pinnedCount, courtCount,
     )
 
     if (audit.score > bestAudit.score) {
@@ -889,11 +984,13 @@ export function generateScheduleOptimized(
     }
   }
 
-  // Re-score final formed matches
+  // Re-score final formed matches. This is the audit the panel displays, so it
+  // must use the same court count the schedule was optimised under — omitting
+  // it here reports a court-blind number over a court-aware schedule.
   const finalAudit = evaluateSessionScore(
     bestMatches, levelMap, wishlistPairs, maxConsecutiveGames,
     weights, maxSpreadLimit, playerIds, disableGenderRules,
-    idealRestGames, earlyRestWindow,
+    idealRestGames, earlyRestWindow, courtCount,
   )
 
   return { matches: bestMatches, audit: finalAudit, decisions }
