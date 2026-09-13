@@ -210,6 +210,23 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - `generateSchedule` (single-pass) is kept only for tests and API compatibility; the app calls
   `generateScheduleOptimized`.
 
+- **The First-on-court rule (2026-09-13).** The engine now takes `courtCount`
+  (`GenerateOptions.courtCount`, **default 1** so every old caller is unchanged). Games
+  `1..courtCount` open the night together — the same set `MatchBoard.tsx` captions *"First on court"*
+  — and a player from one of them who reappears at or below `courtCount * 2` is charged
+  `openingRepeatPenalty * (gameLimit - gap)`, default **400**. Graded, never flat: at 14–15 players
+  the window holds 16 seats so at least one repeat is *forced*, and a flat penalty would let the
+  optimiser pick Game 1 → 3 (same-court restart) over Game 1 → 4 (the widest option). Also enforced
+  inside `buildAssignment`, not only priced, so it never has to outbid the gender weights (100–250);
+  the filtered pool is tried first and the full pool second, because at 8 players the filter leaves
+  exactly 4 candidates and slicing there returns a gender-invalid row.
+- **Why `openingRepeatPenalty` is 400 and not smaller.** The general rest target stayed court-blind,
+  so `earlyRestReward` still pays **+300** for a gap-3 pairing at 2 courts. Anything ≤ 300 leaves that
+  pairing profitable and changes no decision.
+- **`forcedOpeningRepeats(courtCount, playerCount)`** is the one definition of the audit floor:
+  `openingGameLimit * 4 - playerCount`, floored at 0. 15 players on 2 courts → 1 forced, so a tile
+  reading 1 is optimal. Without it a bare count reports success as failure.
+
 ## Match schedule board
 
 - **`/match-schedule/session/:id?show=all` renders `AllMatchesView`, which draws
@@ -312,6 +329,19 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 ## Decisions made, and alternatives rejected
 
+- **Court-aware rest spacing: built, measured, reverted (2026-09-13). Do not re-propose without
+  asking.** Scaling the general target by court count (`idealGap = (idealRestGames + 1) * courtCount`),
+  defaulting `idealRestGames` to 1, raising `restSpacingPenalty`, and a double-booking hard block with
+  a 20000 `overlapPenalty` were all implemented and then reverted at the user's direction. The general
+  rest maths is court-blind exactly as before. Measurements that stand: raising `restSpacingPenalty`
+  30 → 150 removes 1.75 short gaps out of 42 while *more than doubling* repeat partnerships, because
+  near the physical ceiling the rest gradient is flat; and `overlapPenalty` changed nothing at 1–2
+  courts, since "two games overlap" and "two consecutive games" are the same condition there and
+  `Max Consecutive Games: 1` already prevents it. It would only matter at 3+ courts (never run here).
+- **The repeat-partnership surcharge was dropped as already handled.** An opening repeat that is also
+  a repeated partnership is charged by both weights independently — 800 for the opening rule plus 150
+  for `repeatPartnerPenalty`, against 800 for an opponent repeat. Whether 150 is the right premium is
+  a slider, not a missing feature. A third interaction-specific term would be over-engineering.
 - **Admin shortcut on `/sessions` (2026-09-04)** — chose a 44 × 44 icon button pinned to each card's bottom-right corner. Rejected: an inline "Manage" pill in the badge row (the row already carries up to two `shrink-0` pills at 384 px, so a third squeezes the title), and a full-width admin strip under a hairline rule (correct and explicit, but ~45 px taller per card). The corner button was picked because it costs the list no height and never collides with the pills. Revisit the strip if other moderators start using it, or if a second admin action joins the card.
 - **The card is one `<Link>`.** An anchor cannot contain an anchor, so any in-card control is either a `<button>` calling `navigate()` with `stopPropagation()`, or an absolutely positioned sibling outside the link. The sibling form is preferred — no event plumbing and correct tab order for free.
 - **Finish-match latency: 7 round trips cut to 3 (2026-09-07); the further cuts were deliberately
