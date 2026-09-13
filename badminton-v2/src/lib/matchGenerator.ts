@@ -149,6 +149,18 @@ export function openingGameLimit(courtCount: number): number {
   return courts(courtCount) * 2
 }
 
+/**
+ * How many opening-window repeats are unavoidable. The window holds
+ * `openingGameLimit * 4` seats; anything beyond the roster size has to go to
+ * someone playing twice.
+ *
+ * 15 players on 2 courts: 16 seats, so 1 repeat is forced and a count of 1 is
+ * optimal rather than a failure. 16 players: 0 forced, so any repeat is real.
+ */
+export function forcedOpeningRepeats(courtCount: number, playerCount: number): number {
+  return Math.max(0, openingGameLimit(courtCount) * 4 - Math.max(0, playerCount))
+}
+
 // ---------------------------------------------------------------------------
 // Utility: match type from player genders
 // ---------------------------------------------------------------------------

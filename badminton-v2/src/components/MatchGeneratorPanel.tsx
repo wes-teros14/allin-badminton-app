@@ -16,6 +16,7 @@ import {
   generateScheduleOptimized,
   DEFAULT_WEIGHTS,
   computeMatchType,
+  forcedOpeningRepeats,
   type GeneratedMatch,
   type AuditData,
   type PinnedMatch,
@@ -692,13 +693,22 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-2">
                   <AuditMetric label="Optimizer Score"       value={audit.score.toLocaleString()} highlight />
-                  <AuditMetric
-                    label={`First-on-Court Repeats (by game ${courtCount * 2})`}
-                    value={audit.openingRepeats}
-                    delta={audit.openingRepeats === 0
-                      ? { text: 'None', good: true }
-                      : { text: `${audit.openingRepeats} back on early`, good: false }}
-                  />
+                  {/* Shown against its floor. The opening window holds more
+                      seats than the roster at 14-15 players, so some repeats are
+                      forced — a bare count makes an optimal schedule look broken. */}
+                  {(() => {
+                    const floor = forcedOpeningRepeats(courtCount, players.length)
+                    const atFloor = audit.openingRepeats <= floor
+                    return (
+                      <AuditMetric
+                        label={`First-on-Court Repeats (by game ${courtCount * 2})`}
+                        value={floor > 0 ? `${audit.openingRepeats} / min ${floor}` : audit.openingRepeats}
+                        delta={atFloor
+                          ? { text: floor === 0 ? 'None' : 'Best possible', good: true }
+                          : { text: `${audit.openingRepeats - floor} avoidable`, good: false }}
+                      />
+                    )
+                  })()}
                   <AuditMetric label="Game Count Violations" value={audit.participationGap} delta={audit.participationGap === 0 ? { text: 'Perfect', good: true } : { text: 'Uneven', good: false }} />
                   <AuditMetric label="Streak Violations"     value={audit.streakViolations} />
                   <AuditMetric label="Partners Repeated"     value={audit.repeatPartners} />
