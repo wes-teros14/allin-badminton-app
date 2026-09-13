@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assignSlot, type MatchSlots } from '@/lib/matchSlots'
+import { assignSlot, partitionBySwap, type MatchSlots } from '@/lib/matchSlots'
 
 const base: MatchSlots = { t1p1: 'bogs', t1p2: 'wes', t2p1: 'john', t2p2: 'steph' }
 
@@ -38,5 +38,37 @@ describe('assignSlot', () => {
   it('a swap keeps the same four players, so the distinct-players rule cannot break', () => {
     const { next } = assignSlot(base, 't2p2', 'bogs')
     expect(new Set(Object.values(next))).toEqual(new Set(Object.values(base)))
+  })
+})
+
+describe('partitionBySwap', () => {
+  const players = [{ id: 'bogs' }, { id: 'wes' }, { id: 'john' }, { id: 'steph' }, { id: 'jax' }]
+  const taken = new Set(['bogs', 'wes', 'john', 'steph'])
+
+  it('hoists the other three slot-holders and leaves everyone else behind', () => {
+    const { swaps, others } = partitionBySwap(players, taken, 'bogs')
+    expect(swaps.map((p) => p.id)).toEqual(['wes', 'john', 'steph'])
+    expect(others.map((p) => p.id)).toEqual(['bogs', 'jax'])
+  })
+
+  it('keeps the player already in this slot out of the swap group — re-picking is a no-op', () => {
+    const { swaps } = partitionBySwap(players, taken, 'steph')
+    expect(swaps.map((p) => p.id)).not.toContain('steph')
+  })
+
+  it('produces no swap group for an empty match, so the list stays flat', () => {
+    const { swaps, others } = partitionBySwap(players, [], '')
+    expect(swaps).toEqual([])
+    expect(others).toHaveLength(players.length)
+  })
+
+  it('accepts a plain array of taken ids, as the court edit form passes', () => {
+    const { swaps } = partitionBySwap(players, ['john', 'jax'], 'wes')
+    expect(swaps.map((p) => p.id)).toEqual(['john', 'jax'])
+  })
+
+  it('preserves the incoming order within each group', () => {
+    const { others } = partitionBySwap(players, ['wes'], '')
+    expect(others.map((p) => p.id)).toEqual(['bogs', 'john', 'steph', 'jax'])
   })
 })

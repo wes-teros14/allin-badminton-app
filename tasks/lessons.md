@@ -499,3 +499,15 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   **What stopped it**: a later query that happened to also select `id` returned 4 rows, contradicting the first. Two disagreeing reads is what exposed it, not any reasoning about the code.
   **Rule**: never write `(data || [])` on a Supabase query while diagnosing. Destructure `{ data, error }` and surface `error` — an empty result and a failed request are opposite findings and the `||` makes them identical. Especially when the empty result is *evidence for the bug you already suspect*: that is the moment the shortcut costs the most.
   **Second rule**: before blaming a just-shipped change for a data anomaly, check whether the anomaly is consistent with the change's *mechanism*. The `match_results` insert policy is `WITH CHECK (true)` with no reference to match status, so no ordering of those two writes could ever have dropped a row. Reading the policy first would have cleared my change in one step instead of after a reproduction attempt.
+
+---
+
+## The dark-theme option colour was landing on a white popup (2026-09-13)
+
+- **Symptom**: styling the "swap" rows of the match-edit player dropdowns, I set the swap options to a light lavender (`--swap-ink` `#D8B4F0`, chosen for 7.8:1 on a dark popup) and verified it in the browser. The app was in dark mode; the popup opened **white**, putting the lavender at 1.8:1. I had very nearly called it done off the computed `color` alone, which read back correctly.
+  **Root cause**: Chromium takes a `<select>` popup's background from the element's *used* `color-scheme`, and that is `light` unless the page declares otherwise. The app sets a `.dark` class and dark background tokens but never declares `color-scheme`, so dark mode was opening light system popups all along. The original screenshot that prompted the work showed a *dark* popup — on a machine where it resolves differently — which is what made a single flat colour look safe.
+  **Why no single colour works**: 4.5:1 on white needs relative luminance &le; 0.183; 4.5:1 on a near-black popup needs &ge; 0.283. The ranges do not overlap. Any option colour that depends on the popup background is a coin flip.
+  **Fix**: two parts. `select.player-select { color-scheme: light }` / `.dark select.player-select { color-scheme: dark }` makes the popup deterministic (scoped to those selects — putting it on `.dark` would repaint every scrollbar in the app), and the swap rows carry their own `--primary-subtle` background so the contrast is fixed by the fg/bg pair, 6.1:1 light and 8.6:1 dark, regardless of what the popup paints.
+  **Rule**: never colour an `<option>` without pinning `color-scheme` on the select first, and prefer setting the option's background alongside its colour — that is the only version whose contrast you can actually compute.
+  **Verification rule**: reading back `getComputedStyle(option).color` proves the rule applied, not that it is legible. Native popups render outside the DOM, so the only check is opening one and looking at it in both themes.
+

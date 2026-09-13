@@ -10,6 +10,7 @@ import type { SplitOutcome } from '@/lib/matchResults'
 import { getEligibleSubstitutes } from '@/lib/substitutes'
 import { validateMatchPlayers } from '@/lib/matchPlayers'
 import { assignSlot, type MatchSlots, type SlotKey } from '@/lib/matchSlots'
+import { renderPlayerOptions } from '@/components/playerOptions'
 
 function formatElapsed(seconds: number) {
   const m = Math.floor(seconds / 60)
@@ -266,17 +267,10 @@ function PlayerSelect({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="border border-border rounded px-2 py-1 text-sm w-full bg-background text-foreground"
+      className="player-select border border-border rounded px-2 py-1 text-sm w-full bg-background text-foreground"
     >
       <option value="">{placeholder}</option>
-      {players.map((p) => {
-        const elsewhere = p.id !== value && takenIds.includes(p.id)
-        return (
-          <option key={p.id} value={p.id}>
-            {elsewhere ? `${p.displayName}  ⇄ swap` : p.displayName}
-          </option>
-        )
-      })}
+      {renderPlayerOptions(players, takenIds, value, (p) => p.displayName)}
     </select>
   )
 }

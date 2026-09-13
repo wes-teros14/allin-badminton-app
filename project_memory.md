@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-12
+Last updated: 2026-09-13
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -130,6 +130,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   rays via `box-shadow`. Not two icons crossfading — nothing pops mid-transition.
 - Design options that were considered and rejected are preserved in
   `badminton-v2/docs/visual/theme-toggle-options.html`.
+- **Native `<select>` popups do not follow the `.dark` class.** Chromium takes a popup's background
+  from the element's used `color-scheme`, which is `light` unless declared — the app declares it
+  nowhere, so dark mode opens *white* system popups. `--swap-ink` (`#6F3E87` light, `#D8B4F0` dark)
+  is the first token that had to care: `select.player-select` pins `color-scheme` per theme, scoped
+  to those selects because putting it on `.dark` would also repaint every scrollbar. No single
+  colour can serve both popups — 4.5:1 on white needs luminance ≤ 0.183, on near-black ≥ 0.283 —
+  so any coloured `<option>` should also set its own background and stop depending on the popup.
 
 ## Testing
 

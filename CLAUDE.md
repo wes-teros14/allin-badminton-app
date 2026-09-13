@@ -119,12 +119,14 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 ## LESSONS
 
 - (Claude adds rules here)
+- Never write `(data || [])` on a Supabase query when diagnosing — destructure `{ data, error }` and surface the error. A rejected request and an empty result are opposite findings, and `||` makes them look identical.
 - A route tells you what mounts, not what it does on mount. Before calling navigation broken, open the component and look for redirect effects — don't conclude from the route table alone.
 - Never parse `getComputedStyle(...).color` with a digit regex; Chromium returns `oklch()`/`oklab()`. Paint it into a 1x1 canvas and read `getImageData`.
 - When auditing colours, sweep Tailwind arbitrary values too: `grep -rEo "(text|bg|border|fill|stroke|ring)-\[#[0-9A-Fa-f]{3,8}\]"`.
 - Never nest a `<button>` inside a `<button>` — the HTML parser closes the outer one and silently truncates its contents. Use `<div role="radio|button" tabindex="0">` for a clickable row that contains controls.
 - Write large file payloads with the Write tool, not a bash heredoc; heredocs over ~80 lines fail in this shell with `unexpected EOF`.
 - When asked where something should go in the app, give a way to choose (an interactive mock) rather than a single prescription, unless only one option is actually viable.
+- Never colour an <option> without first pinning color-scheme on the select. Chromium takes the popup background from the used color-scheme, which is light unless declared — so a dark-theme colour lands on a white popup. Safer still: set the option background too, so contrast holds whatever the popup does.
 
 ## .env Files
 
