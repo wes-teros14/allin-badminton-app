@@ -1130,6 +1130,34 @@
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">
+    <p class="q">Can you make the &ldquo;&#8646; swap&rdquo; row in the player dropdown look different from a normal name?</p>
+    <p class="a">
+      Done, as <em>option D</em> of <code>docs/visual/swap-option-row-styles.html</code>: the players already in
+      the match are hoisted into their own <code>&lt;optgroup&gt;</code> (&ldquo;In this match &mdash; picking
+      swaps&rdquo;, above &ldquo;Everyone else&rdquo;), each row is prefixed <code>&#8646;&nbsp;</code>, and the rows are
+      painted <code>--swap-ink</code> on a <code>--primary-subtle</code> band. Three markers rather than one,
+      because no single one survives every platform &mdash; the iOS and Android system pickers discard
+      <code>&lt;option&gt;</code> styling entirely, so on a phone only the group header and the arrow remain.
+      Shared by both edit forms via <code>renderPlayerOptions</code> in <code>src/components/playerOptions.tsx</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does a dropdown option need its own background colour? Why not just colour the text?</p>
+    <p class="a">
+      Because the text alone is only legible if you know what the native popup paints behind it, and you
+      don&rsquo;t. Chromium takes the popup background from the element&rsquo;s used <code>color-scheme</code>, which is
+      <em>light unless declared</em> &mdash; so the app in dark mode was opening a <strong>white</strong> popup, where the
+      dark-theme lavender <code>#D8B4F0</code> sits at 1.8:1. And no single purple fixes both: clearing 4.5:1 on
+      white needs luminance &le; 0.18, clearing it on a near-black popup needs &ge; 0.28. Two changes followed.
+      <code>select.player-select</code> now pins <code>color-scheme</code> per theme (scoped to these selects &mdash;
+      declaring it on <code>.dark</code> globally would repaint every scrollbar in the app), and the swap rows
+      carry their own background, so contrast is fixed by the pair &mdash; 6.1:1 in light, 8.6:1 in dark &mdash;
+      whatever the popup does.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Could I hand-pick game 1 (or games 1 and 2) and let the engine generate the rest?</p>
     <p class="a">
       Yes, and it fits the engine&rsquo;s shape rather than fighting it. <code>generateScheduleOptimized</code>

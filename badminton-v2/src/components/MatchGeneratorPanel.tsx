@@ -10,6 +10,7 @@ import { supabase } from '@/lib/supabase'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { validateMatchPlayers } from '@/lib/matchPlayers'
 import { assignSlot, EMPTY_SLOTS, type MatchSlots, type SlotKey } from '@/lib/matchSlots'
+import { renderPlayerOptions } from '@/components/playerOptions'
 import type { Json } from '@/types/database'
 import {
   generateScheduleOptimized,
@@ -1037,19 +1038,12 @@ function FourSlotPicker({
       key={key}
       value={value[key]}
       onChange={(e) => handleChange(key, e.target.value)}
-      className={`w-full h-8 rounded border bg-background text-foreground px-2 text-xs transition-colors ${
+      className={`player-select w-full h-8 rounded border bg-background text-foreground px-2 text-xs transition-colors ${
         flashed.includes(key) ? 'border-court2 ring-1 ring-court2' : 'border-input'
       }`}
     >
       <option value="">— P{slotIndex + 1} —</option>
-      {players.map((p) => {
-        const elsewhere = p.id !== value[key] && inMatch.has(p.id)
-        return (
-          <option key={p.id} value={p.id}>
-            {elsewhere ? `${name(p.id)}  ⇄ swap` : name(p.id)}
-          </option>
-        )
-      })}
+      {renderPlayerOptions(players, inMatch, value[key], (p) => name(p.id))}
     </select>
   )
   return (

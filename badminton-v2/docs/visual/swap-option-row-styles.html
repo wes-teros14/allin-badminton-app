@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Player dropdown — five ways to make the “⇄ swap” row look different</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    /* app dark theme tokens */
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted-fg: #B39DBB;
+    --input: #2A1D3A; --blue: #3B82F6; --orange: #F97316; --gold: #FFB200; --teal: #4FD1C5; --swapink: #D8B4F0; --swapbg: #2D1B42; --swapink-lt: #6F3E87; --swapbg-lt: #EDE0F5;
+    /* Chromium/Windows dark popup, as in the screenshot */
+    --pop: #2B2B2B; --pop-fg: #E9E9E9; --pop-hi: #26507E; --pop-line: #3D3D3D;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 34px 20px 90px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1320px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 18px; color: var(--dim); max-width: 940px; }
+  .warn { max-width: 940px; margin: 0 0 26px; padding: 10px 13px; border-radius: 9px;
+    background: #FFF7E6; border: 1px solid #F2D9A0; color: #6B4A00; font-size: 13.5px; }
+  .warn b { color: #4A3200; }
+
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; }
+  .opt { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 15px 18px; }
+  .opt .tag { display: block; font-size: 11px; font-weight: 800; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--primary); margin-bottom: 3px; }
+  .opt h2 { margin: 0 0 6px; font-size: 17px; letter-spacing: -0.01em; }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 14px; min-height: 76px; }
+
+  /* the app-coloured slot box holding a real <select> */
+  .slotbox { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+  .slotbox .lbl { margin: 0 0 6px; font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--blue); }
+  select { width: 100%; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--input); color: var(--fg); font-size: 13px; padding: 0 8px; color-scheme: dark; }
+  .hint { margin: 7px 0 0; font-size: 11.5px; color: var(--muted-fg); }
+
+  /* the “what the open list looks like” mock */
+  .popwrap { margin-top: 12px; }
+  .popcap { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--dim); margin: 0 0 6px; }
+  .pop { background: var(--pop); color: var(--pop-fg); border: 1px solid var(--pop-line);
+    border-radius: 6px; padding: 4px 0; font-size: 13.5px; box-shadow: 0 8px 22px rgba(0,0,0,.28); }
+  .row { padding: 4px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row.sel { background: var(--pop-hi); }
+  .grouphdr { padding: 5px 8px 3px; font-weight: 700; font-style: italic; font-size: 12.5px; color: #C9C9C9; }
+  .indent { padding-left: 22px; }
+
+  /* per-option swap-row treatments in the mock */
+  .sw-a { color: var(--teal); font-weight: 700; }
+  .sw-b { }
+  .sw-d { color: var(--swapink); background: var(--swapbg); font-weight: 700; }
+  .arrow { display: inline-block; width: 1.35em; }
+
+  /* option E: custom listbox */
+  .cl { position: relative; }
+  .cl-btn { width: 100%; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--input); color: var(--fg); font-size: 13px; padding: 0 8px; text-align: left;
+    display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-family: inherit; }
+  .cl-list { position: absolute; z-index: 20; left: 0; right: 0; top: 36px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 8px; padding: 4px; box-shadow: 0 14px 34px rgba(0,0,0,.5);
+    max-height: 230px; overflow: auto; }
+  .cl-list[hidden] { display: none; }
+  .cl-item { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 6px 8px; border-radius: 6px; color: var(--fg); font-size: 13px; cursor: pointer; }
+  .cl-item:hover, .cl-item.active { background: rgba(255,255,255,.07); }
+  .cl-item.swap { color: var(--teal); }
+  .cl-item.swap:hover, .cl-item.swap.active { background: rgba(79,209,197,.12); }
+  .pill { flex: none; font-size: 9.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    border: 1px solid rgba(79,209,197,.5); color: var(--teal); border-radius: 999px; padding: 1px 6px; }
+  .cl-static { position: static; margin-top: 0; }
+
+  .note { margin: 12px 0 0; font-size: 12.5px; color: var(--dim); }
+  .note b { color: var(--ink); }
+  .verdict { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 12.5px;
+    background: #F4F0F8; border: 1px solid #E3D8EC; color: #4A3459; }
+  .verdict b { color: #2E1E3A; }
+
+  .foot { max-width: 940px; margin: 30px 0 0; padding: 14px 16px; border: 1px solid var(--line);
+    border-radius: 12px; background: #fff; font-size: 14px; }
+  .foot h3 { margin: 0 0 8px; font-size: 15px; }
+  .foot ul { margin: 0; padding-left: 18px; color: var(--dim); }
+  .foot li { margin-bottom: 4px; }
+  code { font: 600 12.5px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: #F1EDF5; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Player dropdown — five ways to make the “⇄ swap” row look different</h1>
+  <p class="sub">
+    Today a player already in the match reads <code>Marcus Lim  ⇄ swap</code> in the same white text as
+    everyone else, so the row only separates itself once you read to the end of the name. Below are five
+    treatments for the same list. Each card has a <b>live dropdown</b> you can open, and a mock of the open
+    list beside it so all five can be compared without clicking through them one at a time.
+  </p>
+
+  <div class="warn">
+    <b>One constraint decides a lot of this.</b> These are native <code>&lt;select&gt;</code> elements.
+    Desktop Chrome honours <code>color</code> and <code>font-weight</code> on an <code>&lt;option&gt;</code>,
+    but the iOS and Android system pickers throw all of it away and render plain text. So a colour-only fix
+    is invisible on a phone — and the phone is where this edit form actually gets used courtside. Anything
+    carried in the <i>text</i> (an arrow, a group header) survives everywhere.
+  </div>
+
+  <div class="options">
+
+    <!-- ============ A ============ -->
+    <section class="opt">
+      <span class="tag">Option A</span>
+      <h2>Colour and weight only</h2>
+      <p class="why">Same text as today, but the swap rows are teal and bold. One CSS rule, no wording
+        change, nothing moves. The weakest of the five on a phone, where it degrades to exactly what you
+        have now.</p>
+
+      <div class="slotbox">
+        <p class="lbl">Team 1 · P1</p>
+        <select id="selA">
+          <option value="">— P1 —</option>
+        </select>
+        <p class="hint">Open it — Gellie and Jillmarie are the two already in this match.</p>
+      </div>
+
+      <div class="popwrap">
+        <p class="popcap">Open list</p>
+        <div class="pop">
+          <div class="row">Jax</div>
+          <div class="row sw-a">Gellie  ⇄ swap</div>
+          <div class="row">Rick</div>
+          <div class="row sw-a">Jillmarie  ⇄ swap</div>
+          <div class="row">Marcus Lim</div>
+        </div>
+      </div>
+      <p class="note"><b>Cost:</b> two lines. <b>Risk:</b> none. <b>Mobile:</b> no effect.</p>
+    </section>
+
+    <!-- ============ B ============ -->
+    <section class="opt">
+      <span class="tag">Option B</span>
+      <h2>Arrow in front, name after</h2>
+      <p class="why">Move the marker to the start: <code>⇄  Gellie — swap</code>. Every swap row now begins
+        with the same glyph, so they line up as a column down the left edge and you spot them without
+        reading. Pure text, so it survives the iOS and Android pickers untouched.</p>
+
+      <div class="slotbox">
+        <p class="lbl">Team 1 · P1</p>
+        <select id="selB">
+          <option value="">— P1 —</option>
+        </select>
+        <p class="hint">The arrow column is the whole trick.</p>
+      </div>
+
+      <div class="popwrap">
+        <p class="popcap">Open list</p>
+        <div class="pop">
+          <div class="row"><span class="arrow"></span>Jax</div>
+          <div class="row"><span class="arrow">⇄</span>Gellie — swap</div>
+          <div class="row"><span class="arrow"></span>Rick</div>
+          <div class="row"><span class="arrow">⇄</span>Jillmarie — swap</div>
+          <div class="row"><span class="arrow"></span>Marcus Lim</div>
+        </div>
+      </div>
+      <p class="note"><b>Cost:</b> one string change. <b>Risk:</b> none. <b>Mobile:</b> works fully.</p>
+    </section>
+
+    <!-- ============ C ============ -->
+    <section class="opt">
+      <span class="tag">Option C</span>
+      <h2>Split into two groups</h2>
+      <p class="why">Stop marking rows and separate them instead. An <code>&lt;optgroup&gt;</code> puts the
+        in-match players under their own bold italic header, indented, above everyone else — so the swap
+        candidates are found by <i>position</i>, not by reading. Native headers render on mobile too.</p>
+
+      <div class="slotbox">
+        <p class="lbl">Team 1 · P1</p>
+        <select id="selC">
+          <option value="">— P1 —</option>
+        </select>
+        <p class="hint">Group headers are not selectable — they cannot be picked by accident.</p>
+      </div>
+
+      <div class="popwrap">
+        <p class="popcap">Open list</p>
+        <div class="pop">
+          <div class="grouphdr">In this match — picking swaps</div>
+          <div class="row indent">Gellie</div>
+          <div class="row indent">Jillmarie</div>
+          <div class="grouphdr">Everyone else</div>
+          <div class="row indent">Jax</div>
+          <div class="row indent">Rick</div>
+          <div class="row indent">Marcus Lim</div>
+        </div>
+      </div>
+      <p class="note"><b>Cost:</b> a small render change. <b>Risk:</b> the list re-sorts as you edit, so a
+        name moves between groups mid-edit. <b>Mobile:</b> works fully.</p>
+    </section>
+
+    <!-- ============ D ============ -->
+    <section class="opt">
+      <span class="tag" style="color:#0F7B34">Option D — chosen, shipped</span>
+      <h2>Groups, arrow and colour together</h2>
+      <p class="why">B and C and A stacked: grouped at the top, each row prefixed with the arrow, and teal on
+        desktop. Maximum signal, still a plain native dropdown. If the swap row is the thing people keep
+        missing, this is the one that cannot be missed.</p>
+
+      <div class="slotbox">
+        <p class="lbl">Team 1 · P1</p>
+        <select id="selD">
+          <option value="">— P1 —</option>
+        </select>
+        <p class="hint">Degrades to option C on a phone — still clearly separated.</p>
+      </div>
+
+      <div class="popwrap">
+        <p class="popcap">Open list</p>
+        <div class="pop">
+          <div class="grouphdr">In this match — picking swaps</div>
+          <div class="row indent sw-d">⇄  Gellie</div>
+          <div class="row indent sw-d">⇄  Jillmarie</div>
+          <div class="grouphdr">Everyone else</div>
+          <div class="row indent">Jax</div>
+          <div class="row indent">Rick</div>
+          <div class="row indent">Marcus Lim</div>
+        </div>
+      </div>
+      <p class="note"><b>Cost:</b> small. <b>Risk:</b> busiest of the native options. <b>Mobile:</b> partial
+        (grouping and arrow survive, colour does not).</p>
+    </section>
+
+    <!-- ============ E ============ -->
+    <section class="opt">
+      <span class="tag">Option E</span>
+      <h2>Custom dropdown with a badge</h2>
+      <p class="why">Drop the native picker and render the list yourself: a teal <span class="pill">Swap</span>
+        pill on the right, app colours, the same look on every device. Total control — and the only option
+        that looks identical on desktop and phone. It is also the only one that is real work: keyboard
+        handling, focus, scroll and screen-reader roles all become ours.</p>
+
+      <div class="slotbox">
+        <p class="lbl">Team 1 · P1</p>
+        <div class="cl">
+          <button type="button" class="cl-btn" id="clBtn" aria-haspopup="listbox" aria-expanded="false">
+            <span id="clVal">Raych</span><span aria-hidden="true">▾</span>
+          </button>
+          <div class="cl-list" id="clList" role="listbox" hidden></div>
+        </div>
+        <p class="hint">Click it — this one is a real custom listbox, not a mock.</p>
+      </div>
+
+      <div class="popwrap">
+        <p class="popcap">Open list</p>
+        <div class="cl-list cl-static">
+          <div class="cl-item">Jax</div>
+          <div class="cl-item swap">Gellie <span class="pill">Swap</span></div>
+          <div class="cl-item">Rick</div>
+          <div class="cl-item swap">Jillmarie <span class="pill">Swap</span></div>
+          <div class="cl-item">Marcus Lim</div>
+        </div>
+      </div>
+      <p class="note"><b>Cost:</b> a new shared component plus accessibility work. <b>Risk:</b> we own every
+        bug the browser used to handle. <b>Mobile:</b> identical to desktop — which some people prefer and
+        some do not, because it replaces the familiar system picker.</p>
+      <div class="verdict"><b>Worth it only</b> if we want this list to grow later — levels, avatars,
+        “resting” markers. A native <code>&lt;option&gt;</code> can never show any of those.</div>
+    </section>
+
+  </div>
+
+  <div class="foot">
+    <h3>Reply with a letter and I will implement it in both places</h3>
+    <ul>
+      <li><code>MatchGeneratorPanel.tsx</code> — <code>FourSlotPicker</code>, the generator and pinned-games forms.</li>
+      <li><code>CourtTabs.tsx</code> — <code>PlayerSelect</code>, the court card and queue edit form.</li>
+      <li>Mixing is fine: e.g. <b>B now</b> (one string, ships today) and <b>E later</b> if the list ever needs to show more than a name.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+  const PLAYERS = ["Jax", "Gellie", "Rick", "Jillmarie", "Marcus Lim", "Tin V", "Steph", "Bogs"];
+  const IN_MATCH = new Set(["Gellie", "Jillmarie"]);
+
+  function opt(text, teal) {
+    const o = document.createElement("option");
+    o.textContent = text;
+    if (teal === "swap") { o.style.color = "#D8B4F0"; o.style.background = "#2D1B42"; o.style.fontWeight = "700"; }
+    else if (teal) { o.style.color = "#4FD1C5"; o.style.fontWeight = "700"; }
+    return o;
+  }
+
+  // A — colour only, text unchanged
+  PLAYERS.forEach(n => {
+    const s = IN_MATCH.has(n);
+    selA.appendChild(opt(s ? n + "  ⇄ swap" : n, s));
+  });
+
+  // B — arrow first, plain text
+  PLAYERS.forEach(n => {
+    const s = IN_MATCH.has(n);
+    selB.appendChild(opt(s ? "⇄  " + n + " — swap" : "  " + n, false));
+  });
+
+  // C — two optgroups
+  function group(sel, label, names, teal, prefix) {
+    const g = document.createElement("optgroup");
+    g.label = label;
+    names.forEach(n => g.appendChild(opt((prefix || "") + n, teal)));
+    sel.appendChild(g);
+  }
+  const inList = PLAYERS.filter(n => IN_MATCH.has(n));
+  const outList = PLAYERS.filter(n => !IN_MATCH.has(n));
+  group(selC, "In this match — picking swaps", inList, false, "");
+  group(selC, "Everyone else", outList, false, "");
+
+  // D — groups + arrow + colour
+  group(selD, "In this match — picking swaps", inList, "swap", "⇄  ");
+  group(selD, "Everyone else", outList, false, "");
+
+  // E — custom listbox
+  (function () {
+    let open = false, value = "Raych";
+    PLAYERS.forEach(n => {
+      const el = document.createElement("div");
+      el.className = "cl-item" + (IN_MATCH.has(n) ? " swap" : "");
+      el.setAttribute("role", "option");
+      el.innerHTML = IN_MATCH.has(n)
+        ? n + ' <span class="pill">Swap</span>'
+        : n;
+      el.addEventListener("click", () => { value = n; clVal.textContent = n; toggle(false); });
+      clList.appendChild(el);
+    });
+    function toggle(next) {
+      open = next === undefined ? !open : next;
+      clList.hidden = !open;
+      clBtn.setAttribute("aria-expanded", String(open));
+    }
+    clBtn.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
+    document.addEventListener("click", () => toggle(false));
+    clList.addEventListener("click", (e) => e.stopPropagation());
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") toggle(false); });
+  })();
+</script>
+</body>
+</html>

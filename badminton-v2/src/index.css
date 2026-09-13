@@ -54,6 +54,11 @@
        distinct hue, because two tints of the same purple are indistinguishable
        at the 20px chip size the list rows use. */
     --court2: #1F6F6B;
+    /* --swap-ink marks the "picking this trades the two slots" rows in the
+       player dropdowns. Brand purple on the white popup here; the dark theme
+       overrides it, because a native <option> popup paints on near-black where
+       #6F3E87 is 2.1:1. Same reasoning as --gold / --gold-ink. */
+    --swap-ink: #6F3E87;
 }
 
 .dark {
@@ -92,6 +97,8 @@
     --gold-ink: #FFB200;
     --primary-subtle: #2D1B42;
     --court2: #4FD1C5;
+    /* A light tint of the brand purple: same hue, 7.8:1 on the dark popup. */
+    --swap-ink: #D8B4F0;
 }
 
 .live-board-dark {
@@ -152,6 +159,7 @@
     --color-gold: var(--gold);
     --color-gold-ink: var(--gold-ink);
     --color-court2: var(--court2);
+    --color-swap-ink: var(--swap-ink);
     --color-muted-surface: var(--muted-surface);
     --color-surface: var(--surface);
 }
@@ -179,6 +187,18 @@
     cursor: pointer;
     opacity: 1;
   }
+
+  /* The match-edit player dropdowns (playerOptions.tsx). Their swap rows are
+     painted --swap-ink, which only works if we know what the native popup
+     paints on — and Chromium takes that from the element's used color-scheme,
+     which is light unless declared. Undeclared, the dark theme handed a *white*
+     popup the light-lavender dark value at 1.8:1. No single purple can clear
+     4.5:1 on both a white and a near-black popup, so the scheme is pinned per
+     theme and --swap-ink's two values each land on the background they were
+     measured against. Scoped to these selects: declaring it on .dark globally
+     would also repaint every scrollbar in the app. */
+  select.player-select { color-scheme: light; }
+  .dark select.player-select { color-scheme: dark; }
 }
 
 /* Theme toggle mark (ThemeToggle.tsx). One element in two states: the crescent
