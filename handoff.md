@@ -4,9 +4,10 @@ Updated: 2026-09-13. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Uncommitted on `dev`.** The swap-row restyle below is in the working tree only — nothing
-  committed, nothing pushed. `git status` also shows pre-existing local edits to `CLAUDE.md` and an
-  untracked `todo.md` that are the user's, not part of this change.
+- **Pushed to `dev` and `main`.** Commit `c49fd6b` on `dev`, merged non-ff as `e9c2950` on `main`.
+  Rollback anchor: `git revert -m 1 e9c2950`. Local `main` was **14 commits stale** again (still on
+  `55c6eee`) and was reset to `origin/main` before the merge — same trap as 2026-09-12, check this
+  every time. Untracked and deliberately not committed: `todo.md` and `.claude/launch.json`.
 - `npm run build` clean, `npm run lint` clean apart from the pre-existing `ProfileView.tsx:257`
   warning, vitest **288/288** (283 + 5 new `partitionBySwap` tests).
 - Previous work (seed matches, *Use profile levels*, swap-instead-of-block, collapsed Fixed Opening
@@ -40,12 +41,13 @@ a live session) — it shares `renderPlayerOptions` verbatim and is covered by t
 
 ## Next step
 
-- Commit and push if the user is happy with how it looks — nothing else is outstanding.
+- Nothing outstanding. Vercel deploys `main`, so the restyle should be live at
+  badmintontayo.mrkws.com — not confirmed in production yet.
 
 ## Open question
 
 - The swapped-pair flash in `FourSlotPicker` is still `--court2` teal while the dropdown marker is
   now purple: two colours for one concept. Left alone deliberately (it ships already, and the user
   asked only about the dropdown). Worth asking whether the flash should move to `--swap-ink` too.
-- `.claude/launch.json` was added to attach the Browser pane to the already-running dev server on
-  5173. Untracked — delete it or commit it, whichever the user prefers.
+- `.claude/launch.json` attaches the Browser pane to an already-running dev server on 5173. Left
+  untracked — delete it or commit it, whichever the user prefers.
