@@ -1,9 +1,10 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-13. Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-14. Overwrite this file on every update; it is never a running history.
 
 ## State
 
+- **Signed-out landing hero renamed** (2026-09-14): `HomeView.tsx:148` now reads *Badminton Tayo!* instead of *Badminton Palo Palo*. Only occurrence in the codebase; the browser tab title was already "Badminton Tayo". The logo file is still `/pp-logo.jpeg`, carrying the old initials — cosmetic, not renamed.
 - **Pushed to `dev` and `main`.** The match generator now has the **First-on-court rule**.
 - `npm run build` clean, `npm run lint` clean apart from the pre-existing `ProfileView.tsx:257`
   warning, vitest **303/303** (288 baseline + 15 new in `matchGenerator.firstOnCourt.test.ts`).
