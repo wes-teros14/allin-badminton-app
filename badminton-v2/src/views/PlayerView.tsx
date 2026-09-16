@@ -434,6 +434,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
       ) : (
         <PlayerScheduleHeader
           nameSlug={playerDisplayName}
+          avatarUrl={playerAvatarUrl}
           sessionName={sessionName}
           sessionDate={sessionDate}
           sessionVenue={sessionVenue}

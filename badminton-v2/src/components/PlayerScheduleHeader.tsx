@@ -1,5 +1,8 @@
+import { Avatar } from '@/components/Avatar'
+
 interface Props {
   nameSlug: string
+  avatarUrl?: string | null
   sessionName: string
   sessionDate: string
   sessionVenue: string | null
@@ -24,7 +27,7 @@ interface Props {
  * both themes, so one measurement covers light and dark — white at 0.75 is
  * 5.16:1, at 0.70 it is 4.66:1, and by 0.65 it fails AA at 4.29:1.
  */
-export function PlayerScheduleHeader({ nameSlug, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, gameCount }: Props) {
+export function PlayerScheduleHeader({ nameSlug, avatarUrl, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, gameCount }: Props) {
   const formattedDate = sessionDate
     ? new Date(sessionDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(/^(\w{3})/, '$1.')
     : ''
@@ -33,17 +36,15 @@ export function PlayerScheduleHeader({ nameSlug, sessionName, sessionDate, sessi
   const whenLine = [formattedDate, sessionTime, sessionDuration ? `${sessionDuration} hrs` : null]
     .filter(Boolean)
     .join(' · ')
-  const initial = nameSlug.trim().charAt(0).toUpperCase()
 
   return (
     <div className="bg-primary text-primary-foreground px-4 py-5">
+      {/* `Avatar` rather than a plain initial disc: it already falls back to a
+          hue derived from the name, so two players without a photo do not both
+          render as the same blank circle. 20px is the smallest size at which a
+          real photo is still recognisable next to 12px text. */}
       <div className="mb-1.5 flex items-center gap-1.5">
-        <span
-          className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-primary-foreground/20 text-[9px] font-bold"
-          aria-hidden="true"
-        >
-          {initial}
-        </span>
+        <Avatar url={avatarUrl ?? null} name={nameSlug} size={20} />
         <span className="text-xs font-semibold opacity-90">{nameSlug}</span>
       </div>
 
