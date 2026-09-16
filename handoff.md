@@ -1,61 +1,56 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-14. Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-16. Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- **Signed-out landing hero renamed** (2026-09-14): `HomeView.tsx:148` now reads *Badminton Tayo!* instead of *Badminton Palo Palo*. Only occurrence in the codebase; the browser tab title was already "Badminton Tayo". The logo file is still `/pp-logo.jpeg`, carrying the old initials — cosmetic, not renamed.
-- **Pushed to `dev` and `main`.** The match generator now has the **First-on-court rule**.
-- `npm run build` clean, `npm run lint` clean apart from the pre-existing `ProfileView.tsx:257`
-  warning, vitest **303/303** (288 baseline + 15 new in `matchGenerator.firstOnCourt.test.ts`).
-- Untracked and deliberately not committed: `todo.md` (root) and `.claude/launch.json` — the latter
-  now actually starts the dev server (`npm run dev` in `badminton-v2`) rather than only attaching.
+- All work this session is in one file: `badminton-v2/src/views/SessionPlayerDetailView.tsx`.
+- `npm run build` clean, `tsc` clean, eslint clean on the edited file, vitest **305/305**.
+- **Nothing committed.** Working tree also carries pre-existing, unrelated deletions of 17
+  `badminton-v2/docs/visual/*.html` files and an edited root `CLAUDE.md` — not from this session.
 
 ## Done this session
 
-**The First-on-court rule** — from a real schedule where Aian & Sim played Game 1 and Game 4, which
-on 2 courts is zero rest but which the scorer was *rewarding* with a +300 `earlyRestReward`.
+**Payment fee card — four steps (Option A).**
+- New step 1 `You are registered`, hardcoded `state="done"` (the card only mounts when
+  `isRegistered`). Send → 2, Upload → 3, Wait → 4.
+- Step 4 reworded to `Please wait while the admin confirms it`, lowercase *admin*, and its body copy
+  now states the duration: *"This usually takes a few hours, and can take up to a day."*
+- Consequence accepted at design time: `PayStep` draws ✓ instead of `n` when done, so the first
+  number a player ever sees is **2**.
 
-```
-firstOnCourt = games 1 .. courtCount      // they all start together
-gameLimit    = courtCount * 2             // the first two rounds
-penalise P if P is in firstOnCourt AND appears again at or below gameLimit
-cost = openingRepeatPenalty * (gameLimit - gap)
-```
+**Fixed the flashing "✅ You're registered!" banner.** `usePaymentSettings` starts at `null/null`, so
+the first frame looked like "no GCash configured" and the banner painted before the payment card
+replaced it. The hook already returned `isLoading`; the call site never read it. Now gated on
+`!paymentSettingsLoading`.
 
-- `src/lib/matchGenerator.ts` — `courtCount` option (**default 1**, so every existing caller is
-  unchanged), `firstOnCourtGames()` / `openingGameLimit()`, the `openingRepeatPenalty` weight
-  (**400**), the `openingRepeats` audit counter, and the rule in `evaluateSessionScore`.
-  `buildAssignment` also filters openers out of the pool inside the window, so the rule never has to
-  outbid the gender weights on score.
-- `src/components/MatchGeneratorPanel.tsx` — passes `courtCount` through, one weight slider, the
-  *First-on-Court Repeats (by game N)* audit tile, one Scoring Math row.
-- **Verified in the running app** against the 15-player dev session: tile read 1, hand-checked
-  against the breakdown (Jax in games 1 and 4). 1 is the arithmetic floor — games 1–4 hold 16 seats
-  against 15 players, so one repeat is forced.
+**`SessionFeePaidBar` (Option C).** A green strip flush under the session header, shown on
+`!isLoading && isRegistered && paid === true`. It is the only thing on `/sessions/:id` that tells a
+player the admin confirmed — the fee card unmounts on `paid = true`. Deliberately paid-only: while
+unpaid or waiting, the card below carries its own pill. Verified rendering in the dev session.
+The tick ink is a fixed `#0B2915`, not a token: `--success` is `#22C55E` in both themes, so
+`text-background` would be near-white in light mode.
 
-**Two pre-existing tests changed, both justified in `tasks/todo.md`:** S2's expected value moved by
-exactly `4 × openingRepeatPenalty` (the rule fires at 1 court by design); 5.6 now sweeps seeds and
-asserts ≥95% rather than hard-asserting gender validity — verified the pre-change engine fails on the
-**same 1-in-40 seed**, so it was passing by luck, not regressed.
-
-**Built then reverted at the user's direction** — do not re-propose without asking: scaling the
-general rest target by court count, `idealRestGames` default 1, raising `restSpacingPenalty`, and the
-double-booking hard block + `overlapPenalty`. Reasons and measurements are in `tasks/todo.md` and
-`docs/qa-log.html`. The two diagrams in `docs/visual/` carry a banner saying their remedy did not ship.
+**Correction recorded** in `docs/qa-log.html` and `tasks/lessons.md`: the earlier claim that a
+confirmed payment produced *no* in-app signal was only true of `/sessions/:id`.
+`/match-schedule/session/:id` renders `PaymentBanner` (`src/components/MatchBoard.tsx:158`), which
+already showed a `✓ Paid ₱370` chip.
 
 ## Next step
 
-- Nothing outstanding. Vercel deploys `main`.
+- **Open question put to the user, not yet answered:** should `PlayerScheduleHeader` itself be
+  redesigned? Recommendation given was *not now* — its weaknesses are cosmetic (lines 2 and 3 are
+  both `text-sm` separated only by `opacity-80` vs `opacity-70`; the 24px bold slot holds the
+  player's own name rather than the session identity), it is used on two routes, and bundling it with
+  the strip would make either change hard to evaluate.
+- Mocks kept for reference: `temporary_files/payment-step-registered-options.html` (step layout,
+  A chosen) and `temporary_files/payment-paid-state-options.html` (header status, C chosen).
 
 ## Open question
 
-- **Nothing blocking.** The two items previously listed here are closed: the audit tile now shows its
-  arithmetic floor (`forcedOpeningRepeats`), and the repeat-partnership surcharge was dropped because
-  it was already handled — an opening repeat that is also a partner repeat is charged by both weights
-  independently (800 + 150 vs 800). Whether 150 is the right premium is a slider, not a feature.
-- Only unit-tested, not seen rendering: the tile's `n / min m` form. The dev session has 16 players so
-  its floor is 0, and court count is not editable once registration closes.
-- `Max Consecutive Games` ≥ 2 on 2 courts silently permits unplayable schedules and nothing warns.
-  Low priority — the default is 1 and has never been changed, and nothing now guards it since
-  `overlapPenalty` was dropped (it only mattered at 3+ courts, which this project never runs).
+- **Nothing blocking.** The dev-data question is closed: the user set `Test Admin` back to unpaid, and
+  both branches are now verified on screen in the Jul. 28 2026 dev session
+  (`bce6f898-c4cd-4334-9d38-54cd7a1df91f`) — paid shows the green strip and no fee card; unpaid shows
+  the four-step card (✓ / 2 / 3 / 4) and no strip.
+- **Not verified in the running app**: step 4's new duration sentence, which only renders once a
+  receipt exists. Unit-safe (a static string in an existing branch) but never seen on screen.
