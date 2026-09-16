@@ -1,13 +1,16 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-16. Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-16 (header redesign added). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- All work this session is in one file: `badminton-v2/src/views/SessionPlayerDetailView.tsx`.
+- Two files touched: `badminton-v2/src/views/SessionPlayerDetailView.tsx` and
+  `badminton-v2/src/components/PlayerScheduleHeader.tsx`.
+- **Both pushed.** `dev` at `f2098d5`, `main` at `708cf26` (non-fast-forward merge).
 - `npm run build` clean, `tsc` clean, eslint clean on the edited file, vitest **305/305**.
-- **Nothing committed.** Working tree also carries pre-existing, unrelated deletions of 17
-  `badminton-v2/docs/visual/*.html` files and an edited root `CLAUDE.md` — not from this session.
+- Working tree still carries pre-existing, unrelated deletions of 17
+  `badminton-v2/docs/visual/*.html` files, an edited root `CLAUDE.md`, and untracked
+  `.claude/launch.json` / `todo.md`. None of it was committed, deliberately.
 
 ## Done this session
 
@@ -36,15 +39,23 @@ confirmed payment produced *no* in-app signal was only true of `/sessions/:id`.
 `/match-schedule/session/:id` renders `PaymentBanner` (`src/components/MatchBoard.tsx:158`), which
 already showed a `✓ Paid ₱370` chip.
 
+**`PlayerScheduleHeader` redesigned (Option A).** Session name is now the headline; the player's
+name is a small eyebrow row with an initial chip; when and where are two lines separated by size and
+weight rather than opacity alone; game count moved to a chip. Verified on both call sites
+(`/sessions/:id`, `/match-schedule/session/:id`) in dark and light.
+
+**Contrast floor worth remembering**: `--primary` is `#6F3E87` in both themes, so one measurement
+covers both — white at 0.75 is 5.16:1, 0.70 is 4.66:1, 0.65 fails AA at 4.29:1. Nothing in the
+header goes below `opacity-75`.
+
 ## Next step
 
-- **Open question put to the user, not yet answered:** should `PlayerScheduleHeader` itself be
-  redesigned? Recommendation given was *not now* — its weaknesses are cosmetic (lines 2 and 3 are
-  both `text-sm` separated only by `opacity-80` vs `opacity-70`; the 24px bold slot holds the
-  player's own name rather than the session identity), it is used on two routes, and bundling it with
-  the strip would make either change hard to evaluate.
+- **One open copy question, raised twice and still unanswered:** before the draw, `gameCount` is 0
+  and the new chip reads `0 GAMES` — louder as a chip than it was as a clause. Suggested
+  `Not drawn yet` at zero. One-line change in `PlayerScheduleHeader.tsx`.
 - Mocks kept for reference: `temporary_files/payment-step-registered-options.html` (step layout,
-  A chosen) and `temporary_files/payment-paid-state-options.html` (header status, C chosen).
+  A chosen), `temporary_files/payment-paid-state-options.html` (header status, C chosen),
+  `temporary_files/session-header-redesign-options.html` (header layout, A chosen).
 
 ## Open question
 
