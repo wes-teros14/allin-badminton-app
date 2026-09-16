@@ -1,12 +1,13 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-16 (header redesign added). Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-16 (header redesign + avatar). Overwrite this file on every update; it is never a running history.
 
 ## State
 
 - Two files touched: `badminton-v2/src/views/SessionPlayerDetailView.tsx` and
   `badminton-v2/src/components/PlayerScheduleHeader.tsx`.
-- **Both pushed.** `dev` at `f2098d5`, `main` at `708cf26` (non-fast-forward merge).
+- Also touched: `badminton-v2/src/views/PlayerView.tsx` (one new prop).
+- **All pushed.** `dev` at `9be1648`, `main` at `ab8e2ab` (non-fast-forward merges throughout).
 - `npm run build` clean, `tsc` clean, eslint clean on the edited file, vitest **305/305**.
 - Working tree still carries pre-existing, unrelated deletions of 17
   `badminton-v2/docs/visual/*.html` files, an edited root `CLAUDE.md`, and untracked
@@ -43,6 +44,16 @@ already showed a `✓ Paid ₱370` chip.
 name is a small eyebrow row with an initial chip; when and where are two lines separated by size and
 weight rather than opacity alone; game count moved to a chip. Verified on both call sites
 (`/sessions/:id`, `/match-schedule/session/:id`) in dark and light.
+
+The eyebrow now renders the player's photo via the existing `Avatar` component at 20px, fed by a new
+optional `avatarUrl` prop wired from `usePlayerSchedule`'s `playerAvatarUrl` (i.e.
+`profiles.avatar_url`, the same source the match-board faces use) at both call sites. `Avatar`'s
+no-photo fallback derives a hue from the name, so two photoless players no longer collapse into
+identical discs.
+
+Unrelated observation, not acted on: the **top nav** avatar and the header avatar show different
+images for the same user, so the nav is probably reading the auth provider's picture rather than
+`profiles.avatar_url`. Pre-existing; not investigated.
 
 **Contrast floor worth remembering**: `--primary` is `#6F3E87` in both themes, so one measurement
 covers both — white at 0.75 is 5.16:1, 0.70 is 4.66:1, 0.65 fails AA at 4.29:1. Nothing in the
