@@ -553,3 +553,32 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   **Rule**: a weight that "loses every trade" is not automatically underweighted — check whether there is
   anything left to win first. Sweep the weight against the metrics it competes with before changing a
   default, and keep the sweep cheap (8 runs per value was enough for the ordering to be obvious).
+
+## Payment card — the "you are registered" step and the paid dead-end (2026-09-16)
+
+- **Symptom**: a "✅ You're registered!" banner flashed on `/sessions/:id` and vanished.
+  **Root cause**: `usePaymentSettings` starts at `phoneNumber: null, qrCodeUrl: null`, so on the
+  first frame `hasPaymentInfo` is false, `showPaymentInfo` is false, and the banner — whose
+  condition is `isRegistered && !showPaymentInfo` — painted. The hook already returned `isLoading`;
+  the call site destructured only the two values. **Fix**: read `isLoading` and gate the banner on
+  `!paymentSettingsLoading`.
+  **Rule**: a hook returning `isLoading` whose caller ignores it is a flash waiting to happen —
+  "still loading" and "configured as empty" are indistinguishable from the value alone.
+
+- **Symptom**: a player marked paid never learns it happened.
+  **Root cause**: `shouldShowPaymentInfo` is `isRegistered && paid !== true && hasPaymentInfo`, so
+  `paid = true` unmounts the whole card while the player is sitting on "Please wait while the admin
+  confirms it". The confirmation email that used to cover this (migration 046) was deleted wholesale
+  by migration 050. Net: zero signal, in-app or by email.
+  **Status**: open — options mocked in `temporary_files/payment-paid-state-options.html`, awaiting a
+  pick. Note there is no `paid_at` column (migration 042 added a bare boolean), so no UI may promise
+  a confirmation timestamp without a migration.
+  **Rule**: before designing "tell the user X happened", grep the migrations for a rollback — an
+  existing trigger is not proof the feature still runs.
+
+- **Correction to the entry above**: "a confirmed payment produces no in-app signal" was only true on
+  `/sessions/:id`. `/match-schedule/session/:id` renders `PaymentBanner`
+  (`src/components/MatchBoard.tsx:158`), which already branched on `paymentState === 'paid'` and showed a
+  `✓ Paid ₱370` chip. **Rule**: before claiming "the app doesn't do X", grep for every consumer of the
+  shared helper (`derivePaymentState` here) — two routes rendering one concept through different
+  components is the norm in this codebase, not the exception.

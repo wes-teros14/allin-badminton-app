@@ -188,8 +188,11 @@ const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 
 
 /**
  * One step of the payment flow. `on` is the step you can act on now, `done` is
- * behind you, `off` is ahead — step 3 is always `off` until a receipt exists,
+ * behind you, `off` is ahead — step 4 is always `off` until a receipt exists,
  * because it is the one you cannot complete yourself.
+ *
+ * A `done` step renders a ✓ in place of its number, so `n` only ever shows on a
+ * step that is still ahead of the player.
  */
 function PayStep({
   n,
@@ -223,6 +226,35 @@ function PayStep({
         </p>
         {children ? <div className="mt-2.5">{children}</div> : null}
       </div>
+    </div>
+  )
+}
+
+/**
+ * The only thing that tells a player their payment was confirmed.
+ *
+ * The payment card unmounts the instant `paid` flips true (see
+ * `shouldShowPaymentInfo`), so without this the answer to "did the admin
+ * confirm it?" arrived as the card disappearing — indistinguishable from a
+ * bug. Sits flush under the session header so it is on screen for the rest of
+ * the session rather than only while the card happens to render.
+ *
+ * Deliberately paid-only: while unpaid or waiting, the card below carries its
+ * own Unpaid / Sent pill, and two pills saying the same thing is noise.
+ */
+function SessionFeePaidBar() {
+  return (
+    <div className="flex items-center gap-2.5 border-b border-success/30 bg-success/15 px-4 py-2.5">
+      {/* `--success` is #22C55E in both themes, so the ink on it has to be a
+          fixed dark rather than a token: `text-background` would be near-white
+          in light mode (2.3:1) and `text-success` fails on the tinted strip. */}
+      <span
+        className="grid h-[19px] w-[19px] shrink-0 place-items-center rounded-full bg-success text-[11px] font-bold text-[#0B2915]"
+        aria-hidden="true"
+      >
+        ✓
+      </span>
+      <span className="text-[12.5px] font-semibold">Session fee paid — confirmed by the admin</span>
     </div>
   )
 }
@@ -264,7 +296,7 @@ function ScheduleTab({
     refreshCourts()
   }, [refresh, refreshCourts])
   const { status } = useRealtime(resolvedId, refreshAll)
-  const { phoneNumber, qrCodeUrl } = usePaymentSettings()
+  const { phoneNumber, qrCodeUrl, isLoading: paymentSettingsLoading } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
   const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, hasPaymentInfo })
 
@@ -307,6 +339,8 @@ function ScheduleTab({
         />
       )}
 
+      {!isLoading && isRegistered && paid === true && <SessionFeePaidBar />}
+
       {/* Payment — shown whenever registered + unpaid + configured, regardless
           of session status (a player may still owe after registration closes,
           the schedule locks, or the session starts).
@@ -340,7 +374,12 @@ function ScheduleTab({
               {/* the rail the step markers sit on */}
               <span className="absolute left-[12.5px] top-6 bottom-3 w-px bg-border" aria-hidden="true" />
 
-              <PayStep n={1} state={paymentState === 'unpaid' ? 'on' : 'done'} title={`Send ${sessionPrice != null ? `₱${sessionPrice}` : 'the fee'} on GCash`}>
+              {/* Always `done`: this card only mounts when `isRegistered` is
+                  true, so the step exists to show the player where they already
+                  are, not to be completed. */}
+              <PayStep n={1} state="done" title="You are registered" />
+
+              <PayStep n={2} state={paymentState === 'unpaid' ? 'on' : 'done'} title={`Send ${sessionPrice != null ? `₱${sessionPrice}` : 'the fee'} on GCash`}>
                 {paymentState === 'unpaid' && (
                   <>
                     {phoneNumber && (
@@ -375,7 +414,7 @@ function ScheduleTab({
               </PayStep>
 
               <PayStep
-                n={2}
+                n={3}
                 state={paymentState === 'submitted' ? 'done' : paymentState === 'unpaid' ? 'on' : 'off'}
                 title="Upload the receipt"
               >
@@ -408,10 +447,13 @@ function ScheduleTab({
                 )}
               </PayStep>
 
-              <PayStep n={3} state={paymentState === 'submitted' ? 'on' : 'off'} title="Admin confirms it" last>
+              <PayStep n={4} state={paymentState === 'submitted' ? 'on' : 'off'} title="Please wait while the admin confirms it" last>
+                {/* The wait only starts once a receipt exists, which is also the
+                    only moment the duration is worth stating. */}
                 {paymentState === 'submitted' && (
                   <p className="text-xs leading-relaxed text-muted-foreground">
                     Nothing more to do — the admin checks your receipt, then marks it paid.
+                    This usually takes a few hours, and can take up to a day.
                   </p>
                 )}
               </PayStep>
@@ -432,7 +474,13 @@ function ScheduleTab({
       {sessionStatus === 'registration_open' && (
         <div className="max-w-sm mx-auto px-4 mt-3">
           {isRegistered ? (
-            !showPaymentInfo && (
+            /* The fallback for when the payment card is not rendering — either
+               the player is already paid, or no GCash details are configured.
+               Gated on `paymentSettingsLoading` because the settings query
+               starts at `null`: without it this banner painted on the first
+               frame of every unpaid visit and was replaced by the payment card
+               a moment later. */
+            !showPaymentInfo && !paymentSettingsLoading && (
               <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
                 ✅ You&apos;re registered!
               </div>

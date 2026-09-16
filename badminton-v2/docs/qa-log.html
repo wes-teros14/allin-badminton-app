@@ -84,6 +84,7 @@
       <li><a href="#results">Results &amp; scoring</a></li>
       <li><a href="#live-board">Live board &amp; performance</a></li>
       <li><a href="#match-generator">Match generator</a></li>
+      <li><a href="#payments">Payments &amp; the fee card</a></li>
     </ol>
   </nav>
 
@@ -1519,6 +1520,97 @@
       <code>tasks/todo.md</code>.
     </p>
   </div>
+  <h2 class="topic" id="payments">Payments &amp; the fee card</h2>
+
+  <div class="qa">
+    <p class="q">Why is there a step saying “You are registered” when the card only appears if you are registered?</p>
+    <p class="a">
+      That is exactly why it can exist. The whole block is gated on
+      <code>isRegistered &amp;&amp; showPaymentInfo</code> in
+      <code>src/views/SessionPlayerDetailView.tsx</code>, so the step is hardcoded
+      <code>state="done"</code> — no extra query, no new state, and it can never be wrong.
+      It is there to show the player where they already are, not to be completed.
+    </p>
+    <p class="a">
+      A side effect worth knowing: <code>PayStep</code> renders a ✓ <em>in place of</em> its number
+      when <code>state === 'done'</code>. So with four steps the first number a player ever sees is
+      <strong>2</strong> (“Send ₱370 on GCash”) — the 1 is never drawn. That was the accepted
+      trade-off of choosing absolute numbering over renumbering the actionable steps 1–3.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">A “✅ You’re registered!” banner flashes on the session page and then disappears. Where is it from?</p>
+    <p class="a">
+      It is the registration-banner fallback in the same file, shown when
+      <code>isRegistered &amp;&amp; !showPaymentInfo</code>. The flash came from
+      <code>usePaymentSettings</code>: it initialises <code>phoneNumber</code> and
+      <code>qrCodeUrl</code> to <code>null</code> and only fills them after a Supabase round-trip.
+      On the first frame <code>hasPaymentInfo</code> is therefore <code>false</code>,
+      <code>showPaymentInfo</code> is <code>false</code>, the banner paints — then the query resolves
+      and the payment card replaces it.
+    </p>
+    <p class="a">
+      The hook already returned <code>isLoading</code>; the call site simply never read it. Fixed by
+      destructuring it and adding <code>&amp;&amp; !paymentSettingsLoading</code> to the banner’s
+      condition, so nothing paints until the answer is known. The lesson generalises: <strong>a
+      hook that returns <code>isLoading</code> and a caller that ignores it is a flash waiting to
+      happen</strong>, because “loading” and “configured as empty” are indistinguishable from the
+      value alone.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Once the admin marks me paid, do I ever find out?</p>
+    <p class="a">
+      No — not anywhere, as of this writing.
+      <code>shouldShowPaymentInfo</code> returns
+      <code>isRegistered &amp;&amp; paid !== true &amp;&amp; hasPaymentInfo</code>, so the instant
+      <code>paid</code> flips true the entire card unmounts. The player is left on step 4 (“Please
+      wait while the admin confirms it”) and the answer arrives as the card <em>vanishing</em>,
+      which is indistinguishable from a bug.
+    </p>
+    <p class="a">
+      There is no email either. Migration <code>046_trigger_payment_confirmed.sql</code> did fire a
+      <code>payment_confirmed</code> webhook on the false→true transition, but
+      <code>050_rollback_email_system.sql</code> dropped the trigger, the function,
+      <code>email_logs</code> and <code>app_config</code>. So a confirmed payment currently produces
+      <strong>zero</strong> signal: not in the app, not in the inbox.
+    </p>
+    <p class="a">
+      Also worth knowing before designing a fix: migration <code>042</code> added a bare boolean
+      <code>paid</code> and nothing else. There is no <code>paid_at</code>, so any UI promising
+      “confirmed on Sep 20, 7:42 PM” needs a new column first.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“A confirmed payment produces zero signal anywhere — not in the app, not in the inbox.”</p>
+    <p>
+      The inbox half is right; the app half was too broad. There are <strong>two</strong> player-facing
+      payment surfaces, and only one of them had the dead end:
+    </p>
+    <p>
+      <code>/sessions/:id</code> (<code>SessionPlayerDetailView</code>) — the four-step fee card. This one
+      <em>did</em> vanish on <code>paid = true</code> with nothing left behind. Fixed by
+      <code>SessionFeePaidBar</code>, a strip flush under the session header.
+    </p>
+    <p>
+      <code>/match-schedule/session/:id</code> (<code>PlayerView</code> → <code>PaymentBanner</code> in
+      <code>src/components/MatchBoard.tsx:158</code>) — this one already branched on
+      <code>paymentState === 'paid'</code> and rendered a <code>✓ Paid ₱370</code> chip. It was never
+      broken.
+    </p>
+    <p>
+      The lesson is the one this codebase keeps re-teaching: <strong>“the app doesn’t do X” needs a
+      sweep, not a single file.</strong> Two routes render the same concept through different
+      components, and reading only the one with the reported symptom produced a claim that was wrong
+      about half the app. Grepping for the other consumer of <code>derivePaymentState</code> would
+      have caught it in one command.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>
