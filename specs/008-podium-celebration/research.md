@@ -159,10 +159,37 @@ celebrated for that instead, so a climb is someone recovering ground toward a hi
 The accepted cost is the oscillating player — 7th, 6th, 7th, 6th earns a card every other session for
 going nowhere. This is the one dial that cheapens the celebration fastest if it needs turning back.
 
-**Precedence**, highest first: top 3, first appearance, places climbed. First appearance outranks a
-climb because arriving on a board is a bigger thing than moving within it. Places climbed sits last
-because it is the weakest claim — a player can climb purely because the people above them stopped
-attending.
+**Precedence**, highest first: top 3, first appearance, places climbed, places lost. First appearance
+outranks a climb because arriving on a board is a bigger thing than moving within it. A climb outranks
+a drop so that when a session moves a player on several boards the good news fronts the card — the two
+can never compete on the same board.
+
+---
+
+## R12 — Drops are reported, reversing "never report bad news"
+
+**Decision**: a `drop` movement fires at one place or more, drawn with the identical card, animation
+and confetti as a celebration. A product decision by the user, reversing an explicit earlier
+principle.
+
+**Rationale**: the app reports movement and does not editorialise about its direction. The same
+reasoning that gave non-medallists the identical celebration applies to a player who fell: singling
+out bad news with a lesser treatment is its own kind of judgement.
+
+**Consequences accepted knowingly**:
+- **Volume.** With both thresholds at one, in a fourteen-player session half the field falls whenever
+  the other half rises, so close to every player hears something every session. This is by far the
+  largest single change to how often the feature speaks.
+- **Tone.** Confetti fires for a loss. The one concession is punctuation: "Up 3 places!" keeps its
+  exclamation mark, "Down 3 places" does not, because punctuating a loss like good news is where
+  consistency tips into sounding sarcastic.
+
+**Two things the decision made necessary**:
+- **The medal follows the standing, not the news.** A player slipping 2nd → 3rd still holds bronze, so
+  the card keeps the bronze border and medal icon. This only affects drops: a climb or first
+  appearance can never land inside the top 3, because the podium branch claims those first.
+- **Leaving the board stays silent.** "Down N places" needs a place to have landed on, and a player
+  who fell off has none. A separate movement would be needed to announce that, and none was added.
 
 ---
 

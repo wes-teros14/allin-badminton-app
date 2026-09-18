@@ -60,9 +60,16 @@ export function cardHeadline(placing: NewPlacing): string {
     case 'first-appearance': return "You're on the board!"
     case 'climb': {
       const gained = placing.previousRank === null ? 0 : placing.previousRank - placing.rank
-      // Singular matters now that a one-place gain qualifies: "Up 1 places!" is
+      // Singular matters now that a one-place move qualifies: "Up 1 places!" is
       // the kind of thing that makes a celebration feel machine-made.
       return `Up ${gained} place${gained === 1 ? '' : 's'}!`
+    }
+    case 'drop': {
+      const lost = placing.previousRank === null ? 0 : placing.rank - placing.previousRank
+      // No exclamation mark. The card, the animation and the confetti are shared
+      // with a celebration by decision, but punctuating a loss like good news is
+      // the point where consistency tips into sounding sarcastic.
+      return `Down ${lost} place${lost === 1 ? '' : 's'}`
     }
   }
 }
@@ -71,9 +78,9 @@ export function cardLabel(placing: NewPlacing): { title: string; detail: string 
   const title = boardTitle(placing.board)
   const measure = boardMeasure(placing.board)
 
-  // A climb is only meaningful against what came before, so it names where they
+  // A move is only meaningful against what came before, so it names where they
   // landed. The other two stand on their own.
-  if (placing.kind === 'climb' && placing.previousRank !== null) {
+  if ((placing.kind === 'climb' || placing.kind === 'drop') && placing.previousRank !== null) {
     return { title, detail: `Now ${ordinal(placing.rank)} ${boardPreposition(placing.board)} ${title}` }
   }
   if (placing.kind === 'first-appearance') {

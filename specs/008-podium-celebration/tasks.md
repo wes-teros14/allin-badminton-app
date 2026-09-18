@@ -23,7 +23,7 @@ browser-level coverage when a flow spans navigation and auth state — which thi
 ## Implementation status (2026-09-18)
 
 **All four user stories complete.** Podium celebrations, the toast and row sweep, non-podium
-achievements (first appearance and one-place climb) and several-at-once. **Personal best was later
+achievements (first appearance, one-place climb, one-place drop) and several-at-once. **Personal best was later
 removed** — see research.md R11: the app holds no rank history, so it could not honestly claim one.
 
 Validated: `npm run lint` clean (one pre-existing unrelated warning in `ProfileView.tsx`),

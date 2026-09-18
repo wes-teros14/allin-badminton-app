@@ -91,6 +91,7 @@ Four things can earn a non-podium celebration:
 - **Made the board** — their first ever appearance in the top 10 of that board.
 - **Sessions climbing** — three or more consecutive sessions of improvement.
 - **Climbed places** — an improvement of one or more places.
+- **Lost places** — a fall of one or more places, drawn identically, confetti included.
 
 These overlap heavily: going 9th to 6th is a personal best *and* a climb *and* possibly a
 streak. So exactly one celebration fires, chosen by this precedence, highest first:

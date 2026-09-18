@@ -131,8 +131,9 @@ appears, listing all three.
 - **A board added later.** If a seventh cheer category is introduced, players already inside its top 3
   must not be congratulated for a standing they already had. An unwatched board is not news the first
   time it is watched.
-- **Standing got worse.** Dropping from 1st to 3rd, or off the board entirely, produces nothing. The
-  feature never reports bad news.
+- **Standing got worse.** Reported, at the same threshold as a gain and with the same card. A player
+  who slips *within* the podium keeps their medal border, because they still hold that place. Leaving
+  the board entirely is still silent — "down N places" needs a place to have landed on.
 - **Ties.** Two players sharing a rank both hold that place; a tie is a placing, not a near miss.
 - **Improved and worsened at once.** A player who gains on one board and loses on another is
   celebrated for the gain and not told about the loss.
@@ -159,17 +160,17 @@ appears, listing all three.
   time it ever evaluates that player.
 - **FR-003**: System MUST treat a board absent from a player's previous recorded standings as not yet
   watched, and MUST NOT celebrate a standing on it until the following evaluation.
-- **FR-004**: System MUST NOT celebrate an unchanged standing, a worsened standing, or a standing lost
-  entirely.
+- **FR-004**: System MUST NOT announce an unchanged standing, or a standing lost entirely. A worsened
+  standing that still holds a place MUST be announced — see FR-007.
 - **FR-005**: System MUST celebrate an improvement that occurs entirely inside the top 3, such as 3rd
   to 1st.
 - **FR-006**: System MUST watch the Individual board, the Partners board, and each of the six Cheers
   category boards. The Awards board is excluded, having a single holder and no second or third place.
-- **FR-007**: System MUST recognise these achievements: reaching the top 3; appearing in a board's top
-  10 for the first time; and improving by one or more places. The system MUST NOT claim a personal
-  best, because it holds no rank history and therefore cannot know one.
-- **FR-008**: System MUST select exactly one achievement to celebrate per evaluation, in this order of
-  precedence: top 3, first appearance, places climbed.
+- **FR-007**: System MUST recognise these movements: reaching the top 3; appearing in a board's top 10
+  for the first time; improving by one or more places; and **falling by one or more places**. The
+  system MUST NOT claim a personal best, because it holds no rank history and cannot know one.
+- **FR-008**: System MUST select exactly one movement to announce per evaluation, in this order of
+  precedence: top 3, first appearance, places climbed, places lost.
 - **FR-009**: System MUST record the player's new standings once an evaluation completes, so the same
   achievement cannot be celebrated twice.
 - **FR-010**: System MUST keep recorded standings per player, so that two players using the same

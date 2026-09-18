@@ -74,7 +74,7 @@
 
 <h1>When a leaderboard celebration fires</h1>
 <p class="lede">
-  Four gates that can stop the whole thing, then one ladder of four achievements evaluated per board,
+  Four gates that can stop the whole thing, then one ladder of four movements evaluated per board,
   highest first. The first rung that matches wins and the rest are not considered. Source of truth:
   <code>src/lib/podiumCelebration.ts</code>.
 </p>
@@ -154,11 +154,26 @@
     </div>
   </div>
 
+  <div class="rung">
+    <div class="rank">4</div>
+    <div class="body">
+      <div class="title">🐰 Drop <span class="pill plain">plain border*</span></div>
+      <div class="cond">previousRank !== null &amp;&amp; rank − previousRank ≥ 1</div>
+      <p class="why">Any fall at all, drawn with the identical card, animation and confetti. The app reports
+      movement and does not editorialise about its direction. The one concession is punctuation —
+      “Up 3 places<b>!</b>” but “Down 3 places”, because punctuating a loss like good news is where
+      consistency tips into sarcasm.</p>
+      <p class="eg">6th → 7th reads “Down 1 place”. <b>*</b> A drop that stays inside the top 3 keeps its
+      medal border and medal icon — 2nd → 3rd still holds bronze.</p>
+    </div>
+  </div>
+
   <div class="rung none">
     <div class="rank">—</div>
     <div class="body">
-      <div class="title">No celebration</div>
-      <p class="why">Unchanged, worse, or dropped off the board. The feature never reports bad news.</p>
+      <div class="title">Nothing</div>
+      <p class="why">Unchanged, or off the board entirely. Leaving a board is silent because
+      “down N places” needs a place to have landed on.</p>
     </div>
   </div>
 
@@ -179,8 +194,9 @@
     <tr><td class="mono">7th</td><td class="mono">6th</td><td class="mono">4th</td><td class="yes">Climb</td><td>One place is enough — “Up 1 place!”</td></tr>
     <tr><td class="mono">unplaced</td><td class="mono">6th</td><td class="mono">9th</td><td class="no">Nothing</td><td>A return with no previous rank to measure a gain from</td></tr>
     <tr><td class="mono">6th</td><td class="mono">6th</td><td class="mono">6th</td><td class="no">Nothing</td><td>Unchanged</td></tr>
-    <tr><td class="mono">1st</td><td class="mono">3rd</td><td class="mono">1st</td><td class="no">Nothing</td><td>Worse. No bad news</td></tr>
-    <tr><td class="mono">2nd</td><td class="mono">unplaced</td><td class="mono">2nd</td><td class="no">Nothing</td><td>Fell off the board</td></tr>
+    <tr><td class="mono">1st</td><td class="mono">3rd</td><td class="mono">1st</td><td class="yes">Drop</td><td>“Down 2 places” — and keeps its bronze border</td></tr>
+    <tr><td class="mono">6th</td><td class="mono">7th</td><td class="mono">4th</td><td class="yes">Drop</td><td>One place is enough, mirroring the climb</td></tr>
+    <tr><td class="mono">2nd</td><td class="mono">unplaced</td><td class="mono">2nd</td><td class="no">Nothing</td><td>Fell off the board — no place to name</td></tr>
     <tr><td class="mono">4th <em>(unwatched)</em></td><td class="mono">1st</td><td class="mono">—</td><td class="no">Nothing</td><td>Board absent from the last snapshot — not watched then</td></tr>
   </tbody>
 </table>
@@ -188,7 +204,7 @@
 <h2>When several boards match at once</h2>
 <p class="note">
   Every watched board is evaluated, so one session can produce several achievements. They are sorted
-  <b>by kind first</b> (podium → first appearance → climb), <b>then by rank</b>
+  <b>by kind first</b> (podium → first appearance → climb → drop), <b>then by rank</b>
   (5th beats 6th), <b>then by board</b> (Individual, Partners, then cheer categories). One card lists
   them all; the toast names the top one and counts the rest. Never a queue of cards.
 </p>
@@ -199,7 +215,7 @@
 
 <footer>
   Generated from <code>src/lib/podiumCelebration.ts</code> · <code>PODIUM_PLACES = 3</code> ·
-  <code>CLIMB_THRESHOLD = 1</code> · personal best removed, no rank history to back it
+  <code>CLIMB_THRESHOLD = 1</code> · <code>DROP_THRESHOLD = 1</code> · personal best removed, no rank history to back it
 </footer>
 
 </div>

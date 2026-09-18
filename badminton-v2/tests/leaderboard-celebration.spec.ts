@@ -180,3 +180,44 @@ test('several achievements at once produce one card listing them all (US4)', asy
   )
   expect(parseFloat(borderWidth)).toBeGreaterThan(2)
 })
+
+test('a drop is reported with the same card, confetti included', async ({ page }) => {
+  await page.goto('/sessions')
+  await signInAs(page, PLAYER)
+  await page.waitForFunction(() => typeof (window as unknown as Record<string, unknown>).__celebrate === 'function', { timeout: 15000 })
+
+  await page.evaluate(() => (window as unknown as { __celebrate: (a: unknown[]) => void })
+    .__celebrate([{ board: 'wins', kind: 'drop', rank: 7, previousRank: 6 }]))
+
+  const card = page.getByRole('status')
+  await expect(card).toBeVisible({ timeout: 5000 })
+  await expect(card).toContainText('Down 1 place')
+  await expect(card).toContainText('Now 7th on Individual')
+
+  // Same treatment as a celebration, confetti and all — a deliberate decision.
+  await expect(page.locator('canvas')).toBeVisible()
+
+  // Outside the top 3, so the bunny and the ordinary border.
+  await expect(card.locator('img[src="/bunny-thumbsup.png"]')).toBeVisible()
+  const border = await card.locator('div').first().evaluate((el) => getComputedStyle(el).borderTopWidth)
+  expect(parseFloat(border)).toBeLessThan(2)
+})
+
+test('a drop inside the podium keeps its medal', async ({ page }) => {
+  await page.goto('/sessions')
+  await signInAs(page, PLAYER)
+  await page.waitForFunction(() => typeof (window as unknown as Record<string, unknown>).__celebrate === 'function', { timeout: 15000 })
+
+  // 1st to 3rd is a drop, but they still hold bronze. Showing a bunny and a plain
+  // border here would tell them they had lost a medal they still have.
+  await page.evaluate(() => (window as unknown as { __celebrate: (a: unknown[]) => void })
+    .__celebrate([{ board: 'wins', kind: 'drop', rank: 3, previousRank: 1 }]))
+
+  const card = page.getByRole('status')
+  await expect(card).toBeVisible({ timeout: 5000 })
+  await expect(card).toContainText('Down 2 places')
+  await expect(card.locator('img[src="/bunny-thumbsup.png"]')).toHaveCount(0)
+
+  const border = await card.locator('div').first().evaluate((el) => getComputedStyle(el).borderTopWidth)
+  expect(parseFloat(border)).toBeGreaterThan(2)
+})
