@@ -22,13 +22,16 @@ browser-level coverage when a flow spans navigation and auth state — which thi
 
 ## Implementation status (2026-09-18)
 
-**Phases 1, 2, 3 and 4 complete** — the MVP plus the toast and row sweep. US3 (non-podium
-achievements) and US4 (several at once) are **not** implemented: the rule still returns podium
-placings only, though the card already renders the multi-achievement layout and the bunny path, so
-those phases are wiring rather than design.
+**All four user stories complete.** Podium celebrations, the toast and row sweep, non-podium
+achievements (first appearance, personal best, three-place climb) and several-at-once.
 
 Validated: `npm run lint` clean (one pre-existing unrelated warning in `ProfileView.tsx`),
-`npm run test:unit` **339 passed**, `tests/leaderboard-celebration.spec.ts` **4 passed**.
+`npm run test:unit` **348 passed**, `tests/leaderboard-celebration.spec.ts` **6 passed**,
+`npm run build` clean.
+
+Remaining: T038 (qa-log entry), T039 (memory files — done), T040 (the dev trigger is already behind
+`import.meta.env.DEV`, so it never reaches a production bundle; the task is a confirmation, not a
+change).
 
 **Pre-existing failure, not caused by this work**: `tests/pair-leaderboard.spec.ts` has 3 failing
 tests. Measured by reverting all of this feature's changes and re-running — the same 3 fail at HEAD.
@@ -118,11 +121,11 @@ creating them, and their current state is stated honestly:
 
 **Independent test**: Move a test player 9th → 6th without entering the top 3; confirm a card reading "Your best yet!" with the bunny icon and a plain border, identical in size, confetti and dwell to a podium card.
 
-- [ ] T023 [P] [US3] Add the `bestEver` map to `badminton-v2/src/lib/celebrationStorage.ts` and keep it updated on every evaluation (data-model.md)
-- [ ] T024 [US3] Extend `badminton-v2/src/lib/podiumCelebration.ts` with the `first-appearance`, `personal-best` and `climb` kinds, the three-place climb threshold, and the precedence order: podium > first-appearance > personal-best > climb (FR-007, FR-008, research.md R7)
-- [ ] T025 [P] [US3] Extend `badminton-v2/src/__tests__/podiumCelebration.test.ts` with the non-podium C1 rows, including: a 2-place climb produces nothing; first-appearance outranks personal-best when both are true; a podium beats every non-podium achievement earned at the same time
-- [ ] T026 [US3] Render the non-podium variant in `badminton-v2/src/components/CelebrationCard.tsx`: the bunny icon from `/bunny-thumbsup.png`, the ordinary 1px border, and **identical** card size, animation, confetti count and dwell to a podium card (FR-018, FR-019, research.md R6)
-- [ ] T027 [US3] Extend `badminton-v2/tests/leaderboard-celebration.spec.ts` with a non-podium celebration asserting the bunny icon and the ordinary border
+- [X] T023 [P] [US3] Add the `bestEver` map to `badminton-v2/src/lib/celebrationStorage.ts` and keep it updated on every evaluation (data-model.md)
+- [X] T024 [US3] Extend `badminton-v2/src/lib/podiumCelebration.ts` with the `first-appearance`, `personal-best` and `climb` kinds, the three-place climb threshold, and the precedence order: podium > first-appearance > personal-best > climb (FR-007, FR-008, research.md R7)
+- [X] T025 [P] [US3] Extend `badminton-v2/src/__tests__/podiumCelebration.test.ts` with the non-podium C1 rows, including: a 2-place climb produces nothing; first-appearance outranks personal-best when both are true; a podium beats every non-podium achievement earned at the same time
+- [X] T026 [US3] Render the non-podium variant in `badminton-v2/src/components/CelebrationCard.tsx`: the bunny icon from `/bunny-thumbsup.png`, the ordinary 1px border, and **identical** card size, animation, confetti count and dwell to a podium card (FR-018, FR-019, research.md R6)
+- [X] T027 [US3] Extend `badminton-v2/tests/leaderboard-celebration.spec.ts` with a non-podium celebration asserting the bunny icon and the ordinary border
 
 **Checkpoint**: the feature now reaches most of the roster rather than three players.
 
@@ -134,11 +137,11 @@ creating them, and their current state is stated honestly:
 
 **Independent test**: Move a test player onto three boards in one session; confirm exactly one card appears listing all three, held on screen longer, still self-dismissing.
 
-- [ ] T028 [US4] Render the multi-achievement layout in `badminton-v2/src/components/CelebrationCard.tsx`: a medal row, a count heading, and one line per board with medal, board and placing (FR-016)
-- [ ] T029 [US4] Scale the dwell with content in `CelebrationCard`: a baseline for one achievement, extended per additional one, to a ceiling — and self-dismissing at every size (FR-015)
-- [ ] T030 [US4] Take the card's border from the **best** placing on it, matching the toast, which names that same placing (spec Assumptions)
-- [ ] T031 [US4] Name the best achievement in the toast and state how many others there were; the view action leads to the best one's board (FR-022)
-- [ ] T032 [P] [US4] Extend `badminton-v2/tests/leaderboard-celebration.spec.ts` asserting that three simultaneous achievements produce exactly one card listing all three
+- [X] T028 [US4] Render the multi-achievement layout in `badminton-v2/src/components/CelebrationCard.tsx`: a medal row, a count heading, and one line per board with medal, board and placing (FR-016)
+- [X] T029 [US4] Scale the dwell with content in `CelebrationCard`: a baseline for one achievement, extended per additional one, to a ceiling — and self-dismissing at every size (FR-015)
+- [X] T030 [US4] Take the card's border from the **best** placing on it, matching the toast, which names that same placing (spec Assumptions)
+- [X] T031 [US4] Name the best achievement in the toast and state how many others there were; the view action leads to the best one's board (FR-022)
+- [X] T032 [P] [US4] Extend `badminton-v2/tests/leaderboard-celebration.spec.ts` asserting that three simultaneous achievements produce exactly one card listing all three
 
 **Checkpoint**: a player with a great night gets one moment, not a queue of interruptions.
 
@@ -147,8 +150,8 @@ creating them, and their current state is stated honestly:
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 - [X] T033 Verify in the browser's network panel that a launch with no newly completed session issues **no board queries** — the cost guarantee the whole design rests on (SC-007, FR-026)
-- [ ] T034 [P] Check the celebration in light and dark: the three medal border colours, the ordinary border, and the bunny against both card backgrounds
-- [ ] T035 [P] Check reduced motion end to end: card readable, no particles, no sweep, information unchanged (SC-008)
+- [X] T034 [P] Check the celebration in light and dark: the three medal border colours, the ordinary border, and the bunny against both card backgrounds
+- [X] T035 [P] Check reduced motion end to end: card readable, no particles, no sweep, information unchanged (SC-008)
 - [X] T036 Confirm the first evaluation after deploying is silent for a player with an existing high standing (SC-002) — the single most embarrassing thing to get wrong on release day
 - [X] T037 Run the full validation per Constitution Principle V from `badminton-v2/`: `npm run lint`, `npm run test:unit`, `npx playwright test tests/leaderboard-celebration.spec.ts`. Name any pre-existing unrelated failure explicitly rather than implying a green suite
 - [ ] T038 [P] Append the design reasoning to `badminton-v2/docs/qa-log.html` under a new heading: why the trigger is "newly theirs", why podium and non-podium are identical in weight, and the two-route sweep trap
