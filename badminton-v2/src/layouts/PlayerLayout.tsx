@@ -5,6 +5,7 @@ import { NotificationProvider } from '@/contexts/NotificationContext'
 import { useCheersEligibleSessions } from '@/hooks/useActiveSession'
 import { useMatchCheers } from '@/hooks/useMatchCheers'
 import { CheersPanel } from '@/components/CheersPanel'
+import { LeaderboardCelebration } from '@/components/LeaderboardCelebration'
 
 export function PlayerLayout() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -42,6 +43,13 @@ export function PlayerLayout() {
         ) : (
           <Outlet />
         )}
+
+        {/*
+          Mounted here rather than per-view so a celebration can appear over any
+          player screen. It renders nothing until there is news, and it never
+          navigates on its own.
+        */}
+        <LeaderboardCelebration />
       </div>
     </NotificationProvider>
   )
