@@ -514,6 +514,7 @@ export type Database = {
       sessions: {
         Row: {
           completed_at: string | null
+          closed_at: string | null
           court_1_label: string
           court_2_label: string
           court_count: number
@@ -537,6 +538,7 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          closed_at?: string | null
           court_1_label?: string
           court_2_label?: string
           court_count?: number
@@ -560,6 +562,7 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          closed_at?: string | null
           court_1_label?: string
           court_2_label?: string
           court_count?: number

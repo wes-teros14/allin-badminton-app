@@ -106,6 +106,17 @@ function statusBadge(s: SessionPickerItem) {
     }
   }
 
+  // Finished but not yet closed by the admin: results are in, and the card
+  // stays in Upcoming so an unpaid amount is still in front of the player.
+  if (s.status === 'complete' && s.closed_at == null) {
+    return {
+      label: 'Finished',
+      className: 'border-court2/40 bg-court2/10 text-court2',
+      accentClassName: 'bg-court2/70',
+      isActive: true,
+    }
+  }
+
   return {
     label: 'Ended',
     className: 'border-border bg-secondary/60 text-muted-foreground',
@@ -114,9 +125,15 @@ function statusBadge(s: SessionPickerItem) {
   }
 }
 
+/** Upcoming vs Past is decided by the admin's Close, not by play ending. */
+export function isUpcomingForPlayer(s: Pick<SessionPickerItem, 'status' | 'closed_at'>): boolean {
+  if (ACTIVE_STATUSES.has(s.status)) return true
+  return s.status === 'complete' && s.closed_at == null
+}
+
 function SessionRow({ s, index, isAdmin }: { s: SessionPickerItem; index: number; isAdmin: boolean }) {
   const badge = statusBadge(s)
-  const isActive = ACTIVE_STATUSES.has(s.status)
+  const isActive = isUpcomingForPlayer(s)
   const showRegisteredPill = s.isRegistered && SHOW_REGISTERED_PILL_STATUSES.has(s.status)
   const formattedDate = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', {
     weekday: 'short',
@@ -264,11 +281,11 @@ export function MySessionsView() {
   const loading = authLoading || isLoading
 
   const activeSessions = sessions
-    .filter((s) => ACTIVE_STATUSES.has(s.status))
+    .filter(isUpcomingForPlayer)
     .sort(compareSessionsByScheduledDate)
 
   const pastSessions = sessions
-    .filter((s) => !ACTIVE_STATUSES.has(s.status))
+    .filter((s) => !isUpcomingForPlayer(s))
     .sort((a, b) => b.date.localeCompare(a.date))
 
   return (

@@ -1155,6 +1155,23 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">If a Finished session goes back to Live, will the leaderboards actually un-count it and recompute?</p>
+    <p class="a">
+      Three different answers, because the boards do not all work the same way. Wins and games are written to
+      <code>player_stats</code> / <code>player_pair_stats</code> by a trigger on every result insert
+      (<code>013_player_stats_tables.sql:134</code>) &mdash; they count during Live and never depend on the session
+      status, so nothing moves. The 4-session eligibility window, Partners, Awards and the celebration sentinel are
+      read-time filters on <code>sessions.status</code> (<code>boardEligibility.ts:46</code>,
+      <code>leaderboardData.ts:83</code>): flipping back just hides the session from those queries again, no stored
+      state, no recompute. The only hazard is <code>sessions_attended</code>, incremented by trigger on the transition
+      to <code>complete</code> (migration 030) with no decrement &mdash; if that trigger moves to <code>finished</code>
+      and the back-step is allowed, Live &rarr; Finished &rarr; Live &rarr; Finished counts attendance twice, and that
+      number gates every board. Allowing the back-step therefore needs a matching &minus;1 on
+      <code>finished &rarr; in_progress</code>. Celebration cards already shown cannot be unshown.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">
@@ -1219,6 +1236,21 @@
       present (including on load in the locked stage), so a set-and-forgotten pin can never fix game 1 unseen.
       Rejected: an &ldquo;Advanced&rdquo; switch and a link under the Generate button
       (<code>docs/visual/fixed-opening-games-hidden-options.html</code>).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why do 24-match schedules show yellow (1 game short) in the rest-spacing grid when 14&ndash;20 match ones don&rsquo;t?</p>
+    <p class="a">
+      Measured with a 16-player 7M/9F roster at panel defaults: 1-short gaps per schedule go 0.8 (16 matches) &rarr; 2.8
+      (20) &rarr; 5.3 (24) &rarr; 6.3 (28) &mdash; more gaps to police <em>and</em> a higher miss rate (1.7% &rarr; 6.6%).
+      Not the Clean Start Window: extending it from 20 to 24 changed nothing. The cause is price: in
+      <code>evaluateSessionScore</code> a gap one game short costs <code>restSpacingPenalty</code> = <strong>30</strong>,
+      against 300 per level of imbalance, 250 per 3-1 match, 150 per repeated partner. With six games each, fresh groups
+      under spread &le; 2 + gender rules + no repeats run out (7 men means every full rotation carries an odd group), and
+      the optimiser sells the 30-point item first. Gender+spread off halves the yellows; 4&times; SA budget also halves
+      them; <code>restSpacingPenalty</code> 100 halves them at the cost of doubling repeated partners. Deliberate trade,
+      not a bug &mdash; tune per session in Settings &rarr; Scoring Weights.
     </p>
   </div>
 
@@ -1818,6 +1850,31 @@
     </p>
     <p class="a">
       Falling off a board entirely is still silent — “down N places” needs a place to have landed on.
+    </p>
+  </div>
+
+  <h2 class="topic" id="session-lifecycle">Session lifecycle</h2>
+
+  <div class="qa">
+    <p class="q">I want a stage after Live where the leaderboards update but the session is not yet in Past Sessions. How does that work?</p>
+    <p class="a">
+      <strong>Shipped 2026-09-18.</strong> The status enum did not change. <code>complete</code> keeps its meaning &mdash;
+      stats committed, leaderboards fed, celebrations fired, <code>sessions_attended</code> incremented by migration 030 &mdash;
+      and is now reached by a two-tap <em>Finish Session</em> button at the bottom of the Live page (<code>SessionView</code>,
+      <code>useSession.finishSession</code>). It is labelled <em>Finished</em> everywhere (stepper, <code>/admin</code> pill,
+      player card). A new nullable column <code>sessions.closed_at</code> (migration 080) is set by the two-tap <em>Close</em> on
+      the <code>/admin</code> card and does nothing but move the session to Past: <code>AdminView</code> splits active/past on
+      <code>closed_at</code>, and <code>MySessionsView.isUpcomingForPlayer</code> keeps a finished-not-closed session in
+      Upcoming with a teal <em>Finished</em> pill so an unpaid amount stays in front of the player. Migration 080 backfills
+      <code>closed_at</code> on every already-complete session so nothing jumps back into the active list.
+    </p>
+    <p class="a">
+      Why a column and not a seventh status: every &ldquo;this session counts&rdquo; read filter
+      (<code>boardEligibility.ts:46</code>, <code>leaderboardData.ts:83</code>, <code>useFinanceSessions.ts:48</code>, the
+      <code>get_session_finance</code> RPC) tests <code>status = 'complete'</code>; a new status after it would have needed all of
+      them rewritten to <code>IN (...)</code>. Filed-away is orthogonal to the lifecycle, so it lives in its own column and no
+      filter, trigger or RPC learns about it. Finished stays terminal exactly as Done was, so attendance cannot be counted
+      twice. Verified on dev: Finish fired a celebration card immediately; Close moved the card 4 &rarr; 5 in Past.
     </p>
   </div>
 
