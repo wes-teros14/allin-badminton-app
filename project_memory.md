@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-13
+Last updated: 2026-09-18
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -95,6 +95,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Date formatting**: always `'en-US'` and always append `'T00:00:00'` to a bare `YYYY-MM-DD`. Parsed bare, it is UTC midnight and renders as the previous day anywhere west of Greenwich.
 - **Unbounded reads need paging.** Any query whose result set can exceed one screen uses `.range()` with a stable `.order()`, plus a `{ count: 'exact', head: true }` cross-check that throws on mismatch. PostgREST silently truncates at `db_max_rows` (1000) with no error. The pair leaderboard was the first such query in the codebase.
 - **Invariants belong in the database.** Anything an algorithm guarantees can still be violated by a hand-edit form, so the check goes in a Postgres `CHECK` plus a shared validator for a readable error (see `matches_distinct_players_check`, migration 079, and `src/lib/matchPlayers.ts`).
+- **`sessions.session_notes` is a pipe-separated list, not prose.** Admins write it as
+  `6 games | 21 pts/game | 1 set/game | 1 new shuttle/game @ 1st 20 games`, so the session card on
+  `/sessions` parses it with `splitSessionNotes()` (`src/views/MySessionsView.tsx`) and renders one
+  chip per rule — a long note grows a row instead of being clamped and cut mid-word. The helper
+  returns `null` when fewer than two rules survive the split, and the card falls back to a plain
+  unclamped text line, so a note genuinely written as prose still reads correctly. Nothing enforces
+  the pipe format at the database or the admin form; it is a convention the renderer merely exploits.
 - **Nicknames are not unique.** `profiles.nickname` is free text; `disambiguateDisplayNames` qualifies collisions ("Alexis (Cruz)") so two people don't collapse into one on screen.
 - **A roster level is a per-session override that sticks.** `session_registrations.level` (and `gender`)
   win over `profiles` wherever both `useRoster` and `useRegisteredPlayers` read `r.level ?? profile.level`.
