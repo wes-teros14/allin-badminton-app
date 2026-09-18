@@ -23,7 +23,8 @@ browser-level coverage when a flow spans navigation and auth state — which thi
 ## Implementation status (2026-09-18)
 
 **All four user stories complete.** Podium celebrations, the toast and row sweep, non-podium
-achievements (first appearance, personal best, one-place climb) and several-at-once.
+achievements (first appearance and one-place climb) and several-at-once. **Personal best was later
+removed** — see research.md R11: the app holds no rank history, so it could not honestly claim one.
 
 Validated: `npm run lint` clean (one pre-existing unrelated warning in `ProfileView.tsx`),
 `npm run test:unit` **348 passed**, `tests/leaderboard-celebration.spec.ts` **6 passed**,
@@ -122,7 +123,7 @@ creating them, and their current state is stated honestly:
 **Independent test**: Move a test player 9th → 6th without entering the top 3; confirm a card reading "Your best yet!" with the bunny icon and a plain border, identical in size, confetti and dwell to a podium card.
 
 - [X] T023 [P] [US3] Add the `bestEver` map to `badminton-v2/src/lib/celebrationStorage.ts` and keep it updated on every evaluation (data-model.md)
-- [X] T024 [US3] Extend `badminton-v2/src/lib/podiumCelebration.ts` with the `first-appearance`, `personal-best` and `climb` kinds, the one-place climb threshold, and the precedence order: podium > first-appearance > personal-best > climb (FR-007, FR-008, research.md R7)
+- [X] T024 [US3] Extend `badminton-v2/src/lib/podiumCelebration.ts` with the `first-appearance` and `climb` kinds, the one-place climb threshold, and the precedence order: podium > first-appearance > personal-best > climb (FR-007, FR-008, research.md R7)
 - [X] T025 [P] [US3] Extend `badminton-v2/src/__tests__/podiumCelebration.test.ts` with the non-podium C1 rows, including: a 2-place climb produces nothing; first-appearance outranks personal-best when both are true; a podium beats every non-podium achievement earned at the same time
 - [X] T026 [US3] Render the non-podium variant in `badminton-v2/src/components/CelebrationCard.tsx`: the bunny icon from `/bunny-thumbsup.png`, the ordinary 1px border, and **identical** card size, animation, confetti count and dwell to a podium card (FR-018, FR-019, research.md R6)
 - [X] T027 [US3] Extend `badminton-v2/tests/leaderboard-celebration.spec.ts` with a non-podium celebration asserting the bunny icon and the ordinary border

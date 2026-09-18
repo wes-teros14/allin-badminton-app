@@ -1756,6 +1756,44 @@
     </p>
   </div>
 
+  <div class="qa" style="border-left:3px solid #FFB200;padding-left:14px;background:rgba(255,178,0,0.06)">
+    <p class="q"><strong>Correction:</strong> how is it calculating personal best? we dont store it in db right?</p>
+    <p class="a">
+      Correct, and the trigger has been <strong>removed because of it</strong>. There is no rank history
+      anywhere in the schema — <code>player_stats</code>, <code>player_pair_stats</code> and
+      <code>player_cheer_stats</code> hold running totals, and the board queries compute all-time
+      standings with no “as of” date. “Personal best” was a running minimum in <code>localStorage</code>,
+      seeded on the silent first run from wherever the player happened to stand that day.
+    </p>
+    <p class="a">
+      So it meant <em>“best this browser has seen since the feature first ran”</em>, not best ever. A
+      player who was 3rd in July and 6th when this shipped would have been told <em>“Your best yet!”</em>
+      on reaching 5th. It also reset with browser data, and a second device kept its own baseline. The
+      claim was the problem, not the mechanism — those moments now read as a climb instead.
+    </p>
+    <p class="a">
+      <strong>What stayed:</strong> <code>bestEver</code> is still tracked, because
+      <em>first appearance</em> needs it to tell a player arriving on a board from one returning after
+      falling off. Restoring the trigger needs a stored rank history — the same missing data that
+      defers the streak achievement.
+    </p>
+  </div>
+
+  <div class="qa" style="border-left:3px solid #FFB200;padding-left:14px;background:rgba(255,178,0,0.06)">
+    <p class="q"><strong>Correction:</strong> players only sign in once since logged in is remembered</p>
+    <p class="a">
+      Right, and the trigger diagram overstated this. It showed four “gates” as though four things
+      filter, when auth is remembered and so the signed-in check is true on essentially every launch for
+      a returning player. It is a null-guard — it stops the hook evaluating with no player id on the
+      login screen and just after sign-out — not a filter.
+    </p>
+    <p class="a">
+      On a normal launch <strong>exactly one gate does any work</strong>: the sentinel, asking whether
+      any session has completed since last time. The diagram at
+      <code>docs/visual/celebration-trigger-rules.html</code> now says so.
+    </p>
+  </div>
+
 </div>
 </body>
 </html>

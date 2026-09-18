@@ -77,15 +77,16 @@ describe('newPodiumPlacings — non-podium achievements', () => {
     expect(back).toEqual([])
   })
 
-  it('announces a personal best outside the podium', () => {
-    expect(newPodiumPlacings({ wins: 9 }, { wins: 6 }, { wins: 9 }).map(shape)).toEqual([
-      'wins:personal-best:6',
+  it('announces a multi-place climb', () => {
+    expect(newPodiumPlacings({ wins: 9 }, { wins: 6 }, { wins: 4 }).map(shape)).toEqual([
+      'wins:climb:6',
     ])
   })
 
-  it('announces a multi-place climb', () => {
-    // Worse than their best ever, so not a personal best — but still a real gain.
-    expect(newPodiumPlacings({ wins: 9 }, { wins: 6 }, { wins: 4 }).map(shape)).toEqual([
+  // Personal best was removed: the app has no rank history, so it could not
+  // honestly claim one. Improving on a previous best is now simply a climb.
+  it('calls an all-time best a climb, because a best cannot be claimed', () => {
+    expect(newPodiumPlacings({ wins: 9 }, { wins: 6 }, { wins: 9 }).map(shape)).toEqual([
       'wins:climb:6',
     ])
   })
@@ -97,28 +98,32 @@ describe('newPodiumPlacings — non-podium achievements', () => {
     ])
   })
 
+  it('still uses bestEver to tell an arrival from a return', () => {
+    // The personal-best trigger is gone, but bestEver is not: without it these
+    // two cases are indistinguishable, and a returning player would be told they
+    // had just made the board.
+    const arrival = newPodiumPlacings({ wins: null }, { wins: 8 }, {})
+    const ret = newPodiumPlacings({ wins: null }, { wins: 8 }, { wins: 6 })
+
+    expect(arrival.map(shape)).toEqual(['wins:first-appearance:8'])
+    expect(ret).toEqual([])
+  })
+
   it('says nothing when a player holds their non-podium place', () => {
     expect(newPodiumPlacings({ wins: 6 }, { wins: 6 }, { wins: 6 })).toEqual([])
   })
 })
 
 describe('newPodiumPlacings — precedence', () => {
-  it('reports a podium rather than the personal best it also is', () => {
+  it('reports a podium rather than the climb it also is', () => {
     expect(newPodiumPlacings({ wins: 9 }, { wins: 2 }, { wins: 9 }).map(shape)).toEqual([
       'wins:podium:2',
     ])
   })
 
-  it('reports a first appearance rather than the personal best it also is', () => {
+  it('reports a first appearance rather than nothing', () => {
     expect(newPodiumPlacings({ wins: null }, { wins: 7 }, {}).map(shape)).toEqual([
       'wins:first-appearance:7',
-    ])
-  })
-
-  it('reports a personal best rather than the climb it also is', () => {
-    // 10 -> 5 is both a five-place climb and their best ever. The stronger wins.
-    expect(newPodiumPlacings({ wins: 10 }, { wins: 5 }, { wins: 8 }).map(shape)).toEqual([
-      'wins:personal-best:5',
     ])
   })
 
@@ -132,8 +137,8 @@ describe('newPodiumPlacings — precedence', () => {
     // tie that rank has not already settled.
     expect(newPodiumPlacings(previous, current, best).map(shape)).toEqual([
       'pairs:podium:2',
-      'cheers:good_sport:personal-best:5',
-      'wins:personal-best:6',
+      'cheers:good_sport:climb:5',
+      'wins:climb:6',
     ])
   })
 

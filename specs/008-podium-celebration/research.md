@@ -159,10 +159,42 @@ celebrated for that instead, so a climb is someone recovering ground toward a hi
 The accepted cost is the oscillating player — 7th, 6th, 7th, 6th earns a card every other session for
 going nowhere. This is the one dial that cheapens the celebration fastest if it needs turning back.
 
-**Precedence**, highest first: top 3, first appearance, personal best, (streak), places climbed.
-"First appearance" must outrank "personal best" because it is always also a personal best; personal
-best outranks a plain climb for the same reason. Places climbed sits last because it is the weakest
-claim — a player can climb purely because the people above them stopped attending.
+**Precedence**, highest first: top 3, first appearance, places climbed. First appearance outranks a
+climb because arriving on a board is a bigger thing than moving within it. Places climbed sits last
+because it is the weakest claim — a player can climb purely because the people above them stopped
+attending.
+
+---
+
+## R11 — Personal best removed: the app cannot know one
+
+**Decision**: the `personal-best` achievement was built, shipped, and then removed. Those moments now
+read as a climb.
+
+**Rationale**: there is no rank history anywhere in the schema. `player_stats`, `player_pair_stats`
+and `player_cheer_stats` hold running totals — games, wins, sessions, cheers — and the board fetchers
+compute all-time standings with no "as of" parameter. The best the feature could do was a running
+minimum in `localStorage`, seeded on the silent first run from wherever the player happened to stand
+that day.
+
+So "best ever" actually meant **"best this browser has observed since the feature first ran"**. A
+player who was 3rd in July and 6th when this shipped would be told "Your best yet!" on reaching 5th —
+which is false. It also reset when browser data was cleared, and a second device kept its own
+independent baseline.
+
+The claim was the problem, not the mechanism: a celebration that tells someone something untrue is
+worse than one that does not fire.
+
+**What stayed**: `bestEver` is still tracked and still load-bearing, because `first-appearance`
+depends on it — it is the only way to distinguish a player arriving on a board from one returning
+after falling off. Removing it would mean congratulating returning players for "making the board".
+
+**Restoring it** needs a stored rank history: a row written per player per board when a session
+completes. That is the same missing data that defers the streak achievement (R7), so the two would
+naturally be built together.
+
+**Known gap accepted at removal**: a player who was unplaced, and returns better than their old best,
+now gets nothing. A climb needs a previous rank to measure the gain from, and they have none.
 
 ---
 

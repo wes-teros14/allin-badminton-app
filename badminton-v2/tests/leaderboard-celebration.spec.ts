@@ -139,12 +139,12 @@ test('a non-podium achievement gets the same card with the bunny and a plain bor
   await page.waitForFunction(() => typeof (window as unknown as Record<string, unknown>).__celebrate === 'function', { timeout: 15000 })
 
   await page.evaluate(() => (window as unknown as { __celebrate: (a: unknown[]) => void })
-    .__celebrate([{ board: 'wins', kind: 'personal-best', rank: 6, previousRank: 9 }]))
+    .__celebrate([{ board: 'wins', kind: 'climb', rank: 6, previousRank: 9 }]))
 
   const card = page.getByRole('status')
   await expect(card).toBeVisible({ timeout: 5000 })
-  await expect(card).toContainText('Your best yet!')
-  await expect(card).toContainText('was 9th')
+  await expect(card).toContainText('Up 3 places!')
+  await expect(card).toContainText('Now 6th on Individual')
 
   // The bunny stands in for a medal, and the border stays the ordinary one.
   await expect(card.locator('img[src="/bunny-thumbsup.png"]')).toBeVisible()
@@ -162,8 +162,8 @@ test('several achievements at once produce one card listing them all (US4)', asy
   await page.evaluate(() => (window as unknown as { __celebrate: (a: unknown[]) => void })
     .__celebrate([
       { board: 'pairs', kind: 'podium', rank: 1, previousRank: null },
-      { board: 'wins', kind: 'personal-best', rank: 6, previousRank: 9 },
-      { board: 'cheers:good_sport', kind: 'personal-best', rank: 4, previousRank: 7 },
+      { board: 'wins', kind: 'climb', rank: 6, previousRank: 9 },
+      { board: 'cheers:good_sport', kind: 'climb', rank: 4, previousRank: 7 },
     ]))
 
   // Exactly one card, never a queue of three.

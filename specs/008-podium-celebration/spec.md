@@ -166,10 +166,10 @@ appears, listing all three.
 - **FR-006**: System MUST watch the Individual board, the Partners board, and each of the six Cheers
   category boards. The Awards board is excluded, having a single holder and no second or third place.
 - **FR-007**: System MUST recognise these achievements: reaching the top 3; appearing in a board's top
-  10 for the first time; beating the player's own best ever rank on a board; improving for three or
-  more consecutive sessions; and improving by one or more places.
+  10 for the first time; and improving by one or more places. The system MUST NOT claim a personal
+  best, because it holds no rank history and therefore cannot know one.
 - **FR-008**: System MUST select exactly one achievement to celebrate per evaluation, in this order of
-  precedence: top 3, first appearance, personal best, consecutive improvement, places climbed.
+  precedence: top 3, first appearance, places climbed.
 - **FR-009**: System MUST record the player's new standings once an evaluation completes, so the same
   achievement cannot be celebrated twice.
 - **FR-010**: System MUST keep recorded standings per player, so that two players using the same
