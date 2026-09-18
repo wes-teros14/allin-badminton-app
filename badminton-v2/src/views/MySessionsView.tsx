@@ -27,6 +27,18 @@ function DetailItem({
   )
 }
 
+/**
+ * Session notes are written as a pipe-separated list of rules
+ * ("6 games | 21 pts/game | 1 new shuttle/game @ 1st 20 games"), so the card
+ * can lay them out as separate chips instead of clamping one long sentence and
+ * cutting it mid-word. Returns null when the note is not a list — a note
+ * written as prose has nothing to split on and falls back to plain text.
+ */
+export function splitSessionNotes(notes: string): string[] | null {
+  const parts = notes.split('|').map((p) => p.trim()).filter(Boolean)
+  return parts.length > 1 ? parts : null
+}
+
 export function compareSessionsByScheduledDate(a: { date: string; time: string | null }, b: { date: string; time: string | null }): number {
   const dateCompare = a.date.localeCompare(b.date)
   if (dateCompare !== 0) return dateCompare
@@ -117,6 +129,7 @@ function SessionRow({ s, index, isAdmin }: { s: SessionPickerItem; index: number
     : null
   // Same derivation as the session card and the admin payment panel — all three
   // surfaces read from one helper so they cannot drift (FR-020).
+  const noteChips = s.session_notes ? splitSessionNotes(s.session_notes) : null
   const paymentState = derivePaymentState({ paid: s.paid, activeReceiptCount: s.activeReceiptCount })
   const paymentClassName =
     paymentState === 'paid' ? 'text-green-700'
@@ -189,10 +202,25 @@ function SessionRow({ s, index, isAdmin }: { s: SessionPickerItem; index: number
         )}
 
         {s.session_notes && (
-          <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-muted-foreground">
-            <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A84767]" aria-hidden="true" />
-            <span className="line-clamp-2">{s.session_notes}</span>
-          </p>
+          noteChips
+            ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {noteChips.map((chip, i) => (
+                  <span
+                    key={i}
+                    className="rounded-lg bg-muted px-2.5 py-1 text-xs leading-snug text-muted-foreground"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            )
+            : (
+              <p className="mt-2 flex items-start gap-1.5 text-sm leading-relaxed text-muted-foreground">
+                <FileText className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#A84767]" aria-hidden="true" />
+                <span>{s.session_notes}</span>
+              </p>
+            )
         )}
 
         {s.isRegistered && s.paid !== null && (
