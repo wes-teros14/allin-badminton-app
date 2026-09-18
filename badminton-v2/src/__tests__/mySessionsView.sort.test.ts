@@ -14,6 +14,7 @@ function session(overrides: Partial<SessionPickerItem> & { id: string; date: str
     venue: null,
     status: 'registration_open',
     completed_at: null,
+    closed_at: null,
     price: null,
     session_notes: null,
     registration_opens_at: null,

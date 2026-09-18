@@ -16,28 +16,46 @@ const STATUS_LABELS: Record<string, string> = {
   registration_closed: 'Registration Closed',
   schedule_locked: 'Schedule Locked',
   in_progress: 'Playing',
-  complete: 'Complete',
+  complete: 'Finished',
 }
 
 function SessionCard({ session, onClose, onDelete }: { session: Session; onClose: () => void; onDelete: () => void }) {
   const navigate = useNavigate()
   const [closing, setClosing] = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => () => { if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current) }, [])
+  useEffect(() => () => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+  }, [])
 
-  async function handleClose(e: React.MouseEvent) {
-    e.stopPropagation()
+  // Close only files the session under Past Sessions. The night already counts:
+  // Finish Session on the Live page set status = 'complete' and completed_at.
+  async function handleClose() {
     setClosing(true)
     const { error } = await supabase
       .from('sessions')
-      .update({ status: 'complete', completed_at: new Date().toISOString() })
+      .update({ closed_at: new Date().toISOString() })
       .eq('id', session.id)
     if (error) toast.error(error.message)
     else onClose()
     setClosing(false)
+  }
+
+  function handleCloseClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!confirmClose) {
+      setConfirmClose(true)
+      closeTimerRef.current = setTimeout(() => setConfirmClose(false), 5000)
+    } else {
+      clearTimeout(closeTimerRef.current!)
+      setConfirmClose(false)
+      void handleClose()
+    }
   }
 
   function handleDeleteClick(e: React.MouseEvent) {
@@ -112,9 +130,9 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
           </span>
         </div>
         <div className="flex gap-2 shrink-0">
-          {session.status === 'in_progress' && (
-            <Button variant="destructive" size="sm" disabled={closing} onClick={handleClose}>
-              Close
+          {session.status === 'complete' && session.closed_at == null && (
+            <Button variant={confirmClose ? 'destructive' : 'outline'} size="sm" disabled={closing} onClick={handleCloseClick}>
+              {confirmClose ? 'Confirm?' : 'Close'}
             </Button>
           )}
           <Button
@@ -153,11 +171,14 @@ export function AdminView() {
     navigate(`/session/${(data as { id: string }).id}`)
   }
 
+  // Past is "closed", not "complete": a finished session stays in the active
+  // list until the admin closes it, so unpaid players and unlogged shuttles
+  // stay in view.
   const activeSessions = sessions
-    .filter((s) => s.status !== 'complete')
+    .filter((s) => s.closed_at == null)
     .sort(compareSessionsByScheduledDate)
   const pastSessions = sessions
-    .filter((s) => s.status === 'complete')
+    .filter((s) => s.closed_at != null)
     .sort((a, b) => b.date.localeCompare(a.date))
 
   return (

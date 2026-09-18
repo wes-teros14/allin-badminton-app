@@ -28,6 +28,9 @@ export interface Session {
   registration_opens_at: string | null
   split_match_scoring: boolean | null
   court_count: number
+  completed_at: string | null
+  /** Set by Close on /admin; moves the session to Past. Orthogonal to status. */
+  closed_at: string | null
 }
 
 export interface Invitation {
@@ -59,7 +62,11 @@ interface SessionState {
   unlockSchedule: () => Promise<void>
   startSession: () => Promise<void>
   unstartSession: () => Promise<void>
+  /** Live → complete. Commits the night: stats, leaderboards, celebrations, attendance. */
+  finishSession: () => Promise<void>
+  /** complete → Past Sessions. Only stamps closed_at; nothing recomputes. */
   closeSession: () => Promise<void>
+  reopenSession: () => Promise<void>
 }
 
 export function useSession(sessionId?: string): SessionState {
@@ -359,7 +366,7 @@ export function useSession(sessionId?: string): SessionState {
     setSession(updated as Session)
   }
 
-  async function closeSession(): Promise<void> {
+  async function finishSession(): Promise<void> {
     if (!session) return
     const { data: updated, error } = await supabase
       .from('sessions')
@@ -371,5 +378,20 @@ export function useSession(sessionId?: string): SessionState {
     setSession(updated as Session)
   }
 
-  return { session, invitation, playerCount, isLoading, refresh, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, unstartSession, closeSession }
+  async function setClosedAt(value: string | null): Promise<void> {
+    if (!session) return
+    const { data: updated, error } = await supabase
+      .from('sessions')
+      .update({ closed_at: value })
+      .eq('id', session.id)
+      .select()
+      .single()
+    if (error) { toast.error(error.message); return }
+    setSession(updated as Session)
+  }
+
+  const closeSession = () => setClosedAt(new Date().toISOString())
+  const reopenSession = () => setClosedAt(null)
+
+  return { session, invitation, playerCount, isLoading, refresh, createSession, openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, unstartSession, finishSession, closeSession, reopenSession }
 }

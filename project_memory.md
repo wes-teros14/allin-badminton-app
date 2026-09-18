@@ -87,6 +87,18 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - Order: `setup` → `registration_open` → `registration_closed` → `schedule_locked` → `in_progress` → `complete`.
 - `usePlayerSessions` builds `/sessions` from a **union of two queries**, not one: every session with status `registration_open` or `registration_closed` (regardless of registration), plus every session the player holds a registration for (any status). A `setup` session the viewer isn't registered in appears nowhere but `/admin`.
 - Creating a session from `AdminView` does not register the creator, so brand-new sessions are invisible on `/sessions` until registration opens.
+- **`complete` is labelled *Finished* and is reached by *Finish Session* on the Live page (2026-09-18).** It still
+  means "the night counts": stats committed, leaderboards fed, celebrations fired, `sessions_attended` +1 (migration
+  030). Terminal, no path back — that is what keeps attendance from counting twice. The Live page had no close button
+  before; the only exit was a one-tap red *Close* on the `/admin` card that jumped straight to Past.
+- **Filed-away is a column, not a status: `sessions.closed_at` (migration 080).** Set by the two-tap *Close* on the
+  `/admin` card, it does nothing but move the session to Past — `AdminView` splits active/past on it, and
+  `MySessionsView.isUpcomingForPlayer` keeps a finished-not-closed session in *Upcoming* (teal *Finished* pill) so an
+  unpaid amount stays in front of the player. Rejected: a seventh enum value after `complete`, because every
+  "counts" read filter (`boardEligibility`, `leaderboardData`, `useFinanceSessions`, the finance RPC) tests
+  `status = 'complete'` and would all have needed `IN (...)`. Also rejected: a stage *between* Live and Done that
+  commits stats early — a back-step from it to Live would double-count attendance unless a decrement trigger shipped
+  with it. `useSession.reopenSession` clears `closed_at` but has no UI yet. The stepper's *Closed* dot is display only.
 
 ## Data conventions worth not relearning
 

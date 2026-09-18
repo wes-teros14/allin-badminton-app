@@ -10,6 +10,8 @@ export interface SessionPickerItem {
   venue: string | null
   status: string
   completed_at: string | null
+  /** Set by the admin's Close; a finished session stays in Upcoming until then. */
+  closed_at: string | null
   price: number | null
   session_notes: string | null
   registration_opens_at: string | null
@@ -84,7 +86,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       // 1. Fetch registered session IDs + all registration_open/registration_closed sessions in parallel
       const [registrationsRes, openSessionsRes, receiptsRes] = await Promise.all([
         supabase.from('session_registrations').select('session_id, paid').eq('player_id', playerId!),
-        supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, price, session_notes, registration_opens_at')
+        supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, closed_at, price, session_notes, registration_opens_at')
           .in('status', ['registration_open', 'registration_closed']).order('date', { ascending: false }),
         supabase.from('session_receipts').select('session_id, dismissed_at').eq('player_id', playerId!),
       ])
@@ -107,7 +109,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       if (registeredIds.size > 0) {
         const { data } = await supabase
           .from('sessions')
-          .select('id, name, date, time, duration, venue, status, completed_at, price, session_notes, registration_opens_at')
+          .select('id, name, date, time, duration, venue, status, completed_at, closed_at, price, session_notes, registration_opens_at')
           .in('id', [...registeredIds])
           .order('date', { ascending: false })
         if (!cancelled) {
