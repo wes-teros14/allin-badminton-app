@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Celebration trigger rules</title>
+<style>
+  :root{
+    --bg:#0F0A18; --fg:#FFFFFF; --card:#1A1025; --border:#2D1A40;
+    --muted:#B39DBB; --primary:#C9A6DC; --gold:#FFB200;
+    --stop:#DC595E; --go:#22C55E; --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:28px 20px 70px;background:var(--bg);color:var(--fg);
+    font-family:'Geist Variable',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    line-height:1.55;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{margin:0 0 26px;font-size:13.5px;color:var(--muted);max-width:78ch}
+  h2{font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--primary);margin:34px 0 12px}
+  code{font-family:var(--mono);font-size:.9em;background:#2D1A4055;padding:1px 5px;border-radius:4px}
+
+  /* gates */
+  .gates{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+  .gate{
+    flex:1 1 200px;min-width:190px;border:1px solid var(--border);border-radius:13px;
+    background:var(--card);padding:13px 15px;position:relative;
+  }
+  .gate .n{
+    position:absolute;top:-9px;left:13px;background:var(--bg);color:var(--muted);
+    font-size:10px;font-weight:800;letter-spacing:.1em;padding:0 6px;
+  }
+  .gate h3{margin:2px 0 5px;font-size:13.5px;font-weight:700}
+  .gate p{margin:0;font-size:12px;color:var(--muted)}
+  .gate .out{display:block;margin-top:8px;font-size:11px;font-weight:700;color:var(--stop)}
+  .arrow{align-self:center;color:var(--border);font-size:20px;flex:0 0 auto}
+
+  /* ladder */
+  .ladder{border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .rung{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--card)}
+  .rung:last-child{border-bottom:0}
+  .rung.none{background:#150E20}
+  .rung .rank{
+    flex:0 0 46px;display:grid;place-items:center;font-size:17px;font-weight:800;
+    color:var(--muted);background:#150E20;border-right:1px solid var(--border);
+  }
+  .rung .body{flex:1;min-width:0;padding:13px 16px}
+  .rung .title{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pill{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:2px 8px;border:1px solid}
+  .pill.gold{color:var(--gold);border-color:#FFB20055;background:#FFB20012}
+  .pill.plain{color:var(--muted);border-color:var(--border);background:#ffffff08}
+  .cond{font-family:var(--mono);font-size:11.5px;color:#D8C7E6;background:#0F0A18;border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin:8px 0 7px;overflow-x:auto;white-space:nowrap}
+  .why{font-size:12px;color:var(--muted);margin:0}
+  .eg{font-size:11.5px;color:#9C8AA8;margin:6px 0 0;font-style:italic}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:#150E20;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  td.mono{font-family:var(--mono);font-size:11.5px;color:#D8C7E6;white-space:nowrap}
+  .yes{color:var(--go);font-weight:700}
+  .no{color:var(--stop);font-weight:700}
+
+  .note{border-left:3px solid var(--primary);padding:2px 0 2px 14px;margin:14px 0;font-size:12.5px;color:var(--muted)}
+  .note b{color:var(--fg)}
+  footer{margin-top:40px;font-size:11.5px;color:#6E5F7A}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>When a leaderboard celebration fires</h1>
+<p class="lede">
+  Four gates that can stop the whole thing, then one ladder of four achievements evaluated per board,
+  highest first. The first rung that matches wins and the rest are not considered. Source of truth:
+  <code>src/lib/podiumCelebration.ts</code>.
+</p>
+
+<h2>Gates — checked before anything is evaluated</h2>
+<div class="gates">
+  <div class="gate"><span class="n">GATE 1</span>
+    <h3>Signed in?</h3>
+    <p>No player, no standings to compare.</p>
+    <span class="out">✕ signed out → nothing</span>
+  </div>
+  <span class="arrow">›</span>
+  <div class="gate"><span class="n">GATE 2</span>
+    <h3>Has any session completed?</h3>
+    <p>One small query for the latest <code>completed_at</code>. Unchanged since last time means no
+       rank can have moved.</p>
+    <span class="out">✕ unchanged → stop, no board queries at all</span>
+  </div>
+  <span class="arrow">›</span>
+  <div class="gate"><span class="n">GATE 3</span>
+    <h3>Seen this player before?</h3>
+    <p>No stored snapshot means the very first evaluation. It records standings and says nothing.</p>
+    <span class="out">✕ first ever run → record silently</span>
+  </div>
+  <span class="arrow">›</span>
+  <div class="gate"><span class="n">GATE 4</span>
+    <h3>Per board: placed, and watched before?</h3>
+    <p>An unplaced board has no news. A board <em>absent</em> from the last snapshot was not being
+       watched then, so its standing is not new.</p>
+    <span class="out">✕ either → skip that board</span>
+  </div>
+</div>
+
+<h2>The ladder — first match wins, per board</h2>
+<div class="ladder">
+
+  <div class="rung">
+    <div class="rank">1</div>
+    <div class="body">
+      <div class="title">🥇 Podium <span class="pill gold">medal border</span></div>
+      <div class="cond">rank ≤ 3 &amp;&amp; (previousRank === null || previousRank &gt; rank)</div>
+      <p class="why">Reached the top 3, or improved inside it. The only kind that earns a 3px medal-coloured
+      edge; every other kind gets the ordinary border and the bunny.</p>
+      <p class="eg">5th → 3rd fires. 3rd → 1st fires. 2nd → 2nd does not.</p>
+    </div>
+  </div>
+
+  <div class="rung">
+    <div class="rank">2</div>
+    <div class="body">
+      <div class="title">🐰 First appearance <span class="pill plain">plain border</span></div>
+      <div class="cond">previousRank === null &amp;&amp; bestEver[board] === undefined</div>
+      <p class="why">On this board for the very first time. <b>bestEver</b> is what separates it from a
+      return — someone who held a place, fell off and came back has not just arrived.</p>
+      <p class="eg">unplaced → 8th, never placed before, fires. Unplaced → 9th with a best of 7th does not.</p>
+    </div>
+  </div>
+
+  <div class="rung">
+    <div class="rank">3</div>
+    <div class="body">
+      <div class="title">🐰 Personal best <span class="pill plain">plain border</span></div>
+      <div class="cond">bestEver[board] !== undefined &amp;&amp; rank &lt; bestEver[board]</div>
+      <p class="why">Better than they have ever been. True regardless of what anyone else did, which makes
+      it the most honest of the four.</p>
+      <p class="eg">9th → 6th with a best of 9th fires. Equalling a best of 5th does not — it falls through to a climb.</p>
+    </div>
+  </div>
+
+  <div class="rung">
+    <div class="rank">4</div>
+    <div class="body">
+      <div class="title">🐰 Climb <span class="pill plain">plain border</span></div>
+      <div class="cond">previousRank !== null &amp;&amp; previousRank − rank ≥ 1</div>
+      <p class="why">Any improvement at all. Fires less often than the threshold suggests, because personal
+      best outranks it — so a climb is someone recovering ground toward a high they have held before.</p>
+      <p class="eg">7th → 6th with a best of 4th fires, reading “Up 1 place!”.</p>
+    </div>
+  </div>
+
+  <div class="rung none">
+    <div class="rank">—</div>
+    <div class="body">
+      <div class="title">No celebration</div>
+      <p class="why">Unchanged, worse, or dropped off the board. The feature never reports bad news.</p>
+    </div>
+  </div>
+
+</div>
+
+<h2>Worked cases</h2>
+<table>
+  <thead>
+    <tr><th>Was</th><th>Now</th><th>Best ever</th><th>Fires</th><th>Why</th></tr>
+  </thead>
+  <tbody>
+    <tr><td class="mono">5th</td><td class="mono">3rd</td><td class="mono">5th</td><td class="yes">Podium</td><td>Entered the top 3</td></tr>
+    <tr><td class="mono">3rd</td><td class="mono">1st</td><td class="mono">3rd</td><td class="yes">Podium</td><td>Improving inside the podium is still news</td></tr>
+    <tr><td class="mono">unplaced</td><td class="mono">2nd</td><td class="mono">—</td><td class="yes">Podium</td><td>Podium outranks first appearance</td></tr>
+    <tr><td class="mono">unplaced</td><td class="mono">8th</td><td class="mono">—</td><td class="yes">First appearance</td><td>Never been on this board</td></tr>
+    <tr><td class="mono">unplaced</td><td class="mono">9th</td><td class="mono">7th</td><td class="no">Nothing</td><td>A return, not an arrival — and worse than their best</td></tr>
+    <tr><td class="mono">9th</td><td class="mono">6th</td><td class="mono">9th</td><td class="yes">Personal best</td><td>Better than ever; outranks the climb it also is</td></tr>
+    <tr><td class="mono">9th</td><td class="mono">6th</td><td class="mono">4th</td><td class="yes">Climb</td><td>A gain, but short of their record</td></tr>
+    <tr><td class="mono">7th</td><td class="mono">6th</td><td class="mono">4th</td><td class="yes">Climb</td><td>One place is enough — “Up 1 place!”</td></tr>
+    <tr><td class="mono">8th</td><td class="mono">5th</td><td class="mono">5th</td><td class="yes">Climb</td><td>Equalling a best is not a new best</td></tr>
+    <tr><td class="mono">6th</td><td class="mono">6th</td><td class="mono">6th</td><td class="no">Nothing</td><td>Unchanged</td></tr>
+    <tr><td class="mono">1st</td><td class="mono">3rd</td><td class="mono">1st</td><td class="no">Nothing</td><td>Worse. No bad news</td></tr>
+    <tr><td class="mono">2nd</td><td class="mono">unplaced</td><td class="mono">2nd</td><td class="no">Nothing</td><td>Fell off the board</td></tr>
+    <tr><td class="mono">4th <em>(unwatched)</em></td><td class="mono">1st</td><td class="mono">—</td><td class="no">Nothing</td><td>Board absent from the last snapshot — not watched then</td></tr>
+  </tbody>
+</table>
+
+<h2>When several boards match at once</h2>
+<p class="note">
+  Every watched board is evaluated, so one session can produce several achievements. They are sorted
+  <b>by kind first</b> (podium → first appearance → personal best → climb), <b>then by rank</b>
+  (5th beats 6th), <b>then by board</b> (Individual, Partners, then cheer categories). One card lists
+  them all; the toast names the top one and counts the rest. Never a queue of cards.
+</p>
+<p class="note">
+  <b>Boards watched:</b> Individual, Partners, and each of the six Cheers categories — eight in all.
+  Awards is excluded: single holder, no 2nd or 3rd, so there is no placing to detect.
+</p>
+
+<footer>
+  Generated from <code>src/lib/podiumCelebration.ts</code> · <code>PODIUM_PLACES = 3</code> ·
+  <code>CLIMB_THRESHOLD = 1</code>
+</footer>
+
+</div>
+</body>
+</html>
