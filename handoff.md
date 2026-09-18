@@ -1,78 +1,45 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-16 (header redesign + avatar). Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-18 (session notes as chips). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- Two files touched: `badminton-v2/src/views/SessionPlayerDetailView.tsx` and
-  `badminton-v2/src/components/PlayerScheduleHeader.tsx`.
-- Also touched: `badminton-v2/src/views/PlayerView.tsx` (one new prop).
-- **All pushed.** `dev` at `9be1648`, `main` at `ab8e2ab` (non-fast-forward merges throughout).
-- `npm run build` clean, `tsc` clean, eslint clean on the edited file, vitest **305/305**.
-- Working tree still carries pre-existing, unrelated deletions of 17
-  `badminton-v2/docs/visual/*.html` files, an edited root `CLAUDE.md`, and untracked
-  `.claude/launch.json` / `todo.md`. None of it was committed, deliberately.
+- Touched: `badminton-v2/src/views/MySessionsView.tsx`,
+  `badminton-v2/src/__tests__/mySessionsView.notes.test.ts` (new),
+  `badminton-v2/docs/qa-log.html`.
+- **All pushed.** `dev` and `main` both carry the change.
+- `tsc` clean, eslint clean on the edited files, `npm run build` clean, vitest **310/310** (was 305;
+  +5 for `splitSessionNotes`).
+- Working tree still carries the same pre-existing, unrelated noise as last session: deletions of 17
+  `badminton-v2/docs/visual/*.html`, an edited root `CLAUDE.md`, untracked `.claude/launch.json` and
+  `todo.md`. Still deliberately uncommitted.
 
 ## Done this session
 
-**Payment fee card — four steps (Option A).**
-- New step 1 `You are registered`, hardcoded `state="done"` (the card only mounts when
-  `isRegistered`). Send → 2, Upload → 3, Wait → 4.
-- Step 4 reworded to `Please wait while the admin confirms it`, lowercase *admin*, and its body copy
-  now states the duration: *"This usually takes a few hours, and can take up to a day."*
-- Consequence accepted at design time: `PayStep` draws ✓ instead of `n` when done, so the first
-  number a player ever sees is **2**.
+**Long session notes no longer get cut mid-word.** The note on the `/sessions` card was a single
+sentence under `line-clamp-2`, so a real note ("6 games | 21 pts/game | 1 set/game | 1 new
+shuttle/game @ 1st 20 games…") was chopped. Root insight: the note is a pipe-separated list, not
+prose.
 
-**Fixed the flashing "✅ You're registered!" banner.** `usePaymentSettings` starts at `null/null`, so
-the first frame looked like "no GCash configured" and the banner painted before the payment card
-replaced it. The hook already returned `isLoading`; the call site never read it. Now gated on
-`!paymentSettingsLoading`.
+- New exported pure fn `splitSessionNotes(notes)` — splits on `|`, trims, drops empties, returns
+  `null` when fewer than two rules survive. Unit-tested.
+- Two or more rules → wrapping chips (`rounded-lg bg-muted px-2.5 py-1 text-xs`). Nothing truncated;
+  the block grows a row instead. One rule or free prose → the old `FileText` + text line, **now
+  unclamped**.
+- Contrast measured on the chip: 5.03:1 light (`#6B5F73` on `#F1ECF6`), 7.14:1 dark (`#B39DBB` on
+  `#1E1230`). Both clear AA at 12px.
 
-**`SessionFeePaidBar` (Option C).** A green strip flush under the session header, shown on
-`!isLoading && isRegistered && paid === true`. It is the only thing on `/sessions/:id` that tells a
-player the admin confirmed — the fee card unmounts on `paid = true`. Deliberately paid-only: while
-unpaid or waiting, the card below carries its own pill. Verified rendering in the dev session.
-The tick ink is a fixed `#0B2915`, not a token: `--success` is `#22C55E` in both themes, so
-`text-background` would be near-white in light mode.
+**Four options were mocked before building** — chips / no-clamp / "Show more" toggle / one quiet
+line. Mock lives at `temporary_files/session-notes-length-options.html` (gitignored, local only).
+Rejections recorded in `docs/qa-log.html` under *Session cards*.
 
-**Correction recorded** in `docs/qa-log.html` and `tasks/lessons.md`: the earlier claim that a
-confirmed payment produced *no* in-app signal was only true of `/sessions/:id`.
-`/match-schedule/session/:id` renders `PaymentBanner` (`src/components/MatchBoard.tsx:158`), which
-already showed a `✓ Paid ₱370` chip.
+## Notes for next session
 
-**`PlayerScheduleHeader` redesigned (Option A).** Session name is now the headline; the player's
-name is a small eyebrow row with an initial chip; when and where are two lines separated by size and
-weight rather than opacity alone; game count moved to a chip. Verified on both call sites
-(`/sessions/:id`, `/match-schedule/session/:id`) in dark and light.
-
-The eyebrow now renders the player's photo via the existing `Avatar` component at 20px, fed by a new
-optional `avatarUrl` prop wired from `usePlayerSchedule`'s `playerAvatarUrl` (i.e.
-`profiles.avatar_url`, the same source the match-board faces use) at both call sites. `Avatar`'s
-no-photo fallback derives a hue from the name, so two photoless players no longer collapse into
-identical discs.
-
-Unrelated observation, not acted on: the **top nav** avatar and the header avatar show different
-images for the same user, so the nav is probably reading the auth provider's picture rather than
-`profiles.avatar_url`. Pre-existing; not investigated.
-
-**Contrast floor worth remembering**: `--primary` is `#6F3E87` in both themes, so one measurement
-covers both — white at 0.75 is 5.16:1, 0.70 is 4.66:1, 0.65 fails AA at 4.29:1. Nothing in the
-header goes below `opacity-75`.
-
-## Next step
-
-- **One open copy question, raised twice and still unanswered:** before the draw, `gameCount` is 0
-  and the new chip reads `0 GAMES` — louder as a chip than it was as a clause. Suggested
-  `Not drawn yet` at zero. One-line change in `PlayerScheduleHeader.tsx`.
-- Mocks kept for reference: `temporary_files/payment-step-registered-options.html` (step layout,
-  A chosen), `temporary_files/payment-paid-state-options.html` (header status, C chosen),
-  `temporary_files/session-header-redesign-options.html` (header layout, A chosen).
-
-## Open question
-
-- **Nothing blocking.** The dev-data question is closed: the user set `Test Admin` back to unpaid, and
-  both branches are now verified on screen in the Jul. 28 2026 dev session
-  (`bce6f898-c4cd-4334-9d38-54cd7a1df91f`) — paid shows the green strip and no fee card; unpaid shows
-  the four-step card (✓ / 2 / 3 / 4) and no strip.
-- **Not verified in the running app**: step 4's new duration sentence, which only renders once a
-  receipt exists. Unit-safe (a static string in an existing branch) but never seen on screen.
+- The local dev environment has **no session with a real `session_notes` value** — the three dev
+  sessions have junk or empty notes. The chips were verified by injecting the exact markup into the
+  live page via DOM (no data written), screenshotted in both themes. If you need a real one, set a
+  note on a test session through the admin UI first.
+- Dev login on `localhost:5173` does not survive a full page reload cleanly — click `DEV` → `Admin`
+  and then navigate by clicking nav links, not by `navigate()` to a URL.
+- The same chip treatment is **not** applied on `AdminView.tsx`, which still renders
+  `session_notes` inline after the price. Left alone on purpose; ask before changing it.

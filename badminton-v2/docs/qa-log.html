@@ -193,6 +193,32 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Can we make the session notes adjust when it’s long? I don’t like it like this.</p>
+    <p class="a">
+      The note was rendered as one sentence under a <code>line-clamp-2</code>, so anything past two
+      lines was cut mid-word — “<code>…@ 1st 20 games….</code>”. The fix was to stop treating it as a
+      sentence at all: session notes are written as a pipe-separated list
+      (<code>6 games | 21 pts/game | 1 set/game | 1 new shuttle/game @ 1st 20 games</code>), which is
+      structured data wearing a sentence’s clothes.
+    </p>
+    <p class="a">
+      <code>splitSessionNotes()</code> in <code>src/views/MySessionsView.tsx</code> splits on
+      <code>|</code>, trims and drops empties, and returns <code>null</code> when fewer than two rules
+      survive. Two or more rules render as wrapping chips (<code>bg-muted</code>, <code>text-xs</code>)
+      and nothing is ever truncated — the block just grows a row. One rule, or a note written as
+      prose, falls back to the old icon-plus-text line, now unclamped. Contrast holds in both themes:
+      <code>#6B5F73</code> on <code>#F1ECF6</code> is 5.03:1 light, <code>#B39DBB</code> on
+      <code>#1E1230</code> is 7.14:1 dark.
+    </p>
+    <p class="a">
+      Three alternatives were mocked and rejected: dropping the clamp alone (card heights go uneven and
+      one chatty note dominates the scroll), a “Show more” toggle (the card is a single
+      <code>&lt;a&gt;</code>, so the toggle has to live outside it — see the admin-button entry above),
+      and demoting the note to one dim truncated line.
+    </p>
+  </div>
+
   <h2 class="topic" id="leaderboard">Leaderboard</h2>
 
   <div class="qa">
