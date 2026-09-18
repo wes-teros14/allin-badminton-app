@@ -112,6 +112,24 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   snapshot means "not watched then" and stays silent; a board present with `null` means "watched, not
   placed" and is news later. That distinction is what stops a newly added cheer category
   congratulating everyone already in its top 3.
+- **A celebration is gated by a sentinel, not by a poll.** Standings can only move when a session
+  completes, so each evaluation first reads the latest `sessions.completed_at` and stops there if it
+  is unchanged. Only a change buys the board computation, which is expensive enough that paying it on
+  every launch would be indefensible. Rejected alternatives: computing every launch, a dedicated
+  version column needing a migration, and a realtime subscription (which would deliver news
+  mid-interaction, which the design explicitly does not want).
+- **Everyone's celebration is the same size.** Podium and non-podium cards are identical in
+  dimensions, confetti count, animation and time on screen. Rank is carried only by the border — 3px
+  in the place's medal colour versus the ordinary 1px — and the icon, a medal or the thumbs-up bunny.
+  An earlier draft made the non-podium card smaller and purple so a podium would outrank it; that was
+  overruled on the grounds that everybody who achieved something deserves the same moment. Do not
+  re-propose shrinking it.
+- **Achievement precedence is `podium` > `first-appearance` > `personal-best` > `climb`.** First
+  appearance must outrank personal best because it is always also one, and climb sits last because a
+  player can rise purely because the people above them stopped attending. The three-place climb
+  threshold exists because in a fourteen-player session half the field rises whenever the other half
+  falls. "First appearance" is distinguished from a return to a board by `bestEver`, not by the
+  previous snapshot.
 - **`sessions.session_notes` is a pipe-separated list, not prose.** Admins write it as
   `6 games | 21 pts/game | 1 set/game | 1 new shuttle/game @ 1st 20 games`, so the session card on
   `/sessions` parses it with `splitSessionNotes()` (`src/views/MySessionsView.tsx`) and renders one
