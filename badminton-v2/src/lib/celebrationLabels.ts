@@ -58,7 +58,6 @@ export function cardHeadline(placing: NewPlacing): string {
   switch (placing.kind) {
     case 'podium': return `${ordinal(placing.rank)} place!`
     case 'first-appearance': return "You're on the board!"
-    case 'personal-best': return 'Your best yet!'
     case 'climb': {
       const gained = placing.previousRank === null ? 0 : placing.previousRank - placing.rank
       // Singular matters now that a one-place gain qualifies: "Up 1 places!" is
@@ -72,11 +71,8 @@ export function cardLabel(placing: NewPlacing): { title: string; detail: string 
   const title = boardTitle(placing.board)
   const measure = boardMeasure(placing.board)
 
-  // A personal best and a climb are only meaningful against what came before, so
-  // both name it. The other two stand on their own.
-  if (placing.kind === 'personal-best' && placing.previousRank !== null) {
-    return { title, detail: `${ordinal(placing.rank)} ${boardPreposition(placing.board)} ${title} · was ${ordinal(placing.previousRank)}` }
-  }
+  // A climb is only meaningful against what came before, so it names where they
+  // landed. The other two stand on their own.
   if (placing.kind === 'climb' && placing.previousRank !== null) {
     return { title, detail: `Now ${ordinal(placing.rank)} ${boardPreposition(placing.board)} ${title}` }
   }
@@ -92,9 +88,7 @@ export function toastLine(best: NewPlacing, extraCount: number): string {
   const head =
     best.kind === 'first-appearance'
       ? `You made the ${boardTitle(best.board)} board — ${ordinal(best.rank)}`
-      : best.kind === 'personal-best'
-        ? `Your best placing yet — ${ordinal(best.rank)} ${where}`
-        : `You're ${ordinal(best.rank)} ${where}`
+      : `You're ${ordinal(best.rank)} ${where}`
 
   return extraCount > 0 ? `${head} — and ${extraCount} more` : head
 }

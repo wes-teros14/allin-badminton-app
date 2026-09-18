@@ -89,7 +89,6 @@ other card gets the ordinary 1px border. Nothing else differs.
 Four things can earn a non-podium celebration:
 
 - **Made the board** — their first ever appearance in the top 10 of that board.
-- **Personal best placing** — they beat their own best-ever rank.
 - **Sessions climbing** — three or more consecutive sessions of improvement.
 - **Climbed places** — an improvement of one or more places.
 
@@ -98,12 +97,15 @@ streak. So exactly one celebration fires, chosen by this precedence, highest fir
 
 1. Podium (top 3) — always wins
 2. Made the board
-3. Personal best placing
-4. Sessions climbing
-5. Climbed places
+3. Sessions climbing
+4. Climbed places
 
-"Made the board" outranks "personal best" because it is always also a personal best; personal best
-outranks a plain climb for the same reason.
+"Made the board" outranks a plain climb because arriving on a board is a bigger thing than moving
+within it.
+
+**A "personal best placing" achievement was built and then removed.** There is no rank history in the
+database, so the app could only know the best it had observed since the feature first ran — "Your best
+yet!" was false for anyone who peaked earlier. Restore it only alongside stored rank history.
 
 The climb threshold is **one place**, by product decision: any improvement is worth telling someone
 about, in the same spirit as giving non-medallists the identical celebration. It fires less often than

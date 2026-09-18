@@ -56,7 +56,7 @@ export type RankSnapshot = Partial<Record<BoardKey, number | null>>
  * celebration with the app's bunny and the ordinary border, because everybody who
  * achieved something gets the same moment.
  */
-export type AchievementKind = 'podium' | 'first-appearance' | 'personal-best' | 'climb'
+export type AchievementKind = 'podium' | 'first-appearance' | 'climb'
 
 export interface NewPlacing {
   board: BoardKey
@@ -81,10 +81,8 @@ function priority(board: BoardKey): number {
  * One, by product decision: any improvement is worth telling someone about, in
  * the same spirit as giving non-medallists the identical celebration.
  *
- * It fires less often than the number suggests, because `personal-best` outranks
- * it — a player who improves *and* betters their own record is celebrated for
- * that instead. A climb is therefore someone recovering ground toward a high they
- * have held before.
+ * Since `personal-best` was removed this is now the rung that catches every
+ * ordinary improvement outside the top 3.
  *
  * The cost of one, accepted knowingly: a player oscillating 7th, 6th, 7th, 6th is
  * congratulated every other session for going nowhere. Raise this number if that
@@ -96,22 +94,33 @@ export const CLIMB_THRESHOLD = 1
 /**
  * Which kinds of achievement outrank which, best first.
  *
- * `first-appearance` must beat `personal-best` because arriving on a board for
- * the first time is always also a personal best. `personal-best` beats `climb`
- * for the same reason — and `climb` sits last because it is the weakest claim of
- * the four: a player can rise purely because the people above them stopped
+ * `first-appearance` beats `climb` because arriving on a board is a bigger thing
+ * than moving within it, and `climb` sits last because it is the weakest claim of
+ * the three: a player can rise purely because the people above them stopped
  * showing up.
+ *
+ * A `personal-best` kind used to sit between them and was removed. The app cannot
+ * honestly claim a best: there is no rank history in the database, so `bestEver`
+ * is only the best this browser has observed since the feature first ran, seeded
+ * from wherever the player happened to stand that day. "Your best yet!" was
+ * therefore false for anyone who peaked before this shipped. Restore it only
+ * alongside a stored rank history — see research.md R11.
  */
 const KIND_PRIORITY: readonly AchievementKind[] = [
   'podium',
   'first-appearance',
-  'personal-best',
   'climb',
 ]
 
 const kindRank = (kind: AchievementKind) => KIND_PRIORITY.indexOf(kind)
 
-/** Best rank ever held per board, as far as the app has seen. */
+/**
+ * Best rank per board as far as this browser has ever observed.
+ *
+ * No longer used to celebrate a personal best — the app cannot back that claim —
+ * but still load-bearing for `first-appearance`, which is the only way to tell a
+ * player arriving on a board from one returning to it after falling off.
+ */
 export type BestEver = Partial<Record<BoardKey, number>>
 
 /**
@@ -138,12 +147,6 @@ function classify(
   // board is old news, however long they were away.
   if (previousRank === null && held === undefined) {
     return { board, kind: 'first-appearance', rank, previousRank }
-  }
-
-  // Better than they have ever been. True regardless of what anyone else did,
-  // which is what makes it the honest one.
-  if (held !== undefined && rank < held) {
-    return { board, kind: 'personal-best', rank, previousRank }
   }
 
   if (previousRank !== null && previousRank - rank >= CLIMB_THRESHOLD) {

@@ -79,12 +79,17 @@
   <code>src/lib/podiumCelebration.ts</code>.
 </p>
 
-<h2>Gates — checked before anything is evaluated</h2>
+<h2>Gates — only one of these filters anything</h2>
+<p class="lede" style="margin:-8px 0 16px">
+  On a normal launch <b>Gate 2 is the only one that stops anything</b>. Auth is remembered, so Gate 1
+  is true for every returning player — it is a guard against evaluating with no player id on the login
+  screen, not a filter. Gate 3 fires once ever per player. Gate 4 is a per-board detail.
+</p>
 <div class="gates">
   <div class="gate"><span class="n">GATE 1</span>
     <h3>Signed in?</h3>
-    <p>No player, no standings to compare.</p>
-    <span class="out">✕ signed out → nothing</span>
+    <p>A null-guard, not a filter — auth is remembered, so this is true on essentially every launch.</p>
+    <span class="out">✕ only on the login screen / just after sign-out</span>
   </div>
   <span class="arrow">›</span>
   <div class="gate"><span class="n">GATE 2</span>
@@ -109,6 +114,11 @@
 </div>
 
 <h2>The ladder — first match wins, per board</h2>
+<p class="lede" style="margin:-8px 0 14px">
+  A fourth rung, <b>personal best</b>, was removed. There is no rank history in the database, so the
+  app could only ever know the best <em>this browser</em> had seen since the feature first ran —
+  “Your best yet!” was false for anyone who peaked earlier. Those moments now read as a climb.
+</p>
 <div class="ladder">
 
   <div class="rung">
@@ -136,22 +146,11 @@
   <div class="rung">
     <div class="rank">3</div>
     <div class="body">
-      <div class="title">🐰 Personal best <span class="pill plain">plain border</span></div>
-      <div class="cond">bestEver[board] !== undefined &amp;&amp; rank &lt; bestEver[board]</div>
-      <p class="why">Better than they have ever been. True regardless of what anyone else did, which makes
-      it the most honest of the four.</p>
-      <p class="eg">9th → 6th with a best of 9th fires. Equalling a best of 5th does not — it falls through to a climb.</p>
-    </div>
-  </div>
-
-  <div class="rung">
-    <div class="rank">4</div>
-    <div class="body">
       <div class="title">🐰 Climb <span class="pill plain">plain border</span></div>
       <div class="cond">previousRank !== null &amp;&amp; previousRank − rank ≥ 1</div>
-      <p class="why">Any improvement at all. Fires less often than the threshold suggests, because personal
-      best outranks it — so a climb is someone recovering ground toward a high they have held before.</p>
-      <p class="eg">7th → 6th with a best of 4th fires, reading “Up 1 place!”.</p>
+      <p class="why">Any improvement at all — now the rung that catches every ordinary gain outside the
+      top 3.</p>
+      <p class="eg">7th → 6th fires, reading “Up 1 place!”. 9th → 6th reads “Up 3 places!”.</p>
     </div>
   </div>
 
@@ -176,10 +175,9 @@
     <tr><td class="mono">unplaced</td><td class="mono">2nd</td><td class="mono">—</td><td class="yes">Podium</td><td>Podium outranks first appearance</td></tr>
     <tr><td class="mono">unplaced</td><td class="mono">8th</td><td class="mono">—</td><td class="yes">First appearance</td><td>Never been on this board</td></tr>
     <tr><td class="mono">unplaced</td><td class="mono">9th</td><td class="mono">7th</td><td class="no">Nothing</td><td>A return, not an arrival — and worse than their best</td></tr>
-    <tr><td class="mono">9th</td><td class="mono">6th</td><td class="mono">9th</td><td class="yes">Personal best</td><td>Better than ever; outranks the climb it also is</td></tr>
-    <tr><td class="mono">9th</td><td class="mono">6th</td><td class="mono">4th</td><td class="yes">Climb</td><td>A gain, but short of their record</td></tr>
+    <tr><td class="mono">9th</td><td class="mono">6th</td><td class="mono">9th</td><td class="yes">Climb</td><td>Would once have been a personal best</td></tr>
     <tr><td class="mono">7th</td><td class="mono">6th</td><td class="mono">4th</td><td class="yes">Climb</td><td>One place is enough — “Up 1 place!”</td></tr>
-    <tr><td class="mono">8th</td><td class="mono">5th</td><td class="mono">5th</td><td class="yes">Climb</td><td>Equalling a best is not a new best</td></tr>
+    <tr><td class="mono">unplaced</td><td class="mono">6th</td><td class="mono">9th</td><td class="no">Nothing</td><td>A return with no previous rank to measure a gain from</td></tr>
     <tr><td class="mono">6th</td><td class="mono">6th</td><td class="mono">6th</td><td class="no">Nothing</td><td>Unchanged</td></tr>
     <tr><td class="mono">1st</td><td class="mono">3rd</td><td class="mono">1st</td><td class="no">Nothing</td><td>Worse. No bad news</td></tr>
     <tr><td class="mono">2nd</td><td class="mono">unplaced</td><td class="mono">2nd</td><td class="no">Nothing</td><td>Fell off the board</td></tr>
@@ -190,7 +188,7 @@
 <h2>When several boards match at once</h2>
 <p class="note">
   Every watched board is evaluated, so one session can produce several achievements. They are sorted
-  <b>by kind first</b> (podium → first appearance → personal best → climb), <b>then by rank</b>
+  <b>by kind first</b> (podium → first appearance → climb), <b>then by rank</b>
   (5th beats 6th), <b>then by board</b> (Individual, Partners, then cheer categories). One card lists
   them all; the toast names the top one and counts the rest. Never a queue of cards.
 </p>
@@ -201,7 +199,7 @@
 
 <footer>
   Generated from <code>src/lib/podiumCelebration.ts</code> · <code>PODIUM_PLACES = 3</code> ·
-  <code>CLIMB_THRESHOLD = 1</code>
+  <code>CLIMB_THRESHOLD = 1</code> · personal best removed, no rank history to back it
 </footer>
 
 </div>
