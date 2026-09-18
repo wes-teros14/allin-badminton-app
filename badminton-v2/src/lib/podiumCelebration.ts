@@ -56,7 +56,7 @@ export type RankSnapshot = Partial<Record<BoardKey, number | null>>
  * celebration with the app's bunny and the ordinary border, because everybody who
  * achieved something gets the same moment.
  */
-export type AchievementKind = 'podium' | 'first-appearance' | 'climb'
+export type AchievementKind = 'podium' | 'first-appearance' | 'climb' | 'drop'
 
 export interface NewPlacing {
   board: BoardKey
@@ -92,12 +92,26 @@ function priority(board: BoardKey): number {
 export const CLIMB_THRESHOLD = 1
 
 /**
+ * How many places a player must lose before the drop is reported.
+ *
+ * One, mirroring the climb: the feature reports movement in either direction and
+ * does not judge it. That is a reversal of an earlier principle — "never report
+ * bad news" — made deliberately; see research.md R12.
+ *
+ * Symmetry has a cost worth remembering: in a fourteen-player session half the
+ * field falls whenever the other half rises, so with both thresholds at one,
+ * close to every player hears something every session.
+ */
+export const DROP_THRESHOLD = 1
+
+/**
  * Which kinds of achievement outrank which, best first.
  *
  * `first-appearance` beats `climb` because arriving on a board is a bigger thing
- * than moving within it, and `climb` sits last because it is the weakest claim of
- * the three: a player can rise purely because the people above them stopped
- * showing up.
+ * than moving within it. `climb` beats `drop` because when a session moves a
+ * player on several boards at once, the good news should lead — a drop can never
+ * compete with a climb on the *same* board, so this ordering only decides which
+ * board fronts the card.
  *
  * A `personal-best` kind used to sit between them and was removed. The app cannot
  * honestly claim a best: there is no rank history in the database, so `bestEver`
@@ -110,6 +124,7 @@ const KIND_PRIORITY: readonly AchievementKind[] = [
   'podium',
   'first-appearance',
   'climb',
+  'drop',
 ]
 
 const kindRank = (kind: AchievementKind) => KIND_PRIORITY.indexOf(kind)
@@ -153,6 +168,13 @@ function classify(
     return { board, kind: 'climb', rank, previousRank }
   }
 
+  // Falling is reported the same way rising is. Note this cannot fire for a
+  // player who left the board entirely: the caller skips an unplaced board, and
+  // "down N places" needs a place to have landed on.
+  if (previousRank !== null && rank - previousRank >= DROP_THRESHOLD) {
+    return { board, kind: 'drop', rank, previousRank }
+  }
+
   return null
 }
 
@@ -169,6 +191,9 @@ function classify(
  *   board at a time. Adding a seventh cheer category later must not hand
  *   everyone a celebration for a rank they already had.
  * - **Holding the same place** — 2nd last week and 2nd today is not news.
+ *
+ * A *worsening* is no longer silent: see `drop`. Leaving a board altogether still
+ * is, because there is no place left to name.
  *
  * Improving *within* the podium does count: 3rd to 1st is the best kind of news
  * this can deliver.

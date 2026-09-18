@@ -124,7 +124,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   An earlier draft made the non-podium card smaller and purple so a podium would outrank it; that was
   overruled on the grounds that everybody who achieved something deserves the same moment. Do not
   re-propose shrinking it.
-- **Achievement precedence is `podium` > `first-appearance` > `climb`.** A `personal-best` kind sat
+- **Movement precedence is `podium` > `first-appearance` > `climb` > `drop`.** Drops are reported at
+  the same threshold as climbs and drawn identically, confetti included — a deliberate reversal of the
+  original "never report bad news" rule (research.md R12). Two consequences: close to every player
+  hears something every session, and the medal border follows the player's *current standing* rather
+  than the kind of news, so someone slipping 2nd → 3rd keeps their bronze. Leaving a board entirely is
+  still silent, because "down N places" needs a place to have landed on. A `personal-best` kind sat
   between the last two and was **removed**: there is no rank history in the schema, so the app could
   only ever know the best *this browser* had seen since the feature first ran, seeded from wherever the
   player stood that day — "Your best yet!" was false for anyone who peaked earlier. Those moments now

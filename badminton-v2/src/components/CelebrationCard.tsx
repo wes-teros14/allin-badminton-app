@@ -9,11 +9,15 @@
  * border. That is a product decision, made deliberately: the celebration is for
  * the achievement the player actually had, not a ranking of whose achievement
  * counted for more.
+ *
+ * By the same decision a *drop* is drawn identically, confetti included. The app
+ * reports movement and does not editorialise about its direction. The single
+ * concession is punctuation — "Down 2 places" carries no exclamation mark.
  */
 
 import { useEffect, useState } from 'react'
 import { ConfettiBurst } from '@/components/ConfettiBurst'
-import { type NewPlacing } from '@/lib/podiumCelebration'
+import { PODIUM_PLACES, type NewPlacing } from '@/lib/podiumCelebration'
 import { cardHeadline } from '@/lib/celebrationLabels'
 
 const MEDALS = ['🥇', '🥈', '🥉'] as const
@@ -36,11 +40,16 @@ export function dwellFor(count: number): number {
 }
 
 /**
- * Read from the achievement's kind, never inferred from its rank. A player can be
- * 2nd on a board and be celebrated for a personal best rather than a podium, and
- * the border and icon must follow the news rather than the number.
+ * Whether this card wears a medal — decided by where the player now stands, not by
+ * what kind of news it is.
+ *
+ * The distinction only bites for a drop. A climb or a first appearance can never
+ * land inside the top 3, because the podium branch of the rule claims those
+ * first. But a player who slips from 2nd to 3rd still holds bronze, and showing
+ * them a bunny and a plain border would be telling them they had lost a medal
+ * they still have.
  */
-const isPodium = (p: NewPlacing) => p.kind === 'podium'
+const showsMedal = (p: NewPlacing) => p.rank <= PODIUM_PLACES
 
 /**
  * The bunny stands in for a medal on every non-podium card.
@@ -50,7 +59,7 @@ const isPodium = (p: NewPlacing) => p.kind === 'podium'
  * medal beside an 18px bunny in the same row.
  */
 function Icon({ placing, px }: { placing: NewPlacing; px: number }) {
-  if (isPodium(placing)) {
+  if (showsMedal(placing)) {
     return (
       <span
         aria-hidden="true"
@@ -104,7 +113,7 @@ export function CelebrationCard({
 
   if (!best) return null
 
-  const borderClass = isPodium(best) ? `border-[3px] ${PODIUM_BORDER[best.rank - 1]}` : 'border border-border'
+  const borderClass = showsMedal(best) ? `border-[3px] ${PODIUM_BORDER[best.rank - 1]}` : 'border border-border'
 
   return (
     <>
@@ -148,7 +157,7 @@ export function CelebrationCard({
           ) : (
             <>
               <div className="grid min-h-[66px] place-items-center">
-                <Icon placing={best} px={isPodium(best) ? 46 : 66} />
+                <Icon placing={best} px={showsMedal(best) ? 46 : 66} />
               </div>
               <p className="mt-1.5 text-[17px] font-extrabold">{cardHeadline(best)}</p>
               <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">

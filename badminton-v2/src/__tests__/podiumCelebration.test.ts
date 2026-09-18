@@ -33,11 +33,9 @@ describe('newPodiumPlacings — podium', () => {
     expect(newPodiumPlacings({ wins: 2 }, { wins: 2 }, { wins: 2 })).toEqual([])
   })
 
-  it('says nothing when the place got worse', () => {
-    expect(newPodiumPlacings({ wins: 1 }, { wins: 3 }, { wins: 1 })).toEqual([])
-  })
-
   it('says nothing when the player dropped off the board entirely', () => {
+    // Reported as nothing even now that drops exist: "down N places" needs a
+    // place to have landed on, and they have none.
     expect(newPodiumPlacings({ wins: 2 }, { wins: null }, { wins: 2 })).toEqual([])
   })
 })
@@ -114,6 +112,38 @@ describe('newPodiumPlacings — non-podium achievements', () => {
   })
 })
 
+// A reversal of the original "never report bad news" rule, made deliberately.
+describe('newPodiumPlacings — drops', () => {
+  it('reports a drop of a single place', () => {
+    expect(newPodiumPlacings({ wins: 6 }, { wins: 7 }, { wins: 4 }).map(shape)).toEqual([
+      'wins:drop:7',
+    ])
+  })
+
+  it('reports a drop out of the podium', () => {
+    expect(newPodiumPlacings({ wins: 2 }, { wins: 5 }, { wins: 2 }).map(shape)).toEqual([
+      'wins:drop:5',
+    ])
+  })
+
+  it('reports a drop that stays inside the podium', () => {
+    // Still a medallist. The card keeps the bronze border; only the rule cares
+    // that this was a drop.
+    expect(newPodiumPlacings({ wins: 1 }, { wins: 3 }, { wins: 1 }).map(shape)).toEqual([
+      'wins:drop:3',
+    ])
+  })
+
+  it('puts a climb ahead of a drop when a session produces both', () => {
+    const placings = newPodiumPlacings(
+      { wins: 9, pairs: 4 },
+      { wins: 6, pairs: 7 },
+      { wins: 4, pairs: 4 },
+    )
+    expect(placings.map(shape)).toEqual(['wins:climb:6', 'pairs:drop:7'])
+  })
+})
+
 describe('newPodiumPlacings — precedence', () => {
   it('reports a podium rather than the climb it also is', () => {
     expect(newPodiumPlacings({ wins: 9 }, { wins: 2 }, { wins: 9 }).map(shape)).toEqual([
@@ -164,7 +194,7 @@ describe('bestPlacing', () => {
   })
 })
 
-describe('cardHeadline — climb wording', () => {
+describe('cardHeadline — movement wording', () => {
   it('uses the singular for a one-place gain', () => {
     expect(cardHeadline({ board: 'wins', kind: 'climb', rank: 6, previousRank: 7 }))
       .toBe('Up 1 place!')
@@ -173,5 +203,24 @@ describe('cardHeadline — climb wording', () => {
   it('uses the plural for a larger gain', () => {
     expect(cardHeadline({ board: 'wins', kind: 'climb', rank: 6, previousRank: 10 }))
       .toBe('Up 4 places!')
+  })
+})
+
+describe('cardHeadline — drop wording', () => {
+  it('uses the singular for a one-place drop', () => {
+    expect(cardHeadline({ board: 'wins', kind: 'drop', rank: 7, previousRank: 6 }))
+      .toBe('Down 1 place')
+  })
+
+  it('uses the plural for a larger drop', () => {
+    expect(cardHeadline({ board: 'wins', kind: 'drop', rank: 9, previousRank: 6 }))
+      .toBe('Down 3 places')
+  })
+
+  // The card, animation and confetti are shared with a celebration by decision.
+  // The punctuation is the one place that does not follow.
+  it('does not punctuate a loss like good news', () => {
+    expect(cardHeadline({ board: 'wins', kind: 'drop', rank: 9, previousRank: 6 })).not.toContain('!')
+    expect(cardHeadline({ board: 'wins', kind: 'climb', rank: 6, previousRank: 9 })).toContain('!')
   })
 })
