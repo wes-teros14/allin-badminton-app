@@ -582,3 +582,27 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   `✓ Paid ₱370` chip. **Rule**: before claiming "the app doesn't do X", grep for every consumer of the
   shared helper (`derivePaymentState` here) — two routes rendering one concept through different
   components is the norm in this codebase, not the exception.
+
+## `npx tsc --noEmit` checks nothing in badminton-v2 (2026-09-18)
+
+- **Symptom**: an extraction refactor reported a clean typecheck, then crashed the Partners
+  leaderboard tab to a completely blank page at runtime.
+- **Root cause**: `badminton-v2/tsconfig.json` is a solution file — `"files": []` plus two
+  `references`. `tsc --noEmit` against it typechecks zero files and exits 0. Three real errors were
+  sitting behind that green result, including a `MIN_GAMES_TOGETHER` that had been moved out of the
+  view but was still referenced by its caption.
+- **Fix**: use `tsc -b` (what `npm run build` runs). Exported the constant and the missing
+  `LeaderboardEntry` type, imported them back into the view.
+- **Rule**: never claim a clean typecheck in this repo on the strength of `--noEmit`.
+
+## A Playwright test that skips itself is not a passing test (2026-09-18)
+
+- **Symptom**: the new celebration suite reported "2 passed, 2 skipped" and looked fine.
+- **Root cause**: the two sweep tests called `test.skip()` when no celebration state was in
+  `localStorage` yet. The state is written asynchronously after sign-in, so they skipped every run
+  and asserted nothing — while the summary read green.
+- **Fix**: replaced the skip with `page.waitForFunction` on the storage key. A missing first-run
+  record is now a failure, which is correct, because writing it is exactly what the silent first run
+  is supposed to do.
+- **Rule**: a conditional `test.skip` on a condition the test itself causes is a test that never
+  runs. Wait for the precondition instead of skipping on it.

@@ -95,6 +95,23 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Date formatting**: always `'en-US'` and always append `'T00:00:00'` to a bare `YYYY-MM-DD`. Parsed bare, it is UTC midnight and renders as the previous day anywhere west of Greenwich.
 - **Unbounded reads need paging.** Any query whose result set can exceed one screen uses `.range()` with a stable `.order()`, plus a `{ count: 'exact', head: true }` cross-check that throws on mismatch. PostgREST silently truncates at `db_max_rows` (1000) with no error. The pair leaderboard was the first such query in the codebase.
 - **Invariants belong in the database.** Anything an algorithm guarantees can still be violated by a hand-edit form, so the check goes in a Postgres `CHECK` plus a shared validator for a readable error (see `matches_distinct_players_check`, migration 079, and `src/lib/matchPlayers.ts`).
+- **`npx tsc --noEmit` typechecks nothing in `badminton-v2`.** `tsconfig.json` is a solution file with
+  `"files": []` and only project references, so it exits 0 having checked zero files. The real
+  typecheck is `tsc -b`, which is what `npm run build` runs. A refactor once passed `--noEmit` while
+  carrying three type errors, one of which crashed a tab to a blank page. Never report a clean
+  typecheck on the strength of `--noEmit` here.
+- **`src/lib/leaderboardData.ts` is the single definition of a leaderboard rank.** The board queries,
+  the eligibility gates and the dense ranking were lifted out of `LeaderboardView` so that the view
+  and the celebration feature cannot disagree about a player's place. Do not add a lighter
+  "just my rank" query — the ranking involves eligibility gates and dense ranks, and a second copy
+  will drift, which is the same failure the match-outcome helper was written to end.
+- **Leaderboard celebrations remember per player, in `localStorage`.** `celebrationStorage.ts` keys
+  by player id because the dev login panel switches accounts in one browser. The first evaluation for
+  any player is deliberately silent — it records standings and says nothing — so nobody is
+  congratulated on launch day for a place they have held for months. A board *absent* from a stored
+  snapshot means "not watched then" and stays silent; a board present with `null` means "watched, not
+  placed" and is news later. That distinction is what stops a newly added cheer category
+  congratulating everyone already in its top 3.
 - **`sessions.session_notes` is a pipe-separated list, not prose.** Admins write it as
   `6 games | 21 pts/game | 1 set/game | 1 new shuttle/game @ 1st 20 games`, so the session card on
   `/sessions` parses it with `splitSessionNotes()` (`src/views/MySessionsView.tsx`) and renders one

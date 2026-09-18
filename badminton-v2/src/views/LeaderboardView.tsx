@@ -1,71 +1,34 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { supabase } from '@/lib/supabase'
-import { assignDenseRanks, cutToPlaces, groupByRank } from '@/lib/denseRank'
+import { groupByRank } from '@/lib/denseRank'
+import {
+  fetchAllTimeLeaderboard,
+  fetchCheerLeaderboard,
+  fetchPairLeaderboard,
+  MIN_GAMES_TOGETHER,
+  PODIUM_PLACES,
+} from '@/lib/leaderboardData'
+import type {
+  CheerLeaderboardEntry,
+  LeaderboardEntry,
+  PairLeaderboardEntry,
+} from '@/lib/leaderboardData'
 import { MIN_CHEERS_RECEIVED, rankCheerShares } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import type { CheerCategory } from '@/lib/cheerTypes'
 import type { CheerTypeSlug } from '@/types/app'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
 import type { RankGroup } from '@/lib/denseRank'
-import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
-import { rankPairs, tallyPairs } from '@/lib/pairStats'
-import type { PairTallyMatch } from '@/lib/pairStats'
+import { formatDisplayName } from '@/lib/formatDisplayName'
 import { Avatar } from '@/components/Avatar'
+import { useAuth } from '@/hooks/useAuth'
+import { clearSweepDebt, readCurrentSweepDebt } from '@/lib/celebrationStorage'
+import { boardTab } from '@/lib/celebrationLabels'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-interface LeaderboardEntry {
-  rank: number
-  playerId: string
-  displayName: string
-  avatarUrl: string | null
-  wins: number
-  losses: number
-  winRate: number
-}
-
-interface CheerLeaderboardEntry {
-  player_id: string
-  displayName: string
-  cheers_received: number
-  cheers_given: number
-  offense_received: number
-  defense_received: number
-  technique_received: number
-  movement_received: number
-  good_sport_received: number
-  solid_effort_received: number
-}
-
-interface CheerStatsRow {
-  player_id: string
-  cheers_received: number
-  cheers_given: number
-  offense_received: number
-  defense_received: number
-  technique_received: number
-  movement_received: number
-  good_sport_received: number
-  solid_effort_received: number
-}
-
-interface PairLeaderboardPlayer {
-  id: string
-  displayName: string
-  avatarUrl: string | null
-}
-
-interface PairLeaderboardEntry {
-  rank: number
-  key: string
-  players: [PairLeaderboardPlayer, PairLeaderboardPlayer]
-  wins: number
-  losses: number
-  games: number
-  winRate: number
-}
 
 type Tab = 'wins' | 'pairs' | 'cheers' | 'awards'
 
@@ -80,10 +43,6 @@ interface AwardEntry {
 // ---------------------------------------------------------------------------
 // Ranked board presentation
 // ---------------------------------------------------------------------------
-/** Places 1-3 get a medal; every place below gets a numbered chip. */
-const PODIUM_PLACES = 3
-/** Ten *places*, not ten rows — a tie makes the two differ. */
-const MAX_PLACES = 10
 
 const MEDALS = ['🥇', '🥈', '🥉'] as const
 const ORDINALS = ['1st', '2nd', '3rd'] as const
@@ -103,167 +62,7 @@ const PODIUM_TINT = [
 // ---------------------------------------------------------------------------
 // Data fetchers
 // ---------------------------------------------------------------------------
-async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
-  const [statsRes, profilesRes, recentSessionsRes] = await Promise.all([
-    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', MIN_SESSIONS_PLAYED),
-    supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
-    supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
-  ])
 
-  const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
-  const activePlayerIds = new Set<string>()
-  if (recentSessionIds.length > 0) {
-    const { data: registrations } = await supabase
-      .from('session_registrations')
-      .select('player_id')
-      .in('session_id', recentSessionIds)
-    for (const r of (registrations ?? []) as Array<{ player_id: string }>) activePlayerIds.add(r.player_id)
-  }
-
-  type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
-  const profileRows = (profilesRes.data ?? []) as ProfileRow[]
-  const nameMap = new Map(profileRows.map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
-  const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
-
-  const ordered = ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number; sessions_attended: number }>)
-    .filter((s) => nameMap.has(s.player_id) && activePlayerIds.has(s.player_id))
-    .map((s) => ({
-      playerId: s.player_id,
-      displayName: nameMap.get(s.player_id)!,
-      avatarUrl: avatarMap.get(s.player_id) ?? null,
-      wins: s.wins,
-      losses: s.games_played - s.wins,
-      winRate: Math.round((s.wins / s.games_played) * 100),
-    }))
-    // The player id settles what wins do not, so the sequence is a property of
-    // the data rather than of the order Supabase happened to return rows in.
-    .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.playerId.localeCompare(b.playerId))
-
-  // Shared rank by win rate, matching the partnership board: two players both
-  // reading 67% take the same place, and the cut counts places not rows.
-  return cutToPlaces(assignDenseRanks(ordered, (entry) => entry.winRate), MAX_PLACES)
-}
-
-async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
-  const [statsRes, profilesRes, eligibleIds] = await Promise.all([
-    supabase.from('player_cheer_stats').select('*').gt('cheers_received', 0),
-    supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
-    fetchEligiblePlayerIds(),
-  ])
-
-  const nameMap = new Map(
-    ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
-  )
-
-  return ((statsRes.data ?? []) as CheerStatsRow[])
-    .filter(s => nameMap.has(s.player_id) && eligibleIds.has(s.player_id))
-    .map(s => ({
-      ...s,
-      displayName: nameMap.get(s.player_id)!,
-    }))
-}
-
-// --- Partnership board -----------------------------------------------------
-
-const MIN_GAMES_TOGETHER = 3
-const MATCH_PAGE_SIZE = 1000
-
-/**
- * `sessions!inner(id)` carries no filter today. It is here so that the planned
- * yearly season/archive rule is a single added `.eq('sessions.…', …)` condition
- * rather than a new embed and a re-shaped row type. Do not remove it as unused.
- */
-const PAIR_MATCH_SELECT =
-  'team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index, game_number), sessions!inner(id)'
-
-/**
- * Every other query in this app is session-scoped or over a small table, so none
- * of them can reach the server's row cap. This one can — a year of play is around
- * a thousand matches — and an uncapped read would come back silently truncated,
- * producing a board that looks right and is wrong. Hence paging, plus the exact
- * count cross-check below.
- */
-async function fetchCompletedMatchesForPairs(): Promise<PairTallyMatch[]> {
-  const rows: PairTallyMatch[] = []
-
-  for (let offset = 0; ; offset += MATCH_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('matches')
-      .select(PAIR_MATCH_SELECT)
-      .eq('status', 'complete')
-      .order('id', { ascending: true })
-      .range(offset, offset + MATCH_PAGE_SIZE - 1)
-
-    if (error) throw error
-
-    const page = (data ?? []) as unknown as PairTallyMatch[]
-    rows.push(...page)
-    if (page.length < MATCH_PAGE_SIZE) break
-  }
-
-  const { count, error: countError } = await supabase
-    .from('matches')
-    .select('id, sessions!inner(id)', { count: 'exact', head: true })
-    .eq('status', 'complete')
-
-  if (countError) throw countError
-  if (typeof count === 'number' && count !== rows.length) {
-    throw new Error(
-      `Pair leaderboard read is incomplete: fetched ${rows.length} of ${count} completed matches. ` +
-        'Refusing to render a partially counted board.',
-    )
-  }
-
-  return rows
-}
-
-async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
-  const [matches, profilesRes, eligibleIds] = await Promise.all([
-    fetchCompletedMatchesForPairs(),
-    supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
-    fetchEligiblePlayerIds(),
-  ])
-
-  type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
-  const profileRows = (profilesRes.data ?? []) as ProfileRow[]
-  const profileById = new Map(profileRows.map((p) => [p.id, p]))
-
-  // Two different players can both be nicknamed "Alexis". On a pair row that
-  // would render as "Alexis & Alexis" — the exact string that signalled the
-  // duplicate-player bug migration 079 was written to stop.
-  const labels = disambiguateDisplayNames(
-    profileRows.map((p) => ({
-      id: p.id,
-      nameSlug: p.name_slug,
-      displayName: formatDisplayName(p.nickname, p.name_slug),
-    })),
-  )
-
-  // rankPairs applies this to *both* players, so a pairing needs two qualifying
-  // partners — not one regular plus whoever they happened to play beside.
-  const ranked = rankPairs(tallyPairs(matches), {
-    minGames: MIN_GAMES_TOGETHER,
-    maxRank: MAX_PLACES,
-    isEligiblePlayer: (id) => profileById.has(id) && eligibleIds.has(id),
-  })
-
-  const toPlayer = (id: string): PairLeaderboardPlayer => ({
-    id,
-    displayName: labels.get(id) ?? id,
-    avatarUrl: profileById.get(id)?.avatar_url ?? null,
-  })
-
-  return ranked.map((pair) => ({
-    rank: pair.rank,
-    key: pair.key,
-    players: [toPlayer(pair.playerA), toPlayer(pair.playerB)],
-    wins: pair.wins,
-    losses: pair.losses,
-    games: pair.games,
-    winRate: pair.winRate,
-  }))
-}
 
 // ---------------------------------------------------------------------------
 // Sub-components
@@ -347,13 +146,17 @@ function RankedBoard<T extends { rank: number }>({
   renderRow,
   keyOf,
   tiedNoun,
+  isOwnRow,
 }: {
   entries: readonly T[]
   renderRow: (item: T, variant: 'podium' | 'list') => ReactNode
   keyOf: (item: T) => string
   tiedNoun: string
+  /** Marks the viewing player's own place, so a celebration can point at it. */
+  isOwnRow?: (item: T) => boolean
 }) {
   const groups = groupByRank(entries)
+  const ownRowClassName = sweepClassName(true)
   const podium = groups.filter((g) => g.rank <= PODIUM_PLACES)
   const rest = groups.filter((g) => g.rank > PODIUM_PLACES)
   // Named from the places actually on screen, not from MAX_PLACES — a board
@@ -372,7 +175,9 @@ function RankedBoard<T extends { rank: number }>({
           tiedNoun={tiedNoun}
           keyOf={keyOf}
           renderRow={(item) => renderRow(item, 'podium')}
-          frameClassName={`rounded-2xl border ${PODIUM_TINT[group.rank - 1]}`}
+          frameClassName={`rounded-2xl border ${PODIUM_TINT[group.rank - 1]} ${
+            isOwnRow && group.items.some(isOwnRow) ? ownRowClassName : ''
+          }`}
           marker={
             <span className="flex w-9 shrink-0 flex-col items-center gap-0.5 pt-0.5">
               <span className="text-[25px] leading-none" aria-hidden="true">
@@ -400,12 +205,50 @@ function RankedBoard<T extends { rank: number }>({
           tiedNoun={tiedNoun}
           keyOf={keyOf}
           renderRow={(item) => renderRow(item, 'list')}
-          frameClassName="rounded-xl border border-border"
+          frameClassName={`rounded-xl border border-border ${
+            isOwnRow && group.items.some(isOwnRow) ? ownRowClassName : ''
+          }`}
           marker={<RankChip rank={group.rank} />}
         />
       ))}
     </div>
   )
+}
+
+/**
+ * Whether the player's own row on `tab` should play the celebration sweep.
+ *
+ * The debt is armed when a celebration is shown, not when its toast is accepted,
+ * so this fires for a player who tapped "View" *and* for one who wandered here
+ * on their own days later. Getting that wrong is invisible — the screen looks
+ * correct and simply never shimmers.
+ */
+function useOwedSweep(tab: Tab): boolean {
+  const { user } = useAuth()
+  const [owed, setOwed] = useState(false)
+
+  useEffect(() => {
+    const playerId = user?.id
+    if (!playerId) return
+
+    const debt = readCurrentSweepDebt(playerId)
+    if (!debt || boardTab(debt.board) !== tab) return
+
+    setOwed(true)
+    // Collected. A sweep is a one-off, not a permanent decoration on the row.
+    clearSweepDebt(playerId)
+  }, [user?.id, tab])
+
+  return owed
+}
+
+/** Lift-and-shimmer, skipped entirely when the player asked for reduced motion. */
+function sweepClassName(active: boolean): string {
+  if (!active) return ''
+  try {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return ''
+  } catch { /* treat an unavailable matchMedia as "motion is fine" */ }
+  return 'animate-celebration-lift relative overflow-hidden after:pointer-events-none after:absolute after:inset-0 after:bg-[linear-gradient(105deg,transparent_30%,var(--gold)_50%,transparent_70%)] after:opacity-40 after:[animation:celebration-sweep_1.15s_ease-out_2]'
 }
 
 function BoardSkeleton({ height }: { height: string }) {
@@ -421,6 +264,8 @@ function BoardSkeleton({ height }: { height: string }) {
 function WinsLeaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+  const swept = useOwedSweep('wins')
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -443,6 +288,7 @@ function WinsLeaderboard() {
         entries={entries}
         tiedNoun="players"
         keyOf={(entry) => entry.playerId}
+        isOwnRow={swept ? (entry) => entry.playerId === user?.id : undefined}
         renderRow={(entry, variant) => <PlayerRowBody entry={entry} variant={variant} />}
       />
     </div>
@@ -450,6 +296,8 @@ function WinsLeaderboard() {
 }
 
 function PairsLeaderboard() {
+  const { user } = useAuth()
+  const swept = useOwedSweep('pairs')
   const [entries, setEntries] = useState<PairLeaderboardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -484,6 +332,7 @@ function PairsLeaderboard() {
         entries={entries}
         tiedNoun="partnerships"
         keyOf={(entry) => entry.key}
+        isOwnRow={swept ? (entry) => entry.players.some((p) => p.id === user?.id) : undefined}
         renderRow={(entry, variant) => <PairRowBody entry={entry} variant={variant} />}
       />
     </div>
@@ -576,6 +425,8 @@ function CheerShareList({
   category: CheerCategory
   entries: CheerLeaderboardEntry[]
 }) {
+  const { user } = useAuth()
+  const swept = useOwedSweep('cheers')
   const names = new Map(entries.map((e) => [e.player_id, e.displayName]))
   const ranked = rankCheerShares(
     entries.map((e) => ({
@@ -601,6 +452,7 @@ function CheerShareList({
           entries={ranked}
           tiedNoun="players"
           keyOf={(row) => row.playerId}
+          isOwnRow={swept ? (row) => row.playerId === user?.id : undefined}
           renderRow={(row, variant) => (
             <CheerShareRowBody name={names.get(row.playerId) ?? ''} row={row} variant={variant} />
           )}

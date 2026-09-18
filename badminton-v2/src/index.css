@@ -261,3 +261,27 @@ html:not(.dark) .theme-orb {
 [data-sonner-toast].toast-award {
   border-color: var(--gold) !important;
 }
+
+/* Leaderboard celebration. The overshoot in the middle keyframe is what makes it
+   read as a spring rather than a fade; it is skipped entirely under reduced
+   motion, where the card is rendered without these classes. */
+@keyframes celebration-in {
+    0%   { transform: scale(0.55) rotate(-7deg); opacity: 0; }
+    62%  { transform: scale(1.06) rotate(1.5deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes celebration-out {
+    to { opacity: 0; transform: scale(0.97) translateY(-6px); }
+}
+@utility animate-celebration-in { animation: celebration-in 0.58s cubic-bezier(0.17, 0.89, 0.32, 1.28) both; }
+@utility animate-celebration-out { animation: celebration-out 0.4s ease both; }
+
+/* The row sweep on the leaderboard: a gold shimmer crossing the player's own row
+   so they find themselves without reading the list. */
+@keyframes celebration-sweep { to { transform: translateX(120%); } }
+@keyframes celebration-lift {
+    0%   { transform: none; }
+    45%  { transform: translateY(-5px) scale(1.015); }
+    100% { transform: none; }
+}
+@utility animate-celebration-lift { animation: celebration-lift 0.6s cubic-bezier(0.17, 0.89, 0.32, 1.28); }
