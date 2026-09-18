@@ -22,9 +22,10 @@ const STATUS_STEP: Record<string, number> = {
   schedule_locked: 3, in_progress: 4, complete: 5,
 }
 
-function SessionStepper({ status }: { status: string }) {
-  const steps = ['Setup', 'Reg Open', 'Reg Closed', 'Locked', 'Live', 'Done']
-  const current = STATUS_STEP[status] ?? 0
+// "Closed" is a display step, not a status: it lights when closed_at is set.
+function SessionStepper({ status, closedAt = null }: { status: string; closedAt?: string | null }) {
+  const steps = ['Setup', 'Reg Open', 'Reg Closed', 'Locked', 'Live', 'Finished', 'Closed']
+  const current = status === 'complete' && closedAt ? 6 : (STATUS_STEP[status] ?? 0)
   return (
     <div className="flex items-center gap-1 overflow-x-auto pb-1">
       {steps.map((label, i) => (
@@ -359,10 +360,13 @@ export function SessionView() {
   const {
     session, invitation, playerCount, isLoading,
     openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, unstartSession,
+    finishSession,
   } = useSession(sessionId)
 
   const [confirmingClose, setConfirmingClose] = useState(false)
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [confirmingFinish, setConfirmingFinish] = useState(false)
+  const finishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Bumped whenever RosterPanel mutates the roster, so MatchGeneratorPanel
   // (a sibling with its own independent player-fetching hook) refetches
@@ -376,7 +380,10 @@ export function SessionView() {
     setSplitScoring(session?.split_match_scoring ?? false)
   }, [session?.split_match_scoring])
 
-  useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current) }, [])
+  useEffect(() => () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
+    if (finishTimerRef.current) clearTimeout(finishTimerRef.current)
+  }, [])
 
   function handleCloseRegistration() {
     if (!confirmingClose) {
@@ -386,6 +393,19 @@ export function SessionView() {
       if (closeTimerRef.current) clearTimeout(closeTimerRef.current)
       setConfirmingClose(false)
       closeRegistration()
+    }
+  }
+
+  // Same two-tap pattern as Close Registration. Finishing is irreversible: it
+  // commits stats, fires celebrations and increments attendance (migration 030).
+  function handleFinishSession() {
+    if (!confirmingFinish) {
+      setConfirmingFinish(true)
+      finishTimerRef.current = setTimeout(() => setConfirmingFinish(false), 5000)
+    } else {
+      if (finishTimerRef.current) clearTimeout(finishTimerRef.current)
+      setConfirmingFinish(false)
+      void finishSession()
     }
   }
 
@@ -419,17 +439,31 @@ export function SessionView() {
   }
 
   if (session.status === 'complete') {
+    const isClosed = session.closed_at != null
     return (
       <div className="p-6 max-w-lg mx-auto space-y-4">
         <BackToAdmin />
-        <SessionStepper status={session.status} />
+        <SessionStepper status={session.status} closedAt={session.closed_at} />
         <Card>
           <CardHeader><CardTitle>{session.name}</CardTitle></CardHeader>
           <CardContent className="text-sm space-y-1">
             <p>{formatSessionDate(session.date)}</p>
-            <p className="text-muted-foreground">This session has been closed.</p>
+            {isClosed ? (
+              <p className="text-muted-foreground">This session has been closed.</p>
+            ) : (
+              <>
+                <p className="text-muted-foreground">
+                  <span className="font-semibold text-court2">Finished</span> — stats committed · still in your active list.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Leaderboards, celebrations and attendance already count this night. Confirm payments below, then use
+                  <span className="font-medium"> Close</span> on the Admin page to move it to Past Sessions.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
+        {!isClosed && <RosterPanel sessionId={session.id} paymentOnly />}
       </div>
     )
   }
@@ -440,9 +474,22 @@ export function SessionView() {
         <SessionStepper status={session.status} />
         <LiveSessionView sessionId={session.id} splitScoring={session.split_match_scoring ?? false} />
         {!isModerator && (
-          <Button variant="outline" onClick={unstartSession} className="w-full text-muted-foreground">
-            Back to Schedule
-          </Button>
+          <>
+            <Button
+              variant={confirmingFinish ? 'destructive' : 'default'}
+              onClick={handleFinishSession}
+              className="w-full"
+            >
+              {confirmingFinish ? 'Confirm Finish? (tap again)' : 'Finish Session'}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center -mt-2">
+              Commits the night — leaderboards, celebrations, attendance. Cannot be undone. The session stays in your
+              active list until you close it from the Admin page.
+            </p>
+            <Button variant="outline" onClick={unstartSession} className="w-full text-muted-foreground">
+              Back to Schedule
+            </Button>
+          </>
         )}
       </div>
     )
