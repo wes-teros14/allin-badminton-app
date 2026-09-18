@@ -13,6 +13,36 @@ import { Avatar } from '@/components/Avatar'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Camera } from 'lucide-react'
+import { APP_BUILD_STAMP } from '@/lib/appBuild'
+import { copyText } from '@/lib/copyText'
+
+/**
+ * The build this browser is running, so a bug report can name a commit. Tapping
+ * copies it — a player pasting one line beats asking them to screenshot a page.
+ */
+function BuildStamp() {
+  async function handleCopy() {
+    if (await copyText(APP_BUILD_STAMP)) {
+      toast.success('Version copied')
+      return
+    }
+
+    // Some browsers refuse both copy paths. Showing the text is still useful —
+    // it can be read out or long-pressed — so this is not worth an error toast.
+    toast.info(APP_BUILD_STAMP)
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="Copy this app version"
+      className="mx-auto block select-all rounded-md px-2 py-1 font-mono text-[11px] text-muted-foreground transition-colors hover:bg-muted"
+    >
+      {APP_BUILD_STAMP}
+    </button>
+  )
+}
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -482,6 +512,8 @@ export function ProfileView() {
           </div>
         ) : null}
       </div>
+
+      <BuildStamp />
 
     </div>
   )
