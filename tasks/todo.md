@@ -1,105 +1,63 @@
-# Match generator — the First-on-court rule
+# Podium celebration — plan
 
-**Status:** implemented and verified 2026-09-13, **uncommitted**.
+Celebrate when a player's leaderboard placing becomes top 3 **and it is new to them**.
 
-Scope note: a court-aware rest model (scaling `idealGap` by court count) and a hard block on
-double-booking were built first, then **reverted in full at the user's direction**. `MatchBoard.tsx`,
-`courts.ts` and the general rest maths are untouched — `git diff` shows only the engine, the panel,
-and tests. What ships is the rule below and the minimum `courtCount` plumbing it needs.
+## Agreed
 
-Diagrams (written during the reverted work; the arithmetic still holds, the fix described in them
-does not): `badminton-v2/docs/visual/rest-spacing-vs-parallel-courts.html`,
-`badminton-v2/docs/visual/rest-rules-scaling-by-court-count.html`.
-Q&A trail: `badminton-v2/docs/qa-log.html`, Match generator section.
+- **Celebrate in place.** Medal card + burst plays over whatever screen they are on.
+- **Then a toast** offering to view that specific board. Tapping navigates to
+  `/leaderboard?tab=<board>`.
+- **Row sweep** plays on arrival, on their own row.
+- **No auto-redirect.** Nothing overrides a tap the player made.
 
-## The rule
+## Assumptions I am making (say if wrong)
 
-```
-firstOnCourt = games 1 .. courtCount        // they all start together
-gameLimit    = courtCount * 2               // the first two rounds
+- **Boards in v1: Individual (wins) and Partners (pairs).** Both are genuinely ranked with a
+  real 1-2-3.
+  - *Awards excluded* — single holder, no 2nd or 3rd, so "2nd place!" has nothing to say.
+  - *Cheers excluded* — it is six sub-boards, one per cheer category, ranked by share of cheers
+    received. Six podiums means roughly six times the celebrations, for a number that moves when
+    *other* people's cheers change. Easy to add later if you want it.
+- **Partners wording**: the podium entry is a pair, so the card reads "2nd place with Alex".
 
-penalise P if P is in firstOnCourt AND appears again at or below gameLimit
-```
+## The hard part: cost
 
-1 court → games 1 & 2 · 2 courts → games 1–4 · 3 courts → {1,2,3} against {4,5,6}.
+`fetchAllTimeLeaderboard()` pulls `player_stats` + all `profiles` + recent sessions +
+registrations. The pairs fetcher pages through matches. Running that on every navigation to
+celebrate "in place" is far too expensive.
 
-`MatchBoard.tsx:355` already captions these games **"First on court"**; the rule reuses that
-definition rather than inventing a second one.
+**Sentinel check.** Ranks can only move when a session completes.
 
-## What shipped
+1. On app boot, one tiny query: most recent `sessions.completed_at` where `status = 'complete'`.
+2. Compare to the last value stored locally. Unchanged → stop. Zero further cost, which is the
+   common case.
+3. Changed → run the board fetchers once, find this player's rank on each, compare to their stored
+   per-board rank, celebrate any that newly landed at ≤ 3.
 
-- [x] `GenerateOptions.courtCount`, **default 1**, threaded through `generateSchedule`,
-      `generateScheduleOptimized`, `optimizeAssignment`, `buildAssignment` and the final re-score.
-- [x] `firstOnCourtGames(courtCount)` and `openingGameLimit(courtCount)` exported.
-- [x] Configurable weight `openingRepeatPenalty`, default **400**, with a slider and a
-      `disabledWeights` checkbox like every other tunable weight.
-- [x] **Graded by gap** — cost is `openingRepeatPenalty × (gameLimit − gap)`, so game 1 → 4 costs 400
-      and game 1 → 3 costs 800. Required: with 14–15 players the window holds 16 seats so a repeat is
-      forced, and a flat penalty would let the optimiser pick the worse one.
-- [x] **Enforced during construction as well as priced.** `buildAssignment` filters openers out of the
-      candidate pool inside the window, so the rule never has to outbid the gender weights (100–250)
-      on score. A gender/spread-valid group is sought in the filtered pool *then* the full one before
-      any fallback slice — otherwise at 8 players the filter leaves exactly 4 candidates and the slice
-      returns a gender-invalid row.
-- [x] Audit counter `openingRepeats`, counted **unconditionally** (not inside the weight guard), shown
-      as the tile *First-on-Court Repeats (by game N)* plus a Scoring Math row.
+**First run must be silent.** A player who has been 2nd for months must not be congratulated the
+first time this ships. First run records ranks and celebrates nothing.
 
-## Why the default is 400
+## Tasks
 
-The general rest target is court-blind, so `earlyRestReward` still pays **+300** for a gap-3 pairing
-at 2 courts. Anything at or below 300 leaves that pairing profitable and changes no decision. 400 is
-the smallest round value that clears it; test F2.6 pins the relationship. 600 was tried first and cost
-more repeat partnerships for the same result.
+- [ ] `src/lib/podiumCelebration.ts` — pure logic: given previous ranks and current ranks, return
+      which boards newly reached top 3. Unit-tested, including the silent-first-run case.
+- [ ] Rank storage — per player, per board, in `localStorage`, keyed by user id so two accounts on
+      one phone do not inherit each other's state.
+- [ ] `useNewPodiumPlacings()` — the sentinel check, the fetch-when-changed, and the comparison.
+- [ ] `PodiumCelebration` component — the medal card + canvas burst from the POC, rendered app-wide
+      (in `PlayerLayout`), honouring `prefers-reduced-motion`.
+- [ ] Toast after the card fades, with a View action → `/leaderboard?tab=<board>`.
+- [ ] Row sweep on the leaderboard when arriving with a pending celebration for that board.
+- [ ] Reduced motion: card only, no particles, no sweep.
+- [ ] Verify in the running app; screenshot both themes.
+- [ ] Update `docs/qa-log.html`, `handoff.md`, `project_memory.md`.
 
-## Verification
+## Open question
 
-- [x] **303 tests passing**, build clean, lint clean apart from the pre-existing
-      `ProfileView.tsx:257` warning. 15 new tests in `matchGenerator.firstOnCourt.test.ts`.
-- [x] Measured, 15 players / 15 matches / 2 courts, 8 runs per weight. The window holds 16 seats
-      against 15 players, so **1 repeat is forced — that is the floor**:
+- What happens when a player is newly top 3 on **both** boards at once? Plan is to celebrate the
+  best placing only, and let the toast mention the other. Queuing two full celebrations back to back
+  is a lot.
 
-      | openingRepeatPenalty | openingRepeats |
-      |---|---|
-      | 0 (off) | **1.63** |
-      | 200 | 1.00 |
-      | **400 (default)** | **1.00** |
-      | 1200 | 1.00 |
+## Review
 
-- [x] **Exercised end to end** against the 15-player dev session. Tile reads
-      *First-on-Court Repeats (by game 4): 1*, and hand-checking the breakdown confirms it (Jax in
-      game 1 and game 4). Back-compat confirmed: that session's stored `generator_settings` predate
-      `openingRepeatPenalty` and the spread merge supplied the default — no migration needed.
-
-## Two pre-existing tests changed, and why
-
-- **S2** (`matchGenerator.scoring.test.ts`) — expected value moved by exactly
-  `4 players × openingRepeatPenalty`. At 1 court the window is games 1–2, so the rule fires on that
-  fixture by design. Intended behaviour change, not a test bent to pass.
-- **5.6** (gender composition) — was `expect(...).toBe(true)` under one seeded LCG. Gender is **not** a
-  hard guarantee: when no gender-valid group exists in any pool, `buildAssignment` falls back to an
-  unfiltered slice. Measured across seeds 1..40 that fires for exactly **1 seed — and for the same 1
-  seed on the pre-change engine**, verified by restoring `HEAD`'s `matchGenerator.ts` and re-running.
-  Identical rate; the change only moved seed 42 from the lucky side to the unlucky side. Now sweeps
-  and asserts ≥ 95% valid, with the measurement recorded inline.
-
-## Not done
-
-- [ ] **Surcharge when the short gap is a repeated partnership.** Never requested, and it rests on one
-      reading of a 5-row screenshot — short gaps clustering on repeat partnerships has not been
-      confirmed against a full session.
-- [ ] Show the arithmetic floor beside the count (*"1 repeat — minimum possible is 1"*), so a
-      non-zero tile can be read as optimal rather than as a failure.
-- [ ] Extend the `resolvePinnedMatches` warning for a pinned player landing inside `gameLimit`, which
-      cannot be optimised away because pinned rows are locked.
-
-## Open questions
-
-- [ ] **Today's actual session has not been inspected** — only the 5-row screenshot. The Supabase MCP
-      server failed auth (`AUTH_HEADER_REJECTED`) this session. Need either the MCP token fixed or a
-      screenshot of the generator's Rest Spacing chart to confirm: how many players had gap 3, whether
-      any had gap 2, and whether short gaps cluster on repeated partnerships.
-- [ ] The screenshot showed **15 distinct names** across games 1–5, but sessions are usually 14. If
-      today really had 15 players, only **1** repeat was forced in games 1–4, not 2 — meaning the
-      generator used one more than it needed. Was Ronwald or Steph a late sub?
-- [ ] Where the unavoidable short gaps should sit. Front-loading them (players are fresh) is at least
-      as defensible as protecting the opening. Not decided.
+_(filled in after implementation)_
