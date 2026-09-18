@@ -7,8 +7,8 @@ never a running history.
 
 - On branch `008-podium-celebration`. **Pushed to `dev` and `main`.**
 - `npm run lint` clean (one pre-existing unrelated warning, `ProfileView.tsx:287`).
-- `npm run test:unit` **339 passed** (was 327). `npm run build` clean.
-- `tests/leaderboard-celebration.spec.ts` **4 passed**.
+- `npm run test:unit` **348 passed** (was 327). `npm run build` clean.
+- `tests/leaderboard-celebration.spec.ts` **6 passed**.
 - **Pre-existing e2e failure, measured not assumed**: `tests/pair-leaderboard.spec.ts` fails 3 tests.
   Reverting every change on this branch and re-running produces the *same* 3 failures at HEAD. Cause
   is a copy mismatch: the test expects "No partnership has reached", the app says "No partnership
@@ -46,14 +46,22 @@ Shipped:
    called `test.skip()` when storage had not been written yet; replaced with a `waitForFunction`, so
    a missing first-run record is now a failure rather than a silent pass.
 
-## Not built
+## All four user stories built
 
-- **US3** — non-podium achievements (first appearance, personal best, 3+ place climb). The rule
-  returns podium placings only. The card already renders the bunny path and the ordinary border, so
-  this is wiring the detection, not new design.
-- **US4** — several achievements at once. The card already renders the multi-achievement layout and
-  scales its dwell; the rule just never returns more than podium placings today.
-- Polish tasks T034/T035 (light/dark and reduced-motion manual passes), T038/T039 docs, T040.
+- **US1** podium card in place, **US2** toast + row sweep, **US3** non-podium achievements,
+  **US4** several at once on one card.
+- Four achievement kinds with precedence: `podium` > `first-appearance` > `personal-best` > `climb`.
+  Climb threshold is 3 places. The streak achievement is deliberately deferred — it is the only one
+  needing rank *history* rather than one snapshot.
+- Non-podium cards are identical to podium ones in size, confetti and dwell. Rank lives in the
+  border: 3px medal colour for a podium, ordinary 1px otherwise. Icon is the thumbs-up bunny.
+
+## Not done
+
+- T040 is a confirmation rather than a change: the dev trigger is already behind
+  `import.meta.env.DEV` and never reaches a production bundle.
+- No manual light-mode pass on the celebration card. Dark verified by screenshot; light is untested
+  by eye, though it uses only existing tokens.
 
 ## Notes for next session
 

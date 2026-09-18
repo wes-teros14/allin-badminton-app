@@ -13,7 +13,8 @@
 
 import { useEffect, useState } from 'react'
 import { ConfettiBurst } from '@/components/ConfettiBurst'
-import { PODIUM_PLACES, type NewPlacing } from '@/lib/podiumCelebration'
+import { type NewPlacing } from '@/lib/podiumCelebration'
+import { cardHeadline } from '@/lib/celebrationLabels'
 
 const MEDALS = ['🥇', '🥈', '🥉'] as const
 const ORDINALS = ['1st', '2nd', '3rd'] as const
@@ -34,7 +35,41 @@ export function dwellFor(count: number): number {
   return Math.min(MAX_DWELL_MS, BASE_DWELL_MS + Math.max(0, count - 1) * PER_EXTRA_MS)
 }
 
-const isPodium = (p: NewPlacing) => p.rank <= PODIUM_PLACES
+/**
+ * Read from the achievement's kind, never inferred from its rank. A player can be
+ * 2nd on a board and be celebrated for a personal best rather than a podium, and
+ * the border and icon must follow the news rather than the number.
+ */
+const isPodium = (p: NewPlacing) => p.kind === 'podium'
+
+/**
+ * The bunny stands in for a medal on every non-podium card.
+ *
+ * Both are sized explicitly to the same box. An emoji takes its size from the
+ * font and an image from its height, so leaving either to inherit puts a 30px
+ * medal beside an 18px bunny in the same row.
+ */
+function Icon({ placing, px }: { placing: NewPlacing; px: number }) {
+  if (isPodium(placing)) {
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-flex items-center justify-center leading-none"
+        style={{ fontSize: px, width: px, height: px }}
+      >
+        {MEDALS[placing.rank - 1]}
+      </span>
+    )
+  }
+  return (
+    <img
+      src="/bunny-thumbsup.png"
+      alt=""
+      className="w-auto object-contain"
+      style={{ height: px }}
+    />
+  )
+}
 
 function prefersReducedMotion(): boolean {
   try {
@@ -87,19 +122,19 @@ export function CelebrationCard({
         >
           {several ? (
             <>
-              <div className="text-[30px] leading-tight tracking-[-2px]" aria-hidden="true">
-                {achievements.map((a, i) => (
-                  <span key={i}>{isPodium(a) ? MEDALS[a.rank - 1] : '🐰'}</span>
-                ))}
+              <div className="flex items-center justify-center gap-1">
+                {achievements.map((a, i) => <Icon key={i} placing={a} px={30} />)}
               </div>
-              <p className="mt-1.5 text-[17px] font-extrabold">{achievements.length} podiums!</p>
+              <p className="mt-1.5 text-[17px] font-extrabold">
+                {achievements.length} to celebrate!
+              </p>
               <div className="mt-3 flex flex-col gap-1.5 text-left">
                 {achievements.map((a, i) => {
                   const label = boardLabel(a)
                   return (
                     <div key={i} className="flex items-center gap-2 rounded-[9px] bg-muted px-2.5 py-1.5">
-                      <span className="text-[15px]" aria-hidden="true">
-                        {isPodium(a) ? MEDALS[a.rank - 1] : '🐰'}
+                      <span className="flex w-[18px] shrink-0 justify-center">
+                        <Icon placing={a} px={16} />
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold">{label.title}</span>
                       <span className="text-[10.5px] font-bold text-muted-foreground">
@@ -112,16 +147,10 @@ export function CelebrationCard({
             </>
           ) : (
             <>
-              <div className="grid min-h-[50px] place-items-center text-[46px] leading-none" aria-hidden="true">
-                {isPodium(best) ? (
-                  MEDALS[best.rank - 1]
-                ) : (
-                  <img src="/bunny-thumbsup.png" alt="" className="h-[66px] w-auto object-contain" />
-                )}
+              <div className="grid min-h-[66px] place-items-center">
+                <Icon placing={best} px={isPodium(best) ? 46 : 66} />
               </div>
-              <p className="mt-1.5 text-[17px] font-extrabold">
-                {isPodium(best) ? `${ORDINALS[best.rank - 1]} place!` : 'Your best yet!'}
-              </p>
+              <p className="mt-1.5 text-[17px] font-extrabold">{cardHeadline(best)}</p>
               <p className="mt-0.5 text-[11.5px] leading-relaxed text-muted-foreground">
                 {boardLabel(best).detail}
               </p>

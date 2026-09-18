@@ -81,7 +81,10 @@ export function useLeaderboardCelebration() {
         return
       }
 
-      const placings = newPodiumPlacings(stored.snapshot, standings)
+      // bestEver is passed as it was *before* this evaluation: comparing the new
+      // standing against a record that already includes it would mean nobody ever
+      // sets a personal best.
+      const placings = newPodiumPlacings(stored.snapshot, standings, stored.bestEver)
       const best = bestPlacing(placings)
 
       // The snapshot advances whether or not anything was celebrated. Skipping
@@ -128,7 +131,9 @@ export function useLeaderboardCelebration() {
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const w = window as unknown as Record<string, unknown>
-    w.__celebrate = (achievements: NewPlacing[] = [{ board: 'wins', rank: 2, previousRank: 5 }]) => {
+    w.__celebrate = (
+      achievements: NewPlacing[] = [{ board: 'wins', kind: 'podium', rank: 2, previousRank: 5 }],
+    ) => {
       setAnnouncement({ achievements })
     }
     return () => { delete w.__celebrate }

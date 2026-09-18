@@ -49,8 +49,18 @@ export const WATCHED_BOARDS: readonly BoardKey[] = [
  */
 export type RankSnapshot = Partial<Record<BoardKey, number | null>>
 
+/**
+ * What kind of good news this is. Decides the icon, the border and the wording.
+ *
+ * `podium` is the only one that earns a medal edge; the other three are the same
+ * celebration with the app's bunny and the ordinary border, because everybody who
+ * achieved something gets the same moment.
+ */
+export type AchievementKind = 'podium' | 'first-appearance' | 'personal-best' | 'climb'
+
 export interface NewPlacing {
   board: BoardKey
+  kind: AchievementKind
   rank: number
   /** The rank this replaces: null when the player was not placed at all. */
   previousRank: number | null
@@ -63,6 +73,75 @@ function priority(board: BoardKey): number {
   const i = BOARD_PRIORITY.indexOf(board)
   // Cheers boards sort after the two headline boards, in a stable order.
   return i === -1 ? BOARD_PRIORITY.length : i
+}
+
+/**
+ * How many places a player must gain before a climb is worth announcing.
+ *
+ * Not decoration. In a fourteen-player session half the field moves up whenever
+ * the other half moves down, so a threshold of one would fire for most of the
+ * roster every week and the celebration would be wallpaper inside a month.
+ */
+export const CLIMB_THRESHOLD = 3
+
+/**
+ * Which kinds of achievement outrank which, best first.
+ *
+ * `first-appearance` must beat `personal-best` because arriving on a board for
+ * the first time is always also a personal best. `personal-best` beats `climb`
+ * for the same reason — and `climb` sits last because it is the weakest claim of
+ * the four: a player can rise purely because the people above them stopped
+ * showing up.
+ */
+const KIND_PRIORITY: readonly AchievementKind[] = [
+  'podium',
+  'first-appearance',
+  'personal-best',
+  'climb',
+]
+
+const kindRank = (kind: AchievementKind) => KIND_PRIORITY.indexOf(kind)
+
+/** Best rank ever held per board, as far as the app has seen. */
+export type BestEver = Partial<Record<BoardKey, number>>
+
+/**
+ * Classifies one board's movement, or returns null when there is no news.
+ *
+ * Order matters here and mirrors KIND_PRIORITY: a single change can satisfy
+ * several of these at once, and only the strongest is reported.
+ */
+function classify(
+  board: BoardKey,
+  rank: number,
+  previousRank: number | null,
+  bestEver: BestEver,
+): NewPlacing | null {
+  const held = bestEver[board]
+
+  // Reached, or improved within, the podium.
+  if (rank <= PODIUM_PLACES && (previousRank === null || previousRank > rank)) {
+    return { board, kind: 'podium', rank, previousRank }
+  }
+
+  // On this board for the very first time. `bestEver` is what makes this
+  // distinguishable from someone who dropped off and came back — for them the
+  // board is old news, however long they were away.
+  if (previousRank === null && held === undefined) {
+    return { board, kind: 'first-appearance', rank, previousRank }
+  }
+
+  // Better than they have ever been. True regardless of what anyone else did,
+  // which is what makes it the honest one.
+  if (held !== undefined && rank < held) {
+    return { board, kind: 'personal-best', rank, previousRank }
+  }
+
+  if (previousRank !== null && previousRank - rank >= CLIMB_THRESHOLD) {
+    return { board, kind: 'climb', rank, previousRank }
+  }
+
+  return null
 }
 
 /**
@@ -85,6 +164,7 @@ function priority(board: BoardKey): number {
 export function newPodiumPlacings(
   previous: RankSnapshot | null,
   current: RankSnapshot,
+  bestEver: BestEver = {},
 ): NewPlacing[] {
   if (previous === null) return []
 
@@ -94,16 +174,21 @@ export function newPodiumPlacings(
     const board = key as BoardKey
     const rank = rankValue ?? null
 
-    if (rank === null || rank > PODIUM_PLACES) continue
+    // Not placed at all, so there is nothing to announce. Falling off a board is
+    // never reported: this feature does not deliver bad news.
+    if (rank === null) continue
     if (!(board in previous)) continue
 
-    const previousRank = previous[board] ?? null
-    if (previousRank !== null && previousRank <= rank) continue
-
-    found.push({ board, rank, previousRank })
+    const achievement = classify(board, rank, previous[board] ?? null, bestEver)
+    if (achievement) found.push(achievement)
   }
 
-  return found.sort((a, b) => a.rank - b.rank || priority(a.board) - priority(b.board))
+  return found.sort(
+    (a, b) =>
+      kindRank(a.kind) - kindRank(b.kind) ||
+      a.rank - b.rank ||
+      priority(a.board) - priority(b.board),
+  )
 }
 
 /**

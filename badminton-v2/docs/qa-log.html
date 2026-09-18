@@ -85,6 +85,7 @@
       <li><a href="#live-board">Live board &amp; performance</a></li>
       <li><a href="#match-generator">Match generator</a></li>
       <li><a href="#payments">Payments &amp; the fee card</a></li>
+      <li><a href="#celebrations">Leaderboard celebrations</a></li>
     </ol>
   </nav>
 
@@ -1634,6 +1635,124 @@
       components, and reading only the one with the reported symptom produced a claim that was wrong
       about half the app. Grepping for the other consumer of <code>derivePaymentState</code> would
       have caught it in one command.
+    </p>
+  </div>
+
+  <h2 class="topic" id="celebrations">Leaderboard celebrations</h2>
+
+  <div class="qa">
+    <p class="q">Why is there not built. build remaining then</p>
+    <p class="a">
+      There was no blocker — I had sequenced the work into four user stories and stopped after the
+      first two because they were independently shippable. All four are now built: podium
+      celebrations, the toast and row sweep, non-podium achievements, and several-at-once.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">When does a celebration actually fire?</p>
+    <p class="a">
+      Only when a standing is <em>newly</em> the player’s, never when it is merely currently theirs.
+      Every decision compares against the ranks that player was last shown, held in
+      <code>localStorage</code> per player id. Three cases stay deliberately silent: the very first
+      evaluation for a player (it records and says nothing), a board that was not being watched at
+      the time of the previous snapshot, and a standing that is unchanged or worse.
+    </p>
+    <p class="a">
+      The first-run silence is the one that matters most. Without it, everyone who already held a
+      place would have been congratulated on the day the feature shipped. Verified against real local
+      data: the first evaluation recorded 1st on Individual, 1st in all six cheer categories and
+      unplaced on Partners — and celebrated nothing.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How can it celebrate “in place” without the app being slow?</p>
+    <p class="a">
+      A sentinel. Standings can only move when a session completes, so each evaluation first asks for
+      the most recent <code>sessions.completed_at</code> — one indexed lookup — and stops there if it
+      has not changed since last time. Only a change buys the expensive work behind it: the Individual
+      board reads <code>player_stats</code>, every active profile, recent sessions and registrations,
+      and the Partners board pages through every completed match with an exact-count cross-check.
+      An ordinary launch therefore costs one small query and no board computation at all.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why did the leaderboard queries move out of <code>LeaderboardView</code>?</p>
+    <p class="a">
+      So the celebration and the leaderboard cannot disagree about a player’s place. Both now import
+      <code>src/lib/leaderboardData.ts</code>. The tempting alternative — a lighter “just my rank”
+      query — would have to restate the eligibility gates (minimum sessions, recent activity, minimum
+      cheers, minimum games together) and the dense-ranking rule, and two statements of one rule
+      drift. This codebase has already been bitten by exactly that with match outcomes, where one
+      surface showed a 1-1 split as a win.
+    </p>
+  </div>
+
+  <div class="qa" style="border-left:3px solid #FFB200;padding-left:14px;background:rgba(255,178,0,0.06)">
+    <p class="q"><strong>Correction:</strong> “<code>npx tsc --noEmit</code> passes, so the types are fine”</p>
+    <p class="a">
+      <strong>That was wrong, and I reported it several times in one session.</strong>
+      <code>badminton-v2/tsconfig.json</code> is a solution file — <code>"files": []</code> plus two
+      <code>references</code>. <code>tsc --noEmit</code> against it typechecks <em>zero files</em> and
+      exits 0. The real check is <code>tsc -b</code>, which is what <code>npm run build</code> runs.
+    </p>
+    <p class="a">
+      This was not academic. An extraction refactor sat behind a green <code>--noEmit</code> carrying
+      three genuine errors, one of which — a <code>MIN_GAMES_TOGETHER</code> moved out of the view but
+      still used by its caption — crashed the Partners leaderboard tab to a completely blank page at
+      runtime. Never claim a clean typecheck in this repo on the strength of <code>--noEmit</code>.
+    </p>
+  </div>
+
+  <div class="qa" style="border-left:3px solid #FFB200;padding-left:14px;background:rgba(255,178,0,0.06)">
+    <p class="q"><strong>Correction:</strong> “the celebration test suite passes”</p>
+    <p class="a">
+      It reported “2 passed, 2 skipped”, which is not the same thing. The two row-sweep tests called
+      <code>test.skip()</code> when no celebration state was in <code>localStorage</code> yet — but the
+      state is written asynchronously after sign-in, so they skipped on <em>every</em> run and asserted
+      nothing while the summary read green.
+    </p>
+    <p class="a">
+      Replaced with <code>page.waitForFunction</code> on the storage key, so a missing first-run record
+      is now a failure. A conditional <code>test.skip</code> on a condition the test itself causes is a
+      test that never runs.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does a non-medallist get exactly the same celebration?</p>
+    <p class="a">
+      Product decision, made against a prototype that had done the opposite. An earlier draft made the
+      non-podium card smaller and purple so a podium would visibly outrank it; that was overruled —
+      everybody who achieved something gets the same moment. Rank is carried entirely by the border: a
+      podium gets a 3px edge in its own medal colour (<code>--gold</code>, zinc-400, amber-700, the
+      same three the leaderboard’s podium rows use), everything else gets the ordinary 1px border. The
+      icon is the app’s thumbs-up bunny instead of a medal. Card size, animation, confetti count and
+      time on screen are identical.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Several achievements at once — why one card instead of several?</p>
+    <p class="a">
+      Because a queue of cards punishes a player for having a good night. One card lists them all,
+      headed “3 to celebrate!”, and its dwell scales with the content — 2.1s for one achievement, plus
+      0.6s each, capped at 5s. It still leaves on its own at every size: a celebration you have to
+      dismiss has become a dialog. This case may be ordinary rather than rare, because six of the
+      eight watched boards are cheer categories whose shares all move together.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How do I see this working, given it needs a real session to complete?</p>
+    <p class="a">
+      <code>window.__celebrate([{board:'wins', kind:'podium', rank:2, previousRank:5}])</code> in the
+      console. It is installed only under <code>import.meta.env.DEV</code>. Without it there is no way
+      to trigger the feature by hand — the natural trigger needs a session to finish <em>and</em> the
+      first evaluation per player is deliberately silent, which makes the feedback loop about a week
+      long.
     </p>
   </div>
 

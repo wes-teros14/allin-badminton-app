@@ -73,7 +73,7 @@ test('a celebration appears over the current screen and leaves on its own', asyn
 
   await page.waitForFunction(() => typeof (window as unknown as Record<string, unknown>).__celebrate === 'function', { timeout: 15000 })
   await page.evaluate(() => (window as unknown as { __celebrate: (a: unknown[]) => void })
-    .__celebrate([{ board: 'wins', rank: 2, previousRank: 5 }]))
+    .__celebrate([{ board: 'wins', kind: 'podium', rank: 2, previousRank: 5 }]))
 
   const card = page.getByRole('status')
   await expect(card).toBeVisible({ timeout: 5000 })
@@ -131,4 +131,52 @@ test('no sweep plays when nothing is owed', async ({ page }) => {
   await page.waitForTimeout(1500)
 
   expect(await sweptRowCount(page)).toBe(0)
+})
+
+test('a non-podium achievement gets the same card with the bunny and a plain border (US3)', async ({ page }) => {
+  await page.goto('/sessions')
+  await signInAs(page, PLAYER)
+  await page.waitForFunction(() => typeof (window as unknown as Record<string, unknown>).__celebrate === 'function', { timeout: 15000 })
+
+  await page.evaluate(() => (window as unknown as { __celebrate: (a: unknown[]) => void })
+    .__celebrate([{ board: 'wins', kind: 'personal-best', rank: 6, previousRank: 9 }]))
+
+  const card = page.getByRole('status')
+  await expect(card).toBeVisible({ timeout: 5000 })
+  await expect(card).toContainText('Your best yet!')
+  await expect(card).toContainText('was 9th')
+
+  // The bunny stands in for a medal, and the border stays the ordinary one.
+  await expect(card.locator('img[src="/bunny-thumbsup.png"]')).toBeVisible()
+  const borderWidth = await card.locator('div').first().evaluate(
+    (el) => getComputedStyle(el).borderTopWidth,
+  )
+  expect(parseFloat(borderWidth)).toBeLessThan(2)
+})
+
+test('several achievements at once produce one card listing them all (US4)', async ({ page }) => {
+  await page.goto('/sessions')
+  await signInAs(page, PLAYER)
+  await page.waitForFunction(() => typeof (window as unknown as Record<string, unknown>).__celebrate === 'function', { timeout: 15000 })
+
+  await page.evaluate(() => (window as unknown as { __celebrate: (a: unknown[]) => void })
+    .__celebrate([
+      { board: 'pairs', kind: 'podium', rank: 1, previousRank: null },
+      { board: 'wins', kind: 'personal-best', rank: 6, previousRank: 9 },
+      { board: 'cheers:good_sport', kind: 'personal-best', rank: 4, previousRank: 7 },
+    ]))
+
+  // Exactly one card, never a queue of three.
+  const cards = page.getByRole('status')
+  await expect(cards).toHaveCount(1, { timeout: 5000 })
+  await expect(cards).toContainText('3 to celebrate!')
+  await expect(cards).toContainText('Partners')
+  await expect(cards).toContainText('Individual')
+  await expect(cards).toContainText('Good Sport')
+
+  // It takes the best placing's medal edge, matching what the toast will name.
+  const borderWidth = await cards.locator('div').first().evaluate(
+    (el) => getComputedStyle(el).borderTopWidth,
+  )
+  expect(parseFloat(borderWidth)).toBeGreaterThan(2)
 })
