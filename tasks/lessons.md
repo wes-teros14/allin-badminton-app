@@ -606,3 +606,34 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   is supposed to do.
 - **Rule**: a conditional `test.skip` on a condition the test itself causes is a test that never
   runs. Wait for the precondition instead of skipping on it.
+
+## Stopping at a self-chosen checkpoint (2026-09-18)
+
+- **Symptom**: the user asked "why is there not built. build remaining then". I had built two of four
+  user stories and reported the session complete.
+- **Root cause**: I split the feature into four independently shippable stories — a reasonable plan —
+  and then treated my own stage boundary as the finish line. Nothing was blocking the other two; they
+  took one sitting once asked.
+- **Fix**: built US3 and US4 immediately.
+- **Rule**: the requested scope is the deliverable. Splitting work into stages is a sequencing
+  decision, not permission to deliver fewer of them. If I genuinely intend to stop partway, say so
+  before starting, not after.
+
+## An emoji and an image do not size the same way (2026-09-18)
+
+- **Symptom**: the multi-achievement celebration card put a large gold medal beside two visibly
+  smaller bunny icons in the same row. Only spotted by screenshotting the real card.
+- **Root cause**: the medal is an emoji, taking its size from the inherited `font-size` (30px); the
+  bunny is an `<img>` taking its size from `height` (18px). Neither was wrong on its own.
+- **Fix**: one `Icon` component taking an explicit `px`, applied as `font-size` for the emoji and
+  `height` for the image.
+- **Rule**: when a row mixes emoji and images, size both explicitly. Inheritance will not agree.
+
+## Six failing e2e tests were a dead dev server (2026-09-18)
+
+- **Symptom**: all six celebration browser tests failed at once, immediately after a change that had
+  just passed. It read as a serious regression.
+- **Root cause**: every failure was at `page.goto('/sessions')` — the Vite dev server had died
+  earlier in the session. Restarting it gave 6 passed with no code change at all.
+- **Rule**: a suite failing uniformly at navigation is an environment fault. Read *where* the tests
+  failed before reading *how many*.

@@ -83,6 +83,10 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - An audit counter must never live inside its own `if (weight > 0)` guard — penalise conditionally, count unconditionally. A disabled weight then still reports the truth instead of a silent zero. (Made this mistake twice in one session.)
 - When threading a new parameter through a scoring path, grep every call site. A "re-score at the end for display" sits outside the loop you are editing and defaults silently — the returned artifact was court-aware while the number describing it was not.
 - Before changing a default weight because it "loses every trade", sweep it and measure. Near a physical ceiling the gradient is flat, and extra weight buys noise at the cost of every metric it outranks.
+- Never stop at a checkpoint I chose myself. If the user asked for a feature and I split it into stages, finishing stage two and reporting done is me deciding the scope was smaller than they asked for. Either build all of it, or say up front which stages I am doing and why before starting.
+- `npx tsc --noEmit` checks nothing in `badminton-v2` — `tsconfig.json` is a solution file with `"files": []`. Use `tsc -b`, which is what `npm run build` runs.
+- An emoji sizes from `font-size` and an `<img>` from `height`. Put them in the same row without sizing both explicitly and one ends up half the other.
+- A whole e2e suite failing at `page.goto` is a dead dev server, not a regression. Check the server is up before reading six red tests as six broken things.
 - A test that hard-asserts an invariant the engine only satisfies probabilistically is passing by luck. Before "fixing" one that your change broke, measure the pre-change failure rate on the same seeds — identical rate means you exposed a latent flake, not caused a regression.
 
 ## .env Files

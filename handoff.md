@@ -4,7 +4,7 @@ Updated: 2026-09-18. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- On `dev`. **Everything pushed**: `dev` at `2990e10`, `main` at `5d9a471`.
+- On `dev`. **Everything pushed** — feature work, specs, docs and lessons.
 - Working tree clean apart from untracked `.claude/launch.json` and `todo.md`, plus the long-standing
   deletions of 17 `badminton-v2/docs/visual/*.html`. None of that is mine; left alone deliberately.
 - `npm run lint` clean (one pre-existing unrelated warning, `ProfileView.tsx:287`).
