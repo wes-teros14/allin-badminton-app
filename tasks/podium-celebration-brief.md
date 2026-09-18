@@ -91,9 +91,9 @@ Four things can earn a non-podium celebration:
 - **Made the board** — their first ever appearance in the top 10 of that board.
 - **Personal best placing** — they beat their own best-ever rank.
 - **Sessions climbing** — three or more consecutive sessions of improvement.
-- **Climbed places** — an improvement of three or more places.
+- **Climbed places** — an improvement of one or more places.
 
-These overlap heavily: going 9th to 6th is a personal best *and* a three-place climb *and* possibly a
+These overlap heavily: going 9th to 6th is a personal best *and* a climb *and* possibly a
 streak. So exactly one celebration fires, chosen by this precedence, highest first:
 
 1. Podium (top 3) — always wins
@@ -105,11 +105,19 @@ streak. So exactly one celebration fires, chosen by this precedence, highest fir
 "Made the board" outranks "personal best" because it is always also a personal best; personal best
 outranks a plain climb for the same reason.
 
-The thresholds are not decoration. A podium is rare, but in a fourteen-player session half the field
-moves up whenever the other half moves down — without a floor, "you climbed" would fire for most of
-the roster every week and the celebration would become wallpaper within a month. Note also that
-"climbed places" can be earned purely because the players above stopped attending, which is the
-weakest claim of the four, and is why it sits last.
+The climb threshold is **one place**, by product decision: any improvement is worth telling someone
+about, in the same spirit as giving non-medallists the identical celebration. It fires less often than
+that suggests, because "personal best" outranks it — a player who improves *and* betters their own
+record is celebrated for that instead, so a climb is someone recovering ground toward a high they held
+before.
+
+A threshold of three was set first, on the reasoning that in a fourteen-player session half the field
+moves up whenever the other half moves down, and was overruled. The accepted cost is the oscillating
+player: 7th, 6th, 7th, 6th earns a card every other session for going nowhere. This is the one dial to
+turn back if celebrations start to feel cheap.
+
+Note separately that "climbed places" can be earned purely because the players above stopped
+attending, which is the weakest claim of the four, and is why it sits last in the precedence.
 
 **"Sessions climbing" needs data the rest do not.** The other three compare against a single previous
 snapshot; a streak needs the last several ranks per board. That is a larger storage change and should

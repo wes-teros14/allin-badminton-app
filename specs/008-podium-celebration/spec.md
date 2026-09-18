@@ -167,7 +167,7 @@ appears, listing all three.
   category boards. The Awards board is excluded, having a single holder and no second or third place.
 - **FR-007**: System MUST recognise these achievements: reaching the top 3; appearing in a board's top
   10 for the first time; beating the player's own best ever rank on a board; improving for three or
-  more consecutive sessions; and improving by three or more places.
+  more consecutive sessions; and improving by one or more places.
 - **FR-008**: System MUST select exactly one achievement to celebrate per evaluation, in this order of
   precedence: top 3, first appearance, personal best, consecutive improvement, places climbed.
 - **FR-009**: System MUST record the player's new standings once an evaluation completes, so the same

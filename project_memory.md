@@ -126,9 +126,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   re-propose shrinking it.
 - **Achievement precedence is `podium` > `first-appearance` > `personal-best` > `climb`.** First
   appearance must outrank personal best because it is always also one, and climb sits last because a
-  player can rise purely because the people above them stopped attending. The three-place climb
-  threshold exists because in a fourteen-player session half the field rises whenever the other half
-  falls. "First appearance" is distinguished from a return to a board by `bestEver`, not by the
+  player can rise purely because the people above them stopped attending. The climb threshold is
+  **one place** by product decision — any improvement is worth saying. It fires less often than that
+  suggests, because `personal-best` outranks it, so a climb is someone recovering ground toward a high
+  they held before. A threshold of three was tried first and overruled; raise it again if the
+  oscillating player (7th, 6th, 7th, 6th) turns out to make it feel cheap. "First appearance" is distinguished from a return to a board by `bestEver`, not by the
   previous snapshot.
 - **`sessions.session_notes` is a pipe-separated list, not prose.** Admins write it as
   `6 games | 21 pts/game | 1 set/game | 1 new shuttle/game @ 1st 20 games`, so the session card on

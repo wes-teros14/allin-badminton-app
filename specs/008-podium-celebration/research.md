@@ -141,7 +141,7 @@ constraint applies here unchanged.
 ## R7 — Which achievements ship first
 
 **Decision**: Four of the five. Top 3, first appearance on a board, personal best placing, and a climb
-of three or more places. "Improving for three consecutive sessions" is deferred.
+of one or more places. "Improving for three consecutive sessions" is deferred.
 
 **Rationale**: The four shipping achievements each compare against a single previous snapshot. The
 streak needs several past standings per board — a different storage shape, a migration of existing
@@ -149,9 +149,15 @@ stored data, and a silent period after release before any streak can exist to de
 least distinct of the five: a player on a three-session climb has almost certainly set a personal best
 somewhere in it, so they would have been celebrated anyway.
 
-**Thresholds**: the climb threshold is three places, and it is not decoration. In a fourteen-player
-session, half the field moves up whenever the other half moves down; a threshold of one would fire for
-most of the roster every week and the celebration would be wallpaper inside a month.
+**Thresholds**: the climb threshold is **one place**, set by product decision — any improvement is
+worth telling someone about, in the same spirit as giving non-medallists the identical celebration.
+
+An earlier draft used three, on the reasoning that in a fourteen-player session half the field moves
+up whenever the other half moves down. That was overruled. It fires less often than the bare number
+suggests, because `personal-best` outranks it: a player who improves *and* betters their own record is
+celebrated for that instead, so a climb is someone recovering ground toward a high they held before.
+The accepted cost is the oscillating player — 7th, 6th, 7th, 6th earns a card every other session for
+going nowhere. This is the one dial that cheapens the celebration fastest if it needs turning back.
 
 **Precedence**, highest first: top 3, first appearance, personal best, (streak), places climbed.
 "First appearance" must outrank "personal best" because it is always also a personal best; personal

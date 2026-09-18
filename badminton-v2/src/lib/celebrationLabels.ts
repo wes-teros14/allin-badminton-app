@@ -61,7 +61,9 @@ export function cardHeadline(placing: NewPlacing): string {
     case 'personal-best': return 'Your best yet!'
     case 'climb': {
       const gained = placing.previousRank === null ? 0 : placing.previousRank - placing.rank
-      return `Up ${gained} places!`
+      // Singular matters now that a one-place gain qualifies: "Up 1 places!" is
+      // the kind of thing that makes a celebration feel machine-made.
+      return `Up ${gained} place${gained === 1 ? '' : 's'}!`
     }
   }
 }

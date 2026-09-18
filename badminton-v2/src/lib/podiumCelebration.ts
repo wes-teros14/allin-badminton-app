@@ -78,11 +78,20 @@ function priority(board: BoardKey): number {
 /**
  * How many places a player must gain before a climb is worth announcing.
  *
- * Not decoration. In a fourteen-player session half the field moves up whenever
- * the other half moves down, so a threshold of one would fire for most of the
- * roster every week and the celebration would be wallpaper inside a month.
+ * One, by product decision: any improvement is worth telling someone about, in
+ * the same spirit as giving non-medallists the identical celebration.
+ *
+ * It fires less often than the number suggests, because `personal-best` outranks
+ * it — a player who improves *and* betters their own record is celebrated for
+ * that instead. A climb is therefore someone recovering ground toward a high they
+ * have held before.
+ *
+ * The cost of one, accepted knowingly: a player oscillating 7th, 6th, 7th, 6th is
+ * congratulated every other session for going nowhere. Raise this number if that
+ * shows up in practice — it is the one dial that cheapens the celebration
+ * fastest.
  */
-export const CLIMB_THRESHOLD = 3
+export const CLIMB_THRESHOLD = 1
 
 /**
  * Which kinds of achievement outrank which, best first.
