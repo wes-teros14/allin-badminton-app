@@ -5,6 +5,7 @@ import {
   type BestEver,
   type RankSnapshot,
 } from '@/lib/podiumCelebration'
+import { cardHeadline } from '@/lib/celebrationLabels'
 
 /** Terser assertions: the board, the kind and the rank are what matter. */
 const shape = (p: { board: string; kind: string; rank: number }) => `${p.board}:${p.kind}:${p.rank}`
@@ -82,15 +83,18 @@ describe('newPodiumPlacings — non-podium achievements', () => {
     ])
   })
 
-  it('announces a climb of three or more places', () => {
+  it('announces a multi-place climb', () => {
     // Worse than their best ever, so not a personal best — but still a real gain.
     expect(newPodiumPlacings({ wins: 9 }, { wins: 6 }, { wins: 4 }).map(shape)).toEqual([
       'wins:climb:6',
     ])
   })
 
-  it('says nothing for a climb of two, because the threshold is three', () => {
-    expect(newPodiumPlacings({ wins: 8 }, { wins: 6 }, { wins: 4 })).toEqual([])
+  it('announces a climb of a single place', () => {
+    // The threshold is 1 by product decision: any improvement is worth saying.
+    expect(newPodiumPlacings({ wins: 7 }, { wins: 6 }, { wins: 4 }).map(shape)).toEqual([
+      'wins:climb:6',
+    ])
   })
 
   it('says nothing when a player holds their non-podium place', () => {
@@ -152,5 +156,17 @@ describe('bestPlacing', () => {
 
   it('returns null when nothing is new', () => {
     expect(bestPlacing([])).toBeNull()
+  })
+})
+
+describe('cardHeadline — climb wording', () => {
+  it('uses the singular for a one-place gain', () => {
+    expect(cardHeadline({ board: 'wins', kind: 'climb', rank: 6, previousRank: 7 }))
+      .toBe('Up 1 place!')
+  })
+
+  it('uses the plural for a larger gain', () => {
+    expect(cardHeadline({ board: 'wins', kind: 'climb', rank: 6, previousRank: 10 }))
+      .toBe('Up 4 places!')
   })
 })
