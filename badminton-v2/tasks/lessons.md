@@ -70,3 +70,22 @@ GRANT DELETE ON public.sessions TO authenticated;
 **Fix:** Remove unused imports immediately when refactoring. Don't leave dead imports even if they don't cause local errors.
 
 **How to apply:** Always clean up imports when removing or refactoring JSX — especially when removing named exports from shadcn component imports.
+
+---
+
+## Migration 079 Blocked by Pre-Existing Duplicate-Player Match
+
+**Symptom:** Running `079_matches_distinct_players.sql` on prod raised
+`P0001: Cannot add matches_distinct_players_check — these matches repeat a player: match 4b02f199-… (session 47a97f9e-…, game 5)`.
+
+**Root cause:** Not a migration bug — the guard block did its job. One historical row genuinely held the same player twice. Session "FREE SHUTTLE!" (2026-08-23) game 5 had Aian in both `team1_player2_id` and `team2_player1_id`. All 20 matches in that session were generated in one batch (`created_at` identical), and the generator cannot emit a repeat, so game 5 was hand-edited afterward through one of the four-independent-dropdown forms — the exact hole commit `141679e` closed at the app layer. Game 5 was also the only match in the session with no `match_results` row, so it never contributed to stats.
+
+**Fix:** Identified the correct occupant by slot count (every player had 5 games except Jax with 3), confirmed with the user, then:
+```sql
+UPDATE public.matches
+   SET team2_player1_id = '<jax-uuid>'
+ WHERE id = '4b02f199-…' AND team2_player1_id = '<aian-uuid>';
+```
+Re-ran the offender scan (0 rows), then applied 079 to prod and dev. Constraint verified present on both.
+
+**How to apply:** When a data-integrity migration fails, treat the RAISE as a finding, not an error to code around — never loosen the constraint to make it apply. Run `supabase/maintenance/duplicate-match-players-scan.sql` first. To identify the intended value in a repaired row, use session-level invariants (games-per-player should be even across the roster) as evidence, and confirm with the user before writing to prod.
