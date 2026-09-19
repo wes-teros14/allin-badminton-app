@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match Generator &mdash; three ways to remember last week's settings</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5; --primary-ink: #D8B4F0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 98px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .title { font-weight: 700; font-size: 15px; margin: 0 0 2px; }
+  .meta { color: var(--muted-fg); font-size: 12px; margin: 0 0 10px; }
+  .caret { color: var(--muted-fg); font-size: 12px; }
+
+  .banner { display: flex; align-items: center; gap: 8px; background: rgba(111,62,135,.18);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; }
+  .banner .ic { font-size: 14px; }
+  .banner .txt { flex: 1; color: var(--fg); }
+  .banner .txt b { color: var(--primary-ink); }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700;
+    color: var(--primary-ink); background: rgba(216,180,240,.12); border: 1px solid rgba(216,180,240,.35);
+    border-radius: 999px; padding: 3px 9px; margin-bottom: 10px; }
+
+  .btn { border: 1px solid var(--border); background: transparent; color: var(--fg); border-radius: 6px;
+    padding: 6px 11px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .btn.primary { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
+  .btn.ghost { border: 0; color: var(--muted-fg); text-decoration: underline; text-underline-offset: 2px; padding: 0; font-weight: 500; }
+  .btn:disabled { opacity: .45; cursor: default; }
+
+  .weights { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin-top: 10px; }
+  .w { font-size: 11px; color: var(--muted-fg); }
+  .w b { display: block; color: var(--fg); font-size: 13px; font-weight: 700; }
+  .w b.changed { color: var(--diff); }
+
+  select.preset { width: 100%; background: var(--input); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 7px; padding: 7px 8px; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; }
+
+  .note { color: var(--muted-fg); font-size: 11.5px; margin: 10px 0 0; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Match Generator &mdash; three ways to remember last week's settings</h1>
+  <p class="sub">
+    Every session currently starts scoring weights from hardcoded <code>DEFAULTS</code>
+    (<code>MatchGeneratorPanel.tsx:81-105</code>), even though the same admin runs the same 16-player,
+    2-court structure most weeks and, per the critique, likely only ever touches 2-3 of the 12 weights.
+    All three mocks assume a locked schedule exists from last week with <code>Repeat Partner Penalty</code>
+    nudged 150&rarr;220 and <code>Rest Spacing Penalty</code> nudged 30&rarr;60. Click the buttons; <em>Reset mock</em>
+    starts over.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>One-tap banner, nothing changes until you tap it</h2>
+      <p class="why">Panel still opens on <code>DEFAULTS</code>. A dismissible banner above Settings offers
+        &ldquo;Load last session's settings&rdquo; when a previous locked config exists. Tapping it fills the
+        draft &mdash; still fully editable before Generate. Safest change: nobody's workflow is altered unless
+        they opt in, but it costs a tap every single week for an admin who always wants last week's values.</p>
+      <div class="phone"><div class="card">
+        <p class="title">Match Schedule</p>
+        <p class="meta">16 players registered</p>
+        <div class="banner" id="a-banner">
+          <span class="ic">↺</span>
+          <span class="txt">Load <b>last session's</b> settings?</span>
+          <button class="btn primary" id="a-btn" onclick="loadA()" style="padding:4px 9px">Load</button>
+        </div>
+        <div class="row"><span style="font-size:12px;text-decoration:underline;color:var(--muted-fg)">Settings ▼</span></div>
+        <div class="weights" id="a-weights"></div>
+        <p class="note" id="a-note">Untouched &mdash; still the built-in defaults.</p>
+      </div></div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Silent default: last week's settings <em>are</em> the defaults</h2>
+      <p class="why">The panel initializes from the most recently <em>locked</em> settings automatically &mdash;
+        no tap needed, matching how a recurring tool should behave. A quiet pill next to the header names what's
+        loaded and offers <em>Reset to defaults</em> as the escape hatch. Fastest for the common case; the risk
+        is an admin not noticing they're running last week's tuned values when they meant to start fresh.</p>
+      <div class="phone"><div class="card">
+        <p class="title">Match Schedule</p>
+        <p class="meta">16 players registered</p>
+        <span class="pill" id="b-pill">⟳ Using last session's settings &middot; <a href="#" onclick="resetB();return false" style="color:inherit">Reset</a></span>
+        <div class="row"><span style="font-size:12px;text-decoration:underline;color:var(--muted-fg)">Settings ▼</span></div>
+        <div class="weights" id="b-weights"></div>
+        <p class="note" id="b-note">Loaded automatically on open.</p>
+      </div></div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Named presets you build up over time</h2>
+      <p class="why">A preset switcher sits at the top of Settings: <em>My usual</em> (saved from the last
+        locked run), <em>Defaults</em>, and any others the admin names and saves. Most flexible &mdash; supports
+        a &ldquo;tournament night&rdquo; preset alongside the weekly one &mdash; but it's new surface area
+        (naming, saving, managing) for a tool used by exactly one person.</p>
+      <div class="phone"><div class="card">
+        <p class="title">Match Schedule</p>
+        <p class="meta">16 players registered</p>
+        <select class="preset" id="c-preset" onchange="switchC()">
+          <option value="usual">Preset: My usual</option>
+          <option value="defaults">Preset: Defaults</option>
+          <option value="save">+ Save current as new preset&hellip;</option>
+        </select>
+        <div class="row"><span style="font-size:12px;text-decoration:underline;color:var(--muted-fg)">Settings ▼</span></div>
+        <div class="weights" id="c-weights"></div>
+        <p class="note" id="c-note">Switching presets replaces the draft below.</p>
+      </div></div>
+    </div>
+
+  </div>
+
+  <p style="margin-top:18px"><button class="btn" style="color:#18181B;border-color:#ccc" onclick="resetAll()">Reset mock</button></p>
+
+  <table>
+    <tr><th></th><th>A &mdash; opt-in banner</th><th>B &mdash; silent default</th><th>C &mdash; named presets</th></tr>
+    <tr><td>Taps to get last week's values</td><td>1 (per session)</td><td>0</td><td>0, if already on the right preset</td></tr>
+    <tr><td>Risk of surprising the admin</td><td>None &mdash; opt-in</td><td>Medium &mdash; changed values load silently</td><td>Low &mdash; preset name is always visible</td></tr>
+    <tr><td>New concepts to learn</td><td>None</td><td>One pill + reset link</td><td>Save / name / switch presets</td></tr>
+    <tr><td>Handles a one-off &ldquo;tournament&rdquo; night</td><td>No &mdash; only remembers the single last run</td><td>No &mdash; same</td><td>Yes &mdash; that's what it's for</td></tr>
+    <tr><td>Storage</td><td colspan="3">Same for all: persist the locked <code>generator_settings</code> already written to <code>sessions</code> (see <code>handleLock</code>, <code>MatchGeneratorPanel.tsx:217-233</code>); C additionally needs a small named list, e.g. a JSON column or a new table.</td></tr>
+  </table>
+
+</div>
+
+<script>
+  const DEFAULTS = { repeatPartnerPenalty: 150, restSpacingPenalty: 30 };
+  const LAST_WEEK = { repeatPartnerPenalty: 220, restSpacingPenalty: 60 };
+  const LABELS = { repeatPartnerPenalty: 'Repeat Partner Penalty', restSpacingPenalty: 'Rest Spacing Penalty' };
+
+  function renderWeights(prefix, values, changed) {
+    const html = Object.keys(LABELS).map(k =>
+      `<div class="w">${LABELS[k]}<b class="${changed ? 'changed' : ''}">${values[k]}</b></div>`
+    ).join('');
+    document.getElementById(prefix + '-weights').innerHTML = html;
+  }
+
+  /* A */
+  let aLoaded = false;
+  function renderA() {
+    renderWeights('a', aLoaded ? LAST_WEEK : DEFAULTS, aLoaded);
+    document.getElementById('a-banner').style.display = aLoaded ? 'none' : 'flex';
+    document.getElementById('a-note').textContent = aLoaded
+      ? "Loaded from last session's locked settings."
+      : "Untouched — still the built-in defaults.";
+  }
+  function loadA() { aLoaded = true; renderA(); }
+
+  /* B */
+  let bReset = false;
+  function renderB() {
+    renderWeights('b', bReset ? DEFAULTS : LAST_WEEK, !bReset);
+    document.getElementById('b-pill').innerHTML = bReset
+      ? '↺ Using built-in defaults &middot; <a href="#" onclick="loadBBack();return false" style="color:inherit">Load last session</a>'
+      : '⟳ Using last session\'s settings &middot; <a href="#" onclick="resetB();return false" style="color:inherit">Reset</a>';
+    document.getElementById('b-note').textContent = bReset ? 'Reset to built-in defaults.' : 'Loaded automatically on open.';
+  }
+  function resetB() { bReset = true; renderB(); }
+  function loadBBack() { bReset = false; renderB(); }
+
+  /* C */
+  function switchC() {
+    const v = document.getElementById('c-preset').value;
+    if (v === 'save') { document.getElementById('c-preset').value = 'usual'; document.getElementById('c-note').textContent = 'Would open a "name this preset" prompt.'; return; }
+    renderWeights('c', v === 'usual' ? LAST_WEEK : DEFAULTS, v === 'usual');
+    document.getElementById('c-note').textContent = v === 'usual' ? 'Preset "My usual" loaded.' : 'Preset "Defaults" loaded.';
+  }
+
+  function resetAll() {
+    aLoaded = false; bReset = false;
+    document.getElementById('c-preset').value = 'usual';
+    renderA(); renderB(); switchC();
+  }
+  resetAll();
+</script>
+</body>
+</html>
