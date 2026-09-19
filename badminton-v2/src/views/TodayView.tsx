@@ -3,6 +3,7 @@ import { computeStatsFromResults } from '@/lib/matchResults'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
+import { NoResultsYet } from '@/components/MatchBoard'
 
 interface LeaderboardEntry {
   playerId: string
@@ -135,7 +136,7 @@ export function TodayView() {
 
   if (isLoading || sessionLoading) {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 space-y-3">
+      <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 pt-6 space-y-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
         ))}
@@ -152,7 +153,7 @@ export function TodayView() {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-10 space-y-6">
+    <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 pt-6 pb-10 space-y-6">
       {activeSessions.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {activeSessions.map((s, i) => (
@@ -171,10 +172,10 @@ export function TodayView() {
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-primary">🏆 {activeSession.name}</h1>
+      <h1 className="text-xl font-bold text-primary-ink">🏆 {activeSession.name}</h1>
 
       {entries.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No games completed yet.</p>
+        <NoResultsYet />
       ) : (
         <>
           <div className="space-y-2">
