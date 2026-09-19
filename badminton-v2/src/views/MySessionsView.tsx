@@ -289,7 +289,7 @@ export function MySessionsView() {
     .sort((a, b) => b.date.localeCompare(a.date))
 
   return (
-    <div className="max-w-sm mx-auto px-4 py-8">
+    <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 py-8">
       <div className="mb-6 space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Sessions</h1>
         <p className="text-sm text-muted-foreground">Upcoming, live, and past badminton sessions.</p>

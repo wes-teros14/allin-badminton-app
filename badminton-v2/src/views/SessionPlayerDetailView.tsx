@@ -13,7 +13,7 @@ import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useSessionReceipts, signReceiptUrls, type SessionReceipt } from '@/hooks/useSessionReceipts'
-import { PersonalGameCard, SessionProgress, NoScheduleYet } from '@/components/MatchBoard'
+import { PersonalGameCard, SessionProgress, NoScheduleYet, NoResultsYet } from '@/components/MatchBoard'
 import { PlayerCourtTabs } from '@/components/PlayerCourtTabs'
 import { AllMatchesView } from '@/views/PlayerView'
 import { LiveIndicator } from '@/components/LiveIndicator'
@@ -352,10 +352,10 @@ function ScheduleTab({
           Three steps rather than one wall of instructions: the flow ends with
           something the player cannot do themselves, and saying so is the point. */}
       {isRegistered && showPaymentInfo && (
-        <div className="max-w-sm mx-auto px-4 mt-3">
+        <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 mt-3">
           <div className="rounded-2xl border border-border bg-card p-3.5">
             <div className="mb-4 flex items-center gap-2.5">
-              <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
                 Session fee
               </span>
               {sessionPrice != null && (
@@ -364,7 +364,7 @@ function ScheduleTab({
                 </span>
               )}
               <span
-                className={`shrink-0 rounded-md px-2 py-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] ${
+                className={`shrink-0 rounded-md px-2 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] ${
                   paymentState === 'submitted'
                     ? 'bg-gold/20 text-gold-ink'
                     : 'bg-destructive/20 text-destructive'
@@ -476,7 +476,7 @@ function ScheduleTab({
 
       {/* Registration banner */}
       {sessionStatus === 'registration_open' && (
-        <div className="max-w-sm mx-auto px-4 mt-3">
+        <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 mt-3">
           {isRegistered ? (
             /* The fallback for when the payment card is not rendering — either
                the player is already paid, or no GCash details are configured.
@@ -540,12 +540,12 @@ function ScheduleTab({
         both that and the "no games" text below with one explanation.
       */}
       {!isLoading && resolvedId && SCHEDULED_STATUSES.has(sessionStatus ?? '') && (
-        <div className="max-w-sm mx-auto px-4 pt-4">
+        <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 pt-4">
           <PlayerCourtTabs courts={courts} isLoading={courtsLoading} />
         </div>
       )}
 
-      <div className="max-w-sm mx-auto px-4 py-4">
+      <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 py-4">
         {SCHEDULED_STATUSES.has(sessionStatus ?? '') && (
           <SessionProgress
             sessionPlayed={sessionMatchPlayed}
@@ -610,7 +610,7 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
 
   if (isLoading) {
     return (
-      <div className="max-w-sm mx-auto px-4 pt-6 space-y-3">
+      <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 pt-6 space-y-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
         ))}
@@ -619,9 +619,9 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-10 space-y-6">
+    <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 pt-6 pb-10 space-y-6">
       {entries.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No games completed yet.</p>
+        <NoResultsYet />
       ) : (
         <>
           <div className="space-y-2">
@@ -747,10 +747,14 @@ export function SessionPlayerDetailView() {
     <div className="min-h-screen bg-background text-foreground">
       {/* Tab bar */}
       <div className="flex justify-center items-center gap-1 px-4 py-3 border-b border-border">
-        <div className="flex gap-1">
+        <div className="flex gap-1" role="tablist" aria-label="Session sections">
           {(['schedule', 'allmatches', 'leaderboard'] as Tab[]).map((t) => (
             <button
               key={t}
+              role="tab"
+              id={`tab-${t}`}
+              aria-selected={tab === t}
+              aria-controls={`tabpanel-${t}`}
               onClick={() => setTab(t)}
               className={`relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 tab === t
@@ -766,39 +770,45 @@ export function SessionPlayerDetailView() {
 
       {/* Tab content */}
       {tab === 'schedule' && (
-        slugLoading ? (
-          <div className="max-w-sm mx-auto px-4 pt-6 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : nameSlug && sessionId ? (
-          <ScheduleTab
-            nameSlug={nameSlug}
-            sessionId={sessionId}
-            playerId={user?.id}
-            sessionStatus={sessionStatus}
-            isRegistered={isRegistered}
-            isRegistering={isRegistering}
-            paid={paid}
-            sessionPrice={sessionPrice}
-            sessionNotes={sessionNotes}
-            registrationOpensAt={registrationOpensAt}
-            onRegister={handleRegister}
-          />
-        ) : (
-          <div className="h-48 flex items-center justify-center">
-            <p className="text-muted-foreground text-sm">No schedule found for your account.</p>
-          </div>
-        )
+        <div role="tabpanel" id="tabpanel-schedule" aria-labelledby="tab-schedule">
+          {slugLoading ? (
+            <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 pt-6 space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-14 bg-muted rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : nameSlug && sessionId ? (
+            <ScheduleTab
+              nameSlug={nameSlug}
+              sessionId={sessionId}
+              playerId={user?.id}
+              sessionStatus={sessionStatus}
+              isRegistered={isRegistered}
+              isRegistering={isRegistering}
+              paid={paid}
+              sessionPrice={sessionPrice}
+              sessionNotes={sessionNotes}
+              registrationOpensAt={registrationOpensAt}
+              onRegister={handleRegister}
+            />
+          ) : (
+            <div className="h-48 flex items-center justify-center">
+              <p className="text-muted-foreground text-sm">No schedule found for your account.</p>
+            </div>
+          )}
+        </div>
       )}
 
       {tab === 'allmatches' && sessionId && (
-        <AllMatchesView sessionId={sessionId} embedded />
+        <div role="tabpanel" id="tabpanel-allmatches" aria-labelledby="tab-allmatches">
+          <AllMatchesView sessionId={sessionId} embedded />
+        </div>
       )}
 
       {tab === 'leaderboard' && sessionId && (
-        <LeaderboardTab sessionId={sessionId} />
+        <div role="tabpanel" id="tabpanel-leaderboard" aria-labelledby="tab-leaderboard">
+          <LeaderboardTab sessionId={sessionId} />
+        </div>
       )}
     </div>
   )

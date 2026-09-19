@@ -390,7 +390,7 @@ function RowStat({
 }) {
   return (
     <div className="text-right shrink-0">
-      <p className={`font-bold text-primary tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>{winRate}%</p>
+      <p className={`font-bold text-primary-ink tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>{winRate}%</p>
       <p className="text-xs text-muted-foreground tabular-nums">{wins}W {losses}L</p>
     </div>
   )
@@ -479,7 +479,7 @@ function CheerShareRowBody({
         {name}
       </span>
       <div className="text-right shrink-0">
-        <p className={`font-bold text-primary tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>
+        <p className={`font-bold text-primary-ink tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>
           {row.sharePct}%
         </p>
         <p className="text-xs text-muted-foreground tabular-nums">
@@ -726,7 +726,7 @@ function AwardsLeaderboard() {
             </p>
           </div>
           {a.holder && a.valueLabel && (
-            <span className="text-sm font-bold text-primary tabular-nums shrink-0">{a.valueLabel}</span>
+            <span className="text-sm font-bold text-primary-ink tabular-nums shrink-0">{a.valueLabel}</span>
           )}
         </div>
       ))}
@@ -743,14 +743,18 @@ export function LeaderboardView() {
   const [tab, setTab] = useState<Tab>(initialTab)
 
   return (
-    <div className="max-w-sm mx-auto px-4 py-8">
+    <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 py-8">
       <h1 className="text-xl font-bold mb-4">All-time Leaderboard</h1>
 
       {/* Tab switcher */}
-      <div className="flex gap-1 mb-6">
+      <div className="flex gap-1 mb-6" role="tablist" aria-label="Leaderboard categories">
         {(['wins', 'pairs', 'cheers', 'awards'] as Tab[]).map((t) => (
           <button
             key={t}
+            role="tab"
+            id={`tab-${t}`}
+            aria-selected={tab === t}
+            aria-controls={`tabpanel-${t}`}
             onClick={() => setTab(t)}
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               tab === t
@@ -763,10 +767,10 @@ export function LeaderboardView() {
         ))}
       </div>
 
-      {tab === 'wins' && <WinsLeaderboard />}
-      {tab === 'cheers' && <CheersLeaderboard />}
-      {tab === 'awards' && <AwardsLeaderboard />}
-      {tab === 'pairs' && <PairsLeaderboard />}
+      {tab === 'wins' && <div role="tabpanel" id="tabpanel-wins" aria-labelledby="tab-wins"><WinsLeaderboard /></div>}
+      {tab === 'cheers' && <div role="tabpanel" id="tabpanel-cheers" aria-labelledby="tab-cheers"><CheersLeaderboard /></div>}
+      {tab === 'awards' && <div role="tabpanel" id="tabpanel-awards" aria-labelledby="tab-awards"><AwardsLeaderboard /></div>}
+      {tab === 'pairs' && <div role="tabpanel" id="tabpanel-pairs" aria-labelledby="tab-pairs"><PairsLeaderboard /></div>}
     </div>
   )
 }

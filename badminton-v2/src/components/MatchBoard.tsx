@@ -322,6 +322,26 @@ export function NoScheduleYet({ paymentState, registered }: { paymentState: Paym
   )
 }
 
+/**
+ * A schedule exists but no game has finished yet — Today's leaderboard and
+ * the session-scoped Leaderboard tab both used to render one line of grey
+ * text here, which on Today (plausibly opened mid-session) read as
+ * abandoned rather than in progress. No step tracker: unlike
+ * `NoScheduleYet`, there's no registration/payment step left to show once
+ * games are already being played.
+ */
+export function NoResultsYet() {
+  return (
+    <div className="mt-5 rounded-2xl border border-dashed border-border p-6 text-center">
+      <div className="text-[26px] leading-none" aria-hidden="true">🏸</div>
+      <h2 className="mt-3 text-[15px] font-semibold tracking-[-0.01em]">No results yet</h2>
+      <p className="mx-auto mt-1.5 max-w-[30ch] text-[12.5px] leading-relaxed text-muted-foreground">
+        Scores show up here as soon as the first game finishes.
+      </p>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // The board
 // ---------------------------------------------------------------------------
