@@ -561,7 +561,11 @@ function ScheduleTab({
             ))
           : matches.length === 0
           ? (
-              <NoScheduleYet paymentState={paymentState} registered={isRegistered} />
+              <NoScheduleYet
+                paymentState={paymentState}
+                registered={isRegistered}
+                registrationClosed={sessionStatus != null && sessionStatus !== 'setup' && sessionStatus !== 'registration_open'}
+              />
             )
           : matches.map((m, i) => (
               // Your live game is already a full card in the court strip above,
