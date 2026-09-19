@@ -654,7 +654,10 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                       <Input
                         type="number"
                         value={settings[key]}
-                        onChange={(e) => set(key, +e.target.value)}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/^0+(?=\d)/, '')
+                          set(key, raw === '' ? 0 : +raw)
+                        }}
                         className="h-7 text-xs"
                         disabled={disabled}
                       />
