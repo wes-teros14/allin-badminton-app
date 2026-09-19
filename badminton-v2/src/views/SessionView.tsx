@@ -109,7 +109,7 @@ function SessionSummary({
 
   return (
     <div className="min-w-0">
-      <h1 className="text-lg font-semibold text-primary">{name}</h1>
+      <h1 className="text-lg font-semibold text-primary-ink">{name}</h1>
       <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
         <DetailItem icon={Calendar} iconClassName="text-[#A84767]">{formatSessionDate(date)}</DetailItem>
         {formattedTime && <DetailItem icon={Clock} iconClassName="text-[#A84767]">{formattedTime}</DetailItem>}
@@ -441,7 +441,7 @@ export function SessionView() {
   if (session.status === 'complete') {
     const isClosed = session.closed_at != null
     return (
-      <div className="p-6 max-w-lg mx-auto space-y-4">
+      <div className="p-6 max-w-lg lg:max-w-2xl mx-auto space-y-4">
         <BackToAdmin />
         <SessionStepper status={session.status} closedAt={session.closed_at} />
         <Card>
@@ -470,7 +470,7 @@ export function SessionView() {
 
   if (session.status === 'in_progress') {
     return (
-      <div className="p-4 max-w-lg mx-auto space-y-4">
+      <div className="p-4 max-w-lg lg:max-w-2xl mx-auto space-y-4">
         <SessionStepper status={session.status} />
         <LiveSessionView sessionId={session.id} splitScoring={session.split_match_scoring ?? false} />
         {!isModerator && (
@@ -497,7 +497,7 @@ export function SessionView() {
 
   if (isModerator) {
     return (
-      <div className="p-6 max-w-lg mx-auto space-y-4">
+      <div className="p-6 max-w-lg lg:max-w-2xl mx-auto space-y-4">
         <BackToAdmin />
         <SessionStepper status={session.status} />
         <Card>
@@ -519,7 +519,7 @@ export function SessionView() {
   }
 
   return (
-    <div className="p-6 max-w-lg mx-auto space-y-6">
+    <div className="p-6 max-w-lg lg:max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         {session.status === 'setup' ? (
           <div />
