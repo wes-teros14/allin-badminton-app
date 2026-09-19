@@ -522,8 +522,13 @@ function CheersLeaderboard() {
         One cheer on screen at a time. Six boards stacked meant up to eighteen
         medals per scroll, which made a gold medal decoration rather than a
         placing — and the page ran past 6,000px on a phone.
+
+        Two rows of three (docs/visual/cheer-switcher-options.html, Option
+        A) rather than one row of six: six simultaneous chips blew past the
+        >4-visible-options guideline. Labels also bumped 8px -> 11px, the
+        same legibility floor applied elsewhere — 8px was below even that.
       */}
-      <div className="grid grid-cols-6 gap-1.5">
+      <div className="grid grid-cols-3 gap-1.5">
         {CHEER_CATEGORIES.map((category) => {
           const isOn = category.slug === selected.slug
           return (
@@ -540,7 +545,7 @@ function CheersLeaderboard() {
               }`}
             >
               <span className="text-[17px] leading-none" aria-hidden="true">{category.emoji}</span>
-              <span className="text-[8px] font-bold uppercase tracking-wide">{category.short}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide">{category.short}</span>
             </button>
           )
         })}
