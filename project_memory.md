@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-18
+Last updated: 2026-09-20
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -51,6 +51,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Never pass a secret on a command line** — not as an inline `VAR=...` prefix, not as a flag. It is
   captured by shell history *and* by Claude Code's permission allowlist. Run the script that reads
   `.env` instead.
+- **The local Supabase CLI link defaults to prod, and Claude has no access token here.**
+  `badminton-v2/supabase/.temp/project-ref` reads `ensdfitpeyreunihkqkh` (prod) as of 2026-09-19, not
+  the dev ref. `supabase link`/`db push` both fail with `LegacyPlatformAuthRequiredError` (no
+  `SUPABASE_ACCESS_TOKEN`, not logged in) — Claude cannot apply a migration itself and must hand the
+  exact `supabase login && supabase link --project-ref tsvetqzkullivprbjtli && supabase db push`
+  sequence to the user instead. Relink to dev before ever running `db push` by hand.
 
 ## Branching and commits
 
@@ -195,6 +201,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   rays via `box-shadow`. Not two icons crossfading — nothing pops mid-transition.
 - Design options that were considered and rejected are preserved in
   `badminton-v2/docs/visual/theme-toggle-options.html`.
+- **`--primary-ink` (2026-09-19) is `--primary`'s text-safe pair, same split as `--gold`/`--gold-ink`.**
+  `--primary` (`#6F3E87`) was only ever contrast-checked as a background/border/accent; used as body
+  text on the dark card/background it measures 2.5:1, well under the 4.5:1 floor. Light mode repeats
+  `#6F3E87` (already 7.69:1 on white); dark mode overrides to `#D8B4F0`, the same lighter tint
+  `--swap-ink`'s dark value already uses. Use `text-primary-ink` for any purple body/heading text on a
+  dark surface; `text-primary` is still correct for buttons paired with `text-primary-foreground`.
 - **Native `<select>` popups do not follow the `.dark` class.** Chromium takes a popup's background
   from the element's used `color-scheme`, which is `light` unless declared — the app declares it
   nowhere, so dark mode opens *white* system popups. `--swap-ink` (`#6F3E87` light, `#D8B4F0` dark)
@@ -231,6 +243,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - `cheers_received` is exactly the sum of the six category columns (migration 036 increments the total and one category by 1 per row), which is what makes a player's six shares sum to 100%. Any new cheer type must update that trigger or the shares stop adding up.
 - `RANK_ICON` (medal-then-digit) is gone. Every ranked surface uses the podium/chip treatment, and the numbered chip is one shared `RankChip` at a fixed 34 px.
 - **The Cheers tab shows one category at a time**, behind a six-way switcher. Six stacked boards meant up to eighteen medals per screen — a gold that repeats six times is decoration, not a placing — and the tab measured 3,920 px with only three qualifying players. One at a time it is 1,600 px with exactly one gold. Do not restore the stacked layout.
+- **The switcher itself is a `grid-cols-3` (two rows of three), not `grid-cols-6`, as of 2026-09-19.**
+  Six simultaneous chips in one row blew past the review's ≤4-visible-options guideline. Chip labels
+  also went `text-[8px]` → `text-[11px]` — 8px was below even the 11px functional-text floor other
+  undersized text elsewhere in the app was fixed to. Rejected in
+  `docs/visual/cheer-switcher-options.html`: a horizontal scroll strip (reintroduces a pattern the
+  project otherwise avoids) and a single dropdown (loses the emoji/color identity per category).
 - **The six cheer types live in `src/lib/cheerTypes.ts`** (`CHEER_CATEGORIES`, `signatureCheer`) with slug, emoji, name, short label and bar colour. Both the leaderboard switcher and the profile bar read it, so a seventh type is added once. Bar colours are fixed hex tuned against `--card`, not tokens — revisit if a light theme lands.
 - **My Profile carries a "Cheered for" card** between Sign out and Awards: strongest cheer type, its share, and a bar splitting the player's cheers across all six. It replaced a Cheers section that repeated the same six percentages as stat cards.
 
@@ -291,6 +309,45 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **`forcedOpeningRepeats(courtCount, playerCount)`** is the one definition of the audit floor:
   `openingGameLimit * 4 - playerCount`, floored at 0. 15 players on 2 courts → 1 forced, so a tile
   reading 1 is optimal. Without it a bare count reports success as failure.
+- **Named scoring-weight presets (migration 081, 2026-09-19).** `generator_presets` (id, name, settings
+  jsonb, created_by, timestamps) is admin-only RLS — not moderator — because `MatchGeneratorPanel` is
+  only ever rendered from the admin branch of `SessionView.tsx`; moderators hit an `isModerator` early
+  return before reaching it, so this mirrors an existing boundary rather than opening a new one. A
+  preset's `settings` is `Omit<Settings, 'pinnedGames' | 'wishlistStr'>`
+  (`toPresetSettings()`, `MatchGeneratorPanel.tsx`) — pins and the wishlist name *this week's* specific
+  players, so switching presets never touches either field; a preset is a scoring philosophy, not a
+  roster. UI is a `<select>` at the top of Settings (Defaults / saved presets / "+ Save current as new
+  preset…") plus a two-tap Delete, matching the Lock/Close confirm pattern. Rejected in the options
+  page (`docs/visual/match-generator-presets-options.html`): a dismissible "load last session" banner
+  (opt-in but costs a tap every week) and a silent auto-load from the last locked config (fastest but
+  risks the admin not noticing they're running last week's tuned values).
+- **Scoring Weights render as four labeled groups**, not one flat 12-item grid: Fairness & Pacing,
+  Gender Rules, Rest & Opening, Rewards (`WEIGHT_GROUPS`, `MatchGeneratorPanel.tsx`, 2026-09-19). The
+  flat grid blew past the review's own ≤4-visible-options guideline. Rejected: collapsing each family
+  behind its own `<details>` (adds a new disclosure pattern per group) and a "common 2 / advanced 10"
+  split (picking the "common" weights needs real usage data the app doesn't have).
+- **Every Match Rules/Optimizer slider now has a paired editable number box, and every Scoring Weight
+  now has a paired slider (2026-09-19)** — previously sliders were drag-only and weights were
+  type-only, so "tune a number" was two different controls depending which section you were in.
+  Weight sliders use a guessed comfort range (`WEIGHT_GROUPS[].max/step`, roughly 2-3x the default);
+  the number input stays unbounded so typing past the slider's max still works — the slider is an
+  accelerator, not a ceiling. Options compared in
+  `docs/visual/match-generator-input-consistency-options.html`.
+- **`title=` hover tooltips are gone from the Match Generator; `HelpPopover` is tap-to-reveal instead
+  (2026-09-19).** Hover-only help is unreachable on the touch device this panel is meant to run on
+  courtside. `HelpPopover` (`MatchGeneratorPanel.tsx`) is a small `<button aria-expanded>` + absolutely
+  positioned panel that closes on outside click; used by `SliderField`'s info icon, `CheckField`'s
+  help text, and all 12 weight rows. **When nesting this (or any button/icon) inside a `<label>`,
+  `preventDefault()` + `stopPropagation()` on the icon's own click handler are both required** — without
+  them, tapping the icon also toggles the label's wrapped checkbox (caught live while building the
+  option-comparison POC, not just in the real component).
+- **All 35+ form controls in the Match Generator settings panel have real accessible names
+  (2026-09-19).** Every `SliderField`/weight-row input previously had a `<Label>` rendered as an
+  unassociated sibling — no `htmlFor`/`id`/`aria-label`. Fixed via `useId()` per field
+  (`htmlFor`/`id` pair) or an explicit `aria-label` on number inputs sharing a label with their
+  checkbox. Verify with a live DOM check, not just the accessibility tree — see the a11y sweep pattern
+  used throughout this session (query every `input/select/button`, confirm each resolves a non-empty
+  accessible name via wrapping label, `label[for]`, or `aria-label`).
 
 ## Match schedule board
 
@@ -342,6 +399,16 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **`/match-schedule/session/:id` without a slug is not a dead end.** `PlayerListViewInner`
   auto-redirects a signed-in, registered player to their own slug with `replace: true`
   (`src/views/PlayerView.tsx:216`). An admin who is not registered falls through to the picker.
+- **`NoScheduleYet` is a 5-step tracker as of 2026-09-19, not 4.** Step 3 used to read "Registration
+  closes · matches created" and stayed unchecked even once registration had already closed (which the
+  session-card badge separately told the player) — split into two independent steps, "Registration
+  closes" and "Matches created". Takes a new `registrationClosed: boolean` prop, derived at each call
+  site from session status (`status !== 'setup' && status !== 'registration_open'`), not assumed.
+  Options compared in `docs/visual/schedule-step-tracker-options.html`.
+- **`NoResultsYet` (`MatchBoard.tsx`, sibling to `NoScheduleYet`, 2026-09-19)** replaces the bare "No
+  games completed yet." text on `TodayView` and the session-scoped Leaderboard tab — same dashed-card
+  icon+heading language as `NoScheduleYet`, deliberately *without* its step tracker (no
+  registration/payment step is left to show once games are already being played).
 
 ## Courts on player screens
 
@@ -428,6 +495,14 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   `badminton-v2/docs/visual/finish-match-latency.html`.
 - **Documentation standards** (from `_bmad/_memory/tech-writer-sidecar/`): CommonMark, Mermaid v10+ syntax, and **no time estimates** in generated docs.
 - **Visual explanations** go in self-contained single-file HTML under `docs/visual/`, no CDN links, must render from disk offline.
+- **The impeccable design-quality hook flags `docs/visual/*-options.html` mockups for `tiny-text` (and
+  sometimes `low-contrast`) by default** — the dense phone-frame comparison pages intentionally run
+  small (9-12px) to fit a 384px mockup, same as the app's own real UI density. Sanctioned per-file via
+  `impeccable hooks ignore-value tiny-text "*" --file <path>`, not a rule-wide or project-wide
+  suppression. A genuine `low-contrast` false positive was traced once to a `<code>` tag's light-mode
+  background (`#F4F4F6`) rendering inside a dark `.phone` mockup panel — fixed with a `.phone code`
+  override rather than suppressed, since it was a real bug in the mockup's own CSS, not a detector
+  miss.
 
 ## Known warts / unclear
 
