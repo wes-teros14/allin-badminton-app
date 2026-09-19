@@ -638,16 +638,24 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - **Rule**: a suite failing uniformly at navigation is an environment fault. Read *where* the tests
   failed before reading *how many*.
 
-## Leading zero stacked in Scoring Weight inputs (2026-09-19)
+## Scoring Weight inputs couldn't be cleared, only typed-over (2026-09-19)
 
-- **Symptom**: clearing a Scoring Weights field (e.g. Rest Spacing Penalty) and typing `150` produced
-  `0150` instead of `150`.
-- **Root cause**: `onChange` did `set(key, +e.target.value)`. Deleting the field sent `''`, which
-  `+''` coerced to `0`, so the controlled `<input type="number">` re-rendered back to `"0"` on every
-  keystroke; the cursor then sat after that `"0"`, so each typed digit appended onto it instead of
-  replacing it.
-- **Fix**: in `onChange` ([MatchGeneratorPanel.tsx:654-661](../badminton-v2/src/components/MatchGeneratorPanel.tsx)),
-  strip a leading zero before a digit (`e.target.value.replace(/^0+(?=\d)/, '')`) before parsing.
-- **Rule**: any controlled numeric input that falls back to `0` on an empty string needs the same
-  leading-zero strip in `onChange`, not just at submit — otherwise the DOM value and the coerced state
-  value diverge on every keystroke after a clear.
+- **Symptom**: clearing a Scoring Weights field (e.g. Rest Spacing Penalty) left `0` sitting in the
+  box instead of going blank, so you couldn't type a fresh number without it stacking onto that `0`
+  (`150` came out `0150`).
+- **First attempt (insufficient)**: stripped a leading zero in `onChange`
+  (`e.target.value.replace(/^0+(?=\d)/, '')`). This fixed the stacking symptom when text was
+  select-all-and-typed-over, but didn't fix the actual complaint — the field still snapped to `"0"`
+  the instant it was emptied, because `onChange` did `set(key, +e.target.value)` and `+'' === 0`, and
+  the controlled `<input>` re-rendered to that `0` on every keystroke.
+- **Root cause**: the input's `value` prop was bound directly to the numeric setting. A numeric type
+  has no way to represent "empty" — `''` and `0` are different DOM states but the same JS number, so
+  the moment the field emptied, state and display both collapsed to `0`.
+- **Real fix**: decouple what's displayed from what's stored. Added `weightDrafts` (`Partial<Record<keyof
+  Settings, string>>`) next to `settings` state in `MatchGeneratorPanel.tsx`. `onChange` writes the raw
+  typed string into the draft (so the field can be genuinely empty while editing) and only calls
+  `set(key, +raw)` when `raw` parses to a number; `onBlur` commits `0` if the field was left empty/invalid,
+  then clears the draft. Displayed value is `weightDrafts[key] ?? settings[key]`.
+- **Rule**: never bind a text/number `<input>`'s `value` directly to a `number` field in state when the
+  field must support an empty intermediate state — track the raw string in local draft state and parse
+  to the typed value on commit (valid keystroke or blur), not on every keystroke.

@@ -119,6 +119,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
   const [audit, setAudit] = useState<AuditData | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [settings, setSettings] = useState<Settings>(DEFAULTS)
+  const [weightDrafts, setWeightDrafts] = useState<Partial<Record<keyof Settings, string>>>({})
   const [confirmingLock, setConfirmingLock] = useState(false)
   const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const generateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -653,10 +654,25 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                       </div>
                       <Input
                         type="number"
-                        value={settings[key]}
+                        value={weightDrafts[key] ?? settings[key]}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(/^0+(?=\d)/, '')
-                          set(key, raw === '' ? 0 : +raw)
+                          const raw = e.target.value
+                          setWeightDrafts((prev) => ({ ...prev, [key]: raw }))
+                          if (raw !== '' && !Number.isNaN(+raw)) {
+                            set(key, +raw)
+                          }
+                        }}
+                        onBlur={() => {
+                          setWeightDrafts((prev) => {
+                            if (!(key in prev)) return prev
+                            const raw = prev[key]
+                            if (raw === '' || raw === undefined || Number.isNaN(+raw)) {
+                              set(key, 0)
+                            }
+                            const next = { ...prev }
+                            delete next[key]
+                            return next
+                          })
                         }}
                         className="h-7 text-xs"
                         disabled={disabled}
