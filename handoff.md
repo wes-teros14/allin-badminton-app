@@ -57,11 +57,9 @@ All decisions were made from interactive POC comparison pages under `badminton-v
 
 ## Not verified
 
-- **Only the dev Supabase project has migration 081 applied** (confirmed by the user, verified live
-  against the dev server). Production status is unknown — `generator_presets` likely does not exist on
-  prod yet. The feature degrades gracefully (a toast error, not a crash) if it's missing, but the
-  presets feature won't actually work in production until someone runs `db push` against
-  `ensdfitpeyreunihkqkh`.
+- Migration 081 (`generator_presets`) is applied on **both** dev and prod per the user (2026-09-20) —
+  dev confirmed live end-to-end by Claude against the dev server; prod confirmed by the user directly,
+  not independently re-checked by Claude (no prod credentials available in this environment).
 - The local Supabase CLI link (`badminton-v2/supabase/.temp/project-ref`) still points at prod, not
   dev — a relink attempt failed with no access token available in this environment. See
   `project_memory.md` → Environments.
@@ -74,7 +72,6 @@ All decisions were made from interactive POC comparison pages under `badminton-v
   leaderboard subtitle's missing word, `RosterPanel`'s 3s vs. 5s confirm-window inconsistency,
   `MATCH_TYPE_COLOR`'s `text-blue-900`, the `/sessions` skeleton-count mismatch, the duplicated
   `RANK_ICON` helper) — none of these have POCs built yet.
-- Whoever owns prod deploys should run the migration 081 sequence against prod when ready (see project_memory.md → Environments for the exact commands).
 
 ## Open questions
 
