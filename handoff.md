@@ -1,65 +1,46 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-18 (evening). Overwrite this file on every update; it is never a running history.
+Updated: 2026-09-19. Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- On `dev`. **Finished/Closed stage pushed to `dev` and `main`** — see the merge commit at the top of
-  `git log main`. Deployed to production.
-- **Migration 080 (`sessions.closed_at`) was applied by Mark by hand on dev and must be on prod
-  before the deploy serves traffic** — the app selects `closed_at` in `usePlayerSessions` and
-  `useSessionList`; without the column `/sessions` and `/admin` error. Mark confirmed dev; prod
-  confirmation is in the chat, not verified by me.
-- `npm run lint` clean apart from the pre-existing `ProfileView.tsx` warning; `tsc -b` clean;
-  `npm run build` clean; vitest **360/360** (356 + 4 in `mySessionsView.upcoming.test.ts`).
-- Supabase CLI on this machine is **not logged in** and was linked to prod; migrations go through the
-  dashboard SQL editor for now. `graphify-out/` on this machine was rebuilt by Mark at the repo root
-  (20k nodes, includes `_bmad`); the session before built it for `badminton-v2` + `specs` only.
-- Working tree still carries Mark's pending `tasks/lessons.md` entries, the `temporary_files/*`
-  deletions, untracked `temp/` and `.claude/launch.json`. Not mine; left alone. New POCs live in
-  `temporary_files/` per the updated CLAUDE.md rule.
+- On `dev`, working tree clean except `temp/` (untracked scratch — screenshots and planning notes,
+  left alone, see Open questions).
+- `dev` and `main` both pushed and content-identical at `d04e9e8` (origin).
 
 ## Shipped this session
 
-**Finished stage + Close** (`009-finished-stage`). `complete` keeps its meaning and is now reached by a
-two-tap *Finish Session* at the bottom of the Live page; labelled *Finished* everywhere. New nullable
-`sessions.closed_at` set by a two-tap *Close* on the `/admin` card only; it moves the card to Past and
-nothing else. `AdminView` and `MySessionsView.isUpcomingForPlayer` split on `closed_at`; player card gets
-a teal *Finished* pill and stays in Upcoming while unpaid. Stepper: Setup → … → Live → Finished → Closed.
-`useSession`: `finishSession` (old `closeSession` body), `closeSession` / `reopenSession` (set/clear
-`closed_at`). Migration 080 backfills `closed_at` on all already-complete sessions.
-
-Earlier today, also shipped: Fixed Opening Games collapsed by default; swap-instead-of-block in match
-edit forms; *Use profile levels* on the roster; seed matches (pinned opening games).
+- **Fix**: Scoring Weights number inputs (`MatchGeneratorPanel.tsx:654-661`) stacked a leading zero on
+  every keystroke after clearing a field (typing `150` produced `0150`). Cause: `+e.target.value`
+  coerced `''` to `0` on each keystroke, snapping the controlled input back to `"0"` before the next
+  digit landed. Fixed by stripping a leading zero before parsing. Verified live in the browser preview.
+- **Housekeeping**: corrected a lesson I'd written to the stale `badminton-v2/tasks/lessons.md` copy —
+  the live log is the root `tasks/lessons.md` (see `project_memory.md` → Repo layout). Also committed,
+  at the user's request, two items that had been sitting uncommitted before this session started and
+  were not mine: a `tasks/lessons.md` dedupe (removed two entries already superseded/resolved) and a
+  new `supabase/maintenance/swap-player-matches.sql` script (swaps two players' queued match slots
+  within a session by nickname). Also added `.claude/launch.json` (dev server preview config).
 
 ## Verified, and how
 
-- Dev DB, throwaway session with four S1 test accounts: Live page showed *Finish Session*; first tap
-  armed *Confirm Finish? (tap again)* and expired after 5 s; second tap → Finished page (teal label,
-  note, payment panel, **no buttons**). A celebration card fired on `/admin` immediately — proof the
-  `completed_at` sentinel behaves as before. `/admin` kept the card in the active list with a
-  *Finished* pill and *Close*; Past stayed 4. As S1 Sam Wong, `/sessions` showed the card in Upcoming
-  with *Finished* + *Payment: Unpaid*. *Close* armed → confirm → Past 4 → 5, card gone from active.
-  Throwaway session deleted afterwards; the four S1 accounts keep `sessions_attended` +1 on dev.
-- Migration backfill: the 4 pre-existing complete sessions stayed in Past after the column landed.
+- Browser preview (`badminton-v2-dev`, port 5173): logged in via the dev-login button, opened a
+  session's Match Generator → Settings → Scoring Weights, cleared the Repeat Partner Penalty field,
+  typed `150` — field correctly showed `150`, not `0150`.
 
 ## Not verified
 
-- Prod migration applied (Mark's word). Re-check `/admin` on production after deploy.
-- `reopenSession` (clear `closed_at`) has no button; only the hook exists.
-- Results editing in the Finished stage: the page shows the payment panel only; un-finishing a match
-  from there was not built or tested (was Q1 in the POC).
-- Light mode on the new teal `Finished` pill/label.
+- No other numeric inputs in the app share this pattern (grepped for `type="number"` in
+  `MatchGeneratorPanel.tsx` only — it's the one place this input style is used).
 
 ## Immediate next steps
 
-1. Confirm prod has `closed_at` (Settings → SQL editor → `select closed_at from sessions limit 1`).
-2. Decide whether Closed sessions get a *Reopen* button on the `/admin` past card (hook is ready).
-3. Rotate the prod `service_role` key — still outstanding.
-4. Delete merged branches `007-seed-matches`, `009-finished-stage`.
+- None outstanding from this session. Carry over anything still open from the previous
+  (2026-09-18) session — this handoff fully replaced it, so re-check `git log` / prior specs if that
+  context is needed.
 
 ## Open questions
 
-- Should Close be blocked until every registration is paid, or stay free (current)?
-- Should *Finish* also appear on the `/admin` card, or only on the Live page (current)?
-- Should the Finished page let the admin un-finish a match, or is that only for Live?
+- `temp/` (untracked, at repo root) holds screenshots and scratch docs
+  (`match-engine-v3-redesign.md`, `match-engine-audit.md`, `issues_and_planned_changes.md`, etc.) —
+  user chose to leave it uncommitted for now. Unclear if/when it should move into `temporary_files/`
+  (the gitignored convention per `CLAUDE.md`) or be committed properly.
