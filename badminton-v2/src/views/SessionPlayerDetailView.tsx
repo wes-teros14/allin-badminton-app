@@ -13,7 +13,7 @@ import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { useRealtime } from '@/hooks/useRealtime'
 import { useSessionReceipts, signReceiptUrls, type SessionReceipt } from '@/hooks/useSessionReceipts'
-import { PersonalGameCard, SessionProgress } from '@/components/MatchBoard'
+import { PersonalGameCard, SessionProgress, NoScheduleYet } from '@/components/MatchBoard'
 import { PlayerCourtTabs } from '@/components/PlayerCourtTabs'
 import { AllMatchesView } from '@/views/PlayerView'
 import { LiveIndicator } from '@/components/LiveIndicator'
@@ -32,6 +32,9 @@ export function shouldShowPaymentInfo({
 }): boolean {
   return isRegistered && paid !== true && hasPaymentInfo
 }
+
+/** Statuses where a locked schedule can exist. Earlier stages have no matches to show. */
+const SCHEDULED_STATUSES = new Set(['schedule_locked', 'in_progress', 'complete'])
 
 // ---------------------------------------------------------------------------
 // Submitted receipts strip (player's own, inside the payment banner)
@@ -530,23 +533,27 @@ function ScheduleTab({
       )}
 
       {/*
-        Every court in the session, whether or not you are on one. Your own card
-        below shows only your game, so without this a player mid-game saw just
-        their own court and a player between games saw none at all.
+        Scheduled means the admin has locked matches; anything earlier has none
+        to show. Showing the court strip in registration_closed rendered one
+        empty "No match on this court" card per court for a schedule that did
+        not exist yet — NoScheduleYet (shared with the Schedule tab) replaces
+        both that and the "no games" text below with one explanation.
       */}
-      {!isLoading && resolvedId && sessionStatus !== 'registration_open' && (
+      {!isLoading && resolvedId && SCHEDULED_STATUSES.has(sessionStatus ?? '') && (
         <div className="max-w-sm mx-auto px-4 pt-4">
           <PlayerCourtTabs courts={courts} isLoading={courtsLoading} />
         </div>
       )}
 
       <div className="max-w-sm mx-auto px-4 py-4">
-        <SessionProgress
-          sessionPlayed={sessionMatchPlayed}
-          sessionTotal={sessionMatchTotal}
-          yourPlayed={matches.filter((m) => m.status === 'complete').length}
-          yourTotal={matches.length}
-        />
+        {SCHEDULED_STATUSES.has(sessionStatus ?? '') && (
+          <SessionProgress
+            sessionPlayed={sessionMatchPlayed}
+            sessionTotal={sessionMatchTotal}
+            yourPlayed={matches.filter((m) => m.status === 'complete').length}
+            yourTotal={matches.length}
+          />
+        )}
 
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
@@ -554,9 +561,7 @@ function ScheduleTab({
             ))
           : matches.length === 0
           ? (
-              <div className="text-center py-10 text-sm text-muted-foreground">
-                No games scheduled for you in this session yet.
-              </div>
+              <NoScheduleYet paymentState={paymentState} registered={isRegistered} />
             )
           : matches.map((m, i) => (
               // Your live game is already a full card in the court strip above,

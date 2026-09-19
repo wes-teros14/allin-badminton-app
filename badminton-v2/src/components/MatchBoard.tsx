@@ -212,7 +212,7 @@ export function PaymentBanner({
       </div>
       <p className="mt-2 text-[12.5px] leading-snug text-muted-foreground">
         {scheduleDrawn && yourGameCount != null && yourGameCount > 0
-          ? `Your games are drawn and you're in ${yourGameCount} of them. `
+          ? `Your games are created and you're in ${yourGameCount} of them. `
           : ''}
         Send{amount ? ` ${amount}` : ''} via GCash, then upload the receipt so it can be confirmed.
       </p>
@@ -297,14 +297,14 @@ export function NoScheduleYet({ paymentState, registered }: { paymentState: Paym
   const steps: Array<{ label: string; done: boolean }> = [
     { label: registered ? "You're registered" : 'Register for this session', done: registered },
     { label: 'Payment confirmed', done: paymentState === 'paid' },
-    { label: 'Registration closes · matches drawn', done: false },
+    { label: 'Registration closes · matches created', done: false },
     { label: 'Session starts', done: false },
   ]
 
   return (
     <div className="mt-5 rounded-2xl border border-dashed border-border p-6 text-center">
       <div className="text-[26px] leading-none" aria-hidden="true">🏸</div>
-      <h2 className="mt-3 text-[15px] font-semibold tracking-[-0.01em]">Matches aren&apos;t drawn yet</h2>
+      <h2 className="mt-3 text-[15px] font-semibold tracking-[-0.01em]">Matches aren&apos;t created yet</h2>
       <p className="mx-auto mt-1.5 max-w-[30ch] text-[12.5px] leading-relaxed text-muted-foreground">
         The schedule is generated once registration closes. Every game will show up here.
       </p>
