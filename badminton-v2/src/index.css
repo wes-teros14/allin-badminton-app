@@ -59,6 +59,10 @@
        overrides it, because a native <option> popup paints on near-black where
        #6F3E87 is 2.1:1. Same reasoning as --gold / --gold-ink. */
     --swap-ink: #6F3E87;
+    /* --primary-ink is --primary's text-safe pair, same split as --gold /
+       --gold-ink: --primary is tuned as a background/border/accent, not body
+       text. On white it already clears 4.5:1, so light mode just repeats it. */
+    --primary-ink: #6F3E87;
 }
 
 .dark {
@@ -95,6 +99,9 @@
     --sidebar-ring: #6F3E87;
     --gold: #FFB200;
     --gold-ink: #FFB200;
+    /* Same hue as --swap-ink's dark override: #6F3E87 is 2.5:1 on #0F0A18,
+       below the 4.5:1 body-text floor. This lighter tint clears it. */
+    --primary-ink: #D8B4F0;
     --primary-subtle: #2D1B42;
     --court2: #4FD1C5;
     /* A light tint of the brand purple: same hue, 7.8:1 on the dark popup. */
@@ -158,6 +165,7 @@
     --color-success: var(--success);
     --color-gold: var(--gold);
     --color-gold-ink: var(--gold-ink);
+    --color-primary-ink: var(--primary-ink);
     --color-court2: var(--court2);
     --color-swap-ink: var(--swap-ink);
     --color-muted-surface: var(--muted-surface);

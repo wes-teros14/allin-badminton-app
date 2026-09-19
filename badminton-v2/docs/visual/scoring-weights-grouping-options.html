@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scoring Weights &mdash; three ways to break up the 12-item grid</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5; --primary-ink: #D8B4F0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 112px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; max-height: 560px; overflow-y: auto; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+
+  .cat { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-fg);
+    margin: 14px 0 6px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .cat:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .w { border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; background: rgba(255,255,255,.02); }
+  .w label { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--fg); margin-bottom: 3px; }
+  .w input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--primary); }
+  .w input[type=number] { width: 100%; background: var(--input); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 6px; font-size: 12px; }
+
+  summary { cursor: pointer; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted-fg); list-style: none; display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-top: 1px solid var(--border); }
+  details:first-of-type summary { border-top: 0; }
+  summary::-webkit-details-marker { display: none; }
+  summary .car { font-size: 10px; }
+  details[open] summary .car { transform: rotate(90deg); display: inline-block; }
+  .count { font-size: 11px; color: var(--diff); background: rgba(79,209,197,.12); border: 1px solid rgba(79,209,197,.4);
+    border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+  details > .grid2 { padding: 8px 0 4px; }
+
+  .common { display: grid; gap: 8px; margin-bottom: 4px; }
+  .toggle { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; cursor: pointer;
+    font-size: 12px; font-weight: 700; color: var(--fg); border-top: 1px solid var(--border); margin-top: 6px; }
+  .toggle .car { color: var(--muted-fg); font-size: 11px; }
+
+  .note { color: var(--muted-fg); font-size: 11.5px; margin: 10px 0 0; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+  .phone code { background: var(--input); color: var(--fg); border-color: var(--border); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Scoring Weights &mdash; three ways to break up the 12-item grid</h1>
+  <p class="sub">
+    <code>MatchGeneratorPanel.tsx:615-683</code> renders all 12 checkbox+number weight pairs in one flat
+    2-column grid with no grouping &mdash; a &gt;4-option decision point the critique flagged for both
+    cognitive load and the mis-tap risk on the (now-enlarged) checkboxes. All three mocks group the same
+    12 weights into the same four families: <b>Fairness &amp; Pacing</b>, <b>Gender Rules</b>,
+    <b>Rest &amp; Opening</b>, <b>Rewards</b>. Scroll the phone frames; click summaries/toggles to expand.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Labeled sections, everything still visible</h2>
+      <p class="why">Same flat scroll as today, but a small uppercase category caption breaks the 12 into
+        four groups of 2-4. Zero new interactions to learn, and nothing is hidden &mdash; but the &gt;4-visible-
+        options problem isn't actually solved, it's just organized. Best for an admin who wants to eyeball
+        everything at a glance before Generate.</p>
+      <div class="phone"><div class="card">
+        <div class="cat">Fairness &amp; Pacing</div>
+        <div class="grid2">
+          <div class="w"><label><input type="checkbox" checked>Fairness Penalty</label><input type="number" value="5000"></div>
+          <div class="w"><label><input type="checkbox" checked>Fatigue Penalty</label><input type="number" value="1000"></div>
+          <div class="w"><label><input type="checkbox" checked>Level Gap Penalty</label><input type="number" value="500"></div>
+          <div class="w"><label><input type="checkbox" checked>Level Imbalance</label><input type="number" value="300"></div>
+        </div>
+        <div class="cat">Gender Rules</div>
+        <div class="grid2">
+          <div class="w"><label><input type="checkbox" checked>Uneven Gender</label><input type="number" value="250"></div>
+          <div class="w"><label><input type="checkbox" checked>2M vs 2F</label><input type="number" value="200"></div>
+          <div class="w"><label><input type="checkbox" checked>Mixed Doubles</label><input type="number" value="100"></div>
+        </div>
+        <div class="cat">Rest &amp; Opening</div>
+        <div class="grid2">
+          <div class="w"><label><input type="checkbox" checked>Repeat Partner</label><input type="number" value="150"></div>
+          <div class="w"><label><input type="checkbox" checked>Rest Spacing</label><input type="number" value="30"></div>
+          <div class="w"><label><input type="checkbox" checked>First-on-Court</label><input type="number" value="400"></div>
+        </div>
+        <div class="cat">Rewards</div>
+        <div class="grid2">
+          <div class="w"><label><input type="checkbox" checked>Wishlist Reward</label><input type="number" value="200"></div>
+          <div class="w"><label><input type="checkbox" checked>Clean Start Reward</label><input type="number" value="300"></div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Each family collapsed, open only if tuned</h2>
+      <p class="why">Same four families, but each is its own <code>&lt;details&gt;</code>, closed by default.
+        A group auto-opens (and shows a count badge) only when one of its weights differs from
+        <code>DEFAULTS</code> &mdash; the same &ldquo;a pin set but out of sight&rdquo; principle already used
+        for Fixed Opening Games. A typical week where only Rest &amp; Opening was touched shows 2 open groups
+        and 2 closed ones, directly solving the &gt;4-visible-options problem.</p>
+      <div class="phone"><div class="card">
+        <details>
+          <summary><span>Fairness &amp; Pacing</span><span class="car">▸</span></summary>
+          <div class="grid2">
+            <div class="w"><label><input type="checkbox" checked>Fairness Penalty</label><input type="number" value="5000"></div>
+            <div class="w"><label><input type="checkbox" checked>Fatigue Penalty</label><input type="number" value="1000"></div>
+            <div class="w"><label><input type="checkbox" checked>Level Gap Penalty</label><input type="number" value="500"></div>
+            <div class="w"><label><input type="checkbox" checked>Level Imbalance</label><input type="number" value="300"></div>
+          </div>
+        </details>
+        <details>
+          <summary><span>Gender Rules</span><span class="car">▸</span></summary>
+          <div class="grid2">
+            <div class="w"><label><input type="checkbox" checked>Uneven Gender</label><input type="number" value="250"></div>
+            <div class="w"><label><input type="checkbox" checked>2M vs 2F</label><input type="number" value="200"></div>
+            <div class="w"><label><input type="checkbox" checked>Mixed Doubles</label><input type="number" value="100"></div>
+          </div>
+        </details>
+        <details open>
+          <summary><span>Rest &amp; Opening<span class="count">2 changed</span></span><span class="car">▸</span></summary>
+          <div class="grid2">
+            <div class="w"><label><input type="checkbox" checked>Repeat Partner</label><input type="number" value="220" style="color:var(--diff);border-color:var(--diff)"></div>
+            <div class="w"><label><input type="checkbox" checked>Rest Spacing</label><input type="number" value="60" style="color:var(--diff);border-color:var(--diff)"></div>
+            <div class="w"><label><input type="checkbox" checked>First-on-Court</label><input type="number" value="400"></div>
+          </div>
+        </details>
+        <details>
+          <summary><span>Rewards</span><span class="car">▸</span></summary>
+          <div class="grid2">
+            <div class="w"><label><input type="checkbox" checked>Wishlist Reward</label><input type="number" value="200"></div>
+            <div class="w"><label><input type="checkbox" checked>Clean Start Reward</label><input type="number" value="300"></div>
+          </div>
+        </details>
+        <p class="note">Groups with a changed weight start open; the rest start closed. This mock's HTML <code>open</code> attribute stands in for that rule.</p>
+      </div></div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Common vs. Advanced, two tiers only</h2>
+      <p class="why">Skips categories entirely. The 2 weights this admin actually adjusts
+        (<code>repeatPartnerPenalty</code>, <code>restSpacingPenalty</code> &mdash; per the critique's own
+        question about usage data) sit inline, always visible. The other 10 live behind one
+        &ldquo;Advanced&rdquo; toggle. Fewest decisions in the common case (2, well under the working-memory
+        limit) but a real tuning session needs the toggle open anyway, and doesn't group the advanced 10 at all.</p>
+      <div class="phone"><div class="card">
+        <div class="grid2">
+          <div class="w"><label><input type="checkbox" checked>Repeat Partner</label><input type="number" value="220" style="color:var(--diff);border-color:var(--diff)"></div>
+          <div class="w"><label><input type="checkbox" checked>Rest Spacing</label><input type="number" value="60" style="color:var(--diff);border-color:var(--diff)"></div>
+        </div>
+        <div class="toggle" onclick="document.getElementById('c-adv').style.display = document.getElementById('c-adv').style.display==='none' ? 'grid' : 'none'; document.getElementById('c-car').textContent = document.getElementById('c-adv').style.display==='none' ? '▸' : '▾'">
+          <span>Advanced (10 more)</span><span class="car" id="c-car">▸</span>
+        </div>
+        <div class="grid2" id="c-adv" style="display:none">
+          <div class="w"><label><input type="checkbox" checked>Fairness Penalty</label><input type="number" value="5000"></div>
+          <div class="w"><label><input type="checkbox" checked>Fatigue Penalty</label><input type="number" value="1000"></div>
+          <div class="w"><label><input type="checkbox" checked>Level Gap Penalty</label><input type="number" value="500"></div>
+          <div class="w"><label><input type="checkbox" checked>Level Imbalance</label><input type="number" value="300"></div>
+          <div class="w"><label><input type="checkbox" checked>Uneven Gender</label><input type="number" value="250"></div>
+          <div class="w"><label><input type="checkbox" checked>2M vs 2F</label><input type="number" value="200"></div>
+          <div class="w"><label><input type="checkbox" checked>Mixed Doubles</label><input type="number" value="100"></div>
+          <div class="w"><label><input type="checkbox" checked>First-on-Court</label><input type="number" value="400"></div>
+          <div class="w"><label><input type="checkbox" checked>Wishlist Reward</label><input type="number" value="200"></div>
+          <div class="w"><label><input type="checkbox" checked>Clean Start Reward</label><input type="number" value="300"></div>
+        </div>
+        <p class="note">Click "Advanced" to expand. The 2 "common" weights would need real usage data to pick correctly &mdash; these are the critique's best guess, not a measurement.</p>
+      </div></div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; labeled, all open</th><th>B &mdash; collapsed by family</th><th>C &mdash; common / advanced</th></tr>
+    <tr><td>Controls visible in a typical week</td><td>12</td><td>2-5 (touched groups open)</td><td>2, until Advanced is opened</td></tr>
+    <tr><td>Solves the &gt;4-option guideline</td><td>No &mdash; organizes, doesn't hide</td><td>Yes, in the common case</td><td>Yes, in the common case</td></tr>
+    <tr><td>New interaction to learn</td><td>None</td><td>4 disclosures (same pattern as Fixed Opening Games)</td><td>1 toggle</td></tr>
+    <tr><td>Needs usage data to design well</td><td>No &mdash; families are structural (already named in the penalty <code>help</code> strings)</td><td>No &mdash; same families</td><td><b>Yes</b> &mdash; picking the "common 2" wrong makes this worse than A</td></tr>
+    <tr><td>Full tuning session (all 12)</td><td>Already all open</td><td>4 taps to open every group</td><td>1 tap, then same flat 10-grid problem inside Advanced</td></tr>
+  </table>
+
+</div>
+</body>
+</html>

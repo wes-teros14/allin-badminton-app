@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { Info } from 'lucide-react'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
+import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { validateMatchPlayers } from '@/lib/matchPlayers'
@@ -104,6 +105,65 @@ const DEFAULTS: Settings = {
   disabledWeights: [],
 }
 
+type WeightKey = 'fairnessWeight' | 'streakWeight' | 'spreadPenalty' | 'unevenGenderPenalty'
+  | 'genderSplitPenalty' | 'repeatPartnerPenalty' | 'mixedDoublesPenalty' | 'imbalancePenalty'
+  | 'restSpacingPenalty' | 'openingRepeatPenalty' | 'wishlistReward' | 'earlyRestReward'
+
+// Four families the 12 scoring weights fall into — same grouping picked in
+// the empty-state/preset critique review, chosen over a flat 12-item grid
+// because that blew past the >4-visible-options guideline.
+const WEIGHT_GROUPS: Array<{ name: string; items: Array<{ key: WeightKey; label: string; help: string }> }> = [
+  {
+    name: 'Fairness & Pacing',
+    items: [
+      { key: 'fairnessWeight',   label: 'Fairness Penalty',        help: 'Per game count gap (highest priority)' },
+      { key: 'streakWeight',     label: 'Fatigue Penalty',         help: 'Per game over max consecutive' },
+      { key: 'spreadPenalty',    label: 'Level Gap Penalty',       help: 'Per match where the skill spread across all 4 players exceeds Max Skill Gap (e.g. levels 3,4,9,10 → spread=7). Fires once per violation.' },
+      { key: 'imbalancePenalty', label: 'Level Imbalance Penalty', help: 'Per level diff between the two teams (e.g. team1=7 vs team2=11 → diff=4). Measures how competitive the match is.' },
+    ],
+  },
+  {
+    name: 'Gender Rules',
+    items: [
+      { key: 'unevenGenderPenalty', label: 'Uneven Gender Penalty', help: 'Per 3M+1F or 3F+1M match' },
+      { key: 'genderSplitPenalty',  label: '2M vs 2F Penalty',      help: 'Per MM vs FF match (gender-separated teams)' },
+      { key: 'mixedDoublesPenalty', label: 'Mixed Doubles Penalty', help: 'Per MF vs MF match' },
+    ],
+  },
+  {
+    name: 'Rest & Opening',
+    items: [
+      { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty', help: 'Per repeat partnership' },
+      { key: 'restSpacingPenalty',   label: 'Rest Spacing Penalty',   help: 'Per deviation from ideal rest games between matches' },
+      { key: 'openingRepeatPenalty', label: 'First-on-Court Repeat',  help: 'Games 1..court count all start together. Charged per game short of the opening window (court count x 2) when one of those players is back on inside it, so a wider gap always costs less. With 14-15 players at least one such repeat is forced — what this changes is which one the engine picks.' },
+    ],
+  },
+  {
+    name: 'Rewards',
+    items: [
+      { key: 'wishlistReward',  label: 'Wishlist Reward',    help: 'Per wishlist pair granted' },
+      { key: 'earlyRestReward', label: 'Clean Start Reward', help: 'Bonus per player appearance in the first N games (Early Rest Window) where rest gap ≥ ideal' },
+    ],
+  },
+]
+
+// Everything in Settings except this session's specific players: pinned
+// games name particular registrants, and the wishlist is particular pairs
+// (e.g. "wes-yelli"). A preset is a scoring philosophy, not this week's
+// roster, so saving/loading one never touches either field.
+type PresetSettings = Omit<Settings, 'pinnedGames' | 'wishlistStr'>
+
+function toPresetSettings(settings: Settings): PresetSettings {
+  const { pinnedGames: _pinnedGames, wishlistStr: _wishlistStr, ...rest } = settings
+  return rest
+}
+
+interface GeneratorPreset {
+  id: string
+  name: string
+  settings: PresetSettings
+}
+
 export function buildRosterVersion(players: Array<{ id: string; gender: 'M' | 'F' | null; level: number | null }>): string {
   return players
     .map((player) => `${player.id}:${player.gender ?? ''}:${player.level ?? ''}`)
@@ -112,6 +172,7 @@ export function buildRosterVersion(players: Array<{ id: string; gender: 'M' | 'F
 }
 
 export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVersion, courtCount = 2 }: Props) {
+  const { user } = useAuth()
   const { players, isLoading } = useRegisteredPlayers(sessionId, rosterVersion)
   const [stage, setStage] = useState<'idle' | 'generating' | 'preview' | 'locking' | 'locked'>('idle')
   const [isRegenerating, setIsRegenerating] = useState(false)
@@ -131,6 +192,87 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
   const [appliedPinCount, setAppliedPinCount] = useState(0)
   const [pinsOpen, setPinsOpen] = useState(false)
   const pinnedCount = countPinnedPrefix(settings.pinnedGames)
+  const wishlistInputId = useId()
+
+  // Named presets (docs/visual/match-generator-presets-options.html, Option
+  // C) — global, not per-session, so the admin builds this list up once and
+  // reuses it every week.
+  const [presets, setPresets] = useState<GeneratorPreset[]>([])
+  const [selectedPresetId, setSelectedPresetId] = useState<'defaults' | string>('defaults')
+  const [presetNameDraft, setPresetNameDraft] = useState<string | null>(null)
+  const [savingPreset, setSavingPreset] = useState(false)
+  const [confirmingDeletePreset, setConfirmingDeletePreset] = useState(false)
+  const deletePresetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const presetNameInputId = useId()
+
+  const loadPresets = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('generator_presets')
+      .select('id, name, settings')
+      .order('name')
+    if (error) {
+      toast.error(`Could not load presets: ${error.message}`)
+      return
+    }
+    setPresets((data ?? []) as unknown as GeneratorPreset[])
+  }, [])
+
+  useEffect(() => { loadPresets() }, [loadPresets])
+
+  useEffect(() => {
+    return () => { if (deletePresetTimerRef.current) clearTimeout(deletePresetTimerRef.current) }
+  }, [])
+
+  function applyPreset(id: string) {
+    setSelectedPresetId(id)
+    setConfirmingDeletePreset(false)
+    if (id === 'defaults') {
+      setSettings((prev) => ({ ...prev, ...toPresetSettings(DEFAULTS) }))
+      return
+    }
+    const preset = presets.find((p) => p.id === id)
+    if (preset) setSettings((prev) => ({ ...prev, ...preset.settings }))
+  }
+
+  async function savePreset() {
+    const name = (presetNameDraft ?? '').trim()
+    if (!name) return
+    setSavingPreset(true)
+    const { data, error } = await supabase
+      .from('generator_presets')
+      .insert({ name, settings: toPresetSettings(settings), created_by: user?.id ?? null })
+      .select('id, name, settings')
+      .single()
+    setSavingPreset(false)
+    if (error) {
+      toast.error(`Could not save preset: ${error.message}`)
+      return
+    }
+    const saved = data as unknown as GeneratorPreset
+    setPresets((prev) => [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)))
+    setSelectedPresetId(saved.id)
+    setPresetNameDraft(null)
+    toast.success(`Saved preset "${saved.name}"`)
+  }
+
+  async function deleteSelectedPreset() {
+    if (selectedPresetId === 'defaults') return
+    if (!confirmingDeletePreset) {
+      setConfirmingDeletePreset(true)
+      deletePresetTimerRef.current = setTimeout(() => setConfirmingDeletePreset(false), 5000)
+      return
+    }
+    if (deletePresetTimerRef.current) clearTimeout(deletePresetTimerRef.current)
+    setConfirmingDeletePreset(false)
+    const id = selectedPresetId
+    const { error } = await supabase.from('generator_presets').delete().eq('id', id)
+    if (error) {
+      toast.error(`Could not delete preset: ${error.message}`)
+      return
+    }
+    setPresets((prev) => prev.filter((p) => p.id !== id))
+    setSelectedPresetId('defaults')
+  }
 
   // A pin that is set but out of sight would silently fix game 1 every week.
   useEffect(() => {
@@ -470,6 +612,63 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
         {showSettings && (
           <div className="space-y-4 rounded-md border p-3 text-sm">
 
+            {/* Presets — a saved scoring philosophy, reused across weeks.
+                Never touches pinnedGames/wishlistStr; see toPresetSettings. */}
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Settings preset"
+                  className="h-8 flex-1 rounded-md border bg-background px-2 text-xs"
+                  value={selectedPresetId}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v === '__save__') {
+                      setPresetNameDraft('')
+                      e.target.value = selectedPresetId
+                      return
+                    }
+                    applyPreset(v)
+                  }}
+                >
+                  <option value="defaults">Preset: Defaults</option>
+                  {presets.map((p) => (
+                    <option key={p.id} value={p.id}>Preset: {p.name}</option>
+                  ))}
+                  <option value="__save__">+ Save current as new preset…</option>
+                </select>
+                {selectedPresetId !== 'defaults' && (
+                  <Button
+                    type="button"
+                    variant={confirmingDeletePreset ? 'destructive' : 'outline'}
+                    className="h-8 shrink-0 px-2 text-xs"
+                    onClick={deleteSelectedPreset}
+                  >
+                    {confirmingDeletePreset ? 'Confirm?' : 'Delete'}
+                  </Button>
+                )}
+              </div>
+              {presetNameDraft !== null && (
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={presetNameInputId} className="sr-only">New preset name</Label>
+                  <Input
+                    id={presetNameInputId}
+                    autoFocus
+                    placeholder="Preset name, e.g. Tournament night"
+                    value={presetNameDraft}
+                    onChange={(e) => setPresetNameDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') savePreset(); if (e.key === 'Escape') setPresetNameDraft(null) }}
+                    className="h-8 flex-1 text-xs"
+                  />
+                  <Button type="button" className="h-8 shrink-0 px-3 text-xs" disabled={!presetNameDraft.trim() || savingPreset} onClick={savePreset}>
+                    Save
+                  </Button>
+                  <Button type="button" variant="outline" className="h-8 shrink-0 px-3 text-xs" onClick={() => setPresetNameDraft(null)}>
+                    Cancel
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {/* Match Rules */}
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -590,11 +789,12 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
               />
 
               <div className="space-y-1">
-                <Label className="text-xs">
+                <Label htmlFor={wishlistInputId} className="text-xs">
                   Partner Wishlist
                   <span className="ml-1 text-muted-foreground font-normal">(slug1-slug2, slug3-slug4)</span>
                 </Label>
                 <Input
+                  id={wishlistInputId}
                   placeholder="e.g. wes-yelli, aj-czarina"
                   value={settings.wishlistStr}
                   onChange={(e) => set('wishlistStr', e.target.value)}
@@ -612,75 +812,68 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Controls how the engine scores matches. Used by both generation and optimizer.
               </p>
-              <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
-                {(
-                  [
-                    { key: 'fairnessWeight',       label: 'Fairness Penalty',        help: 'Per game count gap (highest priority)' },
-                    { key: 'streakWeight',         label: 'Fatigue Penalty',         help: 'Per game over max consecutive' },
-                    { key: 'spreadPenalty',        label: 'Level Gap Penalty',       help: 'Per match where the skill spread across all 4 players exceeds Max Skill Gap (e.g. levels 3,4,9,10 → spread=7). Fires once per violation.' },
-                    { key: 'unevenGenderPenalty',  label: 'Uneven Gender Penalty',   help: 'Per 3M+1F or 3F+1M match' },
-                    { key: 'genderSplitPenalty',   label: '2M vs 2F Penalty',        help: 'Per MM vs FF match (gender-separated teams)' },
-                    { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty',  help: 'Per repeat partnership' },
-                    { key: 'mixedDoublesPenalty',  label: 'Mixed Doubles Penalty',   help: 'Per MF vs MF match' },
-                    { key: 'imbalancePenalty',     label: 'Level Imbalance Penalty', help: 'Per level diff between the two teams (e.g. team1=7 vs team2=11 → diff=4). Measures how competitive the match is.' },
-                    { key: 'restSpacingPenalty',   label: 'Rest Spacing Penalty',    help: 'Per deviation from ideal rest games between matches' },
-                    { key: 'openingRepeatPenalty', label: 'First-on-Court Repeat',   help: 'Games 1..court count all start together. Charged per game short of the opening window (court count x 2) when one of those players is back on inside it, so a wider gap always costs less. With 14-15 players at least one such repeat is forced — what this changes is which one the engine picks.' },
-                    { key: 'wishlistReward',       label: 'Wishlist Reward',         help: 'Per wishlist pair granted' },
-                    { key: 'earlyRestReward',      label: 'Clean Start Reward',       help: 'Bonus per player appearance in the first N games (Early Rest Window) where rest gap ≥ ideal' },
-                  ] as const
-                ).map(({ key, label, help }) => {
-                  const genderKey = key === 'mixedDoublesPenalty' || key === 'genderSplitPenalty' || key === 'unevenGenderPenalty'
-                  const autoDisabled = genderKey && settings.disableGenderRules
-                  const manuallyDisabled = settings.disabledWeights.includes(key)
-                  const disabled = autoDisabled || manuallyDisabled
-                  return (
-                    <div key={key} className={`space-y-1 ${disabled ? 'opacity-40' : ''}`}>
-                      <div className="flex items-center gap-1.5">
-                        <input
-                          type="checkbox"
-                          checked={!manuallyDisabled}
-                          disabled={autoDisabled}
-                          onChange={() => {
-                            setSettings((prev) => ({
-                              ...prev,
-                              disabledWeights: manuallyDisabled
-                                ? prev.disabledWeights.filter((k) => k !== key)
-                                : [...prev.disabledWeights, key],
-                            }))
-                          }}
-                          className="h-3 w-3 rounded accent-primary"
-                        />
-                        <Label className="text-xs" title={help}>{label}</Label>
-                      </div>
-                      <Input
-                        type="number"
-                        value={weightDrafts[key] ?? settings[key]}
-                        onChange={(e) => {
-                          const raw = e.target.value
-                          setWeightDrafts((prev) => ({ ...prev, [key]: raw }))
-                          if (raw !== '' && !Number.isNaN(+raw)) {
-                            set(key, +raw)
-                          }
-                        }}
-                        onBlur={() => {
-                          setWeightDrafts((prev) => {
-                            if (!(key in prev)) return prev
-                            const raw = prev[key]
-                            if (raw === '' || raw === undefined || Number.isNaN(+raw)) {
-                              set(key, 0)
-                            }
-                            const next = { ...prev }
-                            delete next[key]
-                            return next
-                          })
-                        }}
-                        className="h-7 text-xs"
-                        disabled={disabled}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
+              {WEIGHT_GROUPS.map((group) => (
+                <div key={group.name} className="mt-3 first:mt-2">
+                  <p className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground">
+                    {group.name}
+                  </p>
+                  <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-2">
+                    {group.items.map(({ key, label, help }) => {
+                      const genderKey = key === 'mixedDoublesPenalty' || key === 'genderSplitPenalty' || key === 'unevenGenderPenalty'
+                      const autoDisabled = genderKey && settings.disableGenderRules
+                      const manuallyDisabled = settings.disabledWeights.includes(key)
+                      const disabled = autoDisabled || manuallyDisabled
+                      return (
+                        <div key={key} className={`space-y-1 ${disabled ? 'opacity-40' : ''}`}>
+                          <label className="flex items-center gap-1.5 text-xs" title={help}>
+                            <input
+                              type="checkbox"
+                              checked={!manuallyDisabled}
+                              disabled={autoDisabled}
+                              onChange={() => {
+                                setSettings((prev) => ({
+                                  ...prev,
+                                  disabledWeights: manuallyDisabled
+                                    ? prev.disabledWeights.filter((k) => k !== key)
+                                    : [...prev.disabledWeights, key],
+                                }))
+                              }}
+                              className="h-4 w-4 rounded accent-primary"
+                            />
+                            {label}
+                          </label>
+                          <Input
+                            type="number"
+                            aria-label={`${label} value`}
+                            value={weightDrafts[key] ?? settings[key]}
+                            onChange={(e) => {
+                              const raw = e.target.value
+                              setWeightDrafts((prev) => ({ ...prev, [key]: raw }))
+                              if (raw !== '' && !Number.isNaN(+raw)) {
+                                set(key, +raw)
+                              }
+                            }}
+                            onBlur={() => {
+                              setWeightDrafts((prev) => {
+                                if (!(key in prev)) return prev
+                                const raw = prev[key]
+                                if (raw === '' || raw === undefined || Number.isNaN(+raw)) {
+                                  set(key, 0)
+                                }
+                                const next = { ...prev }
+                                delete next[key]
+                                return next
+                              })
+                            }}
+                            className="h-7 text-xs"
+                            disabled={disabled}
+                          />
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </details>
           </div>
         )}
@@ -990,10 +1183,11 @@ function SliderField({
   help?: string
   onChange: (v: number) => void
 }) {
+  const inputId = useId()
   return (
     <div className="space-y-1">
       <div className="flex justify-between">
-        <Label className={`flex items-center gap-1 text-xs ${disabled ? 'opacity-50' : ''}`}>
+        <Label htmlFor={inputId} className={`flex items-center gap-1 text-xs ${disabled ? 'opacity-50' : ''}`}>
           {label}
           {help && (
             <span title={help}>
@@ -1004,6 +1198,7 @@ function SliderField({
         <span className={`text-xs text-muted-foreground ${disabled ? 'opacity-50' : ''}`}>{value}</span>
       </div>
       <input
+        id={inputId}
         type="range"
         min={min} max={max} step={step}
         value={value}

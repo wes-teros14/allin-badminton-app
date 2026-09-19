@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Today &amp; session Leaderboard &mdash; three ways to fill "No games completed yet"</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5; --primary-ink: #D8B4F0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 108px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 18px 14px; font-size: 13px; }
+  .title { font-size: 18px; font-weight: 700; color: var(--primary-ink); margin: 0 0 16px; }
+
+  .empty { border: 1px dashed var(--border); border-radius: 16px; padding: 24px 18px; text-align: center; }
+  .empty .ic { font-size: 26px; line-height: 1; }
+  .empty h2 { margin: 12px 0 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .empty p { margin: 6px auto 0; max-width: 30ch; font-size: 12.5px; line-height: 1.5; color: var(--muted-fg); }
+
+  .cta { display: inline-block; margin-top: 14px; background: var(--brand); color: var(--brand-fg);
+    border-radius: 8px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; text-decoration: none; }
+
+  .live { display: flex; align-items: center; gap: 6px; justify-content: center; margin-top: 12px;
+    font-size: 11.5px; color: var(--diff); font-weight: 700; }
+  .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--diff); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  .steps { margin-top: 16px; border-top: 1px solid var(--border); padding-top: 12px; text-align: left; }
+  .step { display: flex; align-items: flex-start; gap: 9px; padding: 5px 0; font-size: 12px; }
+  .step.done { font-weight: 600; color: var(--fg); }
+  .step:not(.done) { color: var(--muted-fg); }
+  .step .n { flex-shrink: 0; width: 16px; height: 16px; border-radius: 999px; display: grid; place-items: center;
+    font: 700 9px/1 ui-monospace, monospace; margin-top: 1px; }
+  .step.done .n { background: var(--brand); color: var(--brand-fg); }
+  .step:not(.done) .n { background: var(--muted); color: var(--muted-fg); }
+
+  .court-card { margin-top: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px; text-align: left; }
+  .court-card .lbl { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--diff); display: flex; align-items: center; gap: 5px; }
+  .court-card .match { font-size: 13px; font-weight: 600; margin-top: 5px; }
+  .court-card .match .vs { color: var(--muted-fg); font-weight: 400; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Today &amp; session Leaderboard &mdash; three ways to fill &ldquo;No games completed yet&rdquo;</h1>
+  <p class="sub">
+    <code>TodayView.tsx:176-177</code> and the session-scoped Leaderboard tab
+    (<code>SessionPlayerDetailView.tsx:623-624</code>) both currently render one line of grey text on an
+    otherwise blank viewport &mdash; the critique's top empty-state finding, flagged worst on <em>Today</em>
+    because it's plausibly the page a player opens mid-session, while a live game is actually in progress.
+    All three reuse the dashed-border icon+heading language <code>NoScheduleYet</code> already established
+    elsewhere in the app (<code>MatchBoard.tsx:296-323</code>), so nothing here invents a new visual pattern.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Match the existing empty-state language, nothing more</h2>
+      <p class="why">Same dashed card, icon, heading and one-line explanation as <code>NoScheduleYet</code> &mdash;
+        just without its step tracker, which doesn't map cleanly here (there's no registration/payment step
+        left to show once games are being played). Cheapest fix: turns &ldquo;looks abandoned&rdquo; into
+        &ldquo;looks intentional&rdquo; with no new data dependency, but still doesn't tell a mid-session
+        player anything about what's happening right now.</p>
+      <div class="phone">
+        <p class="title">🏆 New Session</p>
+        <div class="empty">
+          <div class="ic" aria-hidden="true">🏸</div>
+          <h2>No results yet</h2>
+          <p>Scores show up here as soon as the first game finishes.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Same card, plus a way out</h2>
+      <p class="why">Adds one action: a button straight to the match schedule, so a player who opens Today
+        expecting scores isn't left at a dead end &mdash; they can go see what's live right now instead. Still
+        no new data fetch on this page (it links elsewhere rather than showing live state inline), which keeps
+        the fix contained to this view.</p>
+      <div class="phone">
+        <p class="title">🏆 New Session</p>
+        <div class="empty">
+          <div class="ic" aria-hidden="true">🏸</div>
+          <h2>No results yet</h2>
+          <p>Scores show up here as soon as the first game finishes.</p>
+          <a class="cta" href="#">See who's playing now →</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Show the live game happening right now</h2>
+      <p class="why">Pulls the current court state (already fetched elsewhere via <code>useCourtState</code>,
+        the same hook <code>PlayerCourtTabs</code> and the kiosk use) and names the actual match in progress,
+        with a live pulse. Turns the emptiest moment in the app into the most informative one &mdash; but it's
+        real new scope: this page doesn't currently subscribe to court data, so it's the only option of the
+        three that needs a new data dependency, not just a visual change.</p>
+      <div class="phone">
+        <p class="title">🏆 New Session</p>
+        <div class="empty">
+          <div class="ic" aria-hidden="true">🏸</div>
+          <h2>No results yet</h2>
+          <p>Scores show up here as soon as the first game finishes.</p>
+          <div class="live"><span class="dot"></span> LIVE ON COURT 1</div>
+          <div class="court-card">
+            <div class="match">Ana &amp; Boyet <span class="vs">vs</span> Chito &amp; Dan</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; matches existing pattern</th><th>B &mdash; adds an exit</th><th>C &mdash; shows live state</th></tr>
+    <tr><td>New data dependency</td><td>None</td><td>None (just a link)</td><td>Yes &mdash; <code>useCourtState</code> or equivalent</td></tr>
+    <tr><td>Solves "looks abandoned"</td><td>Yes</td><td>Yes</td><td>Yes, and gives a reason to stay</td></tr>
+    <tr><td>Gives the player something to do</td><td>No</td><td>Yes &mdash; one tap to the schedule</td><td>Not directly, but shows real information</td></tr>
+    <tr><td>Right for a session with no live court yet (before the first game starts)</td><td>Yes</td><td>Yes</td><td>Needs a second fallback state for "nothing live yet" &mdash; effectively A or B underneath C</td></tr>
+    <tr><td>Effort</td><td>Smallest &mdash; copy + existing icon language</td><td>Small &mdash; one link, needs a real target route</td><td>Largest &mdash; new subscription, plus still needs A/B as its own fallback</td></tr>
+  </table>
+
+</div>
+</body>
+</html>

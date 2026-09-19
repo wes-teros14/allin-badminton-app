@@ -50,7 +50,7 @@ export function PlayerScheduleHeader({ nameSlug, avatarUrl, sessionName, session
 
       <div className="flex items-start gap-2.5">
         <p className="min-w-0 flex-1 text-[23px] font-bold leading-[1.2] tracking-[-0.02em]">{sessionName}</p>
-        <span className="shrink-0 whitespace-nowrap rounded-[7px] bg-primary-foreground/15 px-2 py-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.12em]">
+        <span className="shrink-0 whitespace-nowrap rounded-[7px] bg-primary-foreground/15 px-2 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
           {gameCount} {gameCount === 1 ? 'game' : 'games'}
         </span>
       </div>

@@ -66,7 +66,7 @@ function BulletinBoard({ isAdmin }: { isAdmin: boolean }) {
   }
 
   return (
-    <div className="w-full max-w-sm bg-card border border-border rounded-xl px-4 py-4 space-y-3">
+    <div className="w-full max-w-sm sm:max-w-md md:max-w-lg bg-card border border-border rounded-xl px-4 py-4 space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">📌 Notice Board</p>
         {isAdmin && !editing && (
