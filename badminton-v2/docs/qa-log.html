@@ -1853,6 +1853,23 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Why did a session show two empty &ldquo;No match on this court&rdquo; cards and &ldquo;No games scheduled for you&rdquo; before the schedule was even locked?</p>
+    <p class="a">
+      <strong>Fixed 2026-09-19.</strong> <code>PlayerCourtTabs</code> in <code>SessionPlayerDetailView.tsx</code>
+      was gated only on <code>sessionStatus !== 'registration_open'</code>, so it rendered one empty court card per
+      <code>court_count</code> during <code>registration_closed</code> too &mdash; before the admin had generated
+      anything. It now renders only for <code>SCHEDULED_STATUSES</code> (<code>schedule_locked</code>,
+      <code>in_progress</code>, <code>complete</code>); everywhere earlier it shows the same dashed placeholder card
+      the Schedule tab already used (<code>NoScheduleYet</code> in <code>MatchBoard.tsx</code>) instead of the empty
+      court cards and the old &ldquo;No games scheduled&rdquo; line. Also renamed every &ldquo;drawn&rdquo; to
+      &ldquo;created&rdquo; in that copy (the title, the checklist step, and the payment card&rsquo;s &ldquo;your
+      games are &hellip;&rdquo; line) &mdash; &ldquo;drawn&rdquo; read as a raffle. Three options for the placeholder
+      are in <code>temporary_files/schedule-not-ready-poc.html</code>; B (the dashed card) shipped, reusing the
+      existing component rather than building a new one.
+    </p>
+  </div>
+
   <h2 class="topic" id="session-lifecycle">Session lifecycle</h2>
 
   <div class="qa">
