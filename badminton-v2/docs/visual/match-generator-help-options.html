@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match Generator &mdash; three ways to make the weight help reachable by touch</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5; --primary-ink: #D8B4F0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 112px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; position: relative; overflow: hidden; min-height: 340px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .cat { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-fg); margin-bottom: 8px; }
+
+  .w { border: 1px solid var(--border); border-radius: 8px; padding: 8px 9px; margin-bottom: 8px; position: relative; }
+  .w-head { display: flex; align-items: center; gap: 5px; }
+  .w-head label { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; flex: 1; }
+  .ic { width: 15px; height: 15px; border-radius: 999px; border: 1.3px solid var(--muted-fg); color: var(--muted-fg);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; cursor: pointer; flex-shrink: 0; font-style: normal; }
+  .ic.active { border-color: var(--primary-ink); color: var(--primary-ink); background: rgba(216,180,240,.12); }
+  input[type=number] { width: 74px; background: var(--input); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 6px; font-size: 12px; }
+  input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--primary); }
+
+  .popover { position: absolute; z-index: 5; background: #241536; border: 1px solid var(--primary-ink);
+    border-radius: 8px; padding: 8px 10px; font-size: 11.5px; line-height: 1.4; color: var(--fg); width: 220px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.4); top: 26px; left: 0; }
+  .popover[hidden] { display: none; }
+
+  .helpline { font-size: 10.5px; color: var(--muted-fg); line-height: 1.4; margin-top: 4px; }
+
+  .glossary-link { display: block; text-align: center; font-size: 12px; font-weight: 700; color: var(--primary-ink);
+    text-decoration: underline; text-underline-offset: 2px; margin-bottom: 10px; cursor: pointer; }
+  .sheet { position: absolute; inset: 0; background: var(--bg); padding: 14px 12px; overflow-y: auto; }
+  .sheet[hidden] { display: none; }
+  .sheet h3 { margin: 0 0 10px; font-size: 14px; }
+  .sheet .entry { padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .sheet .entry b { display: block; font-size: 12.5px; margin-bottom: 2px; }
+  .sheet .entry span { font-size: 11.5px; color: var(--muted-fg); line-height: 1.4; }
+  .sheet .close { display: block; margin: 12px auto 0; }
+
+  .btn { border: 1px solid var(--border); background: transparent; color: var(--fg); border-radius: 6px;
+    padding: 5px 12px; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+  .phone code { background: var(--input); color: var(--fg); border-color: var(--border); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Match Generator &mdash; three ways to make weight help reachable by touch</h1>
+  <p class="sub">
+    Right now every explanation (<code>help</code> strings on each weight, plus the <code>Info</code> icon
+    next to Max Skill Gap) is a bare <code>title=</code> attribute &mdash; hover-only, on a tool the app's own
+    review already established is meant to run courtside on a phone. All three mocks use the real copy for
+    <b>Repeat Partner Penalty</b> and <b>Rest Spacing Penalty</b>. Tap the icons / links to try each.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Tap-to-reveal popover per field</h2>
+      <p class="why">Same <code>Info</code>-icon affordance already used for Max Skill Gap, extended to every
+        weight, but tapping (not hovering) opens a small floating card with that field's explanation. Closest to
+        today's pattern &mdash; the icon is still exactly where the eye already looks &mdash; but it's 12 new
+        tappable targets in an already-dense panel, and only one explanation is visible at a time.</p>
+      <div class="phone">
+        <div class="card">
+          <p class="cat">Rest &amp; Opening</p>
+          <div class="w" style="overflow: visible;">
+            <div class="w-head">
+              <label><input type="checkbox" checked>Repeat Partner Penalty
+                <span class="ic" id="a-ic1" onclick="toggleA(event, 1)">i</span>
+              </label>
+              <input type="number" value="150">
+            </div>
+            <div class="popover" id="a-pop1" hidden>Per repeat partnership &mdash; charged every time two players who already played together this session are paired again.</div>
+          </div>
+          <div class="w" style="overflow: visible;">
+            <div class="w-head">
+              <label><input type="checkbox" checked>Rest Spacing Penalty
+                <span class="ic" id="a-ic2" onclick="toggleA(event, 2)">i</span>
+              </label>
+              <input type="number" value="30">
+            </div>
+            <div class="popover" id="a-pop2" hidden>Per deviation from the ideal number of rest games between a player's matches.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Permanent inline help under every field</h2>
+      <p class="why">No tap needed &mdash; the one-line explanation is always visible in muted text under each
+        field's inputs. Zero new interactions, and every explanation is scannable at once without hunting for
+        icons. Costs real vertical space across 12 fields (roughly two extra lines each), which matters on a
+        panel the critique already flagged as dense.</p>
+      <div class="phone">
+        <div class="card">
+          <p class="cat">Rest &amp; Opening</p>
+          <div class="w">
+            <div class="w-head">
+              <label>Repeat Partner Penalty</label>
+              <input type="number" value="150">
+            </div>
+            <p class="helpline">Per repeat partnership &mdash; charged every time two players who already played together this session are paired again.</p>
+          </div>
+          <div class="w">
+            <div class="w-head">
+              <label>Rest Spacing Penalty</label>
+              <input type="number" value="30">
+            </div>
+            <p class="helpline">Per deviation from the ideal number of rest games between a player's matches.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>One glossary link for everything</h2>
+      <p class="why">A single &ldquo;What do these mean?&rdquo; link at the top of Scoring Weights opens a
+        full-screen reference sheet listing all 12 definitions at once &mdash; read once, then close it and
+        tune. No per-field icons, no lost space in the normal view, but the explanation is separated from the
+        exact field it describes, so the admin has to remember which weight they were looking at.</p>
+      <div class="phone">
+        <div class="card">
+          <p class="cat">Rest &amp; Opening</p>
+          <p class="glossary-link" onclick="document.getElementById('c-sheet').hidden=false">What do these mean? ⓘ</p>
+          <div class="w">
+            <div class="w-head"><label>Repeat Partner Penalty</label><input type="number" value="150"></div>
+          </div>
+          <div class="w">
+            <div class="w-head"><label>Rest Spacing Penalty</label><input type="number" value="30"></div>
+          </div>
+        </div>
+        <div class="sheet" id="c-sheet" hidden>
+          <h3>What each weight does</h3>
+          <div class="entry"><b>Repeat Partner Penalty</b><span>Per repeat partnership &mdash; charged every time two players who already played together this session are paired again.</span></div>
+          <div class="entry"><b>Rest Spacing Penalty</b><span>Per deviation from the ideal number of rest games between a player's matches.</span></div>
+          <div class="entry"><b>Fairness Penalty</b><span>Per game count gap between players (highest priority).</span></div>
+          <button class="btn close" onclick="document.getElementById('c-sheet').hidden=true">Close</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; per-field popover</th><th>B &mdash; permanent inline</th><th>C &mdash; one glossary sheet</th></tr>
+    <tr><td>Taps to read one explanation</td><td>1</td><td>0</td><td>1 (then scroll to find it)</td></tr>
+    <tr><td>Vertical space cost in normal view</td><td>None</td><td>~2 lines &times; 12 fields</td><td>None</td></tr>
+    <tr><td>Explanation stays next to its field</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+    <tr><td>New tap targets added</td><td>12 (one per field)</td><td>0</td><td>1</td></tr>
+    <tr><td>Best for</td><td>An admin who occasionally forgets one weight</td><td>A first-time admin learning the whole panel</td><td>A quick "remind me of everything" read before a big tuning session</td></tr>
+  </table>
+
+</div>
+<script>
+  function toggleA(evt, n) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    const pop = document.getElementById('a-pop' + n);
+    const other = document.getElementById('a-pop' + (n === 1 ? 2 : 1));
+    const ic = document.getElementById('a-ic' + n);
+    const otherIc = document.getElementById('a-ic' + (n === 1 ? 2 : 1));
+    other.hidden = true; otherIc.classList.remove('active');
+    pop.hidden = !pop.hidden;
+    ic.classList.toggle('active', !pop.hidden);
+  }
+</script>
+</body>
+</html>

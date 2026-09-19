@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match Generator &mdash; three ways to make "tune a number" one pattern, not two</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5; --primary-ink: #D8B4F0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 120px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+  .cat { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted-fg); margin-bottom: 8px; }
+
+  .field { margin-bottom: 14px; }
+  .field-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .field-head label { font-size: 12px; font-weight: 600; }
+  .field-head .val { font-size: 12px; color: var(--muted-fg); font-variant-numeric: tabular-nums; }
+
+  input[type=range] { width: 100%; accent-color: var(--primary); }
+  input[type=number] { background: var(--input); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 5px 7px; font-size: 12px; }
+
+  /* Option A: hybrid row */
+  .hybrid { display: flex; align-items: center; gap: 8px; }
+  .hybrid input[type=range] { flex: 1; }
+  .hybrid input[type=number] { width: 58px; text-align: center; }
+
+  /* Option B: number only */
+  .num-row input[type=number] { width: 100%; }
+
+  /* Option C: editable value on the slider itself */
+  .slider-value { background: transparent; border: none; border-bottom: 1.5px dashed var(--primary-ink);
+    color: var(--primary-ink); font-weight: 700; font-size: 12px; width: 46px; text-align: right;
+    font-variant-numeric: tabular-nums; padding: 0 0 1px; }
+  .slider-value:focus { outline: none; border-bottom-style: solid; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Match Generator &mdash; three ways to make "tune a number" one pattern</h1>
+  <p class="sub">
+    Match Rules and Optimizer settings are sliders with no way to type an exact value; Scoring Weights are
+    number inputs with no slider to explore the range. Same underlying task &mdash; adjust a bounded number
+    &mdash; two different controls, so the admin re-learns the interaction mid-panel. All three mocks apply one
+    pattern to both a Match Rules-style field (<b>Number of Matches</b>, range 1-50) and a Scoring
+    Weights-style field (<b>Fairness Penalty</b>, unbounded, default 5000). Try dragging and typing in each.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Slider + number box, every field</h2>
+      <p class="why">Every field gets both: drag the slider for a quick feel, or type the exact number in the
+        box beside it &mdash; they stay in sync. Most capable option and closest to "just add what's missing"
+        rather than removing anything, but every row grows to two controls, which is more real estate across
+        17 fields than either control alone.</p>
+      <div class="phone"><div class="card">
+        <p class="cat">Match Rules</p>
+        <div class="field">
+          <div class="field-head"><label>Number of Matches</label></div>
+          <div class="hybrid">
+            <input type="range" min="1" max="50" value="20" oninput="syncA(this, 'a-n1')">
+            <input type="number" id="a-n1" value="20" min="1" max="50" oninput="syncA_rev(this, 'a-r1')" data-range="a-r1">
+          </div>
+        </div>
+        <p class="cat" style="margin-top:14px">Scoring Weights</p>
+        <div class="field">
+          <div class="field-head"><label>Fairness Penalty</label></div>
+          <div class="hybrid">
+            <input type="range" min="0" max="10000" step="100" value="5000" oninput="syncA(this, 'a-n2')">
+            <input type="number" id="a-n2" value="5000" oninput="syncA_rev(this, 'a-r2')" data-range="a-r2">
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Number input everywhere, no sliders</h2>
+      <p class="why">Drops sliders entirely &mdash; every field becomes a plain number input, matching Scoring
+        Weights today. Simplest markup, most precise for an admin who already knows the value they want (which,
+        per the review, is most weeks). Loses the drag-to-explore feel for someone unsure what range is
+        reasonable, e.g. a first-time admin tuning Number of Matches.</p>
+      <div class="phone"><div class="card">
+        <p class="cat">Match Rules</p>
+        <div class="field num-row">
+          <div class="field-head"><label>Number of Matches</label><span class="val">1&ndash;50</span></div>
+          <input type="number" value="20" min="1" max="50">
+        </div>
+        <p class="cat" style="margin-top:14px">Scoring Weights</p>
+        <div class="field num-row">
+          <div class="field-head"><label>Fairness Penalty</label></div>
+          <input type="number" value="5000">
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>One control: the slider's value is itself editable</h2>
+      <p class="why">Keeps a single row per field &mdash; the number shown beside the slider looks like a value
+        display but is actually a text input (dashed underline signals it's editable). Drag for a feel, or tap
+        the number to type exactly, without doubling every row into two controls. Most elegant on space, but
+        the "this number is secretly editable" affordance is less obvious than a bordered input box.</p>
+      <div class="phone"><div class="card">
+        <p class="cat">Match Rules</p>
+        <div class="field">
+          <div class="field-head">
+            <label>Number of Matches</label>
+            <input class="slider-value" id="c-v1" value="20" oninput="syncC_rev(this,'c-r1')">
+          </div>
+          <input type="range" id="c-r1" min="1" max="50" value="20" oninput="syncC(this,'c-v1')">
+        </div>
+        <p class="cat" style="margin-top:14px">Scoring Weights</p>
+        <div class="field">
+          <div class="field-head">
+            <label>Fairness Penalty</label>
+            <input class="slider-value" id="c-v2" value="5000" oninput="syncC_rev(this,'c-r2')">
+          </div>
+          <input type="range" id="c-r2" min="0" max="10000" step="100" value="5000" oninput="syncC(this,'c-v2')">
+        </div>
+      </div></div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; slider + number box</th><th>B &mdash; number only</th><th>C &mdash; editable slider value</th></tr>
+    <tr><td>Controls per row</td><td>2</td><td>1</td><td>1 (dual-purpose)</td></tr>
+    <tr><td>Precise typed entry</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Drag-to-explore feel</td><td>Yes</td><td>No</td><td>Yes</td></tr>
+    <tr><td>Works for Scoring Weights' effectively-unbounded values (e.g. 5000)</td><td>Needs a wide slider range guess</td><td>Yes, naturally</td><td>Needs a wide slider range guess</td></tr>
+    <tr><td>Affordance clarity</td><td>High &mdash; two obviously-separate controls</td><td>High &mdash; familiar text field</td><td>Lower &mdash; editable number needs the dashed-underline convention to read as tappable</td></tr>
+  </table>
+
+</div>
+<script>
+  function syncA(range, numId) { document.getElementById(numId).value = range.value; }
+  function syncA_rev(num, rangeId) { const r = document.querySelector(`[oninput*="${num.id}"]`); if (r) r.value = num.value; }
+  // simpler explicit wiring for reverse sync
+  document.getElementById('a-n1').addEventListener('input', e => { document.querySelector('input[type=range][max="50"]').value = e.target.value; });
+  document.getElementById('a-n2').addEventListener('input', e => { document.querySelectorAll('input[type=range]')[1].value = e.target.value; });
+
+  function syncC(range, valId) { document.getElementById(valId).value = range.value; }
+  function syncC_rev(val, rangeId) { document.getElementById(rangeId).value = val.value; }
+</script>
+</body>
+</html>

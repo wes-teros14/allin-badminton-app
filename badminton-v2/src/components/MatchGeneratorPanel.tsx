@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { Info } from 'lucide-react'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -112,37 +111,43 @@ type WeightKey = 'fairnessWeight' | 'streakWeight' | 'spreadPenalty' | 'unevenGe
 // Four families the 12 scoring weights fall into — same grouping picked in
 // the empty-state/preset critique review, chosen over a flat 12-item grid
 // because that blew past the >4-visible-options guideline.
-const WEIGHT_GROUPS: Array<{ name: string; items: Array<{ key: WeightKey; label: string; help: string }> }> = [
+//
+// max/step are a guessed comfortable tuning range for the paired slider
+// (docs/visual/match-generator-input-consistency-options.html, Option A) —
+// roughly 2-3x each weight's default. The number input stays unbounded, so
+// typing past the slider's max still works; the slider is a quick-feel
+// accelerator, not a hard ceiling.
+const WEIGHT_GROUPS: Array<{ name: string; items: Array<{ key: WeightKey; label: string; help: string; max: number; step: number }> }> = [
   {
     name: 'Fairness & Pacing',
     items: [
-      { key: 'fairnessWeight',   label: 'Fairness Penalty',        help: 'Per game count gap (highest priority)' },
-      { key: 'streakWeight',     label: 'Fatigue Penalty',         help: 'Per game over max consecutive' },
-      { key: 'spreadPenalty',    label: 'Level Gap Penalty',       help: 'Per match where the skill spread across all 4 players exceeds Max Skill Gap (e.g. levels 3,4,9,10 → spread=7). Fires once per violation.' },
-      { key: 'imbalancePenalty', label: 'Level Imbalance Penalty', help: 'Per level diff between the two teams (e.g. team1=7 vs team2=11 → diff=4). Measures how competitive the match is.' },
+      { key: 'fairnessWeight',   label: 'Fairness Penalty',        help: 'Per game count gap (highest priority)', max: 10000, step: 100 },
+      { key: 'streakWeight',     label: 'Fatigue Penalty',         help: 'Per game over max consecutive', max: 3000, step: 50 },
+      { key: 'spreadPenalty',    label: 'Level Gap Penalty',       help: 'Per match where the skill spread across all 4 players exceeds Max Skill Gap (e.g. levels 3,4,9,10 → spread=7). Fires once per violation.', max: 2000, step: 50 },
+      { key: 'imbalancePenalty', label: 'Level Imbalance Penalty', help: 'Per level diff between the two teams (e.g. team1=7 vs team2=11 → diff=4). Measures how competitive the match is.', max: 1000, step: 25 },
     ],
   },
   {
     name: 'Gender Rules',
     items: [
-      { key: 'unevenGenderPenalty', label: 'Uneven Gender Penalty', help: 'Per 3M+1F or 3F+1M match' },
-      { key: 'genderSplitPenalty',  label: '2M vs 2F Penalty',      help: 'Per MM vs FF match (gender-separated teams)' },
-      { key: 'mixedDoublesPenalty', label: 'Mixed Doubles Penalty', help: 'Per MF vs MF match' },
+      { key: 'unevenGenderPenalty', label: 'Uneven Gender Penalty', help: 'Per 3M+1F or 3F+1M match', max: 1000, step: 25 },
+      { key: 'genderSplitPenalty',  label: '2M vs 2F Penalty',      help: 'Per MM vs FF match (gender-separated teams)', max: 1000, step: 25 },
+      { key: 'mixedDoublesPenalty', label: 'Mixed Doubles Penalty', help: 'Per MF vs MF match', max: 500, step: 25 },
     ],
   },
   {
     name: 'Rest & Opening',
     items: [
-      { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty', help: 'Per repeat partnership' },
-      { key: 'restSpacingPenalty',   label: 'Rest Spacing Penalty',   help: 'Per deviation from ideal rest games between matches' },
-      { key: 'openingRepeatPenalty', label: 'First-on-Court Repeat',  help: 'Games 1..court count all start together. Charged per game short of the opening window (court count x 2) when one of those players is back on inside it, so a wider gap always costs less. With 14-15 players at least one such repeat is forced — what this changes is which one the engine picks.' },
+      { key: 'repeatPartnerPenalty', label: 'Repeat Partner Penalty', help: 'Per repeat partnership', max: 1000, step: 25 },
+      { key: 'restSpacingPenalty',   label: 'Rest Spacing Penalty',   help: 'Per deviation from ideal rest games between matches', max: 200, step: 10 },
+      { key: 'openingRepeatPenalty', label: 'First-on-Court Repeat',  help: 'Games 1..court count all start together. Charged per game short of the opening window (court count x 2) when one of those players is back on inside it, so a wider gap always costs less. With 14-15 players at least one such repeat is forced — what this changes is which one the engine picks.', max: 2000, step: 50 },
     ],
   },
   {
     name: 'Rewards',
     items: [
-      { key: 'wishlistReward',  label: 'Wishlist Reward',    help: 'Per wishlist pair granted' },
-      { key: 'earlyRestReward', label: 'Clean Start Reward', help: 'Bonus per player appearance in the first N games (Early Rest Window) where rest gap ≥ ideal' },
+      { key: 'wishlistReward',  label: 'Wishlist Reward',    help: 'Per wishlist pair granted', max: 1000, step: 25 },
+      { key: 'earlyRestReward', label: 'Clean Start Reward', help: 'Bonus per player appearance in the first N games (Early Rest Window) where rest gap ≥ ideal', max: 1000, step: 25 },
     ],
   },
 ]
@@ -818,14 +823,14 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                     {group.name}
                   </p>
                   <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-2">
-                    {group.items.map(({ key, label, help }) => {
+                    {group.items.map(({ key, label, help, max, step }) => {
                       const genderKey = key === 'mixedDoublesPenalty' || key === 'genderSplitPenalty' || key === 'unevenGenderPenalty'
                       const autoDisabled = genderKey && settings.disableGenderRules
                       const manuallyDisabled = settings.disabledWeights.includes(key)
                       const disabled = autoDisabled || manuallyDisabled
                       return (
                         <div key={key} className={`space-y-1 ${disabled ? 'opacity-40' : ''}`}>
-                          <label className="flex items-center gap-1.5 text-xs" title={help}>
+                          <label className="flex items-center gap-1.5 text-xs">
                             <input
                               type="checkbox"
                               checked={!manuallyDisabled}
@@ -841,6 +846,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                               className="h-4 w-4 rounded accent-primary"
                             />
                             {label}
+                            <HelpPopover text={help} />
                           </label>
                           <Input
                             type="number"
@@ -867,6 +873,15 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
                             }}
                             className="h-7 text-xs"
                             disabled={disabled}
+                          />
+                          <input
+                            type="range"
+                            aria-label={`${label} slider`}
+                            min={0} max={max} step={step}
+                            value={Math.min(Math.max(settings[key], 0), max)}
+                            disabled={disabled}
+                            onChange={(e) => set(key, +e.target.value)}
+                            className="w-full accent-primary disabled:opacity-50"
                           />
                         </div>
                       )
@@ -1171,6 +1186,53 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
 // Small reusable field components
 // ---------------------------------------------------------------------------
 
+/**
+ * Tap-to-reveal replacement for a bare `title=` tooltip
+ * (docs/visual/match-generator-help-options.html, Option A) — hover-only
+ * help is unreachable on the touch device this panel is meant to run on.
+ */
+function HelpPopover({ text }: { text: string }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function onOutside(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [open])
+
+  return (
+    <span ref={rootRef} className="relative inline-flex">
+      <button
+        type="button"
+        aria-label="What does this do?"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen((v) => !v)
+        }}
+        className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[9px] font-bold leading-none ${
+          open ? 'border-primary-ink text-primary-ink bg-primary-subtle' : 'border-muted-foreground text-muted-foreground'
+        }`}
+      >
+        i
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute left-0 top-5 z-10 w-56 rounded-lg border border-primary-ink bg-popover p-2.5 text-[11.5px] font-normal leading-snug normal-case tracking-normal text-popover-foreground shadow-lg"
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  )
+}
+
 function SliderField({
   label, value, min, max, step = 1, disabled = false, help, onChange,
 }: {
@@ -1184,18 +1246,29 @@ function SliderField({
   onChange: (v: number) => void
 }) {
   const inputId = useId()
+  const numberId = useId()
   return (
     <div className="space-y-1">
-      <div className="flex justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Label htmlFor={inputId} className={`flex items-center gap-1 text-xs ${disabled ? 'opacity-50' : ''}`}>
           {label}
-          {help && (
-            <span title={help}>
-              <Info className="h-3 w-3 text-muted-foreground" />
-            </span>
-          )}
+          {help && <HelpPopover text={help} />}
         </Label>
-        <span className={`text-xs text-muted-foreground ${disabled ? 'opacity-50' : ''}`}>{value}</span>
+        <input
+          id={numberId}
+          aria-label={`${label} value`}
+          type="number"
+          min={min} max={max} step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => {
+            const raw = e.target.value
+            if (raw === '') return
+            const n = +raw
+            if (!Number.isNaN(n)) onChange(n)
+          }}
+          className="h-6 w-16 shrink-0 rounded border bg-background px-1.5 text-right text-xs disabled:opacity-50"
+        />
       </div>
       <input
         id={inputId}
@@ -1220,7 +1293,7 @@ function CheckField({
   onChange: (v: boolean) => void
 }) {
   return (
-    <label className={`flex items-center gap-2 text-xs ${disabled ? 'opacity-50' : 'cursor-pointer'}`} title={help}>
+    <label className={`flex items-center gap-2 text-xs ${disabled ? 'opacity-50' : 'cursor-pointer'}`}>
       <input
         type="checkbox"
         checked={checked}
@@ -1229,6 +1302,7 @@ function CheckField({
         className="accent-primary"
       />
       {label}
+      {help && <HelpPopover text={help} />}
     </label>
   )
 }

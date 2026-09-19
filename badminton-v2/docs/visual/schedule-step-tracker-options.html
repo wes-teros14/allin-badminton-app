@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schedule tracker &mdash; three ways to fix the compound "Registration closes &middot; matches created" step</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5; --primary-ink: #D8B4F0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 130px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; }
+  .empty { border: 1px dashed var(--border); border-radius: 16px; padding: 22px 18px; text-align: center; }
+  .empty .ic { font-size: 24px; line-height: 1; }
+  .empty h2 { margin: 10px 0 0; font-size: 14px; font-weight: 600; }
+  .empty p { margin: 5px auto 0; max-width: 30ch; font-size: 12px; color: var(--muted-fg); }
+
+  .steps { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; text-align: left; }
+  .step { display: flex; align-items: flex-start; gap: 9px; padding: 6px 0; font-size: 12px; }
+  .step.done { font-weight: 600; color: var(--fg); }
+  .step.partial { font-weight: 600; color: var(--fg); }
+  .step.todo { color: var(--muted-fg); }
+  .step .n { flex-shrink: 0; width: 17px; height: 17px; border-radius: 999px; display: grid; place-items: center;
+    font: 700 9px/1 ui-monospace, monospace; margin-top: 1px; }
+  .step.done .n { background: var(--brand); color: var(--brand-fg); }
+  .step.todo .n { background: var(--muted); color: var(--muted-fg); }
+  .step.partial .n { background: conic-gradient(var(--brand) 180deg, var(--muted) 0deg); color: var(--brand-fg); position: relative; }
+  .step .sub-label { display: block; font-size: 10.5px; font-weight: 500; color: var(--diff); margin-top: 1px; }
+
+  .toggle-row { display: flex; gap: 6px; margin-top: 12px; justify-content: center; }
+  .btn { border: 1px solid var(--border); background: transparent; color: var(--fg); border-radius: 6px;
+    padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .btn.on { background: var(--brand); color: var(--brand-fg); border-color: var(--brand); }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Schedule tracker &mdash; three ways to fix the compound step</h1>
+  <p class="sub">
+    <code>NoScheduleYet</code>'s step 3 reads <b>&ldquo;Registration closes &middot; matches created&rdquo;</b>
+    (<code>MatchBoard.tsx:300</code>) and stays fully unchecked until matches exist &mdash; even once
+    registration has already closed, which the session-card badge (<code>MySessionsView.tsx</code>) has
+    already told the player separately. All three mocks let you toggle <b>Registration: closed</b> on/off to
+    see how each option represents that in-between state.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Split into two real steps</h2>
+      <p class="why">&ldquo;Registration closes&rdquo; and &ldquo;Matches created&rdquo; become two separate,
+        independently-checkable steps &mdash; five total instead of four. Most literal fix: nothing is ever
+        half-true. Costs one more row in an already-tall empty state, and the tracker now spends two steps on
+        something that happens automatically seconds apart in practice.</p>
+      <div class="phone">
+        <div class="empty">
+          <div class="ic">🏸</div>
+          <h2>Matches aren't created yet</h2>
+          <p>The schedule is generated once registration closes. Every game will show up here.</p>
+          <div class="steps" id="a-steps"></div>
+        </div>
+        <div class="toggle-row">
+          <button class="btn on" id="a-btn" onclick="toggleA()">Registration: closed</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Half-filled marker for the in-between state</h2>
+      <p class="why">Keeps the original four steps and wording, but the step-3 marker itself gets a third
+        visual state &mdash; a half-filled ring, distinct from the empty circle and the solid checkmark &mdash;
+        plus a small sub-label naming exactly what's still pending. No new rows, no reworded copy, but it's a
+        new visual state to design and explain (a half-circle isn't self-evident without the sub-label).</p>
+      <div class="phone">
+        <div class="empty">
+          <div class="ic">🏸</div>
+          <h2>Matches aren't created yet</h2>
+          <p>The schedule is generated once registration closes. Every game will show up here.</p>
+          <div class="steps" id="b-steps"></div>
+        </div>
+        <div class="toggle-row">
+          <button class="btn on" id="b-btn" onclick="toggleB()">Registration: closed</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Drop the compound clause entirely</h2>
+      <p class="why">Simplest fix: reword step 3 to just &ldquo;Matches created&rdquo; and let the session-card
+        badge be the only place that reports registration status (it already does this today, so nothing is
+        lost, just de-duplicated). Four steps stay four steps, no new visual state &mdash; but the tracker no
+        longer explains <em>why</em> matches aren't ready yet if a player never saw the card badge.</p>
+      <div class="phone">
+        <div class="empty">
+          <div class="ic">🏸</div>
+          <h2>Matches aren't created yet</h2>
+          <p>The schedule is generated once registration closes. Every game will show up here.</p>
+          <div class="steps" id="c-steps"></div>
+        </div>
+        <div class="toggle-row">
+          <button class="btn on" id="c-btn" onclick="toggleC()">Registration: closed</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; split into two steps</th><th>B &mdash; half-filled marker</th><th>C &mdash; drop the clause</th></tr>
+    <tr><td>Total steps</td><td>5</td><td>4</td><td>4</td></tr>
+    <tr><td>New visual language needed</td><td>None &mdash; reuses done/todo markers</td><td>Yes &mdash; a third "partial" marker state</td><td>None</td></tr>
+    <tr><td>Names registration status explicitly</td><td>Yes</td><td>Yes, via sub-label</td><td>No &mdash; relies on the card badge instead</td></tr>
+    <tr><td>Risk</td><td>Slightly taller empty state</td><td>Half-circle needs the sub-label to be understood</td><td>Loses an explicit "why" if the badge was missed</td></tr>
+  </table>
+
+</div>
+<script>
+  function stepRow(n, state, label, sub) {
+    const cls = state === 'done' ? 'done' : state === 'partial' ? 'partial' : 'todo';
+    const icon = state === 'done' ? '✓' : n;
+    return `<div class="step ${cls}"><span class="n">${icon}</span><span>${label}${sub ? `<span class="sub-label">${sub}</span>` : ''}</span></div>`;
+  }
+
+  let aClosed = true, bClosed = true, cClosed = true;
+
+  function renderA() {
+    const steps = [
+      stepRow(1, 'done', 'You are registered'),
+      stepRow(2, 'done', 'Payment confirmed'),
+      stepRow(3, aClosed ? 'partial' : 'todo', 'Registration closes'),
+      stepRow(4, 'todo', 'Matches created'),
+      stepRow(5, 'todo', 'Session starts'),
+    ];
+    // step 3 is fully "done" once registration is closed (this is the real fix: it gets its own checkmark)
+    steps[2] = stepRow(3, aClosed ? 'done' : 'todo', 'Registration closes');
+    document.getElementById('a-steps').innerHTML = steps.join('');
+  }
+  function toggleA() { aClosed = !aClosed; document.getElementById('a-btn').classList.toggle('on', aClosed); document.getElementById('a-btn').textContent = aClosed ? 'Registration: closed' : 'Registration: open'; renderA(); }
+
+  function renderB() {
+    const steps = [
+      stepRow(1, 'done', 'You are registered'),
+      stepRow(2, 'done', 'Payment confirmed'),
+      stepRow(3, bClosed ? 'partial' : 'todo', 'Registration closes · matches created', bClosed ? 'Registration closed — waiting on matches' : ''),
+      stepRow(4, 'todo', 'Session starts'),
+    ];
+    document.getElementById('b-steps').innerHTML = steps.join('');
+  }
+  function toggleB() { bClosed = !bClosed; document.getElementById('b-btn').classList.toggle('on', bClosed); document.getElementById('b-btn').textContent = bClosed ? 'Registration: closed' : 'Registration: open'; renderB(); }
+
+  function renderC() {
+    const steps = [
+      stepRow(1, 'done', 'You are registered'),
+      stepRow(2, 'done', 'Payment confirmed'),
+      stepRow(3, 'todo', 'Matches created'),
+      stepRow(4, 'todo', 'Session starts'),
+    ];
+    document.getElementById('c-steps').innerHTML = steps.join('');
+  }
+  function toggleC() { cClosed = !cClosed; document.getElementById('c-btn').classList.toggle('on', cClosed); document.getElementById('c-btn').textContent = cClosed ? 'Registration: closed' : 'Registration: open'; renderC(); }
+
+  renderA(); renderB(); renderC();
+</script>
+</body>
+</html>
