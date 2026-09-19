@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cheers tab &mdash; three ways to bring the 6-chip switcher under the 4-option guideline</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --primary: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #1E1230;
+    --muted-fg: #B39DBB; --brand: #6F3E87; --brand-fg: #FFF; --input: #2A1D3A; --gold: #FFB200;
+    --danger: #DC595E; --diff: #4FD1C5; --primary-ink: #D8B4F0; --primary-subtle: #2D1B42;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 36px 20px 80px; background: var(--page); color: var(--ink);
+    font: 400 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: var(--dim); max-width: 860px; }
+  .options { display: grid; grid-template-columns: repeat(3, minmax(300px, 1fr)); gap: 22px; }
+  @media (max-width: 1040px) { .options { grid-template-columns: 1fr; } }
+  .opt h2 { margin: 0 0 4px; font-size: 17px; }
+  .opt .tag { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--primary); }
+  .opt .why { color: var(--dim); font-size: 13.5px; margin: 0 0 12px; min-height: 130px; }
+
+  .phone { width: 384px; max-width: 100%; margin: 0 auto; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--border); border-radius: 22px; padding: 14px 12px; font-size: 13px; }
+  .subtitle { font-size: 11px; color: var(--muted-fg); text-align: center; margin: 0 0 12px; }
+
+  .chip { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 44px; border-radius: 12px; border: 1px solid var(--border); background: var(--card);
+    color: var(--muted-fg); cursor: pointer; padding: 8px 4px; }
+  .chip.on { border-color: var(--primary); background: var(--primary-subtle); color: var(--fg); }
+  .chip .emoji { font-size: 17px; line-height: 1; }
+  .chip .short { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+
+  /* A: two-row wrap */
+  .grid-2row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+
+  /* B: horizontal scroll with peek */
+  .scroll-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+  .scroll-row .chip { flex: 0 0 78px; scroll-snap-align: start; }
+  .fade-edge { position: relative; }
+  .fade-edge::after { content: ''; position: absolute; right: 0; top: 0; bottom: 4px; width: 28px;
+    background: linear-gradient(to right, transparent, var(--bg)); pointer-events: none; }
+
+  /* C: dropdown */
+  .select-row { position: relative; }
+  select.cat-select { width: 100%; background: var(--card); color: var(--fg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; appearance: none; }
+  .select-row .car { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted-fg); font-size: 11px; pointer-events: none; }
+
+  .result { margin-top: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .result .name { font-weight: 600; font-size: 13px; }
+  .result .pct { float: right; color: var(--primary-ink); font-weight: 700; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; font-size: 14px; margin-top: 34px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); background: #F7F5F9; }
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  code { font: 500 13px/1 ui-monospace, Menlo, monospace; background: #F4F4F6; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Cheers tab &mdash; three ways to bring the switcher under 4 options</h1>
+  <p class="sub">
+    <code>CheersLeaderboard</code> (<code>LeaderboardView.tsx:526-547</code>) renders all 6 categories from
+    <code>CHEER_CATEGORIES</code> in one <code>grid-cols-6</code> row &mdash; the critique's one flagged
+    &gt;4-visible-options decision point on this page. Worth noting in passing: the chip labels are
+    <code>text-[8px]</code>, below even the 11px functional-text floor other pages were fixed to &mdash; each
+    option below also corrects that. Click a category in each mock.
+  </p>
+
+  <div class="options">
+
+    <!-- ── A ── -->
+    <div class="opt">
+      <span class="tag">Option A</span>
+      <h2>Two rows of three</h2>
+      <p class="why">Simplest change: same chips, same one-tap selection, just wrapped to a 3&times;2 grid
+        instead of 1&times;6. All six stay visible and reachable in one glance &mdash; but the guideline is
+        about simultaneous options, not layout, so this organizes the six without actually reducing how many a
+        player has to weigh at once.</p>
+      <div class="phone">
+        <p class="subtitle">Ranked by share of each player's cheers</p>
+        <div class="grid-2row" id="a-grid"></div>
+        <div class="result" id="a-result"></div>
+      </div>
+    </div>
+
+    <!-- ── B ── -->
+    <div class="opt">
+      <span class="tag">Option B</span>
+      <h2>Scrollable strip, ~4 visible</h2>
+      <p class="why">One row, but wider chips that only fit about 4 at a time, with a fade edge hinting more
+        exist off-screen (the same horizontal-scroll pattern <code>MySessionsView</code>'s Past Sessions already
+        avoids elsewhere in the app, so this reintroduces a pattern the project has otherwise steered away
+        from). Genuinely caps what's visible at once, at the cost of a swipe to reach the last two.</p>
+      <div class="phone">
+        <p class="subtitle">Ranked by share of each player's cheers</p>
+        <div class="fade-edge">
+          <div class="scroll-row" id="b-grid"></div>
+        </div>
+        <div class="result" id="b-result"></div>
+      </div>
+    </div>
+
+    <!-- ── C ── -->
+    <div class="opt">
+      <span class="tag">Option C</span>
+      <h2>Single dropdown</h2>
+      <p class="why">Replaces the chip row with one <code>Category: Offense ▾</code> select &mdash; exactly one
+        visible option at a time, the strictest read of the guideline. Cheapest on space and the only one that
+        scales cleanly past 6 categories, but loses the at-a-glance emoji/color identity the chips give each
+        category, and swapping categories now costs opening a picker instead of one tap.</p>
+      <div class="phone">
+        <p class="subtitle">Ranked by share of each player's cheers</p>
+        <div class="select-row">
+          <select class="cat-select" id="c-select" onchange="pickC()"></select>
+          <span class="car">▾</span>
+        </div>
+        <div class="result" id="c-result"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <table>
+    <tr><th></th><th>A &mdash; two rows of three</th><th>B &mdash; scrollable strip</th><th>C &mdash; dropdown</th></tr>
+    <tr><td>Simultaneously visible options</td><td>6</td><td>~4 + peek</td><td>1</td></tr>
+    <tr><td>Taps to switch category</td><td>1</td><td>1 (2 if scrolled off-screen)</td><td>2 (open, then pick)</td></tr>
+    <tr><td>Keeps emoji/color identity</td><td>Yes</td><td>Yes</td><td>No, unless the select is custom-rendered</td></tr>
+    <tr><td>Reuses an existing app pattern</td><td>New (project has no other 2-row chip grid)</td><td>Horizontal scroll, which the project mostly avoids</td><td>Native select, used everywhere else (roster levels, etc.)</td></tr>
+    <tr><td>Text size fix included</td><td>9px &rarr; 11px</td><td>9px &rarr; 11px</td><td>N/A &mdash; option text is normal size</td></tr>
+  </table>
+
+</div>
+<script>
+  const CATEGORIES = [
+    { slug: 'offense', emoji: '⚔️', name: 'Fierce Offense', short: 'Off', color: '#E0574B' },
+    { slug: 'defense', emoji: '🛡️', name: 'Iron Defense', short: 'Def', color: '#4C8DD6' },
+    { slug: 'technique', emoji: '🎯', name: 'Smooth Technique', short: 'Tech', color: '#C77DD8' },
+    { slug: 'movement', emoji: '💨', name: 'Swift Movement', short: 'Move', color: '#48B39B' },
+    { slug: 'good_sport', emoji: '🤝', name: 'Good Sport', short: 'Sport', color: '#E8B33C' },
+    { slug: 'solid_effort', emoji: '💪', name: 'Solid Effort', short: 'Effort', color: '#8A8FE0' },
+  ];
+  const SAMPLE = { offense: ['Ana', 34], defense: ['Boyet', 41], technique: ['Chito', 29], movement: ['Dan', 37], good_sport: ['Elena', 45], solid_effort: ['Fina', 31] };
+
+  function renderResult(elId, slug) {
+    const [name, pct] = SAMPLE[slug];
+    document.getElementById(elId).innerHTML = `<span class="name">${name}</span><span class="pct">${pct}%</span>`;
+  }
+
+  function buildChips(containerId, resultId, onPick) {
+    const el = document.getElementById(containerId);
+    el.innerHTML = CATEGORIES.map(c => `<div class="chip" data-slug="${c.slug}" onclick="${onPick}('${c.slug}')"><span class="emoji">${c.emoji}</span><span class="short">${c.short}</span></div>`).join('');
+  }
+  function selectChip(containerId, slug) {
+    document.querySelectorAll(`#${containerId} .chip`).forEach(c => c.classList.toggle('on', c.dataset.slug === slug));
+  }
+
+  function pickA(slug) { selectChip('a-grid', slug); renderResult('a-result', slug); }
+  function pickB(slug) { selectChip('b-grid', slug); renderResult('b-result', slug); }
+  function pickC() { const slug = document.getElementById('c-select').value; renderResult('c-result', slug); }
+
+  buildChips('a-grid', 'a-result', 'pickA'); pickA('offense');
+  buildChips('b-grid', 'b-result', 'pickB'); pickB('offense');
+  document.getElementById('c-select').innerHTML = CATEGORIES.map(c => `<option value="${c.slug}">${c.emoji} ${c.name}</option>`).join('');
+  pickC();
+</script>
+</body>
+</html>

@@ -388,7 +388,11 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
             ))}
           </div>
         ) : matches.length === 0 ? (
-          <NoScheduleYet paymentState={paymentState} registered={registration != null} />
+          <NoScheduleYet
+            paymentState={paymentState}
+            registered={registration != null}
+            registrationClosed={session?.status != null && session.status !== 'setup' && session.status !== 'registration_open'}
+          />
         ) : (
           <MatchBoard matches={visible} sessionStarted={sessionStarted} courtCount={session?.court_count ?? 2} playerFiltered={selectedPlayer !== ''} elapsedByMatchId={elapsedByMatchId} />
         )}

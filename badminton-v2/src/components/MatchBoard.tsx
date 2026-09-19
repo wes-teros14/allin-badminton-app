@@ -293,11 +293,25 @@ export function BoardHeader({
  * double as an answer to "what happens next", which otherwise lives only in
  * the organiser's head.
  */
-export function NoScheduleYet({ paymentState, registered }: { paymentState: PaymentState; registered: boolean }) {
+export function NoScheduleYet({
+  paymentState, registered, registrationClosed,
+}: {
+  paymentState: PaymentState
+  registered: boolean
+  /**
+   * Split from a single "Registration closes · matches created" step
+   * (docs/visual/schedule-step-tracker-options.html, Option A) — that step
+   * stayed unchecked even once registration had already closed, which the
+   * session-card badge separately told the player. Now it gets its own
+   * checkmark instead of silently absorbing two milestones.
+   */
+  registrationClosed: boolean
+}) {
   const steps: Array<{ label: string; done: boolean }> = [
     { label: registered ? "You're registered" : 'Register for this session', done: registered },
     { label: 'Payment confirmed', done: paymentState === 'paid' },
-    { label: 'Registration closes · matches created', done: false },
+    { label: 'Registration closes', done: registrationClosed },
+    { label: 'Matches created', done: false },
     { label: 'Session starts', done: false },
   ]
 
