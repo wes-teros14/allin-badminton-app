@@ -659,3 +659,38 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - **Rule**: never bind a text/number `<input>`'s `value` directly to a `number` field in state when the
   field must support an empty intermediate state — track the raw string in local draft state and parse
   to the typed value on commit (valid keystroke or blur), not on every keystroke.
+
+## Two unfinished matches retired in PROD by abandoning, not deleting (2026-09-20)
+
+- **Symptom**: session `Upper Deck 9.20` (`de6513c1-e9fe-4b81-a9ee-560323955860`) was already
+  `complete`, but matches at `queue_position` 23 and 24 sat at `status = 'playing'` forever — both had
+  been sent on (courts 1 and 2, `started_at` 08:51 and 08:58 UTC) and the night ran out before either
+  finished.
+- **Root cause**: no result was ever entered, so nothing moved them off `playing`. There is no
+  "give up on this game" action in the app; the queue has no exit other than a score.
+- **Fix**: plain guarded `UPDATE ... SET status = 'complete'` per
+  `badminton-v2/supabase/maintenance/abandon-match.sql`, run against prod via the Supabase MCP server.
+  Both rows had `results = 0` (verified before touching anything), so the `NOT EXISTS (match_results)`
+  guard passed and exactly 2 rows came back. `court_number` and `started_at` left as-is — that is real
+  history. Session now reads 24 matches, 24 complete.
+- **Why not DELETE**: `cheers.match_id` is `ON DELETE CASCADE` (migration 036) but `player_cheer_stats`
+  is fed by an INSERT-only trigger (migration 022) with no DELETE counterpart, so a cascade silently
+  removes cheer rows while the six Cheers leaderboards keep counting them — unreconcilable without a
+  full recount. Deleting would also drop the session to 22 matches and leave 8 players showing 3 games
+  against everyone else's 4.
+- **No stats impact, confirmed by mechanism not by eyeballing**: `player_stats` and `player_pair_stats`
+  are written *only* by `on_match_result_insert` (migration 013). No result row was inserted, so no
+  trigger fired and no leaderboard moved. No code change needed either — `getMatchOutcome()` returns
+  `null` for a match with zero `match_results`, so MatchBoard renders "A & B vs C & D" with neither pair
+  gilded and the personal list shows a plain done-tick with no Win/Loss/Draw chip.
+- **Observed side effect, live**: within ~30 seconds of the update, cheers started landing on match 24
+  (0 → 3 while I was still verifying). The cheer INSERT policy requires the match to be `'complete'`, so
+  abandoning a game opens cheering on a game that was never played. `abandon-match.sql` predicts this and
+  judges it the acceptable price of not leaving the match queued forever. It is real, it is immediate,
+  and it does feed `player_cheer_stats` and the Cheers leaderboards.
+- **Rule**: to retire an unplayed game, mark it `complete` with no `match_results` — never delete it.
+  Deleting is only safe if STEP 1 shows `cheers = 0`, and even then it corrupts the match count.
+  `unfinish_match()` (migration 068) is the opposite tool, for a game that *was* scored and needs its
+  counted stats stripped.
+- **Rule**: abandoning a match makes it immediately cheerable. If that matters for a given game, expect
+  cheers to appear on it within seconds of the UPDATE, because the session page is live.
