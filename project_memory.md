@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-20
+Last updated: 2026-09-21
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -51,12 +51,20 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Never pass a secret on a command line** — not as an inline `VAR=...` prefix, not as a flag. It is
   captured by shell history *and* by Claude Code's permission allowlist. Run the script that reads
   `.env` instead.
-- **The local Supabase CLI link defaults to prod, and Claude has no access token here.**
+- **The local Supabase CLI link defaults to prod, and Claude has no CLI access token here.**
   `badminton-v2/supabase/.temp/project-ref` reads `ensdfitpeyreunihkqkh` (prod) as of 2026-09-19, not
   the dev ref. `supabase link`/`db push` both fail with `LegacyPlatformAuthRequiredError` (no
-  `SUPABASE_ACCESS_TOKEN`, not logged in) — Claude cannot apply a migration itself and must hand the
+  `SUPABASE_ACCESS_TOKEN`, not logged in) — Claude cannot apply a **migration** itself and must hand the
   exact `supabase login && supabase link --project-ref tsvetqzkullivprbjtli && supabase db push`
   sequence to the user instead. Relink to dev before ever running `db push` by hand.
+- **The Supabase MCP server does reach PROD, and that is a separate channel from the CLI.**
+  `.mcp.json` points at `project_ref=ensdfitpeyreunihkqkh` (prod) and connects as the `postgres` role,
+  so Claude *can* run arbitrary SQL — including writes — against production. Verified 2026-09-20 by
+  abandoning two matches. Do not read the earlier CLI bullet as "Claude has no prod access": it has no
+  *migration* path, but it has a full *SQL* path. Two consequences: confirm
+  `get_project_url` before any statement, since nothing in the tool name says prod; and prefer the CLI
+  migration route for anything schematic, because MCP writes leave no migration file behind.
+  The header had to carry `Bearer ` before the `sbp_` token — a bare token returns HTTP 401.
 
 ## Branching and commits
 
@@ -110,6 +118,20 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 - **One derivation helper per concept.** Payment state goes through `src/lib/paymentState.ts` (`derivePaymentState`) on all three surfaces — sessions list, session card, admin panel — because divergent copies previously showed different colours for the same row (FR-020). Same pattern for `sessionStatusStyle.ts` and `sessionStamp.ts`.
 - **A match's result comes from `getMatchOutcome()`** (`src/lib/matchResults.ts`), returning `'team1' | 'team2' | 'draw' | null`. `match_results` holds **one row per game inside a match**, so a split-scored match has two; a pair has beaten the other only if it took *every* row, and one game each is a draw. The personal card and the All Games list each derived this themselves until 2026-09-06, and the list read only the earliest row — so a 1-1 was shown as a win for whoever took game 1. `getLegacyWinningPairIndex()` was deleted rather than left available. Both surfaces now call the one helper even though one of the two copies had been correct: two correct copies still drift.
+
+- **An unplayed game is retired by completing it, never by deleting it.** A match set to `complete` with
+  zero `match_results` rows costs nothing: `player_stats` and `player_pair_stats` are written *only* by
+  `on_match_result_insert` (migration 013), and `getMatchOutcome()` returns `null`, so MatchBoard prints
+  "A & B vs C & D" with neither pair gilded and the personal list shows a bare done-tick. DELETE is the
+  trap: `cheers.match_id` is `ON DELETE CASCADE` (migration 036) while `player_cheer_stats` is fed by an
+  INSERT-only trigger (migration 022) with no DELETE counterpart, so the cascade removes cheer rows that
+  the six Cheers boards keep counting — unreconcilable without a full recount — and the session silently
+  drops from 24 matches to 22. The statement and its guards live in
+  `badminton-v2/supabase/maintenance/abandon-match.sql`; `unfinish_match()` (migration 068) is the
+  opposite tool, for a game that *was* scored. **Known side effect, measured not theorised:** the cheer
+  INSERT policy requires `status = 'complete'`, so abandoning opens cheering on a game nobody played —
+  three cheers landed within 30 seconds in prod on 2026-09-20. Accepted as the price of not leaving the
+  match queued forever. There is still no UI for either action, which is a real gap.
 - **Date formatting**: always `'en-US'` and always append `'T00:00:00'` to a bare `YYYY-MM-DD`. Parsed bare, it is UTC midnight and renders as the previous day anywhere west of Greenwich.
 - **Unbounded reads need paging.** Any query whose result set can exceed one screen uses `.range()` with a stable `.order()`, plus a `{ count: 'exact', head: true }` cross-check that throws on mismatch. PostgREST silently truncates at `db_max_rows` (1000) with no error. The pair leaderboard was the first such query in the codebase.
 - **Invariants belong in the database.** Anything an algorithm guarantees can still be violated by a hand-edit form, so the check goes in a Postgres `CHECK` plus a shared validator for a readable error (see `matches_distinct_players_check`, migration 079, and `src/lib/matchPlayers.ts`).
