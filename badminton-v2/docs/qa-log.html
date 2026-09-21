@@ -86,6 +86,8 @@
       <li><a href="#match-generator">Match generator</a></li>
       <li><a href="#payments">Payments &amp; the fee card</a></li>
       <li><a href="#celebrations">Leaderboard celebrations</a></li>
+      <li><a href="#session-lifecycle">Session lifecycle</a></li>
+      <li><a href="#tooling">Tooling &amp; the knowledge graph</a></li>
     </ol>
   </nav>
 
@@ -994,6 +996,41 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Two games in a prod session never finished. Can I delete them, or finish them with no winner and no extra stats?</p>
+    <p class="a">
+      Finish them with no winner. A match set to <code>status = 'complete'</code> with <strong>zero</strong>
+      <code>match_results</code> rows costs nothing statistically: <code>player_stats</code> and
+      <code>player_pair_stats</code> are written only by the <code>on_match_result_insert</code> trigger
+      (migration 013), and no row is inserted, so no leaderboard moves. It renders cleanly too &mdash;
+      <code>getMatchOutcome()</code> returns <code>null</code>, so <code>MatchBoard</code>&rsquo;s
+      &ldquo;All results&rdquo; list prints &ldquo;A &amp; B <em>vs</em> C &amp; D&rdquo; with neither pair
+      gilded, and the personal list falls through <code>OutcomeChip</code> to a plain done-tick with no
+      Win/Loss/Draw chip. Script: <code>supabase/maintenance/abandon-match.sql</code>.
+    </p>
+    <p class="a">
+      <strong>Deleting is the option to avoid, and the reason is cheers.</strong>
+      <code>cheers.match_id</code> is <code>ON DELETE CASCADE</code> (migration 036), but
+      <code>player_cheer_stats</code> is maintained by an <em>INSERT-only</em> trigger (migration 022) with no
+      DELETE counterpart. Deleting a match silently takes its cheer rows with it while the six Cheers
+      leaderboards go on counting them, and the two never agree again without a full recount. Deleting also
+      drops the session from 24 matches to 22 and leaves the eight players involved showing three games where
+      everyone else shows four. At zero cheers on those matches the first objection disappears, but the
+      second still stands.
+    </p>
+    <p class="a">
+      One real side effect of abandoning rather than leaving the games queued: the cheer INSERT policy
+      requires <code>m.status = 'complete'</code>, so cheering <em>opens</em> on a game that was never played.
+      That was accepted over the alternative &mdash; a queued match sits in the schedule forever and reads as
+      still-to-come. There is no UI for either action; the app has no way to abandon a game, which is a real
+      gap rather than an oversight in this fix.
+      <strong>Confirmed in prod on 2026-09-20:</strong> within roughly 30 seconds of the UPDATE, cheers began
+      landing on queue position 24 &mdash; 0 before the statement, 3 by the time the verification query ran.
+      This is not theoretical; the session page is live, so expect cheers on an abandoned game almost
+      immediately.
+    </p>
+  </div>
+
   <h2 class="topic" id="live-board">Live board &amp; performance</h2>
 
   <div class="qa">
@@ -1892,6 +1929,46 @@
       them rewritten to <code>IN (...)</code>. Filed-away is orthogonal to the lifecycle, so it lives in its own column and no
       filter, trigger or RPC learns about it. Finished stays terminal exactly as Done was, so attendance cannot be counted
       twice. Verified on dev: Finish fired a celebration card immediately; Close moved the card 4 &rarr; 5 in Past.
+    </p>
+  </div>
+
+  <h2 class="topic" id="tooling">Tooling &amp; the knowledge graph</h2>
+
+  <div class="qa">
+    <p class="q">How do we update graphify?</p>
+    <p class="a">
+      One command from the repo root, after code has changed:
+      <code>graphify update .</code>. It re-reads only the files whose contents moved since the last
+      run, parses them for structure, and rewrites <code>graphify-out/</code> — the graph JSON, the
+      HTML viewer and <code>GRAPH_REPORT.md</code>. On a code-only change it never calls a model, so
+      it costs nothing but a few seconds.
+    </p>
+    <p class="a">
+      <strong>Nothing runs it for you.</strong> The only graphify hooks installed on this project are
+      <code>hook-guard</code>, which nudges toward querying the graph before grepping; there is no
+      post-edit hook that rebuilds. If nobody runs the command the graph silently describes an older
+      version of the codebase, which is worse than having none, because queries still answer
+      confidently.
+    </p>
+    <p class="a">
+      Other subcommands worth knowing: <code>graphify update . --force</code> after a refactor that
+      <em>deletes</em> code — the plain update refuses to overwrite with a smaller graph, a guard
+      against a half-finished scan — and <code>graphify cluster-only .</code> to re-group and re-label
+      without re-reading anything.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why is graphify-out git-ignored? Is that the correct setup?</p>
+    <p class="a">
+      Yes. It is a derived artifact, rebuildable from the source it describes, and large — roughly
+      140&nbsp;MB, of which <code>graph.json</code> alone is about 20&nbsp;MB. Committing it would add
+      a large blob to history on a cadence of every code change, and two people editing in parallel
+      would conflict on it constantly while neither version was authoritative.
+    </p>
+    <p class="a">
+      The cost is that a fresh clone has no graph until someone runs <code>graphify update .</code>,
+      which is why <code>CLAUDE.md</code> says so.
     </p>
   </div>
 
