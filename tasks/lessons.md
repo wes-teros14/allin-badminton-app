@@ -694,3 +694,20 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   counted stats stripped.
 - **Rule**: abandoning a match makes it immediately cheerable. If that matters for a given game, expect
   cheers to appear on it within seconds of the UPDATE, because the session page is live.
+
+## 2026-09-27 — Podium celebration flashed by unseen after a session
+
+- **Symptom**: after a session, the cheers screen and the bunny celebration card appeared together; the
+  card was only a glance and its "View" toast vanished too.
+- **Root cause**: three launch-time attention grabbers with no ordering. (1) The cheers gate in
+  `PlayerLayout` replaces the page, while `LeaderboardCelebration` played its 2.1s card over it and
+  offered a toast pointing at a board the gate still covered. (2) `NotificationContext` fires one 20s
+  toast per unread cheer, 200ms apart, burying the celebration toast. (3) The celebration writes its
+  snapshot on *evaluation*, so a card nobody could look at was still spent.
+- **Fix**: cheers first. `PlayerLayout` passes `held = sessionsLoading || cheerLoading || hasPendingCheers`;
+  `LeaderboardCelebration` adds `backlogPlaying` from `NotificationContext`; the hook skips evaluation
+  while paused and re-evaluates on release; the latch waits too, for an evaluation already in flight.
+  `useMatchCheers` now reports loading until the current `sessionKey` has actually been loaded.
+- **Rule**: anything that takes over the screen on launch must say so, and anything that "counts as seen"
+  must wait until it can actually be seen. Hold on loading too, not just on the visible state — a gate
+  that is still loading or reloading between cheers is not a clear screen.

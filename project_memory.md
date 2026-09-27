@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-21
+Last updated: 2026-09-28
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -159,11 +159,26 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   version column needing a migration, and a realtime subscription (which would deliver news
   mid-interaction, which the design explicitly does not want).
 - **Everyone's celebration is the same size.** Podium and non-podium cards are identical in
-  dimensions, confetti count, animation and time on screen. Rank is carried only by the border — 3px
+  dimensions, confetti count, animation and time on screen (see card timing below). Rank is carried only by the border — 3px
   in the place's medal colour versus the ordinary 1px — and the icon, a medal or the thumbs-up bunny.
   An earlier draft made the non-podium card smaller and purple so a podium would outrank it; that was
   overruled on the grounds that everybody who achieved something deserves the same moment. Do not
   re-propose shrinking it.
+- **Cheers first, celebration after (2026-09-27).** On launch after a session, three things compete:
+  the cheer gate, the unread-notification backlog toast, and the celebration. The celebration is held
+  (`PlayerLayout` → `held = sessionsLoading || cheerLoading || hasPendingCheers`, plus
+  `NotificationContext.backlogPlaying`) and **does not evaluate while held**, because evaluating
+  records the news as seen. Hold on *loading* as well as on the visible gate: the gate reloads between
+  cheers and briefly reports no gate. Anything new that takes over the screen on launch must join this
+  hold, or the celebration plays behind it and is lost.
+- **Card timing and confetti (2026-09-27, user-tuned):** card stays 4.5 s (`BASE_DWELL_MS`, +0.6 s per
+  extra achievement, cap 6 s). Confetti is 240 pieces: half burst, half trickled over 180 frames so it
+  lasts as long as the card. Physics are per-frame, so on a 120 Hz phone it runs about twice as fast
+  (unchanged, not yet addressed).
+- **The launch backlog of received cheers is one summary toast** ("🎉 12 new cheers · 🤝 ×10 · …",
+  **See** → `/profile`), chosen 2026-09-28. One toast per cheer (~12 after a session, 20 s each) buried
+  everything else. A single cheer, and live cheers while the app is open, keep the per-cheer wording.
+  Wording lives in `lib/cheerBacklog.ts`.
 - **Movement precedence is `podium` > `first-appearance` > `climb` > `drop`.** Drops are reported at
   the same threshold as climbs and drawn identically, confetti included — a deliberate reversal of the
   original "never report bad news" rule (research.md R12). Two consequences: close to every player

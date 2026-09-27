@@ -1736,6 +1736,37 @@
   </div>
 
   <div class="qa">
+    <p class="q">The cheers and the bunny card both appeared, but the bunny was just a glance and so was the
+      toast — does it not know what to process first?</p>
+    <p class="a">
+      Right, it didn’t. Three things fire when a player opens the app after a session, and none of them
+      knew about the others: the cheers gate (cheer your last game), the launch backlog of “you got a
+      cheer” toasts (one per cheer, 200&nbsp;ms apart, about 12 after a session), and the celebration
+      (2.1&nbsp;s card, then an 8&nbsp;s toast). The card played behind the gate. Its toast landed under
+      the cheer toasts, and its “View” pointed at a board the gate was still covering. Worse, the
+      celebration counts as <em>seen</em> the moment it is evaluated, so the glance was all you ever got.
+    </p>
+    <p class="a">
+      Fixed 2026-09-27. The rule is now <strong>cheers first</strong>: <code>PlayerLayout</code> holds the
+      celebration while the gate is up or still loading. While it is held, <code>useLeaderboardCelebration</code>
+      does not evaluate at all, so nothing is used up. It also waits until
+      <code>NotificationContext.backlogPlaying</code> clears. Verified locally: Multiple Jane (16 games
+      owed) got no card or toast after <code>__celebrate()</code>, and S1 Alex (none owed) got the card,
+      then the toast on top. At the same time the card's time on screen went from 2.1&nbsp;s to 4.5&nbsp;s
+      (<code>BASE_DWELL_MS</code> in <code>CelebrationCard.tsx</code>, cap 5&nbsp;s → 6&nbsp;s). Measured
+      locally (at 3.5&nbsp;s, before the later bump to 4.5&nbsp;s): 3.97&nbsp;s from appearing to gone, fade included.
+    </p>
+    <p class="a">
+      The launch backlog of cheers is now <strong>one toast</strong>, not one per cheer: “🎉 12 new cheers ·
+      🤝 ×10 · 🛡️ ×1 · 💪 ×1”, with <em>See</em> opening <code>/profile</code> (the Cheered-for section). It names
+      the three most-received types and folds the rest into “and N more”, where N counts cheers, not types.
+      A single cheer, and every live cheer while the app is open, keeps the old “🛡️ Iron Defense from
+      Alex!” wording. The wording is in <code>lib/cheerBacklog.ts</code>. Confetti was also doubled to 240
+      pieces, half released over 3&nbsp;s, so it lasts as long as the card.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">How can it celebrate “in place” without the app being slow?</p>
     <p class="a">
       A sentinel. Standings can only move when a session completes, so each evaluation first asks for
