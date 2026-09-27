@@ -19,7 +19,8 @@ import { AllMatchesView } from '@/views/PlayerView'
 import { LiveIndicator } from '@/components/LiveIndicator'
 import { PlayerScheduleHeader } from '@/components/PlayerScheduleHeader'
 import { ReceiptUploadDialog } from '@/components/ReceiptUploadDialog'
-import { Avatar } from '@/components/Avatar'
+import { PlayerRowBody, RankedBoard } from '@/components/RankedBoard'
+import { assignDenseRanks } from '@/lib/denseRank'
 
 export function shouldShowPaymentInfo({
   isRegistered,
@@ -125,8 +126,11 @@ interface LeaderboardEntry {
   displayName: string
   avatarUrl: string | null
   wins: number
+  losses: number
   games: number
   winRate: number
+  /** Dense: an equal win rate shares the place, as on the all-time board. */
+  rank: number
 }
 
 type MatchRow = {
@@ -170,7 +174,7 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
     }
   }
 
-  const entries: LeaderboardEntry[] = []
+  const entries: Omit<LeaderboardEntry, 'rank'>[] = []
   for (const [playerId, s] of statsMap) {
     if (s.games === 0) continue
     const winRate = Math.round((s.wins / s.games) * 100)
@@ -179,15 +183,19 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
       displayName: nameMap.get(playerId) ?? playerId,
       avatarUrl: avatarMap.get(playerId) ?? null,
       wins: s.wins,
+      losses: s.games - s.wins,
       games: s.games,
       winRate,
     })
   }
 
-  return entries.sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
+  // Same order and tie rule as the all-time board (fetchAllTimeLeaderboard):
+  // wins then id only settle the order *inside* a shared place.
+  const ordered = entries.sort(
+    (a, b) => b.winRate - a.winRate || b.wins - a.wins || a.playerId.localeCompare(b.playerId),
+  )
+  return assignDenseRanks(ordered, (entry) => entry.winRate)
 }
-
-const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
 
 /**
  * One step of the payment flow. `on` is the step you can act on now, `done` is
@@ -629,17 +637,13 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
       ) : (
         <>
           <div className="space-y-2">
-            {entries.map((entry, i) => (
-              <div key={entry.playerId} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-                <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">{RANK_ICON(i)}</span>
-                <Avatar url={entry.avatarUrl} name={entry.displayName} size={28} />
-                <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
-                  <p className="text-xs text-muted-foreground">{entry.wins}W {entry.games - entry.wins}L</p>
-                </div>
-              </div>
-            ))}
+            <p className="text-xs text-muted-foreground text-center pb-1">Ranked by win rate this session</p>
+            <RankedBoard
+              entries={entries}
+              tiedNoun="players"
+              keyOf={(entry) => entry.playerId}
+              renderRow={(entry, variant) => <PlayerRowBody entry={entry} variant={variant} />}
+            />
           </div>
 
         </>
