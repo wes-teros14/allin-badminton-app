@@ -40,6 +40,8 @@ export function useMatchCheers(sessionId: string | string[] | undefined): UseMat
   const [cheerTypes, setCheerTypes] = useState<CheerType[]>([])
   const [pendingMatches, setPendingMatches] = useState<PendingMatchCheer[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  /** The sessionKey the current pendingMatches belong to. */
+  const [loadedKey, setLoadedKey] = useState<string | null>(null)
   const sessionKey = Array.isArray(sessionId) ? sessionId.join('|') : sessionId ?? ''
 
   const load = useCallback(async () => {
@@ -47,6 +49,7 @@ export function useMatchCheers(sessionId: string | string[] | undefined): UseMat
     if (sessionIds.length === 0 || !user) {
       setPendingMatches([])
       setIsLoading(false)
+      setLoadedKey(sessionKey)
       return
     }
 
@@ -140,6 +143,7 @@ export function useMatchCheers(sessionId: string | string[] | undefined): UseMat
       setPendingMatches(pending)
     } finally {
       setIsLoading(false)
+      setLoadedKey(sessionKey)
     }
   }, [sessionKey, user])
 
@@ -182,7 +186,10 @@ export function useMatchCheers(sessionId: string | string[] | undefined): UseMat
     cheerTypes,
     pendingMatches,
     hasPendingCheers: pendingMatches.length > 0,
-    isLoading,
+    // Until the effect has loaded the new key, the old answer does not apply. Without
+    // this, the render after the session list arrives reports "loaded, nothing
+    // pending" for sessions nobody has looked at yet.
+    isLoading: isLoading || loadedKey !== sessionKey,
     submitCheer,
     refresh: load,
   }

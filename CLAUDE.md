@@ -127,6 +127,13 @@ Update **both** files:
 - Include: date/time of update, what was just done this session, current state (what's working, what's broken, what's in progress), the immediate next step(s), and any open question the next session needs answered before continuing.
 - A handful of short bullets per section — no paragraphs, no restating what's already durable enough to belong in `project_memory.md` instead.
 
+### Git push at session end
+
+After updating both memory files:
+1. Push the current branch to dev.
+2. Merge dev into main and push main too.
+3. Always ask for confirmation before pushing. Never push automatically.
+
 ### Style rules for both
 
 - Concise. No filler, no repeating content that already lives in the other file.

@@ -4,38 +4,27 @@ import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
 import { formatSessionStamp } from '@/lib/sessionStamp'
+import { cheerLine, summariseCheers } from '@/lib/cheerBacklog'
 
 interface NotificationState {
   unreadCount: number
   markAllRead: () => Promise<void>
+  /**
+   * True from launch until the unread backlog's toasts have fired. Anything else
+   * wanting the player's attention on launch (the leaderboard celebration) waits
+   * for this, so its own toast lands on top of the backlog rather than under it.
+   */
+  backlogPlaying: boolean
 }
 
 const NotificationContext = createContext<NotificationState>({
   unreadCount: 0,
   markAllRead: async () => {},
+  backlogPlaying: false,
 })
 
-const CHEER_EMOJI: Record<string, string> = {
-  offense: '⚔️',
-  defense: '🛡️',
-  technique: '🎯',
-  movement: '💨',
-  good_sport: '🤝',
-  solid_effort: '💪',
-}
-
-const CHEER_LABEL: Record<string, string> = {
-  offense: 'Fierce Offense',
-  defense: 'Iron Defense',
-  technique: 'Smooth Technique',
-  movement: 'Swift Movement',
-  good_sport: 'Good Sport',
-  solid_effort: 'Solid Effort',
-}
-
-function cheerLabel(slug: string): string {
-  return CHEER_LABEL[slug] ?? slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
+/** Delay before the launch backlog starts firing. */
+const BACKLOG_START_MS = 500
 
 interface NotificationRow {
   type: string
@@ -116,6 +105,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const navigateRef = useRef(navigate)
   navigateRef.current = navigate
   const [unreadCount, setUnreadCount] = useState(0)
+  const [backlogPlaying, setBacklogPlaying] = useState(true)
   const didInit = useRef(false)
 
   // On mount: fetch unread notifications and show batch summary toast
@@ -124,6 +114,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     didInit.current = true
 
     async function init() {
+      // Cleared on every early exit; the path that fires toasts clears it once the
+      // last one is out.
+      let firing = false
+      try {
+        await fireBacklog(() => { firing = true })
+      } finally {
+        if (!firing) setBacklogPlaying(false)
+      }
+    }
+
+    async function fireBacklog(onFiring: () => void) {
       const { data, count } = await supabase
         .from('notifications')
         .select('*', { count: 'exact' })
@@ -153,14 +154,21 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       // backlog holds no receipts.
       const receiptStamps = await fetchSessionStamps(receipts.map(r => r.related_id))
 
+      onFiring()
+
       setTimeout(() => {
-        // Show each cheer individually with full detail
-        cheers.forEach((n, i) => {
-          const emoji = CHEER_EMOJI[n.title] ?? '🏸'
-          setTimeout(() => {
-            toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 20000, closeButton: true })
-          }, i * 200)
-        })
+        // One toast for the whole cheer backlog — see lib/cheerBacklog.ts
+        const summary = summariseCheers(cheers.map(n => ({ slug: n.title, from: n.body })))
+        if (summary) {
+          toast(summary.title, {
+            duration: 20000,
+            closeButton: true,
+            description: summary.description,
+            action: cheers.length > 1
+              ? { label: 'See', onClick: () => navigateRef.current('/profile') }
+              : undefined,
+          })
+        }
 
         // Batch awards
         if (awards.length === 1) {
@@ -180,7 +188,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         }
 
         showReceiptToast(receipts, receiptStamps, path => navigateRef.current(path))
-      }, 500)
+        setBacklogPlaying(false)
+      }, BACKLOG_START_MS)
     }
 
     init()
@@ -209,8 +218,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             showReceiptToast([n], stamps, path => navigateRef.current(path))
           })
         } else if (n.type === 'cheer') {
-          const emoji = CHEER_EMOJI[n.title] ?? '🏸'
-          toast(`${emoji} ${cheerLabel(n.title)} from ${n.body}!`, { duration: 20000, closeButton: true })
+          toast(cheerLine(n.title, n.body), { duration: 20000, closeButton: true })
         } else if (n.type === 'award') {
           toast(`🏆 New award: ${n.body}!`, {
             duration: 20000,
@@ -240,7 +248,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, [user, unreadCount])
 
   return (
-    <NotificationContext.Provider value={{ unreadCount, markAllRead }}>
+    <NotificationContext.Provider value={{ unreadCount, markAllRead, backlogPlaying: user ? backlogPlaying : false }}>
       {children}
     </NotificationContext.Provider>
   )
