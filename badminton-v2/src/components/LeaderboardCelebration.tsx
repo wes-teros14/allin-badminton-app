@@ -11,12 +11,24 @@ import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { CelebrationCard } from '@/components/CelebrationCard'
+import { useNotifications } from '@/contexts/NotificationContext'
 import { useLeaderboardCelebration } from '@/hooks/useLeaderboardCelebration'
 import { boardTab, cardLabel, toastLine } from '@/lib/celebrationLabels'
 import type { NewPlacing } from '@/lib/podiumCelebration'
 
-export function LeaderboardCelebration() {
-  const { announcement, dismiss } = useLeaderboardCelebration()
+/**
+ * @param held True while the cheers gate owns the screen. Cheers go first: the
+ *   card would play out unseen behind them, and the toast's "View" leads to a
+ *   board the gate is still covering. News already found waits here until the
+ *   gate clears.
+ *
+ * It also waits for the launch backlog toasts (cheers, awards) to fire, so the
+ * celebration's own toast lands on top of them rather than underneath.
+ */
+export function LeaderboardCelebration({ held: gateHeld = false }: { held?: boolean }) {
+  const { backlogPlaying } = useNotifications()
+  const held = gateHeld || backlogPlaying
+  const { announcement, dismiss } = useLeaderboardCelebration(held)
   const navigate = useNavigate()
   const [shown, setShown] = useState<NewPlacing[] | null>(null)
 
@@ -44,8 +56,9 @@ export function LeaderboardCelebration() {
   }, [shown, dismiss, offerTheBoard])
 
   // Latch the announcement so the card keeps rendering its own content while it
-  // plays out, even once the hook has moved on.
-  if (announcement && !shown) setShown(announcement.achievements)
+  // plays out, even once the hook has moved on. An evaluation that was already in
+  // flight when the gate appeared lands here and waits for it.
+  if (announcement && !shown && !held) setShown(announcement.achievements)
 
   if (!shown) return null
 

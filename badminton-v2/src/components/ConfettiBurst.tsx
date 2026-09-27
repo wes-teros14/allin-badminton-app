@@ -17,9 +17,18 @@ interface Particle {
   x: number; y: number; vx: number; vy: number
   w: number; h: number; rot: number; spin: number
   color: string; life: number; decay: number
+  /** Frames to wait before launching. */
+  delay: number
 }
 
-export function ConfettiBurst({ pieces = 120 }: { pieces?: number }) {
+/**
+ * The first half launches at once; the rest trickles out over this many frames
+ * (~3s at 60fps). A single burst is spent in under 3s, and the card it frames
+ * stays for 4.5s — without the trickle the screen empties while the card is up.
+ */
+const TRICKLE_FRAMES = 180
+
+export function ConfettiBurst({ pieces = 240 }: { pieces?: number }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -51,6 +60,7 @@ export function ConfettiBurst({ pieces = 120 }: { pieces?: number }) {
         color: COLORS[(Math.random() * COLORS.length) | 0],
         life: 1,
         decay: 0.006 + Math.random() * 0.006,
+        delay: i < pieces / 2 ? 0 : Math.random() * TRICKLE_FRAMES,
       })
     }
 
@@ -62,6 +72,7 @@ export function ConfettiBurst({ pieces = 120 }: { pieces?: number }) {
       ctx.clearRect(0, 0, rect.width, rect.height)
 
       for (const p of parts) {
+        if (p.delay > 0) { p.delay -= 1; continue }
         p.vy += 0.24          // gravity
         p.vx *= 0.99          // drag
         p.x += p.vx
@@ -78,9 +89,8 @@ export function ConfettiBurst({ pieces = 120 }: { pieces?: number }) {
         ctx.restore()
       }
 
-      // Every particle exists from frame one here, so an emptied array really
-      // does mean finished. A version that emitted over time would have to stay
-      // alive across the gaps between emissions instead.
+      // Particles still waiting to launch are never removed, so an emptied array
+      // really does mean finished — the trickle cannot end the loop early.
       for (let i = parts.length - 1; i >= 0; i--) {
         if (parts[i].life <= 0 || parts[i].y > rect.height + 40) parts.splice(i, 1)
       }

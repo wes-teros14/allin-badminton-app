@@ -9,7 +9,7 @@ import { LeaderboardCelebration } from '@/components/LeaderboardCelebration'
 
 export function PlayerLayout() {
   const { sessionId } = useParams<{ sessionId: string }>()
-  const { sessions } = useCheersEligibleSessions()
+  const { sessions, isLoading: sessionsLoading } = useCheersEligibleSessions()
   const cheersSessionIds = useMemo(() => {
     const routeSession = sessionId && sessions.some((s) => s.sessionId === sessionId)
       ? [sessionId]
@@ -27,6 +27,10 @@ export function PlayerLayout() {
   const { cheerTypes, pendingMatches, hasPendingCheers, isLoading: cheerLoading, submitCheer } = useMatchCheers(cheersSessionIds)
 
   const showGate = !cheerLoading && hasPendingCheers
+  // Wider than showGate on purpose: while either lookup is still loading we do not
+  // yet know whether the gate is coming, and a reload between two cheers briefly
+  // drops showGate without the player having finished.
+  const celebrationHeld = sessionsLoading || cheerLoading || hasPendingCheers
 
   return (
     <NotificationProvider>
@@ -47,9 +51,9 @@ export function PlayerLayout() {
         {/*
           Mounted here rather than per-view so a celebration can appear over any
           player screen. It renders nothing until there is news, and it never
-          navigates on its own.
+          navigates on its own. Held while the cheers gate is up — cheers first.
         */}
-        <LeaderboardCelebration />
+        <LeaderboardCelebration held={celebrationHeld} />
       </div>
     </NotificationProvider>
   )

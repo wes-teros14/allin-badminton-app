@@ -30,9 +30,9 @@ const ORDINALS = ['1st', '2nd', '3rd'] as const
  */
 const PODIUM_BORDER = ['border-gold', 'border-zinc-400', 'border-amber-700'] as const
 
-const BASE_DWELL_MS = 2100
+const BASE_DWELL_MS = 4500
 const PER_EXTRA_MS = 600
-const MAX_DWELL_MS = 5000
+const MAX_DWELL_MS = 6000
 
 /** A card that says more has to stay longer, but it always leaves by itself. */
 export function dwellFor(count: number): number {

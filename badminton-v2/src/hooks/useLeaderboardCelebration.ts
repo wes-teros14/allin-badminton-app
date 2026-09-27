@@ -47,7 +47,13 @@ function mergeBestEver(
   return next
 }
 
-export function useLeaderboardCelebration() {
+/**
+ * @param paused While true, nothing is evaluated. Evaluating records the news as
+ *   seen, so evaluating while something else owns the screen (the cheers gate)
+ *   would spend the celebration on a player who cannot look at it. Unpausing
+ *   evaluates straight away.
+ */
+export function useLeaderboardCelebration(paused = false) {
   const { user } = useAuth()
   const playerId = user?.id ?? null
 
@@ -56,7 +62,7 @@ export function useLeaderboardCelebration() {
   const running = useRef(false)
 
   const evaluate = useCallback(async () => {
-    if (!playerId || running.current) return
+    if (!playerId || paused || running.current) return
     running.current = true
 
     try {
@@ -107,7 +113,7 @@ export function useLeaderboardCelebration() {
     } finally {
       running.current = false
     }
-  }, [playerId])
+  }, [playerId, paused])
 
   useEffect(() => {
     if (!playerId) {
