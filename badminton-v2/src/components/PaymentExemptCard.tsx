@@ -13,6 +13,7 @@ import { X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { useAuth } from '@/hooks/useAuth'
 
 interface PlayerOption {
   id: string
@@ -20,6 +21,7 @@ interface PlayerOption {
 }
 
 export function PaymentExemptCard() {
+  const { user } = useAuth()
   const [players, setPlayers] = useState<PlayerOption[]>([])
   const [exemptIds, setExemptIds] = useState<Set<string>>(new Set())
   const [isLoading, setIsLoading] = useState(true)
@@ -57,15 +59,29 @@ export function PaymentExemptCard() {
   )
   const addable = players.filter((p) => !exemptIds.has(p.id))
 
+  const withId = (ids: Set<string>, id: string, present: boolean) => {
+    const next = new Set(ids)
+    if (present) next.add(id)
+    else next.delete(id)
+    return next
+  }
+
+  // Both changes paint first and roll back on failure. The write itself is ~25ms
+  // server-side; what the player waited ~8s for was a `supabase.auth.getUser()`
+  // round trip, which can queue behind the auth lock while another tab refreshes
+  // the session. The signed-in user is already in AuthContext, so it is not asked for.
   async function add(playerId: string) {
     setBusyId(playerId)
+    setExemptIds((prev) => withId(prev, playerId, true))
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       const { error } = await supabase
         .from('payment_exempt_players')
         .insert({ player_id: playerId, added_by: user?.id ?? null } as never)
-      if (error) { toast.error(error.message); return }
-      setExemptIds((prev) => new Set(prev).add(playerId))
+      if (error) {
+        setExemptIds((prev) => withId(prev, playerId, false))
+        toast.error(error.message)
+        return
+      }
       toast.success(`${nameOf.get(playerId) ?? 'Player'} won't be asked to pay`)
     } finally {
       setBusyId(null)
@@ -74,14 +90,14 @@ export function PaymentExemptCard() {
 
   async function remove(playerId: string) {
     setBusyId(playerId)
+    setExemptIds((prev) => withId(prev, playerId, false))
     try {
       const { error } = await supabase.from('payment_exempt_players').delete().eq('player_id', playerId)
-      if (error) { toast.error(error.message); return }
-      setExemptIds((prev) => {
-        const next = new Set(prev)
-        next.delete(playerId)
-        return next
-      })
+      if (error) {
+        setExemptIds((prev) => withId(prev, playerId, true))
+        toast.error(error.message)
+        return
+      }
       toast.success(`${nameOf.get(playerId) ?? 'Player'} pays again from now on`)
     } finally {
       setBusyId(null)
