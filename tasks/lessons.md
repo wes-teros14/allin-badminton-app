@@ -711,3 +711,14 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - **Rule**: anything that takes over the screen on launch must say so, and anything that "counts as seen"
   must wait until it can actually be seen. Hold on loading too, not just on the visible state — a gate
   that is still loading or reloading between cheers is not a clear screen.
+
+## 2026-09-28 — "Players who don't pay" dropdown could not be opened
+
+- **Symptom**: on localhost the new Payment Settings card said "Nobody yet. Everyone pays." and the
+  dropdown read "Everyone is on the list", disabled.
+- **Root cause**: migration 082 was not yet applied to the dev database, so the
+  `payment_exempt_players` query failed. The card returned early on the error, leaving the player list
+  empty, which the UI then presented as a legitimate empty state.
+- **Fix**: the card keeps a `loadError` and shows "Couldn't load the list" with the error text and a
+  retry. The migration itself still has to be applied (`npx supabase db push` after linking dev).
+- **Rule**: a failed load is never rendered as the empty state.

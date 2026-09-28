@@ -4,40 +4,39 @@ Updated: 2026-09-28. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- `dev` and `main` both pushed at session end; working tree clean apart from anything a parallel
-  session adds.
-- Build (`tsc -b`), lint and all 365 unit tests pass. No migrations, no prod data touched.
+- `dev` and `main` pushed at session end with the payment-exempt feature.
+- Migration 082 is on **both** databases: prod via the Supabase MCP tool (recorded as
+  `20260928035840`), dev by the user in the SQL editor (not recorded in dev's history).
+- Build (`tsc -b`), lint and all 371 unit tests pass.
+- Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest` (CLI's own cache file).
 
 ## Done this session
 
-- **Celebration order bug** — cheer gate, cheer-toast backlog and podium celebration fired together;
-  now cheers first, celebration after (`project_memory.md` → "Cheers first").
-- User-tuned: celebration card 4.5 s; confetti 240 pieces with a 3 s trickle.
-- Launch backlog of received cheers → one summary toast, See → `/profile` (`lib/cheerBacklog.ts`).
-- **Session Leaderboard tab** now draws through the shared `components/RankedBoard.tsx` (extracted
-  from `LeaderboardView.tsx`): medal podium, ties in one box, dense ranks on win rate.
-- POC: `temporary_files/celebration-order-poc.html`.
+- **Payment-exempt players**: Payment Settings → "Players who don't pay". Exempt players see a one-line
+  "No fee"; admin Payment Status lists them last as "No fee"; Finance shows `paid / due · N no fee`.
+  Revenue untouched. Design and rejected options in `project_memory.md` → Data conventions.
+- POC: `temporary_files/payment-exempt-poc.html`.
+- Card now shows a load error instead of "Nobody yet" when its query fails (lesson logged).
+- Earlier in the session (already pushed): celebration ordering, summary cheer toast, session
+  leaderboard on the shared `RankedBoard`.
 
 ## Verified, and how
 
-- Local dev with seeded test accounts: gated player (Multiple Jane) got no celebration while owing
-  cheers; S1 Alex got card then toast on top; card measured 5.0 s appear→gone.
-- 12 of Alex's cheer notifications marked unread on the **dev** DB → one summary toast; See → `/profile`.
-- Session "Test Session" leaderboard at 375 px: place 6 rendered as "2 tied" (both 36%, 5W 9L);
-  all-time `/leaderboard` still renders, no console errors.
-- Confetti not watched live (the preview pane was hidden, so animation frames were paused); on-screen
-  counts came from simulating its physics.
+- Prod: trigger behaviour tested in a rolled-back `DO` block (open session flipped, 0 of 11 completed
+  sessions touched, self-insert overridden, removal reverted); confirmed 0 rows left behind.
+- Dev, in the running app as Test Admin: add → flag flips on the open session only; session page,
+  Payment Status panel and Finance all show the no-fee state; remove → reverts. Test Admin removed again.
 
 ## Immediate next steps
 
-- Watch the next real session: celebration after finishing cheers (release path not exercised live),
-  and the session board with real ties.
+- On prod, add yourself (and anyone else who doesn't pay) on Payment Settings — the list starts empty.
+- Dev's list currently holds **"Gab"**, added by the user during testing; leave or remove as intended.
 
 ## Open questions
 
-- `TodayView` (`/today`, unlinked) still has the old index-numbered board — switch to `RankedBoard`
-  or delete the view? Not decided.
-- Confetti/card animation are per-frame, so on a 120 Hz phone the confetti ends about twice as soon;
-  offered to make it time-based, not decided.
-- Carried over: no UI for abandoning a game; `temp/` at repo root unresolved; local Supabase CLI link
-  still points at prod.
+- **Prod migration history is out of sync** (records only 001–050 + 082; schema has up to 081). Never
+  `db push` to prod. Whether to repair the history table is undecided.
+- **The CLI here was logged into a foreign account** (`inkphantom123456@gmail.com`). Worth checking where
+  that login came from.
+- Carried over: `TodayView` (`/today`, unlinked) still has the old board; confetti is per-frame
+  (120 Hz phones run it ~2x fast); no UI for abandoning a game; `temp/` at repo root unresolved.

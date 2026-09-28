@@ -65,6 +65,16 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   `get_project_url` before any statement, since nothing in the tool name says prod; and prefer the CLI
   migration route for anything schematic, because MCP writes leave no migration file behind.
   The header had to carry `Bearer ` before the `sbp_` token — a bare token returns HTTP 401.
+- **Revised 2026-09-28: the MCP route *can* apply migrations to prod, and did** (082, via
+  `apply_migration`, after a rollback-only trigger test in a `DO` block that ends in `RAISE`). It records
+  a timestamp version (`20260928035840`), not `082`. MCP still cannot reach **dev** at all.
+- **Prod's migration history is out of sync with its schema.** `supabase_migrations.schema_migrations`
+  on prod records only 001–050 (plus 082's timestamp), yet the schema has every object up to 081 —
+  051–081 were applied outside `db push`. **Never run `db push` against prod**: it would try to re-run
+  31 migrations. Dev's history state is unclear.
+- **The CLI on this machine was found logged into a foreign account** (2026-09-28:
+  `inkphantom123456@gmail.com`, seeing one unrelated inactive project), not the owner's. It cannot
+  reach dev or prod; the user logs in themselves before any CLI migration.
 
 ## Branching and commits
 
@@ -117,6 +127,16 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Data conventions worth not relearning
 
 - **One derivation helper per concept.** Payment state goes through `src/lib/paymentState.ts` (`derivePaymentState`) on all three surfaces — sessions list, session card, admin panel — because divergent copies previously showed different colours for the same row (FR-020). Same pattern for `sessionStatusStyle.ts` and `sessionStamp.ts`.
+- **Payment-exempt players (migration 082, 2026-09-28).** Payment Settings → "Players who don't pay"
+  (`PaymentExemptCard`, table `payment_exempt_players`, admin-only RLS). The flag is **snapshotted** on
+  `session_registrations.payment_exempt`, never looked up live: a BEFORE INSERT trigger sets it from the
+  list (overriding the client, so nobody self-exempts), and list changes update only non-`complete`
+  sessions so closed finance never moves. `derivePaymentState` has a fourth state `'exempt'`, ranked
+  below `paid` (a confirmed payment stays in revenue); its `exempt` argument is **required** so no caller
+  can forget it. Revenue is untouched (`price × COUNT(paid)`); `get_session_finance` gained `due_count`
+  and `exempt_count` and `total_count` kept its meaning. Rejected: a live lookup on `profiles` (would
+  rewrite old sessions' paid counts), and a per-player switch on the Players page (user chose Payment
+  Settings). The card sits *below* Save because it saves instantly and the fields above don't.
 - **A match's result comes from `getMatchOutcome()`** (`src/lib/matchResults.ts`), returning `'team1' | 'team2' | 'draw' | null`. `match_results` holds **one row per game inside a match**, so a split-scored match has two; a pair has beaten the other only if it took *every* row, and one game each is a draw. The personal card and the All Games list each derived this themselves until 2026-09-06, and the list read only the earliest row — so a 1-1 was shown as a win for whoever took game 1. `getLegacyWinningPairIndex()` was deleted rather than left available. Both surfaces now call the one helper even though one of the two copies had been correct: two correct copies still drift.
 
 - **An unplayed game is retired by completing it, never by deleting it.** A match set to `complete` with
