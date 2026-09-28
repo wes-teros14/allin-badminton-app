@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
+import { PaymentExemptCard } from '@/components/PaymentExemptCard'
 
 const MAX_QR_BYTES = 5 * 1024 * 1024
 
@@ -141,6 +142,12 @@ export function PaymentSettingsView() {
       <Button onClick={handleSave} disabled={saving} className="w-full">
         {saving ? 'Saving…' : 'Save'}
       </Button>
+
+      {/* Below Save on purpose: this list saves on every change, and above the
+          button it would read as waiting for Save like the fields above. */}
+      <div className="pt-4">
+        <PaymentExemptCard />
+      </div>
     </div>
   )
 }

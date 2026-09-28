@@ -25,13 +25,16 @@ import { assignDenseRanks } from '@/lib/denseRank'
 export function shouldShowPaymentInfo({
   isRegistered,
   paid,
+  exempt,
   hasPaymentInfo,
 }: {
   isRegistered: boolean
   paid: boolean | null
+  /** On the Payment Settings "don't pay" list (migration 082). */
+  exempt: boolean | null
   hasPaymentInfo: boolean
 }): boolean {
-  return isRegistered && paid !== true && hasPaymentInfo
+  return isRegistered && paid !== true && exempt !== true && hasPaymentInfo
 }
 
 /** Statuses where a locked schedule can exist. Earlier stages have no matches to show. */
@@ -270,6 +273,30 @@ function SessionFeePaidBar() {
   )
 }
 
+/**
+ * Stands in for the whole payment card when the player is on the Payment
+ * Settings "don't pay" list. One row, nothing to act on — and it doubles as
+ * the "you're registered" confirmation, so the registration banner stays away.
+ */
+function SessionFeeWaivedLine() {
+  return (
+    <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 mt-3">
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3.5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-muted text-sm" aria-hidden="true">
+          ✓
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13.5px] font-semibold">You are registered</span>
+          <span className="block text-xs text-muted-foreground">No payment needed for you</span>
+        </span>
+        <span className="shrink-0 rounded-md bg-muted px-2 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          No fee
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Schedule tab
 // ---------------------------------------------------------------------------
@@ -281,6 +308,7 @@ function ScheduleTab({
   isRegistered,
   isRegistering,
   paid,
+  exempt,
   sessionPrice,
   sessionNotes,
   registrationOpensAt,
@@ -293,6 +321,7 @@ function ScheduleTab({
   isRegistered: boolean
   isRegistering: boolean
   paid: boolean | null
+  exempt: boolean | null
   sessionPrice: number | null
   sessionNotes: string | null
   registrationOpensAt: string | null
@@ -309,14 +338,15 @@ function ScheduleTab({
   const { status } = useRealtime(resolvedId, refreshAll)
   const { phoneNumber, qrCodeUrl, isLoading: paymentSettingsLoading } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
-  const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, hasPaymentInfo })
+  const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, exempt, hasPaymentInfo })
+  const showWaived = isRegistered && exempt === true && paid !== true
 
   const { receipts, activeReceiptCount, isUploading, uploadReceipt, deleteReceipt } =
     useSessionReceipts(isRegistered ? sessionId : undefined, isRegistered ? playerId : undefined)
   const [uploadOpen, setUploadOpen] = useState(false)
 
   // Derived, never stored -- `paid` remains the sole input to revenue.
-  const paymentState = derivePaymentState({ paid, activeReceiptCount })
+  const paymentState = derivePaymentState({ paid, activeReceiptCount, exempt })
 
   function handleCopyPhone() {
     if (!phoneNumber) return
@@ -352,6 +382,8 @@ function ScheduleTab({
       )}
 
       {!isLoading && isRegistered && paid === true && <SessionFeePaidBar />}
+
+      {showWaived && <SessionFeeWaivedLine />}
 
       {/* Payment — shown whenever registered + unpaid + configured, regardless
           of session status (a player may still owe after registration closes,
@@ -492,7 +524,7 @@ function ScheduleTab({
                starts at `null`: without it this banner painted on the first
                frame of every unpaid visit and was replaced by the payment card
                a moment later. */
-            !showPaymentInfo && !paymentSettingsLoading && (
+            !showPaymentInfo && !showWaived && !paymentSettingsLoading && (
               <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
                 ✅ You&apos;re registered!
               </div>
@@ -673,6 +705,7 @@ export function SessionPlayerDetailView() {
   const [isRegistered, setIsRegistered] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
   const [paid, setPaid] = useState<boolean | null>(null)
+  const [exempt, setExempt] = useState<boolean | null>(null)
   const [sessionStatus, setSessionStatus] = useState<string | null>(null)
   const [sessionPrice, setSessionPrice] = useState<number | null>(null)
   const [sessionNotes, setSessionNotes] = useState<string | null>(null)
@@ -691,16 +724,17 @@ export function SessionPlayerDetailView() {
     if (!sessionId || !user) return
     Promise.all([
       supabase.from('sessions').select('status, price, session_notes, registration_opens_at').eq('id', sessionId).maybeSingle(),
-      supabase.from('session_registrations').select('player_id, paid').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
+      supabase.from('session_registrations').select('player_id, paid, payment_exempt').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
     ]).then(([sessionRes, regRes]) => {
       const s = sessionRes.data as { status: string; price: number | null; session_notes: string | null; registration_opens_at: string | null } | null
-      const r = regRes.data as { player_id: string; paid: boolean | null } | null
+      const r = regRes.data as { player_id: string; paid: boolean | null; payment_exempt: boolean | null } | null
       setSessionStatus(s?.status ?? null)
       setSessionPrice(s?.price ?? null)
       setSessionNotes(s?.session_notes ?? null)
       setRegistrationOpensAt(s?.registration_opens_at ?? null)
       setIsRegistered(r != null)
       setPaid(r?.paid ?? null)
+      setExempt(r?.payment_exempt ?? null)
     })
   }, [sessionId, user])
 
@@ -717,14 +751,15 @@ export function SessionPlayerDetailView() {
       }, () => {
         supabase
           .from('session_registrations')
-          .select('player_id, paid')
+          .select('player_id, paid, payment_exempt')
           .eq('session_id', sessionId)
           .eq('player_id', user.id)
           .maybeSingle()
           .then(({ data }) => {
-            const r = data as { player_id: string; paid: boolean | null } | null
+            const r = data as { player_id: string; paid: boolean | null; payment_exempt: boolean | null } | null
             setIsRegistered(r != null)
             setPaid(r?.paid ?? null)
+            setExempt(r?.payment_exempt ?? null)
           })
       })
       .subscribe()
@@ -734,9 +769,14 @@ export function SessionPlayerDetailView() {
   async function handleRegister() {
     if (!sessionId || !user || isRegistering) return
     setIsRegistering(true)
-    const { error } = await supabase
+    // The row comes back so the exemption, set server-side by the 082 trigger,
+    // is known at once — otherwise an exempt player flashes the payment card
+    // until the realtime refetch lands.
+    const { data: inserted, error } = await supabase
       .from('session_registrations')
       .insert({ session_id: sessionId, player_id: user.id })
+      .select('paid, payment_exempt')
+      .maybeSingle()
     if (error) {
       if (error.message.includes('session_full')) {
         toast.error('Session is full — no more slots available.')
@@ -746,7 +786,10 @@ export function SessionPlayerDetailView() {
         toast.error(error.message)
       }
     } else {
+      const row = inserted as { paid: boolean | null; payment_exempt: boolean | null } | null
       setIsRegistered(true)
+      setPaid(row?.paid ?? false)
+      setExempt(row?.payment_exempt ?? false)
     }
     setIsRegistering(false)
   }
@@ -794,6 +837,7 @@ export function SessionPlayerDetailView() {
               isRegistered={isRegistered}
               isRegistering={isRegistering}
               paid={paid}
+              exempt={exempt}
               sessionPrice={sessionPrice}
               sessionNotes={sessionNotes}
               registrationOpensAt={registrationOpensAt}

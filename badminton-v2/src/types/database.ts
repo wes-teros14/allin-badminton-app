@@ -264,6 +264,24 @@ export type Database = {
           },
         ]
       }
+      payment_exempt_players: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          player_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          player_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          player_id?: string
+        }
+        Relationships: []
+      }
       payment_settings: {
         Row: {
           id: number
@@ -452,6 +470,7 @@ export type Database = {
           id: string
           level: number | null
           paid: boolean
+          payment_exempt: boolean
           player_id: string
           registered_at: string
           session_id: string
@@ -462,6 +481,7 @@ export type Database = {
           id?: string
           level?: number | null
           paid?: boolean
+          payment_exempt?: boolean
           player_id: string
           registered_at?: string
           session_id: string
@@ -472,6 +492,7 @@ export type Database = {
           id?: string
           level?: number | null
           paid?: boolean
+          payment_exempt?: boolean
           player_id?: string
           registered_at?: string
           session_id?: string
@@ -704,7 +725,9 @@ export type Database = {
         Returns: {
           court_cost: number | null
           date: string
+          due_count: number
           effective_personal_share: number
+          exempt_count: number
           fee_per_player: number
           name: string
           paid_count: number

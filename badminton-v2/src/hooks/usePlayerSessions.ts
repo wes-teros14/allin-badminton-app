@@ -17,6 +17,8 @@ export interface SessionPickerItem {
   registration_opens_at: string | null
   isRegistered: boolean
   paid: boolean | null
+  /** On the "don't pay" list for this session; null when not registered. */
+  paymentExempt: boolean | null
   /**
    * Non-dismissed receipts this player submitted for the session. Feeds
    * derivePaymentState so the sessions list shows the same three states as the
@@ -30,9 +32,10 @@ export interface SessionPickerItem {
 interface RegistrationSummary {
   session_id: string
   paid: boolean | null
+  payment_exempt?: boolean | null
 }
 
-type SessionRecord = Omit<SessionPickerItem, 'isRegistered' | 'paid' | 'activeReceiptCount' | 'playerCount' | 'maxPlayers'>
+type SessionRecord = Omit<SessionPickerItem, 'isRegistered' | 'paid' | 'paymentExempt' | 'activeReceiptCount' | 'playerCount' | 'maxPlayers'>
 
 /**
  * Active receipts per session for one player. Dismissed receipts are excluded
@@ -49,6 +52,15 @@ export function buildActiveReceiptCountMap(
     counts.set(r.session_id, (counts.get(r.session_id) ?? 0) + 1)
   }
   return counts
+}
+
+export function buildRegistrationExemptMap(
+  registrations: RegistrationSummary[]
+): Map<string, boolean> {
+  return new Map(registrations.map((registration) => [
+    registration.session_id,
+    registration.payment_exempt ?? false,
+  ]))
 }
 
 export function buildRegistrationPaymentMap(
@@ -85,7 +97,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
 
       // 1. Fetch registered session IDs + all registration_open/registration_closed sessions in parallel
       const [registrationsRes, openSessionsRes, receiptsRes] = await Promise.all([
-        supabase.from('session_registrations').select('session_id, paid').eq('player_id', playerId!),
+        supabase.from('session_registrations').select('session_id, paid, payment_exempt').eq('player_id', playerId!),
         supabase.from('sessions').select('id, name, date, time, duration, venue, status, completed_at, closed_at, price, session_notes, registration_opens_at')
           .in('status', ['registration_open', 'registration_closed']).order('date', { ascending: false }),
         supabase.from('session_receipts').select('session_id, dismissed_at').eq('player_id', playerId!),
@@ -101,6 +113,9 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
         ((registrationsRes.data ?? []) as Array<{ session_id: string }>).map(r => r.session_id)
       )
       const paidBySessionId = buildRegistrationPaymentMap(
+        (registrationsRes.data ?? []) as RegistrationSummary[]
+      )
+      const exemptBySessionId = buildRegistrationExemptMap(
         (registrationsRes.data ?? []) as RegistrationSummary[]
       )
 
@@ -129,6 +144,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
         ...s,
         isRegistered: registeredIds.has(s.id),
         paid: paidBySessionId.get(s.id) ?? null,
+        paymentExempt: exemptBySessionId.get(s.id) ?? null,
         activeReceiptCount: activeReceiptsBySessionId.get(s.id) ?? 0,
       }))
 

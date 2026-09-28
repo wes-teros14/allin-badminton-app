@@ -17,6 +17,8 @@ export interface RosterPlayer {
   profileLevel: number | null
   /** Payment CONFIRMED by an admin. Sole input to revenue — do not repurpose. */
   paid: boolean
+  /** On the Payment Settings "don't pay" list for this session (migration 082). */
+  paymentExempt: boolean
   /** Non-dismissed receipts. Feeds the derived "awaiting confirmation" state. */
   activeReceiptCount: number
   /** Includes dismissed ones, so the admin can still audit them. */
@@ -35,6 +37,7 @@ interface RegistrationRow {
   gender: 'M' | 'F' | null
   level: number | null
   paid: boolean | null
+  payment_exempt: boolean | null
 }
 
 interface ReceiptRow {
@@ -73,7 +76,7 @@ export function useRoster(sessionId: string | undefined, onChange?: () => void):
     // Fetch registrations including session-specific gender/level overrides
     const { data: regs, error: regsError } = await supabase
       .from('session_registrations')
-      .select('id, player_id, gender, level, paid')
+      .select('id, player_id, gender, level, paid, payment_exempt')
       .eq('session_id', sessionId)
 
     if (regsError) { toast.error(regsError.message); return }
@@ -135,6 +138,7 @@ export function useRoster(sessionId: string | undefined, onChange?: () => void):
         level: r.level ?? p?.level ?? null,
         profileLevel: p?.level ?? null,
         paid: r.paid ?? false,
+        paymentExempt: r.payment_exempt ?? false,
         activeReceiptCount: playerReceipts.filter((x) => x.dismissedAt === null).length,
         totalReceiptCount: playerReceipts.length,
       }

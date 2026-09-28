@@ -1707,6 +1707,24 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Can I have a setting to switch off payment for some players (me, as admin) without
+      affecting finance?</p>
+    <p class="a">
+      Built 2026-09-28: <strong>Payment Settings → “Players who don’t pay”</strong>. Players on the list see one
+      line (“No payment needed for you · NO FEE”) instead of the fee card. The admin Payment Status panel lists
+      them last as “No fee”, and Finance reads e.g. “0 / 12 · 2 no fee” instead of “0 / 14”.
+    </p>
+    <p class="a">
+      Revenue cannot move: it is <code>price × COUNT(paid)</code>, and an exempt player is never confirmed as
+      paid. The flag is <em>copied onto each registration</em> (<code>session_registrations.payment_exempt</code>,
+      migration 082). A BEFORE INSERT trigger sets it from the list, overriding whatever the client sends,
+      so a player cannot exempt themselves. Changing the list only updates sessions that aren’t
+      <code>complete</code>, so old finance numbers stay as they closed. Tested on prod inside a
+      rolled-back transaction: 1 open session flipped, 0 of 11 completed sessions changed.
+    </p>
+  </div>
+
   <h2 class="topic" id="celebrations">Leaderboard celebrations</h2>
 
   <div class="qa">

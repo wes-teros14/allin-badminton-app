@@ -147,10 +147,11 @@ function SessionRow({ s, index, isAdmin }: { s: SessionPickerItem; index: number
   // Same derivation as the session card and the admin payment panel — all three
   // surfaces read from one helper so they cannot drift (FR-020).
   const noteChips = s.session_notes ? splitSessionNotes(s.session_notes) : null
-  const paymentState = derivePaymentState({ paid: s.paid, activeReceiptCount: s.activeReceiptCount })
+  const paymentState = derivePaymentState({ paid: s.paid, activeReceiptCount: s.activeReceiptCount, exempt: s.paymentExempt })
   const paymentClassName =
     paymentState === 'paid' ? 'text-green-700'
     : paymentState === 'submitted' ? 'text-amber-600 dark:text-amber-500'
+    : paymentState === 'exempt' ? 'text-muted-foreground'
     : 'text-destructive'
 
   return (
