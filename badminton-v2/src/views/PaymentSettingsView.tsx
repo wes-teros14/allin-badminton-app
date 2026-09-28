@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { PaymentExemptCard } from '@/components/PaymentExemptCard'
+import { useAuth } from '@/hooks/useAuth'
 
 const MAX_QR_BYTES = 5 * 1024 * 1024
 
 export function PaymentSettingsView() {
   const { phoneNumber, qrCodeUrl, isLoading } = usePaymentSettings()
+  const { user } = useAuth()
   const [phone, setPhone] = useState('')
   const [qrPreviewUrl, setQrPreviewUrl] = useState<string | null>(null)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
@@ -59,7 +61,8 @@ export function PaymentSettingsView() {
         qrUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`
       }
 
-      const { data: { user } } = await supabase.auth.getUser()
+      // From AuthContext, not `auth.getUser()` — that is a network round trip that
+      // can wait on the auth lock for seconds (see PaymentExemptCard).
       const { error } = await supabase
         .from('payment_settings')
         .update({
