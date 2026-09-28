@@ -722,3 +722,18 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - **Fix**: the card keeps a `loadError` and shows "Couldn't load the list" with the error text and a
   retry. The migration itself still has to be applied (`npx supabase db push` after linking dev).
 - **Rule**: a failed load is never rendered as the empty state.
+
+## 2026-09-28 — Adding a "no fee" player took ~8 seconds to show
+
+- **Symptom**: on prod, picking a player in "Players who don't pay" took about 8 s before the chip and
+  the "won't be asked to pay" toast appeared.
+- **Root cause**: not the database — the insert plus its trigger measured 24 ms on prod. The card
+  awaited `supabase.auth.getUser()` before writing, only to fill `added_by`. That is a network round
+  trip to the auth server (839 ms measured locally), and it queues behind supabase-js's auth lock
+  whenever another tab is refreshing the session; those waits commonly run 5-10 s. The UI only
+  updated after both awaits.
+- **Fix**: take the user from `useAuth()` (AuthContext, already in memory) instead, and update the
+  list immediately with rollback on error. Chip now shows in 34 ms, save confirmed at 314 ms. Same
+  change on the page's Save button.
+- **Rule**: never call `supabase.auth.getUser()` just to learn who is signed in — read `useAuth()`.
+  `getUser()` is for verifying a token server-side, and it costs a round trip plus a possible lock wait.

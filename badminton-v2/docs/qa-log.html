@@ -1725,6 +1725,18 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Why does it take about 8 seconds for the UI to update when adding a no-fee player?</p>
+    <p class="a">
+      Not the database: on prod the insert plus its trigger took <strong>24&nbsp;ms</strong>. The card first
+      awaited <code>supabase.auth.getUser()</code> to fill <code>added_by</code>. That is a round trip to the auth
+      server (839&nbsp;ms measured locally) which also waits on the supabase-js auth lock while another tab
+      refreshes the session, often for 5–10&nbsp;s. Fixed 2026-09-28: the user comes from <code>useAuth()</code>
+      instead, and the chip is drawn before the write, with a rollback if it fails. Measured after: chip at
+      34&nbsp;ms, save confirmed at 314&nbsp;ms.
+    </p>
+  </div>
+
   <h2 class="topic" id="celebrations">Leaderboard celebrations</h2>
 
   <div class="qa">
