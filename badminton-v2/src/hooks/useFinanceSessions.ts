@@ -14,6 +14,10 @@ export interface FinanceSessionRow {
   profit: number
   paidCount: number
   totalCount: number
+  /** Expected to pay: confirmed paid, or not on the "don't pay" list (082). */
+  dueCount: number
+  /** On the "don't pay" list and not paid. */
+  exemptCount: number
   status: SessionStatus
 }
 
@@ -77,6 +81,8 @@ export function useFinanceSessions(): FinanceSessionsState {
       profit: Number(row.profit_after_personal_share ?? row.profit),
       paidCount: Number(row.paid_count),
       totalCount: Number(row.total_count),
+      dueCount: Number(row.due_count),
+      exemptCount: Number(row.exempt_count),
       status: row.status,
     })))
     setIsLoading(false)

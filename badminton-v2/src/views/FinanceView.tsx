@@ -97,7 +97,12 @@ export default function FinanceView() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-right text-muted-foreground">
-                      {s.paidCount} / {s.totalCount}
+                      {/* Out of those who owe: players on the "don't pay" list are counted
+                          separately, so a session you played in can still read complete. */}
+                      {s.paidCount} / {s.dueCount}
+                      {s.exemptCount > 0 && (
+                        <span className="block text-xs">{s.exemptCount} no fee</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-right">{formatPeso(s.revenue)}</TableCell>
                     <TableCell className="text-sm text-right">{formatPeso(s.totalCost)}</TableCell>

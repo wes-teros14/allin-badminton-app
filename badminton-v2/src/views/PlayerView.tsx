@@ -206,7 +206,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
   const [playerNames, setPlayerNames] = useState<string[]>([])
   const [selectedPlayer, setSelectedPlayer] = useState('')
   const [session, setSession] = useState<SessionMeta | null>(null)
-  const [registration, setRegistration] = useState<{ paid: boolean | null; playerId: string } | null>(null)
+  const [registration, setRegistration] = useState<{ paid: boolean | null; exempt: boolean | null; playerId: string } | null>(null)
   const [yourGameCount, setYourGameCount] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [tick, setTick] = useState(0)
@@ -219,7 +219,7 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
     registration ? sessionId : undefined,
     registration?.playerId,
   )
-  const paymentState = derivePaymentState({ paid: registration?.paid ?? null, activeReceiptCount })
+  const paymentState = derivePaymentState({ paid: registration?.paid ?? null, activeReceiptCount, exempt: registration?.exempt ?? null })
 
   // Court timers tick locally; the match rows themselves only change on refresh.
   useEffect(() => {
@@ -241,11 +241,11 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
       // admin who is not registered simply gets no banner.
       if (user) {
         const { data: reg } = await supabase
-          .from('session_registrations').select('paid, player_id')
+          .from('session_registrations').select('paid, payment_exempt, player_id')
           .eq('session_id', sessionId).eq('player_id', user.id).maybeSingle()
         if (cancelled) return
-        const regRow = reg as { paid: boolean | null; player_id: string } | null
-        setRegistration(regRow ? { paid: regRow.paid, playerId: regRow.player_id } : null)
+        const regRow = reg as { paid: boolean | null; payment_exempt: boolean | null; player_id: string } | null
+        setRegistration(regRow ? { paid: regRow.paid, exempt: regRow.payment_exempt, playerId: regRow.player_id } : null)
       } else {
         setRegistration(null)
       }

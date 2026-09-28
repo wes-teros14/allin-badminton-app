@@ -178,6 +178,15 @@ export function PaymentBanner({
     )
   }
 
+  if (paymentState === 'exempt') {
+    // On the Payment Settings "don't pay" list: one quiet line, nothing to act on.
+    return (
+      <span className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1.5 text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        No fee for you
+      </span>
+    )
+  }
+
   if (paymentState === 'submitted') {
     return (
       <div className="mt-3 rounded-2xl border border-gold/50 bg-gold/10 p-3">
@@ -309,7 +318,9 @@ export function NoScheduleYet({
 }) {
   const steps: Array<{ label: string; done: boolean }> = [
     { label: registered ? "You're registered" : 'Register for this session', done: registered },
-    { label: 'Payment confirmed', done: paymentState === 'paid' },
+    paymentState === 'exempt'
+      ? { label: 'No payment needed', done: true }
+      : { label: 'Payment confirmed', done: paymentState === 'paid' },
     { label: 'Registration closes', done: registrationClosed },
     { label: 'Matches created', done: false },
     { label: 'Session starts', done: false },

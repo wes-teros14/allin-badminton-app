@@ -29,17 +29,35 @@ describe('derivePaymentState', () => {
 
   for (const { paid, activeReceiptCount, expected, why } of cases) {
     it(`paid=${String(paid)} + ${activeReceiptCount} active receipt(s) -> ${expected} (${why})`, () => {
-      expect(derivePaymentState({ paid, activeReceiptCount })).toBe(expected)
+      expect(derivePaymentState({ paid, activeReceiptCount, exempt: false })).toBe(expected)
     })
   }
 
   it('never returns submitted once payment is confirmed, at any receipt count', () => {
     for (let count = 0; count <= 5; count++) {
-      expect(derivePaymentState({ paid: true, activeReceiptCount: count })).toBe('paid')
+      expect(derivePaymentState({ paid: true, activeReceiptCount: count, exempt: false })).toBe('paid')
     }
   })
 
   it('treats a negative count defensively as no receipts', () => {
-    expect(derivePaymentState({ paid: false, activeReceiptCount: -1 })).toBe('unpaid')
+    expect(derivePaymentState({ paid: false, activeReceiptCount: -1, exempt: false })).toBe('unpaid')
+  })
+
+  describe('exempt (migration 082)', () => {
+    it('an exempt player with nothing paid is exempt, not unpaid', () => {
+      expect(derivePaymentState({ paid: false, activeReceiptCount: 0, exempt: true })).toBe('exempt')
+    })
+
+    it('paid still dominates: confirmed before being exempted stays paid (money stays in revenue)', () => {
+      expect(derivePaymentState({ paid: true, activeReceiptCount: 0, exempt: true })).toBe('paid')
+    })
+
+    it('exempt outranks a leftover receipt, since there is nothing left to confirm', () => {
+      expect(derivePaymentState({ paid: false, activeReceiptCount: 1, exempt: true })).toBe('exempt')
+    })
+
+    it('null exempt (not registered) is treated as not exempt', () => {
+      expect(derivePaymentState({ paid: null, activeReceiptCount: 0, exempt: null })).toBe('unpaid')
+    })
   })
 })

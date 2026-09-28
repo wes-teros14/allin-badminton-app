@@ -6,7 +6,7 @@ import { useRoster } from '@/hooks/useRoster'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { playersWithStaleLevel } from '@/lib/rosterLevels'
-import { derivePaymentState, type PaymentState } from '@/lib/paymentState'
+import { derivePaymentState, PAYMENT_STATE_LABEL, type PaymentState } from '@/lib/paymentState'
 import { ReceiptViewerDialog } from '@/components/ReceiptViewerDialog'
 
 function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -82,14 +82,16 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
 
   if (paymentOnly) {
     // Derived, never stored — `paid` stays the sole input to revenue.
-    const states = players.map((p) => derivePaymentState({ paid: p.paid, activeReceiptCount: p.activeReceiptCount }))
+    const states = players.map((p) => derivePaymentState({ paid: p.paid, activeReceiptCount: p.activeReceiptCount, exempt: p.paymentExempt }))
     const paidCount = states.filter((s) => s === 'paid').length
     const submittedCount = states.filter((s) => s === 'submitted').length
     const unpaidCount = states.filter((s) => s === 'unpaid').length
+    const exemptCount = states.filter((s) => s === 'exempt').length
 
     // Awaiting first — those are the rows that need a decision. Sort is stable,
     // so players keep their roster order within each group.
-    const ORDER: Record<PaymentState, number> = { submitted: 0, paid: 1, unpaid: 2 }
+    // Exempt last: nothing to decide, managed on Payment Settings instead.
+    const ORDER: Record<PaymentState, number> = { submitted: 0, paid: 1, unpaid: 2, exempt: 3 }
     const rows = players
       .map((player, i) => ({ player, state: states[i] }))
       .sort((a, b) => ORDER[a.state] - ORDER[b.state])
@@ -100,7 +102,10 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
       <Card>
         <CardHeader className="cursor-pointer select-none" onClick={() => setOpen((v) => !v)}>
           <CardTitle className="flex items-center justify-between text-sm font-semibold">
-            <span>Payment Status — {paidCount} paid · {submittedCount} awaiting · {unpaidCount} unpaid</span>
+            <span>
+              Payment Status — {paidCount} paid · {submittedCount} awaiting · {unpaidCount} unpaid
+              {exemptCount > 0 && ` · ${exemptCount} no fee`}
+            </span>
             <span className="text-muted-foreground">{open ? '▲' : '▼'}</span>
           </CardTitle>
         </CardHeader>
@@ -115,15 +120,18 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
                     <li key={player.registrationId} className="flex items-center gap-2 text-sm rounded-md border px-3 py-2">
                       <span
                         aria-label={state}
-                        title={state === 'submitted' ? 'Awaiting confirmation' : state === 'paid' ? 'Paid' : 'Unpaid'}
+                        title={PAYMENT_STATE_LABEL[state]}
                         className={`w-2 h-2 rounded-full shrink-0 ${
-                          state === 'paid' ? 'bg-green-600' : state === 'submitted' ? 'bg-amber-500' : 'bg-destructive'
+                          state === 'paid' ? 'bg-green-600'
+                          : state === 'submitted' ? 'bg-amber-500'
+                          : state === 'exempt' ? 'bg-muted-foreground'
+                          : 'bg-destructive'
                         }`}
                       />
                       <span className="flex-1 truncate font-medium">{formatDisplayName(player.nickname, player.nameSlug)}</span>
 
                       {/* Per-player receipt link (FR-022) */}
-                      {canViewReceipts && (
+                      {canViewReceipts && state !== 'exempt' && (
                         player.totalReceiptCount > 0 ? (
                           <button
                             onClick={() => setViewingPlayerId(player.playerId)}
@@ -136,6 +144,11 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
                         )
                       )}
 
+                      {state === 'exempt' ? (
+                        // No switch: an exempt player has nothing to confirm. They leave the
+                        // list on Payment Settings, not here.
+                        <span className="shrink-0 rounded border px-2 py-1 text-xs text-muted-foreground">No fee</span>
+                      ) : (
                       <div className="flex rounded overflow-hidden border text-xs shrink-0">
                         <button
                           onClick={() => updatePaid(player.registrationId, false)}
@@ -155,6 +168,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
                           {player.paid ? 'Paid' : 'Confirm'}
                         </button>
                       </div>
+                      )}
                     </li>
                   )
                 })}

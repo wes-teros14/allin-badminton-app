@@ -20,6 +20,7 @@ function session(overrides: Partial<SessionPickerItem> & { id: string; date: str
     registration_opens_at: null,
     isRegistered: false,
     paid: null,
+    paymentExempt: null,
     ...overrides,
   }
 }
