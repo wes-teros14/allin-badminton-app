@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
+
+export interface SessionRegistrant {
+  id: string
+  name: string
+  avatarUrl: string | null
+}
 
 export interface SessionPickerItem {
   id: string
@@ -27,6 +34,12 @@ export interface SessionPickerItem {
   activeReceiptCount: number
   playerCount?: number
   maxPlayers?: number | null
+  /**
+   * Who has registered, in sign-up order. Loaded alongside playerCount, so only
+   * for open sessions. null means the load failed — the card must say so rather
+   * than show an empty list.
+   */
+  registrants?: SessionRegistrant[] | null
 }
 
 interface RegistrationSummary {
@@ -35,7 +48,42 @@ interface RegistrationSummary {
   payment_exempt?: boolean | null
 }
 
-type SessionRecord = Omit<SessionPickerItem, 'isRegistered' | 'paid' | 'paymentExempt' | 'activeReceiptCount' | 'playerCount' | 'maxPlayers'>
+type SessionRecord = Omit<SessionPickerItem, 'isRegistered' | 'paid' | 'paymentExempt' | 'activeReceiptCount' | 'playerCount' | 'maxPlayers' | 'registrants'>
+
+/**
+ * Groups registrations into per-session lists in sign-up order. Names are
+ * disambiguated within each session, so two "Alexis" on one card read as two
+ * people rather than one entered twice — and an Alexis alone on a card keeps
+ * her plain name.
+ */
+export function buildRegistrantsBySession(
+  registrations: Array<{ session_id: string; player_id: string; registered_at: string }>,
+  profiles: Array<{ id: string; name_slug: string; nickname: string | null; avatar_url: string | null }>,
+): Map<string, SessionRegistrant[]> {
+  const profileById = new Map(profiles.map((p) => [p.id, p]))
+  const ordered = [...registrations].sort((a, b) => a.registered_at.localeCompare(b.registered_at))
+
+  const idsBySession = new Map<string, string[]>()
+  for (const r of ordered) {
+    const ids = idsBySession.get(r.session_id) ?? []
+    ids.push(r.player_id)
+    idsBySession.set(r.session_id, ids)
+  }
+
+  const bySession = new Map<string, SessionRegistrant[]>()
+  for (const [sessionId, ids] of idsBySession) {
+    const labels = disambiguateDisplayNames(ids.flatMap((id) => {
+      const p = profileById.get(id)
+      return p ? [{ id, nameSlug: p.name_slug, displayName: formatDisplayName(p.nickname, p.name_slug) }] : []
+    }))
+    bySession.set(sessionId, ids.map((id) => ({
+      id,
+      name: labels.get(id) ?? 'Player',
+      avatarUrl: profileById.get(id)?.avatar_url ?? null,
+    })))
+  }
+  return bySession
+}
 
 /**
  * Active receipts per session for one player. Dismissed receipts are excluded
@@ -153,7 +201,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       if (openItems.length > 0) {
         const openIds = openItems.map(s => s.id)
 
-        const [{ data: invitations }, { data: regRows }] = await Promise.all([
+        const [{ data: invitations }, { data: regRows, error: regError }] = await Promise.all([
           supabase
             .from('session_invitations')
             .select('session_id, max_players')
@@ -161,9 +209,24 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
             .eq('is_active', true),
           supabase
             .from('session_registrations')
-            .select('session_id')
+            .select('session_id, player_id, registered_at')
             .in('session_id', openIds),
         ])
+
+        const registrationRows = (regRows ?? []) as Array<{ session_id: string; player_id: string; registered_at: string }>
+        let registrantsBySession: Map<string, SessionRegistrant[]> | null = null
+        if (!regError) {
+          const playerIds = [...new Set(registrationRows.map((r) => r.player_id))]
+          const { data: profiles, error: profilesError } = playerIds.length > 0
+            ? await supabase.from('profiles').select('id, name_slug, nickname, avatar_url').in('id', playerIds)
+            : { data: [], error: null }
+          if (!profilesError) {
+            registrantsBySession = buildRegistrantsBySession(
+              registrationRows,
+              (profiles ?? []) as Array<{ id: string; name_slug: string; nickname: string | null; avatar_url: string | null }>,
+            )
+          }
+        }
 
         if (!cancelled) {
           const invMap: Record<string, number | null> = {}
@@ -173,9 +236,8 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
           }
 
           const countMap: Record<string, number> = {}
-          for (const reg of regRows ?? []) {
-            const sid = (reg as { session_id: string }).session_id
-            countMap[sid] = (countMap[sid] ?? 0) + 1
+          for (const reg of registrationRows) {
+            countMap[reg.session_id] = (countMap[reg.session_id] ?? 0) + 1
           }
 
           const enriched = items.map(s => {
@@ -184,6 +246,7 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
               ...s,
               playerCount: countMap[s.id] ?? 0,
               maxPlayers: s.id in invMap ? invMap[s.id] : null,
+              registrants: registrantsBySession ? (registrantsBySession.get(s.id) ?? []) : null,
             }
           })
 

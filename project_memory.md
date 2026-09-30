@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-28
+Last updated: 2026-09-30
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -532,7 +532,8 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   for `repeatPartnerPenalty`, against 800 for an opponent repeat. Whether 150 is the right premium is
   a slider, not a missing feature. A third interaction-specific term would be over-engineering.
 - **Admin shortcut on `/sessions` (2026-09-04)** — chose a 44 × 44 icon button pinned to each card's bottom-right corner. Rejected: an inline "Manage" pill in the badge row (the row already carries up to two `shrink-0` pills at 384 px, so a third squeezes the title), and a full-width admin strip under a hairline rule (correct and explicit, but ~45 px taller per card). The corner button was picked because it costs the list no height and never collides with the pills. Revisit the strip if other moderators start using it, or if a second admin action joins the card.
-- **The card is one `<Link>`.** An anchor cannot contain an anchor, so any in-card control is either a `<button>` calling `navigate()` with `stopPropagation()`, or an absolutely positioned sibling outside the link. The sibling form is preferred — no event plumbing and correct tab order for free.
+- **The card is one `<Link>`.** An anchor cannot contain an anchor, so any in-card control is either a `<button>` calling `navigate()` with `stopPropagation()`, or an absolutely positioned sibling outside the link. The sibling form is preferred — no event plumbing and correct tab order for free. Since 2026-09-30 the card's border, background, accent bar and hover live on the outer wrapper `div` (`MySessionsView.tsx` `SessionRow`), so siblings can also sit *below* the link and still read as part of the card.
+- **"See who's going" on `/sessions` (2026-09-30)** — chose an in-card disclosure (name chips + one dashed "N spots left" chip, "You" in gold, sign-up order). Only on `registration_open` cards, same as the count. Rejected: avatar stack only (faces without names), avatar stack → bottom sheet (two tap targets on one card), session-page-only list (invisible until opened). POC: `temporary_files/session-card-who-is-registered-options.html`. No migration was needed — `session_registrations` and `profiles` are already readable by every authenticated user. A failed load shows an error in the disclosure, never "No one yet". Names are disambiguated per session, not globally.
 - **Finish-match latency: 7 round trips cut to 3 (2026-09-07); the further cuts were deliberately
   deferred, not rejected.** The board took 3–5 s to show the next game. It was never a caching
   problem — the schedule was already being fetched every 5 s and discarded; the cost was that the UI
