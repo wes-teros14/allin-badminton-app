@@ -89,6 +89,9 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - A whole e2e suite failing at `page.goto` is a dead dev server, not a regression. Check the server is up before reading six red tests as six broken things.
 - A test that hard-asserts an invariant the engine only satisfies probabilistically is passing by luck. Before "fixing" one that your change broke, measure the pre-change failure rate on the same seeds — identical rate means you exposed a latent flake, not caused a regression.
 - A UI that loads a list must render a failed load as an error, never as the empty state. "Nobody yet" on a query that errored tells the user the opposite of the truth.
+- In a POC's top-level `<script>`, never name a `const`/`let` after a window global (`top`, `name`, `status`, `parent`, `self`, `length`). It kills the whole script with "already been declared". Verifying via `eval` hides this — inject a real `<script>` element instead.
+- Load the bencium skill (plus `ui-typography`) before any UI mockup or UI change, however quick. "It's only a POC" is not an exemption — the POC is where the design is decided.
+- When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 
 ## .env Files
 

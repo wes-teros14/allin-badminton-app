@@ -737,3 +737,9 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   change on the page's Save button.
 - **Rule**: never call `supabase.auth.getUser()` just to learn who is signed in — read `useAuth()`.
   `getUser()` is for verifying a token server-side, and it costs a round trip plus a possible lock wait.
+
+## 2026-09-30 — POC page rendered empty (`whos-going-declutter-options.html`)
+
+- **Symptom:** controls showed, but no cards. The page was blank below the control bar.
+- **Root cause:** top-level `const top = ...` in a classic script clashes with the non-configurable `window.top`, so the whole script is rejected with `SyntaxError: Identifier 'top' has already been declared`. My check ran the script through indirect `eval`, which scopes `const` separately, so it passed.
+- **Fix:** renamed to `cardTop`. Verify POCs by injecting a real `<script>` element, not `eval`.
