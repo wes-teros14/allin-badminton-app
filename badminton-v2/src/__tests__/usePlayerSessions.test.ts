@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildActiveReceiptCountMap, buildRegistrationPaymentMap } from '@/hooks/usePlayerSessions'
+import { buildActiveReceiptCountMap, buildRegistrantsBySession, buildRegistrationPaymentMap } from '@/hooks/usePlayerSessions'
 import { derivePaymentState } from '@/lib/paymentState'
 
 vi.mock('@/lib/supabase', () => ({
@@ -59,5 +59,36 @@ describe('buildActiveReceiptCountMap', () => {
 
   it('returns an empty map when the player has submitted nothing', () => {
     expect(buildActiveReceiptCountMap([]).size).toBe(0)
+  })
+})
+
+describe('buildRegistrantsBySession', () => {
+  const profiles = [
+    { id: 'p1', name_slug: 'alexis-cruz', nickname: 'Alexis', avatar_url: null },
+    { id: 'p2', name_slug: 'alexis-santos', nickname: 'Alexis', avatar_url: 'https://x/a.png' },
+    { id: 'p3', name_slug: 'gab-reyes', nickname: null, avatar_url: null },
+  ]
+
+  it('groups by session in sign-up order', () => {
+    const map = buildRegistrantsBySession([
+      { session_id: 's1', player_id: 'p3', registered_at: '2026-09-02T00:00:00Z' },
+      { session_id: 's1', player_id: 'p1', registered_at: '2026-09-01T00:00:00Z' },
+      { session_id: 's2', player_id: 'p2', registered_at: '2026-09-01T00:00:00Z' },
+    ], profiles)
+
+    expect(map.get('s1')?.map((r) => r.id)).toEqual(['p1', 'p3'])
+    expect(map.get('s1')?.[1].name).toBe('Gab Reyes')
+    expect(map.get('s2')?.[0].avatarUrl).toBe('https://x/a.png')
+  })
+
+  it('disambiguates duplicate names only within the same session', () => {
+    const map = buildRegistrantsBySession([
+      { session_id: 's1', player_id: 'p1', registered_at: '2026-09-01T00:00:00Z' },
+      { session_id: 's1', player_id: 'p2', registered_at: '2026-09-02T00:00:00Z' },
+      { session_id: 's2', player_id: 'p1', registered_at: '2026-09-01T00:00:00Z' },
+    ], profiles)
+
+    expect(map.get('s1')?.map((r) => r.name)).toEqual(['Alexis (Cruz)', 'Alexis (Santos)'])
+    expect(map.get('s2')?.[0].name).toBe('Alexis')
   })
 })
