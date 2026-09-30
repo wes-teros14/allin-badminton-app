@@ -28,67 +28,111 @@ function DetailItem({
   )
 }
 
+/** "9 of 14 going", "All 14 spots taken", or "11 going" when there is no limit. */
+export function registrantsCountLabel(count: number, maxPlayers: number | null | undefined): string {
+  if (maxPlayers == null) return `${count} going`
+  if (count >= maxPlayers) return `All ${maxPlayers} spots taken`
+  return `${count} of ${maxPlayers} going`
+}
+
 /**
- * "See who's going" on an open session. It sits inside the card but outside
- * the card's <Link> — a button inside an anchor would navigate on every tap.
- * Empty slots are shown as one "N spots left" chip so the list answers both
- * "who" and "is there room" at once.
+ * Who's going on an open session: the first few faces and the count, which
+ * expand into name chips. It replaces the old "N / M registered" line, so the
+ * card states the headcount once.
+ *
+ * It sits inside the card but outside the card's <Link> — a button inside an
+ * anchor would navigate on every tap. `aside` is the admin shortcut, placed
+ * level with this row so it does not move when the list opens.
  */
-function RegistrantsDisclosure({
+function RegistrantsRow({
   registrants,
   maxPlayers,
   currentUserId,
+  aside,
 }: {
   registrants: SessionRegistrant[] | null
   maxPlayers: number | null | undefined
   currentUserId: string | null
+  aside: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const listId = useId()
-  const spotsLeft = maxPlayers != null && registrants ? Math.max(maxPlayers - registrants.length, 0) : 0
+
+  let row: ReactNode
+  if (registrants === null) {
+    row = (
+      <p className="flex min-h-11 items-center text-xs text-destructive">
+        Couldn’t load who’s going. Reload to try again.
+      </p>
+    )
+  } else if (registrants.length === 0) {
+    // Nothing to expand, so this is plain text rather than a button.
+    row = (
+      <p className="flex min-h-11 items-center text-xs font-bold text-primary-ink">
+        {maxPlayers == null ? 'No one yet' : `0 of ${maxPlayers} going`}. Be the first.
+      </p>
+    )
+  } else {
+    const spotsLeft = maxPlayers != null ? Math.max(maxPlayers - registrants.length, 0) : 0
+    row = (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={listId}
+          className="flex min-h-11 w-full items-center gap-2.5 rounded-lg text-xs font-bold text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="flex" aria-hidden="true">
+            {registrants.slice(0, 4).map((r, i) => (
+              <Avatar key={r.id} url={r.avatarUrl} name={r.name} size={24} className={`ring-2 ring-card ${i > 0 ? '-ml-1.5' : ''}`} />
+            ))}
+          </span>
+          <span>{registrantsCountLabel(registrants.length, maxPlayers)}</span>
+          <ChevronDown
+            className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+
+        {/* grid-rows 0fr -> 1fr animates the height without measuring it. */}
+        <div
+          id={listId}
+          aria-hidden={!open}
+          className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+        >
+          <div className="overflow-hidden">
+            <div className="flex flex-wrap gap-1.5 pb-2 pt-0.5">
+              {registrants.map((r) => {
+                const isMe = r.id === currentUserId
+                return (
+                  <span
+                    key={r.id}
+                    className={`inline-flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2.5 text-xs ${
+                      isMe ? 'border-gold/45 bg-gold/10 font-semibold text-gold-ink' : 'border-border text-foreground'
+                    }`}
+                  >
+                    <Avatar url={r.avatarUrl} name={r.name} size={20} />
+                    {isMe ? 'You' : r.name}
+                  </span>
+                )
+              })}
+              {spotsLeft > 0 && (
+                <span className="inline-flex items-center rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+                  {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'} left
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
 
   return (
-    <div className="mx-4 mb-3 ml-5 border-t border-dashed border-border pt-2">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-controls={listId}
-        className="flex min-h-9 w-full items-center justify-between rounded-lg text-xs font-bold text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <span>See who's going</span>
-        <ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
-      </button>
-
-      {open && (
-        <div id={listId} className="flex flex-wrap gap-1.5 pb-1 pt-1.5">
-          {registrants === null ? (
-            <p className="text-xs text-destructive">Couldn't load who's registered. Reload the page to try again.</p>
-          ) : registrants.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No one yet — be the first.</p>
-          ) : (
-            registrants.map((r) => {
-              const isMe = r.id === currentUserId
-              return (
-                <span
-                  key={r.id}
-                  className={`inline-flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2.5 text-xs ${
-                    isMe ? 'bg-gold/10 font-semibold text-gold-ink' : 'bg-muted text-foreground'
-                  }`}
-                >
-                  <Avatar url={r.avatarUrl} name={r.name} size={20} />
-                  {isMe ? 'You' : r.name}
-                </span>
-              )
-            })
-          )}
-          {registrants !== null && spotsLeft > 0 && (
-            <span className="inline-flex items-center rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs text-muted-foreground">
-              {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'} left
-            </span>
-          )}
-        </div>
-      )}
+    <div className={`relative pb-2.5 pl-5 ${aside ? 'pr-16' : 'pr-4'}`}>
+      {aside}
+      {row}
     </div>
   )
 }
@@ -220,6 +264,16 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
     : paymentState === 'exempt' ? 'text-muted-foreground'
     : 'text-destructive'
   const showRegistrants = s.status === 'registration_open' && s.registrants !== undefined
+  const adminShortcut = (position: string) => isAdmin && (
+    <Link
+      to={`/session/${s.id}`}
+      aria-label={`Manage ${s.name} (admin)`}
+      title="Manage session"
+      className={`absolute ${position} right-2.5 grid h-11 w-11 place-items-center rounded-xl border border-primary bg-primary-subtle text-primary transition-[background-color,color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+    >
+      <SlidersVertical className="h-5 w-5" aria-hidden="true" />
+    </Link>
+  )
 
   return (
     // The card body is a single <Link>, and an anchor cannot contain another
@@ -242,7 +296,7 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
           // Reserve a gutter for the admin button so long venue or note text
           // cannot run underneath it.
           isAdmin ? 'pr-16' : 'pr-4'
-        } ${showRegistrants ? 'pb-2' : ''}`}
+        } ${showRegistrants ? 'pb-1' : ''}`}
       >
 
         <div className="space-y-0.5">
@@ -316,7 +370,7 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
           </p>
         )}
 
-        {s.status === 'registration_open' && s.playerCount !== undefined && (
+        {!showRegistrants && s.status === 'registration_open' && s.playerCount !== undefined && (
           <p className="mt-2 text-xs font-bold text-primary">
             {s.maxPlayers != null
               ? `${s.playerCount} / ${s.maxPlayers} registered`
@@ -325,20 +379,16 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
         )}
       </Link>
 
-      {isAdmin && (
-        <Link
-          to={`/session/${s.id}`}
-          aria-label={`Manage ${s.name} (admin)`}
-          title="Manage session"
-          className="absolute bottom-2.5 right-2.5 grid h-11 w-11 place-items-center rounded-xl border border-primary bg-primary-subtle text-primary transition-[background-color,color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <SlidersVertical className="h-5 w-5" aria-hidden="true" />
-        </Link>
-      )}
+      {!showRegistrants && adminShortcut('bottom-2.5')}
       </div>
 
       {showRegistrants && (
-        <RegistrantsDisclosure registrants={s.registrants ?? null} maxPlayers={s.maxPlayers} currentUserId={currentUserId} />
+        <RegistrantsRow
+          registrants={s.registrants ?? null}
+          maxPlayers={s.maxPlayers}
+          currentUserId={currentUserId}
+          aside={adminShortcut('top-0')}
+        />
       )}
     </div>
   )
