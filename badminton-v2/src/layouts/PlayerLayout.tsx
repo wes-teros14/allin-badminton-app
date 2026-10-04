@@ -23,8 +23,12 @@ export function PlayerLayout() {
 
     return [...routeSession, ...inProgress, ...complete]
   }, [sessionId, sessions])
+  const liveSessionIds = useMemo(
+    () => sessions.filter((s) => s.status === 'in_progress').map((s) => s.sessionId),
+    [sessions],
+  )
 
-  const { cheerTypes, pendingMatches, hasPendingCheers, isLoading: cheerLoading, submitCheer } = useMatchCheers(cheersSessionIds)
+  const { cheerTypes, pendingMatches, hasPendingCheers, isLoading: cheerLoading, submitCheer } = useMatchCheers(cheersSessionIds, liveSessionIds)
 
   const showGate = !cheerLoading && hasPendingCheers
   // Wider than showGate on purpose: while either lookup is still loading we do not
