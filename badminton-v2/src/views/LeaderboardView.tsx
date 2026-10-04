@@ -18,7 +18,6 @@ import type { CheerCategory } from '@/lib/cheerTypes'
 import type { CheerTypeSlug } from '@/types/app'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
 import { formatDisplayName } from '@/lib/formatDisplayName'
-import { EARLY_BIRD_WINDOW } from '@/lib/earlyBird'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
 import { Avatar } from '@/components/Avatar'
 import { PlayerRowBody, RankedBoard, RowStat } from '@/components/RankedBoard'
@@ -476,7 +475,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       holder: earlyBirdRanking[0]?.name ?? null,
       valueLabel: null,
       ranking: earlyBirdRanking,
-      rule: `Last ${EARLY_BIRD_WINDOW} sessions · first 5 to register score 5-4-3-2-1`,
+      rule: 'All sessions · first 5 to register score 5-4-3-2-1',
     },
     // Cheer-based awards, by share of the holder's own received cheers
     { emoji: '⚔️', label: 'Top Fierce Offense',   ...topShareHolder(c => c.offense_received) },
