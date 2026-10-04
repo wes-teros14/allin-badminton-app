@@ -77,6 +77,7 @@
     <h2>Contents</h2>
     <ol>
       <li><a href="#routing">Routing &amp; role gating</a></li>
+      <li><a href="#accounts">Accounts &amp; profiles</a></li>
       <li><a href="#session-cards">Session cards</a></li>
       <li><a href="#leaderboard">Leaderboard</a></li>
       <li><a href="#theming">Theming &amp; light mode</a></li>
@@ -106,6 +107,41 @@
       So any admin shortcut placed on a player screen only needs to check the same two roles —
       the route itself is already protected, and the check is just there to avoid showing a
       dead-end button to players.
+    </p>
+  </div>
+
+  <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
+
+  <div class="qa">
+    <p class="q">I logged in with another email and the session page says "No schedule found for your
+      account" — there's no Register button. Why?</p>
+    <p class="a">
+      That account had a login but no <code>profiles</code> row. A login lives in
+      <code>auth.users</code>; the player record is a separate row in <code>profiles</code>, and the
+      My Games tab (which holds the Register button) only renders when it finds that row's
+      <code>name_slug</code> (<code>SessionPlayerDetailView.tsx</code>). Measured on prod 2026-10-04:
+      <code>mwca8888@gmail.com</code> had an <code>auth.users</code> row from 2026-05-14,
+      <code>profile_id</code> NULL, 0 registrations.
+    </p>
+    <p class="a">
+      The <code>on_auth_user_created</code> trigger is supposed to create the profile at sign-up. The
+      only client-side fallback (<code>ensureProfile</code>) ran on the invite-link page alone, so a
+      player who signed in from Home had nothing to repair them. Branch
+      <code>012-ensure-profile-on-login</code> moves the fallback into <code>AuthContext</code> so every
+      login creates a missing profile. <em>Why</em> the trigger skipped this account is still
+      unconfirmed — run the <code>pg_trigger</code> check on prod.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">I registered, so why am I not on the Players tab?</p>
+    <p class="a">
+      Same cause. The Players tab lists rows from <code>profiles</code>
+      (<code>usePlayers.ts</code>), not login accounts, so a login with no profile row is invisible
+      there while still being able to sign in. "Registered" in that case meant the account sign-up,
+      not a session — the <code>session_registrations</code> count was 0. Note that a session
+      registration does not prove a profile exists either: <code>session_registrations.player_id</code>
+      references <code>auth.users</code>, not <code>profiles</code>.
     </p>
   </div>
 
@@ -344,6 +380,31 @@
       Concretely: a player with 24 Offense cheers out of 120 total (20%) now ranks
       <em>below</em> one with 12 out of 30 (40%). Under the old count ranking the first won by
       double.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How can Jerome be top on Swift Movement with only 6 of 59 (10%)? Out of 59 cheers he
+      didn’t get more than 10% of anything?</p>
+    <p class="a">
+      He did — the board just isn’t asking that. A cheer board asks “who, out of every eligible player,
+      gives the biggest <em>slice</em> of their own cheers to this type”, not “what is this player best
+      at”. <code>rankCheerShares</code> in <code>src/lib/cheerShare.ts</code> sorts by
+      <code>categoryCount ÷ totalReceived</code> across players, and the winner is whoever has the
+      highest share, however small that share is in absolute terms.
+    </p>
+    <p class="a">
+      Measured on prod (2026-09-20): Swift Movement is simply the rarest cheer anyone gives. The whole
+      podium is Jerome 10% (6 of 59), Luis 9% (3 of 32), Bon and Kurt 8%. Jerome’s own strongest types
+      are elsewhere — Fierce Offense 37% (22 of 59, 2nd on that board) and Smooth Technique 24%
+      (14 of 59, tied 4th). The remaining 17 cheers are spread across Defense, Good Sport and Effort.
+      Compare Fierce Offense, where the gold sits at 45%: the gold means “highest share”, not
+      “high share”.
+    </p>
+    <p class="a">
+      The code was audited end-to-end for this question (eligibility → fetch → share → dense rank →
+      cut to 5 places) and is doing what it was designed to do. The open question is a UX one: a gold
+      medal for 10% <em>reads</em> as odd, which is a caption/threshold design choice, not a bug.
     </p>
   </div>
 

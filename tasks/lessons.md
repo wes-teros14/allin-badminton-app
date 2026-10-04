@@ -743,3 +743,18 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - **Symptom:** controls showed, but no cards. The page was blank below the control bar.
 - **Root cause:** top-level `const top = ...` in a classic script clashes with the non-configurable `window.top`, so the whole script is rejected with `SyntaxError: Identifier 'top' has already been declared`. My check ran the script through indirect `eval`, which scopes `const` separately, so it passed.
 - **Fix:** renamed to `cardTop`. Verify POCs by injecting a real `<script>` element, not `eval`.
+
+## 2026-10-04 — A signed-in player saw "No schedule found" and no Register button
+
+- **Symptom:** on prod, `mwca8888@gmail.com` could sign in, but `/sessions/:id` showed "No schedule
+  found for your account." with no Register button, and the account was missing from the Players tab.
+- **Root cause:** the account had an `auth.users` row (created 2026-05-14) but no `profiles` row. Every
+  player screen keys off the profile (`name_slug`), so the player was stuck. The `on_auth_user_created`
+  trigger should have created it; why it did not is unconfirmed. The only client fallback,
+  `ensureProfile`, ran on the invite-link page alone, and the session page dropped the lookup's
+  `error`, so a failed read and a missing row looked identical.
+- **Fix:** `ensureProfile` moved to `src/lib/ensureProfile.ts` and runs from `AuthContext` on every
+  sign-in, inside the `isLoading` window; `SessionPlayerDetailView` now waits for auth and shows the
+  lookup error instead of "No schedule found". Existing stuck accounts need the one-off SQL backfill.
+- **Rule:** never make a player screen depend on a row only a database trigger creates without a
+  client-side self-heal on every entry point.
