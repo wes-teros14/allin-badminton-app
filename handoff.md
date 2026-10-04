@@ -1,6 +1,6 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-04 (evening, Manila). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-04 (night, Manila). Overwrite this file on every update; it is never a running history.
 
 ## State
 
@@ -13,6 +13,11 @@ Updated: 2026-10-04 (evening, Manila). Overwrite this file on every update; it i
 - `tsc -b`, lint on changed files, 391 unit tests, `npm run build` pass. Pages checked in the browser,
   no console errors; idle court polls 0 in 20 s (was 4), safety poll at 33 s.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
+
+- **🐦 Early Bird rebuilt (branch `016-early-bird-points`):** points race, last 8 finished sessions,
+  5-4-3-2-1 for the first 5 self-registered, organisers excluded, top 3 on the Awards card, badge for
+  1st only. Seen on DEV in the browser; prod expectation: Ronwald 31, Jerome 20, AJ 20 (Jerome 2nd on
+  1st places).
 
 ## Done this session (earlier, already pushed)
 

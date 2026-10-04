@@ -18,6 +18,8 @@ import type { CheerCategory } from '@/lib/cheerTypes'
 import type { CheerTypeSlug } from '@/types/app'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
 import { formatDisplayName } from '@/lib/formatDisplayName'
+import { EARLY_BIRD_WINDOW } from '@/lib/earlyBird'
+import { fetchEarlyBirds } from '@/lib/earlyBirdData'
 import { Avatar } from '@/components/Avatar'
 import { PlayerRowBody, RankedBoard, RowStat } from '@/components/RankedBoard'
 import { useAuth } from '@/hooks/useAuth'
@@ -36,6 +38,10 @@ interface AwardEntry {
   holder: string | null
   /** Pre-formatted, because cheer awards read "62%" and count awards read "9". */
   valueLabel: string | null
+  /** A placed award (Early Bird) shows its whole podium instead of one holder. */
+  ranking?: { place: number; name: string; valueLabel: string }[]
+  /** One line on how the award is decided, shown under the label. */
+  rule?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -341,24 +347,13 @@ function CheersLeaderboard() {
 }
 
 async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
-  const latestSessionRes = await supabase
-    .from('sessions')
-    .select('id')
-    .neq('status', 'setup')
-    .order('date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-  const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
-
-  const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirdRes, eligibleIds] = await Promise.all([
+  const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirds, eligibleIds] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
     supabase.from('cheers').select('receiver_id, giver_id, created_at').order('created_at', { ascending: false }),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: true }),
-    latestSessionId
-      ? supabase.from('session_registrations').select('player_id').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
-      : Promise.resolve({ data: null }),
+    fetchEarlyBirds(),
     fetchEligiblePlayerIds(),
   ])
 
@@ -378,13 +373,20 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     .filter(s => isRankable(s.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => isRankable(s.player_id))
-  const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
-  let earlyBirdName: string | null = earlyBirdPlayerId ? (nameMap.get(earlyBirdPlayerId) ?? null) : null
-  if (earlyBirdPlayerId && !earlyBirdName) {
-    const pRes = await supabase.from('profiles').select('nickname, name_slug').eq('id', earlyBirdPlayerId).maybeSingle()
-    const p = pRes.data as { nickname: string | null; name_slug: string } | null
-    earlyBirdName = p ? formatDisplayName(p.nickname, p.name_slug) : null
+  // nameMap holds active profiles only; an early bird who has since been
+  // deactivated is still named, as before.
+  const missingEarlyBirds = earlyBirds.map((e) => e.playerId).filter((id) => !nameMap.has(id))
+  if (missingEarlyBirds.length > 0) {
+    const pRes = await supabase.from('profiles').select('id, nickname, name_slug').in('id', missingEarlyBirds)
+    for (const p of (pRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>) {
+      nameMap.set(p.id, formatDisplayName(p.nickname, p.name_slug))
+    }
   }
+  const earlyBirdRanking = earlyBirds.map((e) => ({
+    place: e.place,
+    name: nameMap.get(e.playerId) ?? 'Unknown player',
+    valueLabel: `${e.points} pts`,
+  }))
   const cheerTimestamps = (cheerTimestampsRes.data ?? []) as Array<{ receiver_id: string; giver_id: string; created_at: string }>
 
   // Tiebreaker maps: latest activity timestamp per player
@@ -468,7 +470,14 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     // System-generated awards first
     countAward('📅', 'Most Sessions Joined', topHolder(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended })))),
     countAward('🔥', 'Attendance Streak', topHolder(streakEntries)),
-    { emoji: '🐦', label: 'Registration Early Bird', holder: earlyBirdName, valueLabel: null },
+    {
+      emoji: '🐦',
+      label: 'Registration Early Bird',
+      holder: earlyBirdRanking[0]?.name ?? null,
+      valueLabel: null,
+      ranking: earlyBirdRanking,
+      rule: `Last ${EARLY_BIRD_WINDOW} sessions · first 5 to register score 5-4-3-2-1`,
+    },
     // Cheer-based awards, by share of the holder's own received cheers
     { emoji: '⚔️', label: 'Top Fierce Offense',   ...topShareHolder(c => c.offense_received) },
     { emoji: '🛡️', label: 'Top Iron Defense',     ...topShareHolder(c => c.defense_received) },
@@ -480,6 +489,8 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
 
   return awards
 }
+
+const PLACE_LABELS = ['1st', '2nd', '3rd']
 
 function AwardsLeaderboard() {
   const [awards, setAwards] = useState<AwardEntry[]>([])
@@ -505,7 +516,32 @@ function AwardsLeaderboard() {
 
   return (
     <div className="space-y-2">
-      {awards.map(a => (
+      {awards.map(a => a.ranking ? (
+        <div key={a.label} className="bg-card border border-border rounded-xl px-4 pt-3 pb-1">
+          <div className="flex items-center gap-3">
+            <span className="text-xl shrink-0">{a.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">{a.label}</p>
+              {a.rule && <p className="text-xs text-muted-foreground">{a.rule}</p>}
+            </div>
+          </div>
+          {a.ranking.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic py-2">Vacant — no data yet</p>
+          ) : (
+            <ol className="mt-2">
+              {a.ranking.map((r) => (
+                <li key={`${r.place}-${r.name}`} className="flex items-center gap-3 py-2 border-t border-border text-sm">
+                  <span className={`w-8 text-xs font-bold tabular-nums ${r.place === 1 ? 'text-gold-ink' : 'text-muted-foreground'}`}>
+                    {PLACE_LABELS[r.place - 1] ?? `${r.place}th`}
+                  </span>
+                  <span className="flex-1 min-w-0 truncate font-semibold">{r.name}</span>
+                  <span className="font-bold text-primary-ink tabular-nums shrink-0">{r.valueLabel}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      ) : (
         <div key={a.label} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
           <span className="text-xl shrink-0">{a.emoji}</span>
           <div className="flex-1 min-w-0">
