@@ -250,8 +250,8 @@ function PayStep({
  * The payment card unmounts the instant `paid` flips true (see
  * `shouldShowPaymentInfo`), so without this the answer to "did the admin
  * confirm it?" arrived as the card disappearing — indistinguishable from a
- * bug. Sits flush under the session header so it is on screen for the rest of
- * the session rather than only while the card happens to render.
+ * bug. Sits flush under the session header until matches exist; after that the
+ * schedule is the page, and a settled fee is not worth a row above it.
  *
  * Deliberately paid-only: while unpaid or waiting, the card below carries its
  * own Unpaid / Sent pill, and two pills saying the same thing is noise.
@@ -339,7 +339,12 @@ function ScheduleTab({
   const { phoneNumber, qrCodeUrl, isLoading: paymentSettingsLoading } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
   const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, exempt, hasPaymentInfo })
-  const showWaived = isRegistered && exempt === true && paid !== true
+  // Once matches exist the schedule itself proves registration, so a settled
+  // player (paid or no-fee) gets no fee row on top of their games. An unpaid
+  // player keeps the payment card regardless — they must keep seeing they owe.
+  const scheduleExists = !isLoading && matches.length > 0
+  const showWaived = !isLoading && !scheduleExists && isRegistered && exempt === true && paid !== true
+  const showPaidBar = !isLoading && !scheduleExists && isRegistered && paid === true
 
   const { receipts, activeReceiptCount, isUploading, uploadReceipt, deleteReceipt } =
     useSessionReceipts(isRegistered ? sessionId : undefined, isRegistered ? playerId : undefined)
@@ -381,7 +386,7 @@ function ScheduleTab({
         />
       )}
 
-      {!isLoading && isRegistered && paid === true && <SessionFeePaidBar />}
+      {showPaidBar && <SessionFeePaidBar />}
 
       {showWaived && <SessionFeeWaivedLine />}
 
