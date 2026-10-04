@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { ensureProfile } from '@/lib/ensureProfile'
 
 type Role = 'admin' | 'moderator' | 'player' | null
 
@@ -54,15 +55,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 2. Fetch role in a separate effect, triggered after user state updates.
   //    This ensures the Supabase client has the JWT stored before querying.
+  //    The profile is ensured first and inside the isLoading window, so screens
+  //    that wait on isLoading never read a profile that is about to be created.
   useEffect(() => {
     if (user) {
-      fetchProfile(user.id).then(({ role: r, isActive }) => {
-        if (!isActive) {
-          supabase.auth.signOut()
-          return
-        }
-        setRole(r)
-      }).finally(() => setIsLoading(false))
+      ensureProfile(user)
+        .catch((err) => console.error('[AuthContext] ensureProfile failed:', err))
+        .then(() => fetchProfile(user.id))
+        .then(({ role: r, isActive }) => {
+          if (!isActive) {
+            supabase.auth.signOut()
+            return
+          }
+          setRole(r)
+        })
+        .finally(() => setIsLoading(false))
     }
   }, [user])
 
