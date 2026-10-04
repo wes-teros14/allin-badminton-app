@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Paperclip, Trash2 } from 'lucide-react'
 import { computeStatsFromResults } from '@/lib/matchResults'
+import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { derivePaymentState } from '@/lib/paymentState'
@@ -651,13 +652,21 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
 
   useEffect(() => { load() }, [load])
 
+  // Once per burst (a split result inserts two rows), and not resubscribed when
+  // `load` changes identity. match_results has no session_id to filter on.
+  const loadRef = useRef(load)
+  loadRef.current = load
   useEffect(() => {
+    const reload = createCoalescedRunner(() => loadRef.current(), () => coalesceDelay())
     const channel = supabase
       .channel(`session-leaderboard-rt-${sessionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_results' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_results' }, () => reload.schedule())
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [load, sessionId])
+    return () => {
+      reload.cancel()
+      supabase.removeChannel(channel)
+    }
+  }, [sessionId])
 
   if (isLoading) {
     return (
