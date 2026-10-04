@@ -91,6 +91,8 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - A UI that loads a list must render a failed load as an error, never as the empty state. "Nobody yet" on a query that errored tells the user the opposite of the truth.
 - In a POC's top-level `<script>`, never name a `const`/`let` after a window global (`top`, `name`, `status`, `parent`, `self`, `length`). It kills the whole script with "already been declared". Verifying via `eval` hides this — inject a real `<script>` element instead.
 - Load the bencium skill (plus `ui-typography`) before any UI mockup or UI change, however quick. "It's only a POC" is not an exemption — the POC is where the design is decided.
+- When a ranking excludes people (organisers, inactive players), filter them out before assigning positions, never after — otherwise they still occupy places and everyone behind them is scored too low.
+- An empty queue or table proves nothing is pending, not that a feature is unused. Before calling an extension unused, grep migrations and check live functions/triggers/cron that call it.
 - When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 
 ## .env Files
@@ -221,4 +223,4 @@ instead, since it holds the agreed wording for terms I have already covered.
 
 ## UI/UX
 
-When designing or building UI or UX, use the bencium skill.
+When designing or building UI or UX, use the bencium, impeccable and intent skills
