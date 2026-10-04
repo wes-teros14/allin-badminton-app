@@ -697,10 +697,11 @@ const TAB_LABELS: Record<Tab, string> = {
 
 export function SessionPlayerDetailView() {
   const { sessionId } = useParams<{ sessionId: string }>()
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [tab, setTab] = useState<Tab>('schedule')
   const [nameSlug, setNameSlug] = useState<string | null>(null)
   const [slugLoading, setSlugLoading] = useState(true)
+  const [slugError, setSlugError] = useState<string | null>(null)
 
   const [isRegistered, setIsRegistered] = useState(false)
   const [isRegistering, setIsRegistering] = useState(false)
@@ -711,13 +712,17 @@ export function SessionPlayerDetailView() {
   const [sessionNotes, setSessionNotes] = useState<string | null>(null)
   const [registrationOpensAt, setRegistrationOpensAt] = useState<string | null>(null)
 
+  // Waits for auth: AuthContext ensures the profile exists inside its loading
+  // window, so reading earlier could miss a row that is about to be created.
   useEffect(() => {
+    if (authLoading) return
     if (!user) { setSlugLoading(false); return }
-    supabase.from('profiles').select('name_slug').eq('id', user.id).maybeSingle().then(({ data }) => {
+    supabase.from('profiles').select('name_slug').eq('id', user.id).maybeSingle().then(({ data, error }) => {
+      setSlugError(error ? error.message : null)
       setNameSlug((data as { name_slug: string | null } | null)?.name_slug ?? null)
       setSlugLoading(false)
     })
-  }, [user])
+  }, [user, authLoading])
 
   // Fetch registration status + session info
   useEffect(() => {
@@ -843,6 +848,11 @@ export function SessionPlayerDetailView() {
               registrationOpensAt={registrationOpensAt}
               onRegister={handleRegister}
             />
+          ) : slugError ? (
+            <div className="h-48 flex flex-col items-center justify-center gap-1 px-6 text-center">
+              <p className="text-sm font-medium">Couldn&apos;t load your player profile.</p>
+              <p className="text-xs text-muted-foreground">{slugError} — refresh the page to try again.</p>
+            </div>
           ) : (
             <div className="h-48 flex items-center justify-center">
               <p className="text-muted-foreground text-sm">No schedule found for your account.</p>
