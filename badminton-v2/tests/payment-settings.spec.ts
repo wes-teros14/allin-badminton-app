@@ -184,10 +184,10 @@ test('payment info disappears once the registration is marked Paid', async ({ pa
   await setRegistrationPaid(sessionAId, testPlayerId, false)
 })
 
-test('a non-admin cannot reach the payment settings screen (FR-006, US2 AS3)', async ({ page }) => {
+test('a non-admin cannot reach the settings screen (FR-006, US2 AS3)', async ({ page }) => {
   await signInAs(page, 'S1 Alex Tan')
-  await page.goto('/payment-settings')
+  await page.goto('/settings')
   await page.waitForLoadState('networkidle')
 
-  await expect(page).not.toHaveURL(/\/payment-settings/)
+  await expect(page).not.toHaveURL(/\/settings/)
 })

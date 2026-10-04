@@ -1,36 +1,37 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-04 (late, Manila). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-04 (late night, Manila). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- **Design-only session. No app code changed.** Committed: Q&A log entries, lessons, one `CLAUDE.md` lesson.
-- Free-plan load reduction and 🐦 Early Bird all-time (branches `015`–`017`) are on `dev` and `main` from the earlier session.
+- **"Cheer later" + Settings shipped** (branch `018-cheer-later` → `dev` → `main`):
+  - Payment Settings is now **Settings** (`/settings`; `/payment-settings` redirects), with Payments and Cheers sections.
+  - Players on the "Cheer later" list get a reminder bar and a sheet instead of the full cheers gate, on every page.
+  - The celebration plays over the bar and waits only while the sheet is open.
+- **Migration 084 `cheer_later_players` is on PROD** (applied via MCP). RLS tested in a rolled-back block: a player sees only their own row and can't insert.
+- **084 is NOT on DEV.** On dev the lookup 404s, falls back to the full gate, and the Settings card shows "Couldn't load the list".
+- `tsc -b`, lint, 405 unit tests and the build pass.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
-## Done this session
+## Verified, and how
 
-- Diagnosed the admin's problem with the cheers gate: `PlayerLayout` swaps `<Outlet>` for `<CheersPanel>`, and the admin routes are nested in that layout, so finishing your own match unmounts the Live page.
-- POC `temporary_files/admin-cheers-gate-options.html` (gitignored): options A–E. **User leaned to B** (a reminder bar plus a sheet instead of the full gate) and confirmed games stack into one bar.
-- The user then reframed the request:
-  - Rename **Payment Settings → Settings**.
-  - Add a **"Cheer later"** player list, built like "Players who don't pay".
-  - Listed players get the bar **on every page** (chosen over admin pages only).
-- POC `temporary_files/settings-page-options.html`: three layouts. 1 = sections on one scroll (recommended), 2 = Payments | Cheers switch, 3 = player lists first.
+- Playwright on the dev app as Admin, 390 px, dark. Two responses were rewritten in the browser only (on the list, no cheers given):
+  - Listed: bar "15 games done · 45 cheers to give" over `/admin`; the sheet opened; "Later" brought the bar back.
+  - Unlisted: the full gate, as before.
+- `/settings` showed Payments + Cheers and four cards; `/payment-settings` landed on `/settings`; no page errors.
+
+## Not verified
+
+- Giving a real cheer inside the sheet (would write to dev); the sheet should stay open between cheers per the code.
+- The admin-side RLS test (declined); its policy is identical to 082's.
 
 ## Immediate next steps
 
-- **Get the user's pick of Settings layout (1/2/3)**, then build:
-  - Route `/settings`, with a redirect from `/payment-settings`. Change the `TopNavBar` label and the page title.
-  - New table (e.g. `cheer_later_players`) with admin-only write RLS. Every player must be able to *read* their own row so the layout knows to show the bar.
-  - `CheerLaterCard`, modelled on `PaymentExemptCard`.
-  - `PlayerLayout`: listed players get `<Outlet>` plus a `CheersReminderBar` and a sheet wrapping `CheersPanel`. The celebration hold must still apply while the sheet is open, or the cheers are still owed (decide which).
-- Migration route: hand the user the CLI steps for dev. For prod, MCP `apply_migration` is fine; never `db push`.
+- **On prod:** open Settings → Cheers and add yourself to "Cheer later". It takes effect on the next app load.
+- Apply 084 to dev yourself: paste `badminton-v2/supabase/migrations/084_cheer_later_players.sql` into the dev project's SQL editor (`tsvetqzkullivprbjtli`). Prefer that to `db push`, because dev's migration history state is unclear.
 - Carried over: restart the prod project 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4 (~2,300–4,200, target ≤ half).
 
 ## Open questions
 
-- Settings layout 1, 2 or 3?
-- Should the celebration wait while a "Cheer later" player still owes cheers? Today it is held until the gate clears.
 - Carried over: is the load reduction enough (otherwise Realtime Broadcast or paid compute)?
-- Carried over: prod migration history out of sync; `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.
+- Carried over: prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.

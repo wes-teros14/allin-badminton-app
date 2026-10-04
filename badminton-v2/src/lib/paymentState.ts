@@ -29,7 +29,7 @@ export type PaymentState = 'unpaid' | 'submitted' | 'paid' | 'exempt'
  * contributes nothing to the state.
  *
  * `exempt` is `session_registrations.payment_exempt` (migration 082): the
- * player is on the Payment Settings "don't pay" list. It ranks below `paid`
+ * player is on the Settings "don't pay" list. It ranks below `paid`
  * on purpose -- someone confirmed paid before being added keeps their money
  * in revenue and stays green. It is required rather than optional so that no
  * caller can silently forget it and show an exempt player as unpaid.

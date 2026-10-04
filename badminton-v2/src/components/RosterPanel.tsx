@@ -90,7 +90,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
 
     // Awaiting first — those are the rows that need a decision. Sort is stable,
     // so players keep their roster order within each group.
-    // Exempt last: nothing to decide, managed on Payment Settings instead.
+    // Exempt last: nothing to decide, managed on Settings instead.
     const ORDER: Record<PaymentState, number> = { submitted: 0, paid: 1, unpaid: 2, exempt: 3 }
     const rows = players
       .map((player, i) => ({ player, state: states[i] }))
@@ -146,7 +146,7 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
 
                       {state === 'exempt' ? (
                         // No switch: an exempt player has nothing to confirm. They leave the
-                        // list on Payment Settings, not here.
+                        // list on Settings, not here.
                         <span className="shrink-0 rounded border px-2 py-1 text-xs text-muted-foreground">No fee</span>
                       ) : (
                       <div className="flex rounded overflow-hidden border text-xs shrink-0">

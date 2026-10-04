@@ -68,9 +68,9 @@ export function TopNavBar() {
       badge: false,
     },
     {
-      label: 'Payment Settings',
-      href: '/payment-settings',
-      active: isUnder(pathname, '/payment-settings'),
+      label: 'Settings',
+      href: '/settings',
+      active: isUnder(pathname, '/settings'),
       show: role === 'admin',
       badge: false,
     },

@@ -17,7 +17,7 @@ export interface RosterPlayer {
   profileLevel: number | null
   /** Payment CONFIRMED by an admin. Sole input to revenue — do not repurpose. */
   paid: boolean
-  /** On the Payment Settings "don't pay" list for this session (migration 082). */
+  /** On the Settings "don't pay" list for this session (migration 082). */
   paymentExempt: boolean
   /** Non-dismissed receipts. Feeds the derived "awaiting confirmation" state. */
   activeReceiptCount: number

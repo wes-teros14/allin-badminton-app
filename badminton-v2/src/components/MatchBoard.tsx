@@ -179,7 +179,7 @@ export function PaymentBanner({
   }
 
   if (paymentState === 'exempt') {
-    // On the Payment Settings "don't pay" list: one quiet line, nothing to act on.
+    // On the Settings "don't pay" list: one quiet line, nothing to act on.
     return (
       <span className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-muted px-2 py-1.5 text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
         No fee for you

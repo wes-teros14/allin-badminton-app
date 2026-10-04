@@ -264,6 +264,24 @@ export type Database = {
           },
         ]
       }
+      cheer_later_players: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          player_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          player_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          player_id?: string
+        }
+        Relationships: []
+      }
       payment_exempt_players: {
         Row: {
           added_at: string

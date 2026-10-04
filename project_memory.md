@@ -155,7 +155,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Data conventions worth not relearning
 
 - **One derivation helper per concept.** Payment state goes through `src/lib/paymentState.ts` (`derivePaymentState`) on all three surfaces — sessions list, session card, admin panel — because divergent copies previously showed different colours for the same row (FR-020). Same pattern for `sessionStatusStyle.ts` and `sessionStamp.ts`.
-- **Payment-exempt players (migration 082, 2026-09-28).** Payment Settings → "Players who don't pay"
+- **Payment-exempt players (migration 082, 2026-09-28).** Settings (was Payment Settings until 2026-10-04) → "Players who don't pay"
   (`PaymentExemptCard`, table `payment_exempt_players`, admin-only RLS). The flag is **snapshotted** on
   `session_registrations.payment_exempt`, never looked up live: a BEFORE INSERT trigger sets it from the
   list (overriding the client, so nobody self-exempts), and list changes update only non-`complete`
@@ -223,7 +223,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   extra achievement, cap 6 s). Confetti is 240 pieces: half burst, half trickled over 180 frames so it
   lasts as long as the card. Physics are per-frame, so on a 120 Hz phone it runs about twice as fast
   (unchanged, not yet addressed).
-- **The cheers gate covers admin pages too, and that is being changed (decided 2026-10-04, not built yet).**
+- **"Cheer later" replaces the gate for listed players (built 2026-10-04, migration 084).**
   Admin routes are nested inside `PlayerLayout`, which renders `<CheersPanel>` *instead of* `<Outlet>`,
   so finishing your own match unmounts the Live page mid-changeover. Direction the user chose: a
   **"Cheer later"** player list on the page renamed **Settings** (was Payment Settings, `/payment-settings`
@@ -233,6 +233,10 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   (no reminder), holding until Finish Session (12–15 cheers in one go, late to players), a "Cheer later"
   button on the gate (still interrupts), and inline cheering on the court card (a second cheer UI that
   would drift). "Admin pages only" was rejected because a listed regular player could never benefit.
+  The celebration plays over the bar and is held only while the sheet is open (user's choice), so a medal
+  is never stuck behind deferred cheers. A failed lookup falls back to the full gate. Both Settings lists
+  are thin wrappers over `PlayerListCard`; a third list is one wrapper plus a table with the same shape.
+  084 is on prod (via MCP, timestamp version) but **not on dev**.
 - **The launch backlog of received cheers is one summary toast** ("🎉 12 new cheers · 🤝 ×10 · …",
   **See** → `/profile`), chosen 2026-09-28. One toast per cheer (~12 after a session, 20 s each) buried
   everything else. A single cheer, and live cheers while the app is open, keep the per-cheer wording.
