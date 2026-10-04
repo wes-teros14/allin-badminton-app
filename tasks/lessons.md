@@ -777,3 +777,13 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - **Rule:** a poll next to a Realtime subscription is a safety net, not a heartbeat — make its
   interval depend on the connection status. And check prod's publication/migration state directly;
   a migration file in the repo is not proof it ran.
+
+## 2026-10-04 — Registration Early Bird crowned someone for a session weeks away
+
+- **Symptom:** the 🐦 award holder came from the Oct 25 session (3 weeks out, 2 sign-ups) and changed
+  whenever a new session was created.
+- **Root cause:** "latest session" was `status <> 'setup'` ordered by `date desc`, which is the
+  furthest-future open session, not the most recent one played.
+- **Fix:** award rebuilt as a points race over the last 8 *completed* sessions (`lib/earlyBird.ts`).
+- **Rule:** "latest session" must say which one — last finished, or next upcoming. Ordering by date
+  alone picks the furthest future.
