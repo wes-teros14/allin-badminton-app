@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label'
 import { supabase } from '@/lib/supabase'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { PaymentExemptCard } from '@/components/PaymentExemptCard'
+import { CheerLaterCard } from '@/components/CheerLaterCard'
 import { useAuth } from '@/hooks/useAuth'
 
 const MAX_QR_BYTES = 5 * 1024 * 1024
 
-export function PaymentSettingsView() {
+export function SettingsView() {
   const { phoneNumber, qrCodeUrl, isLoading } = usePaymentSettings()
   const { user } = useAuth()
   const [phone, setPhone] = useState('')
@@ -91,7 +92,9 @@ export function PaymentSettingsView() {
 
   return (
     <div className="max-w-sm mx-auto px-4 py-8 space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">Payment Settings</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+
+      <SectionHeading>Payments</SectionHeading>
       <p className="text-sm text-muted-foreground">
         Shown to registered players who haven't paid yet, on their session detail screen.
       </p>
@@ -151,8 +154,20 @@ export function PaymentSettingsView() {
       <div className="pt-4">
         <PaymentExemptCard />
       </div>
+
+      <SectionHeading>Cheers</SectionHeading>
+      <CheerLaterCard />
     </div>
   )
 }
 
-export default PaymentSettingsView
+/** A small caps label with a rule running to the right edge, grouping the cards below it. */
+function SectionHeading({ children }: { children: string }) {
+  return (
+    <h2 className="flex items-center gap-2 pt-4 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground after:h-px after:flex-1 after:bg-border">
+      {children}
+    </h2>
+  )
+}
+
+export default SettingsView

@@ -31,7 +31,7 @@ export function shouldShowPaymentInfo({
 }: {
   isRegistered: boolean
   paid: boolean | null
-  /** On the Payment Settings "don't pay" list (migration 082). */
+  /** On the Settings "don't pay" list (migration 082). */
   exempt: boolean | null
   hasPaymentInfo: boolean
 }): boolean {

@@ -1,3 +1,31 @@
+# Cheer later + Settings page — plan (2026-10-04)
+
+Decided with the user: Payment Settings becomes Settings, with layout 1 (Payments and Cheers sections on one
+scroll). A "Cheer later" list gives listed players a reminder bar and a sheet on every page instead of the
+full cheers gate. The celebration plays anyway and waits only while the sheet is open.
+
+- [x] Migration 084 `cheer_later_players`: admin manages it, a player can read their own row
+- [x] `database.ts` types
+- [x] Shared `PlayerListCard`; `PaymentExemptCard` and new `CheerLaterCard` become thin wrappers
+- [x] `PaymentSettingsView` → `SettingsView`, route `/settings`, `/payment-settings` redirects; nav label
+- [x] `useCheerLater` hook; `cheersReminderLabel` (unit-tested); `CheersReminderBar` + sheet
+- [x] `PlayerLayout`: bar instead of the gate for listed players; the celebration hold follows the sheet
+- [x] Update navMatch test + e2e path; `tsc -b`, lint, unit tests, build; browser check
+- [x] Apply 084 to prod (MCP); CLI steps for dev
+
+## Review
+
+- 084 applied to prod via MCP and RLS tested in a rolled-back block: a player sees own=1, other=0, insert
+  refused. The admin-side test was declined; the policy is identical to 082's.
+- **Dev does not have 084** (the CLI is logged into a foreign account). On dev the lookup 404s and falls back
+  to the full gate, by design.
+- Browser (Playwright, 390 px, dark, responses rewritten in the browser only): listed admin got the bar
+  "15 games done · 45 cheers to give" over /admin, the sheet opened, Later brought the bar back. Unlisted got
+  the full gate. /settings shows Payments + Cheers; /payment-settings redirects. No page errors.
+- Not exercised: giving a real cheer inside the sheet (it would write to dev).
+- `tsc -b`, lint, 405 unit tests and the build all pass.
+
+
 # Free-plan load reduction — plan (after the 2026-10-04 outage)
 
 Evidence (prod logs, 06:00–07:35 UTC Oct 4): ~10,800 requests / 95 min from ~12 devices. Court poll
