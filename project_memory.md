@@ -223,6 +223,16 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   extra achievement, cap 6 s). Confetti is 240 pieces: half burst, half trickled over 180 frames so it
   lasts as long as the card. Physics are per-frame, so on a 120 Hz phone it runs about twice as fast
   (unchanged, not yet addressed).
+- **The cheers gate covers admin pages too, and that is being changed (decided 2026-10-04, not built yet).**
+  Admin routes are nested inside `PlayerLayout`, which renders `<CheersPanel>` *instead of* `<Outlet>`,
+  so finishing your own match unmounts the Live page mid-changeover. Direction the user chose: a
+  **"Cheer later"** player list on the page renamed **Settings** (was Payment Settings, `/payment-settings`
+  → `/settings`), built like "Players who don't pay". Listed players get a reminder bar plus a sheet
+  holding `CheersPanel` on **every** page, never the full gate. Games stack into one bar, oldest first.
+  Cheers stay compulsory, because share boards depend on it. Rejected: exempting admin routes silently
+  (no reminder), holding until Finish Session (12–15 cheers in one go, late to players), a "Cheer later"
+  button on the gate (still interrupts), and inline cheering on the court card (a second cheer UI that
+  would drift). "Admin pages only" was rejected because a listed regular player could never benefit.
 - **The launch backlog of received cheers is one summary toast** ("🎉 12 new cheers · 🤝 ×10 · …",
   **See** → `/profile`), chosen 2026-09-28. One toast per cheer (~12 after a session, 20 s each) buried
   everything else. A single cheer, and live cheers while the app is open, keep the per-cheer wording.
