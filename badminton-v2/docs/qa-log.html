@@ -110,6 +110,34 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">I’m the admin, and the cheers gate gets in the way of admin work during the game. Why does it cover admin pages at all?</p>
+    <p class="a">
+      Because the admin routes (<code>/admin</code>, <code>/session/:id</code>, <code>/players</code>,
+      finance and the rest) are nested inside the same <code>PlayerLayout</code> as the player pages
+      (<code>src/App.tsx</code>). <code>PlayerLayout</code> renders <code>&lt;CheersPanel&gt;</code>
+      <em>instead of</em> <code>&lt;Outlet&gt;</code> whenever <code>hasPendingCheers</code> is true, so
+      finishing a match you played in unmounts the Live page until you’ve given all three cheers.
+      “Skip” only lasts until the next reload. Five ways around it (exempt admin routes, a reminder bar
+      with a sheet on admin routes, hold until Finish Session, a “Cheer later” button, inline cheering
+      on the court card) are compared in <code>temporary_files/admin-cheers-gate-options.html</code>
+      (2026-10-04). Whichever is chosen, cheers have to stay compulsory in the end, because the Cheers
+      boards score shares.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">With the admin “bar, not a wall” option, would several finished games stack?</p>
+    <p class="a">
+      Yes, and the data already supports it. <code>useMatchCheers</code> returns
+      <code>pendingMatches</code>, a list of every finished match you still owe cheers for, and
+      <code>CheersPanel</code> already shows <code>pendingMatches[0]</code> with
+      <code>remainingCount</code> (“3 games to cheer”). The bar would show the total
+      (“2 games done · 6 cheers to give”), and the sheet walks through the games oldest first, three
+      cheers each, staying open between games. The same counts drive today’s full-page gate.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">

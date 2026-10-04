@@ -93,6 +93,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - Load the bencium skill (plus `ui-typography`) before any UI mockup or UI change, however quick. "It's only a POC" is not an exemption — the POC is where the design is decided.
 - When a ranking excludes people (organisers, inactive players), filter them out before assigning positions, never after — otherwise they still occupy places and everyone behind them is scored too low.
 - An empty queue or table proves nothing is pending, not that a feature is unused. Before calling an extension unused, grep migrations and check live functions/triggers/cron that call it.
+- A POC's first screen must already show each option's effect. Never hide the sample behind a "press this to see it" step, and send the file with SendUserFile so it actually reaches the user.
 - When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 
 ## .env Files

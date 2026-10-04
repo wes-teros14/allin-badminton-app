@@ -787,3 +787,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - **Fix:** award rebuilt as a points race over the last 8 *completed* sessions (`lib/earlyBird.ts`).
 - **Rule:** "latest session" must say which one — last finished, or next upcoming. Ordering by date
   alone picks the furthest future.
+
+## 2026-10-04: POC samples hidden behind a button
+- Symptom: the user opened the admin cheers-gate POC and saw no samples.
+- Root cause: every option opened in the "before" state, so nothing differed between tabs until you pressed "Finish my game". The file was also only opened in my browser pane, never sent to the user.
+- Fix: each tab now opens in the "after" state, with a Replay button; the file is delivered with SendUserFile.
