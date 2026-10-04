@@ -1095,6 +1095,326 @@
   <h2 class="topic" id="live-board">Live board &amp; performance</h2>
 
   <div class="qa">
+    <p class="q">The app didn't load for a few hours on 2026-10-04 — what do the Supabase logs say happened?</p>
+    <p class="a">
+      The exported logs (142 entries, all from the <em>Realtime</em> service, prod project) cover
+      15:35–15:59 Manila time, about 1½ hours into the October Palo session (14:00–16:00). They show
+      the database stop answering: from 15:35 Realtime's own queries time out ("Too many database
+      timeouts", 36×), by 15:45 creating and deleting subscriptions hits Postgres's statement timeout,
+      then every request waits 12 s and is dropped because no connection is free ("connection not
+      available … dropped from queue"). At 15:49 the pool connection is lost; Realtime retries for its
+      10-minute recovery window and at 15:59 gives up and shuts the project's Realtime down.
+    </p>
+    <p class="a">
+      These are <em>symptoms</em> — Realtime is the first thing to complain when Postgres is
+      overloaded or unreachable. The logs do not show the cause. Likeliest is the database running
+      out of capacity under live-session load (every player phone polls courts every 5 s and holds
+      several Realtime channels). Confirm with Reports → Database (CPU, memory, connections, Disk IO
+      budget) and the Postgres logs for that window. The same-day app deploys (ensure-profile, Sessions
+      copy, fee row) shipped hours earlier and touch no Realtime or polling code.
+    </p>
+    <p class="a">
+      Supporting evidence: a Supabase notification dated 2026-09-06, "Disk IO budget is being consumed
+      on badminton-v2 … may become unresponsive if fully consumed." Small compute sizes get a burst
+      Disk IO budget on top of a low baseline; once spent, IO is throttled and every query slows until
+      it refills — hours, which matches the outage length. Not yet confirmed for Oct 4: check the Disk
+      IO consumption chart for that afternoon, and that badminton-v2 is the prod project.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">But only 16 people were using the app — how can that overload the database?</p>
+    <p class="a">
+      Load comes from how often each phone asks, not head count. <code>useCourtState</code> re-reads
+      the courts every 5 s on every phone (<code>matches</code> + <code>sessions</code>, plus
+      <code>profiles</code> about once a minute), whether or not anything changed: ~24 reads/min per
+      phone, ~384/min for 16 phones, ~46,000 over a 2-hour session — before the admin phone and the
+      kiosk. Each match change also makes every phone reload its whole schedule, and Realtime's
+      <code>postgres_changes</code> runs a per-listener permission check for every change. Prod is the
+      Free plan on NANO compute (smallest memory, so more reads go to disk), which is what spends the
+      Disk IO budget. Biggest lever: poll only while Realtime is disconnected.
+    </p>
+    <p class="a">
+      Database report for Oct 4, 15:20–15:34 Manila (prod, NANO): <strong>swap</strong> is the largest
+      slice of memory on every sample, <strong>committed memory sits at or above the commit limit</strong>
+      (1.54 GB at 15:34), and CPU is mostly <strong>IOwait</strong>, not user work — the box is
+      memory-starved and swapping to disk, which is what drains the Disk IO budget. All charts stop at
+      15:34 even though 15:20–16:00 was selected: the metrics collector lost the database there, one
+      minute before the Realtime errors begin. The Free plan is fixed at NANO; a bigger instance needs
+      Pro.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What does "stop polling when live updates are working" mean?</p>
+    <p class="a">
+      Player screens are kept current two ways at once. <strong>Push:</strong> <code>useRealtime</code>
+      subscribes to <code>matches</code>, <code>match_results</code> and <code>sessions</code> and
+      reloads whenever one changes, plus once on every reconnect. <strong>Poll:</strong>
+      <code>useCourtState</code> independently re-reads the courts every 5 s while the tab is visible,
+      changed or not. With push connected, the poll mostly confirms "nothing changed"; it only matters
+      as a safety net when the connection drops. Proposal: run the 5 s poll only while
+      <code>useRealtime</code>'s status is not <code>connected</code> — roughly 2,900 reads per phone
+      per 2-hour session today versus a few hundred, with nothing lost on screen.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What does the 5-second check actually update in the UI?</p>
+    <p class="a">
+      The <strong>court cards</strong>: the "COURT 1 / COURT 2" cards at the top of My Games
+      (<code>/sessions/:id</code>), the same cards on <code>/match-schedule</code>, and the whole court
+      display on the live-board tablet — which game is on each court and which is next. All read
+      <code>useCourtState</code>. The on-court elapsed timer is <em>not</em> part of it: that is a
+      1-second client-side tick from <code>startedAt</code>, no database read. Raising the interval to
+      10 s halves polling reads; while Realtime is connected nobody would notice, and when it drops the
+      cards catch up within 10 s instead of 5.
+    </p>
+    <p class="a">
+      Visual explainer with a simulator and the read counts:
+      <code>docs/visual/court-poll-interval-what-changes.html</code>. Takeaway: in a normal night the live
+      push wins, so 5 s vs 10 s is invisible and only halves the checking reads (-48%). A 30 s safety-net
+      check cuts them ~80% and still repairs a lost push; push-only cuts ~92% but nothing repairs a push
+      that is lost while the status says connected. None of these is the priority fix for the outage:
+      the memory/swap evidence points at the NANO instance size.
+    </p>
+    <p class="a">
+      <strong>Confirmed by a quiet-day comparison</strong> (Database report, 15:20–16:00 Manila): on
+      Oct 3, with nobody on the app, free memory was 5.8 MB, swap 331 MB (80% of RAM), committed memory
+      1.27 GB against a 1.2 GB limit (106%), CPU 1.5%. On Oct 4 during the session: free 3.9 MB, swap
+      424 MB (103%), committed 1.42 GB (118%), CPU 34% of which 24.5% was IOwait. The database was
+      already memory-starved before any load; the session pushed it over. Priority fix is a bigger
+      compute size (Pro plan; Free is fixed at NANO, and also has no backups); cutting polling reads is
+      a secondary, cheap extra.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“The swapping is what drains the Disk IO budget, which is why the database stopped answering.”</p>
+    <p>
+      Not supported by the disk charts. Same window (Oct 4, 15:20–15:34): disk IOPS ≈ 2 against a
+      3,000 burst ceiling, disk throughput ≈ 33 KB/s against 125 MB/s, database connections ≈ 20 of
+      60, and the database itself is tiny (≈ 0.04 GB of data on an 8 GB disk). So the Disk IO budget
+      was <em>not</em> visibly being spent before 15:34. What <em>is</em> supported is memory
+      starvation: swap above RAM size, committed memory 118% of the limit, free memory about 1%, and
+      CPU mostly IOwait. The 2026-09-06 “Disk IO budget” notice is real but is not evidence for Oct 4.
+      Why IOwait is high with almost no disk traffic is still unexplained; the metrics also stop at
+      15:34, so what happened after is not visible. Still to check: Compute and Disk settings for the
+      actual IO-budget meter, and Observability → Realtime and Database Connections.
+    </p>
+    <p>
+      <strong>Update, same evening:</strong> the Realtime Settings page (≈19:00 Manila) shows a banner,
+      “Your project is about to deplete its Disk IO Budget … throughput will return to its baseline of
+      5 MB/s”. So the budget <em>is</em> nearly spent — my line above that the Disk IO budget was not
+      the story was too strong. The IOPS/throughput charts show instantaneous rates (tiny in
+      15:20–15:34), not the budget, and a budget can be drained earlier in the day or by traffic those
+      charts don't show. Rates that low alongside a nearly empty budget don't reconcile yet. Needed:
+      the budget meter over time and Observability → Query Performance (which queries read the most).
+      Also: Realtime's own pool sizes are already at the minimum (database pool 2, Postgres Changes pool
+      2), and the events/s, presence and payload limits are locked behind Pro, so there is nothing to
+      lower on the Realtime settings page.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“The app's own court polling is the big database load, so cut it to 30 s.”</p>
+    <p>
+      The Query Performance report (Observability → Query Performance, 2026-10-04 evening; totals are
+      since the stats were last reset, window unknown) says otherwise. The top 17 statements are ~99%
+      of all database time, and <strong>~77% is Realtime's change-feed polling</strong>: three variants
+      of <code>SELECT wal-&gt;&gt;$5 as type, …</code> (the <code>list_changes</code> poll, role
+      <code>supabase_admin</code>) at 38.4% (6.58 M calls, 11 h 1 m), 21.5% (4.58 M) and 17.6% (3.09 M),
+      the slowest call 28 s. Another ~9% is Realtime subscription bookkeeping (the
+      <code>pg_publication_tables</code> “sub_tables” query, ~104 k calls, max 5–10 s), plus replication-slot
+      and type checks and a Realtime setup block run 2,788 times (it keeps reconnecting). That is about
+      nine-tenths Realtime. The app's own data reads barely appear: the <code>cheers</code> select is
+      2.0% (30 k calls, 67 ms mean, already indexed on <code>(giver_id, match_id)</code>) and
+      PostgREST's per-request <code>set_config</code> 1.7% (538 k requests). The 5 s
+      <code>matches</code>/<code>sessions</code> court polls are not in the top 17 at all. So cutting the
+      poll saves very little; the real load is Realtime's Postgres Changes machinery itself. Also
+      odd: PostgREST's <code>pg_timezone_names</code> + type-introspection queries ran ~5,000 times at
+      0% cache hit, i.e. its schema cache reloaded thousands of times (unexplained; possibly retry
+      storms when the database is stressed).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why did PostgREST reload its schema cache ~5,000 times?</p>
+    <p class="a">
+      Not from the app. The repo has no runtime DDL and no <code>NOTIFY pgrst</code>; all 82 migrations
+      contain only ~283 DDL statements, and the cron job only <code>UPDATE</code>s
+      <code>sessions</code>. So the cause is platform- or connection-side: PostgREST reloads on every
+      <code>NOTIFY pgrst</code> (the stock <code>pgrst_ddl_watch</code>/<code>pgrst_drop_watch</code> event
+      triggers) and whenever it reconnects after losing the database, which can repeat on an unstable
+      instance. Without the stats window, ~5,000 may also simply be months of normal activity.
+      To decide: <code>select stats_reset from pg_stat_statements_info</code> (window),
+      <code>select evtname, evtevent, evtenabled from pg_event_trigger</code> (anything beyond the
+      stock triggers), and Logs Explorer <code>postgrest_logs</code> filtered on “schema cache” /
+      “reconnect” / “retrying” (routine loads vs failures clustered near 15:35).
+    </p>
+    <p class="a">
+      <strong>Resolved:</strong> <code>stats_reset</code> is 2026-03-18 16:47 UTC (project creation), so
+      every Query Performance total covers ~200 days. 5,074 reloads ÷ 200 days ≈ 25 a day, about one an
+      hour — ordinary platform/restart/DDL activity, not a loop. <code>pg_event_trigger</code> shows only
+      stock Supabase triggers (<code>pgrst_ddl_watch</code>, <code>pgrst_drop_watch</code>,
+      <code>ensure_rls</code>, the graphql/cron/net access ones), all enabled. Not an anomaly. Note
+      <code>postgrest_logs</code> is a Logs Explorer table, not a database table, so it errors in the SQL
+      Editor.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What does the second Supabase log export (supabase_logs (1).json) show?</p>
+    <p class="a">
+      Not the outage: it is the 100 most recent API Gateway rows, 11:43–11:47 UTC (19:43–19:47 Manila),
+      all HTTP 200, from a single signed-in user. The export only holds what the page is displaying, so
+      the time range (and an Errors filter) must be set <em>before</em> exporting. What it does show is
+      the request fan-out of one navigation: ~30–35 REST calls in ~12 s, twice, three minutes apart,
+      with the cheers-gate calls (<code>cheer_types</code>, <code>cheers</code>,
+      <code>matches?session_id=in.(21 ids)&amp;status=eq.complete</code>) repeating about five times per
+      burst. The <code>in.()</code> list is every in-progress <em>and complete</em> session the player is
+      registered for (<code>useCheersEligibleSessions</code> → <code>PlayerLayout</code>), so it grows by
+      one every week. After the token refresh at 11:44:28 there are exactly two <code>profiles</code>
+      reads (<code>ensureProfile</code> + <code>fetchProfile</code>, the former added 2026-10-04).
+      Dev check: leaving and re-entering the tab adds only one request (the court refresh), so focus
+      does not re-run the auth effects; dev counts are ~2× inflated by React StrictMode.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Which queries are using the Disk IO budget? (per-statement shared block read/write
+      totals from <code>pg_stat_statements</code>, since 2026-03-18)</p>
+    <p class="a">
+      None, in any meaningful sense. Adding up the listed statements: ≈ 45 MiB read+written in total over
+      ~200 days (~0.2 MiB a day). About 35 MiB of that (~78%) is Realtime subscription churn — five
+      variants of <code>insert into realtime.subscription … on conflict do update</code>, ~108,000 calls
+      (~540 a day; each channel binding a phone opens is one insert). The rest is small and ordinary:
+      4,941 <code>cheers</code> inserts, 5,646 auth refresh-token inserts (+5,183 revokes), 4,520
+      <code>cron.job_run_details</code> rows (the hourly job), 120 <code>matches</code> bulk inserts
+      (schedule locks), ~5,000 PostgREST schema-cache introspection runs (read-only, ~3 MiB), and
+      one-off Supabase auth/storage migrations (which is also what routinely reloads PostgREST).
+      This counts buffer blocks only, not WAL, checkpoints, autovacuum, logging or swap. So SQL is not
+      what is draining the budget; the only thing in the evidence that could is swap traffic from the
+      memory-starved box (unproven: needs the IO-budget meter plotted against swap). Optimizing queries
+      or adding indexes would not help.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What do the real Oct 4 logs show? (read directly via the Supabase connector, prod project
+      <code>ensdfitpeyreunihkqkh</code>)</p>
+    <p class="a">
+      Times are UTC (Manila = +8). Traffic ran hot from 06:00 to 07:35 (edge requests 2,300 / 3,700 /
+      4,200 per 30 min). At 07:35 Postgres began cancelling statements on timeout and Realtime logged
+      “Too many database timeouts”; at 07:36 its replication slot vanished (<code>replication slot …
+      does not exist</code>). By 07:40 the edge was returning 522/524 (origin not answering) and requests
+      collapsed from ~4,000 to ~30 per 30 min, staying near zero until ~09:05 (17:05 Manila), when traffic
+      came back (2,800 per 30 min). Postgres logged no out-of-memory, fork failure, signal or restart
+      line, so the database stalled rather than crashed — consistent with a memory-starved NANO box.
+      The load was ordinary player traffic: the same session’s matches/sessions/profiles reads every
+      few seconds from each phone. Dashboard queries (table counts, a 11.8 s usage report) ran at
+      07:30–07:41, minor extra load on an already struggling box. Not proven: what freed the box at
+      ~09:05 (no restart visible in logs).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What should we fix to stay on the free plan? (load breakdown from the Oct 4 edge logs,
+      06:00–07:35 UTC, the 95 minutes before the stall)</p>
+    <p class="a">
+      ~10,800 requests in 95 min (~2 per second) from ~12 devices. The <code>useCourtState</code> 5 s poll
+      (sessions + matches pair) is ~3,800 of ~7,800 GETs, about half of everything; one device (likely
+      the live board) alone made 2,489 requests, i.e. polled every ~5 s the whole time. The first
+      queries to time out at 07:35 were Realtime's <code>insert into realtime.subscription</code>, and
+      there were 157 websocket connects in 95 min, so channel churn is the second target.
+      <code>ensureProfile</code>'s <code>profiles?select=id,email</code> ran 107 times for one user (it
+      re-runs on every auth event). Free fixes, in order: poll every 30 s while Realtime is connected
+      (5 s only as fallback); keep channels open across navigation; run <code>ensureProfile</code> once
+      per user per app load; filter the unfiltered <code>match_results</code> subscriptions by session;
+      show “can't connect, retry” instead of an endless spinner; drop unused <code>pg_net</code>
+      (0 rows in its queues). Also: <code>session_registrations</code> is subscribed to in 4 places
+      but is not in the <code>supabase_realtime</code> publication, so those channels never fire.
+      Caveat: the box is short of memory even when idle, so halving traffic lowers the odds of a stall
+      but cannot guarantee it.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“<code>pg_net</code> has been unused since setup” (concluded from its empty queues).</p>
+    <p>
+      Wrong reasoning. Empty queues only mean nothing is pending; migrations 045–049 used
+      <code>net.http_post</code> for email triggers and cron jobs. Checked properly on 2026-10-04: no
+      function in prod calls <code>net.http_*</code> and the only cron job is
+      <code>open-registration-hourly</code>, so it is unused <em>now</em> and safe to drop.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Realtime is ~77% of the database's work, so moving off Postgres Changes would remove
+      most of the load.”</p>
+    <p>
+      77% is a share of a very small total. Over the same 200 days the top queries add up to ~29 h of
+      database time, about 0.6% of wall-clock, and the Realtime change poll is ~71 k calls a day
+      (roughly one every 1.2 s). So Realtime is the largest slice of a tiny pie: on a quiet day the CPU
+      read 1.5%. A switch to Broadcast would mostly save connections (7 of ~29) and subscription
+      bookkeeping, i.e. memory, not query time, and that benefit is unproven. It is not the first fix.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“0% cache hit on those PostgREST queries suggests they read from disk.”</p>
+    <p>
+      No. <code>pg_timezone_names</code> and the catalog/type-introspection queries read no table pages,
+      so Postgres reports a 0.00% hit rate because there are no buffer reads to count. It is not
+      evidence of disk reads. What is notable is how slow they were: mean 727 ms and max 7.3 s for the
+      timezone query, max 25.8 s for the extensions query — consistent with a memory-starved database.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why is the database out of memory, if the data is only ~40 MB?</p>
+    <p class="a">
+      Because the data isn't what uses it. Prod's settings are the stock NANO ones:
+      <code>shared_buffers</code> 224 MB, <code>effective_cache_size</code> 384 MB,
+      <code>maintenance_work_mem</code> 32 MB, <code>work_mem</code> 2.1 MB,
+      <code>max_connections</code> 60 — on a machine whose total memory reads 411 MB. At 2026-10-04
+      18:58 Manila, <code>pg_stat_activity</code> showed ~29 sessions: 11 idle PostgREST
+      (<code>authenticator</code>, i.e. the app's API pool), 7 Realtime
+      (<code>realtime_connect</code> ×2, <code>realtime_subscription_manager_pub</code> ×2,
+      <code>realtime_subscription_manager</code>, <code>realtime_replication_connection</code>,
+      <code>realtime_rls</code>), 1 each of <code>postgres_exporter</code>, <code>pg_cron</code>,
+      <code>pg_net</code> and the SQL editor, and ~7 internal background workers. Each backend costs
+      memory (several MB each is an estimate, not measured). Nothing is misconfigured: many normal
+      defaults add up to more than the box has, which is why swap was already 80% of RAM on a quiet
+      day. A bigger compute size fixes it; a smaller PostgREST pool (if the plan exposes one) and
+      fewer app reads are stopgaps.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Without paying for more memory, what can we do about the outage risk?</p>
+    <p class="a">
+      None of it removes the risk — the box was already at ~80% swap on a quiet day — but it widens the
+      margin. In order: (1) restart the prod project (Settings → General) an hour before each session,
+      and restart mid-session if the app stops loading (Realtime gave up at 15:59 and the outage then
+      ran for hours; a restart would likely have recovered it in minutes). (2) App changes:
+      <em>coalesce</em> the Realtime events from one Finish (≥3 row changes within a second, each
+      reloading every phone) into one reload and add 0–1.5 s random jitter per phone so 16 phones
+      don't hit the database at the same instant; and make the court check 30 s instead of 5 s.
+      <code>useMatchCheers</code> also listens to <em>all</em> <code>matches</code> updates (filtered
+      client-side) but with one active session the saving would be small. (3) Dashboard settings to
+      look for, unverified on Free: Realtime pool/event limits, and the Postgres cache
+      (<code>shared_buffers</code> 224 MB for ~40 MB of data) — test on dev first. (4) Watch
+      Observability → Database for swap/IOwait climbing during the first minutes of a session.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">
       The live board is too slow when updating games. It takes 3 to 5 seconds to show the next match even
       when there is internet. Can we store the scheduled matches on the device so there is no lag?
