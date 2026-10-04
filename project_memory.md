@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-09-30
+Last updated: 2026-10-04
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -67,7 +67,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   The header had to carry `Bearer ` before the `sbp_` token — a bare token returns HTTP 401.
 - **Revised 2026-09-28: the MCP route *can* apply migrations to prod, and did** (082, via
   `apply_migration`, after a rollback-only trigger test in a `DO` block that ends in `RAISE`). It records
-  a timestamp version (`20260928035840`), not `082`. MCP still cannot reach **dev** at all.
+  a timestamp version (`20260928035840`), not `082`.
+- **Revised 2026-10-04: the claude.ai Supabase connector reaches BOTH projects** (`list_projects`
+  shows `badminton-v2-DEV` and `badminton-v2`), with `execute_sql`, `apply_migration`, `query_logs`
+  (ClickHouse over edge/postgres/realtime/auth logs, 24 h window max) and `get_advisors`. It does not
+  show the Reports charts (memory, swap, Disk IO budget) — those are dashboard-only. Apply to DEV first,
+  then prod. 072 and 083 went to both this way.
 - **Prod's migration history is out of sync with its schema.** `supabase_migrations.schema_migrations`
   on prod records only 001–050 (plus 082's timestamp), yet the schema has every object up to 081 —
   051–081 were applied outside `db push`. **Never run `db push` against prod**: it would try to re-run
@@ -75,6 +80,29 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **The CLI on this machine was found logged into a foreign account** (2026-09-28:
   `inkphantom123456@gmail.com`, seeing one unrelated inactive project), not the owner's. It cannot
   reach dev or prod; the user logs in themselves before any CLI migration.
+
+## Capacity (Free plan) — read before adding polling or Realtime
+
+- **Prod runs on the Supabase Free plan, NANO compute (~0.5 GB RAM). The owner does not want to pay.**
+  Memory, not CPU or query time, is the constraint: swap was ~80% even on a quiet day.
+- **2026-10-04 outage:** ~15:40–17:05 Manila the DB stalled (statement timeouts, Realtime
+  "Too many database timeouts", gateway 522/524, no crash/restart) under ~2 req/s from ~12 phones.
+  Half the requests were the court state's fixed 5 s poll. Full analysis: `docs/qa-log.html`
+  (Supabase/outage entries) and `tasks/lessons.md`.
+- **Polling policy (since 2026-10-04):** a poll beside a Realtime channel is a safety net —
+  `useRealtime({ onPoll })` polls 30 s while subscribed, 5 s only when not
+  (`lib/realtimePolicy.ts`). Change events are coalesced (300 ms + ≤700 ms jitter). Don't add a fixed
+  short interval anywhere.
+- **Channel topics must be unique per hook instance** — `supabase.channel(topic)` returns the existing
+  channel for a reused topic, so two components on one page silently shared one.
+- **Subscribe narrowly:** filter server-side where the table allows it; subscribe only while a session
+  is live (cheers gate, Today leaderboard). `match_results` has no `session_id`, so its listeners stay
+  unfiltered — and they can't be swapped for a `matches` listener because the result row is inserted
+  *after* the match update.
+- **Free mitigations in place:** restart the project (Project Settings → General → Restart project)
+  15–30 min before a session or mid-freeze; avoid the dashboard during play; `pg_net` dropped (083).
+- **Not done, by choice:** Pro/compute upgrade (cost); moving to Realtime Broadcast (unproven benefit,
+  revisit only if the 2026-10-04 changes are not enough).
 
 ## Branching and commits
 
@@ -574,9 +602,9 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **`moveUp` / `moveDown` are not atomic** (`useAdminActions.ts:43-75`): three sequential updates
   using `queue_position: 9999` as a sentinel, so mid-reorder the server's own ordering is briefly
   half-written. A concurrent finish can then pick its next game from an inconsistent order.
-- **The kiosk has no connection indicator.** `LiveBoardView.tsx:10` discards `useRealtime`'s `status`,
-  which every other consumer destructures — so if the gym wifi drops, the tablet shows a stale board
-  with a pulsing LIVE badge and no warning.
+- **The kiosk has no connection indicator.** `LiveBoardView.tsx` still discards `useRealtime`'s
+  `status` for display (it now only drives the poll interval), so if the gym wifi drops, the tablet
+  shows a stale board with a pulsing LIVE badge and no warning.
 
 - **A Supabase `service_role` key for the *production* project is in git history.** It sits inside a
   permission-allowlist string in `.claude/settings.local.json`, committed in `1d72e9b` (2026-04-05)
@@ -599,5 +627,4 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   it is not. Re-probe before believing it is fixed.
 - Root `node_modules/` held only a Vite cache; it and `graphify-out/` (100 MB) are now gitignored,
   so `git status` is finally quiet.
-- The `supabase` MCP server currently fails to connect with HTTP 401 (`AUTH_HEADER_REJECTED`). Unrelated to app code, but it means DB inspection has to go through the CLI or the dashboard.
 - Two `tasks/lessons.md` files exist (see Repo layout). Unclear whether the `badminton-v2/` copy should be merged into the root one or deleted.

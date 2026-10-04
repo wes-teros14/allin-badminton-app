@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Court check 5 s to 10 s: what changes on screen</title>
+<style>
+  :root {
+    --page: #FAF9FB; --ink: #18181B; --dim: #52525B; --line: #E4E4E7; --brand: #6F3E87;
+    --bg: #0F0A18; --card: #1A1025; --border: #2E2140; --fg: #F4F0F8; --muted: #B39DBB;
+    --teal: #4FD1C5; --amber: #FFB200; --red: #DC595E;
+    --ok-bg: #E4F5EC; --ok-fg: #14532D; --warn-bg: #FFF1D6; --warn-fg: #6B3F00; --info-bg: #EDE7F3; --info-fg: #4A2A5E;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 40px 20px 90px; background: var(--page); color: var(--ink);
+    font: 400 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: -0.02em; line-height: 1.2; }
+  h2 { margin: 52px 0 6px; font-size: 21px; letter-spacing: -0.01em; }
+  .lead { margin: 0 0 6px; color: var(--dim); max-width: 760px; }
+  p { margin: 0 0 12px; }
+  code { font: 500 13.5px/1 ui-monospace, Menlo, monospace; background: #F1EFF4; border: 1px solid var(--line); padding: 2px 5px; border-radius: 5px; }
+  .note { max-width: 760px; color: var(--dim); }
+
+  .tag { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .tag.poll { background: var(--warn-bg); color: var(--warn-fg); }
+  .tag.push { background: var(--info-bg); color: var(--info-fg); }
+  .tag.local { background: var(--ok-bg); color: var(--ok-fg); }
+  .tag.none { background: #ECECEF; color: #3F3F46; }
+
+  .screens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 18px; align-items: start; }
+  @media (max-width: 900px) { .screens { grid-template-columns: 1fr; } }
+  .screen h3 { margin: 0 0 2px; font-size: 16px; }
+  .screen .where { margin: 0 0 10px; font-size: 14px; color: var(--dim); }
+  .device { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 18px; padding: 12px; font-size: 13.5px; }
+  .device.wide { border-radius: 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .court { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; margin-bottom: 8px; }
+  .court b { font-size: 12.5px; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+  .court .g { font-weight: 700; margin: 2px 0 0; }
+  .court .p { color: var(--muted); font-size: 13px; }
+  .block { margin-bottom: 8px; }
+  .block > .tag { margin-top: 5px; }
+  .you { background: #2D1B42; border: 1px solid #5B3A7A; border-radius: 10px; padding: 9px 11px; }
+  .you .g { font-weight: 700; }
+  .timer { font: 600 15px/1 ui-monospace, Menlo, monospace; color: var(--teal); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; margin: 14px 0 0; font-size: 14px; color: var(--dim); align-items: center; }
+
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-top: 16px; }
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  @media (max-width: 760px) { .controls { grid-template-columns: 1fr; } }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  legend { font-weight: 700; font-size: 15px; padding: 0; margin-bottom: 6px; }
+  .opt { display: flex; gap: 8px; align-items: flex-start; padding: 5px 0; font-size: 15px; cursor: pointer; }
+  .opt input { margin-top: 4px; accent-color: var(--brand); }
+  .opt small { display: block; color: var(--dim); font-size: 13.5px; }
+
+  .tl { position: relative; margin: 44px 0 4px; }
+  .cap { font-size: 14px; color: var(--dim); margin: 0 0 4px; }
+  .lane { position: relative; height: 34px; margin-bottom: 12px; background: #F7F6F9; border: 1px solid var(--line); border-radius: 8px; }
+  .down { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #FBE1E3, #FBE1E3 6px, #F6C9CD 6px, #F6C9CD 12px); }
+  .dot { position: absolute; top: 9px; width: 16px; height: 16px; border-radius: 50%; transform: translateX(-8px); border: 2px solid #fff; box-shadow: 0 0 0 1px #888; }
+  .dot.poll { background: #E8A100; }
+  .dot.push { background: var(--brand); }
+  .dot.catchup { background: #0F766E; }
+  .seg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 8px; font-size: 13.5px; font-weight: 700; color: #fff; overflow: hidden; white-space: nowrap; }
+  .seg.old { background: #55555F; border-radius: 7px 0 0 7px; }
+  .seg.new { background: #0F766E; border-radius: 0 7px 7px 0; }
+  .seg.stale { background: #B3252B; border-radius: 0 7px 7px 0; }
+  .evt { position: absolute; top: -4px; bottom: -4px; width: 0; border-left: 2px dashed #111; z-index: 3; }
+  .evt span { position: absolute; top: -22px; left: -6px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .axis { display: flex; justify-content: space-between; font-size: 13px; color: var(--dim); margin-top: 2px; }
+  .res { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+  @media (max-width: 760px) { .res { grid-template-columns: 1fr; } }
+  .stat { background: #F7F6F9; border-radius: 10px; padding: 12px 14px; }
+  .stat .big { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; }
+  .stat .sm { color: var(--dim); font-size: 14px; }
+  .verdict { margin-top: 14px; padding: 12px 14px; border-radius: 10px; font-size: 15px; }
+  .verdict.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  .verdict.warn { background: var(--warn-bg); color: var(--warn-fg); }
+  .verdict.bad { background: #FBE1E3; color: #7A1D22; }
+  .keyline { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; color: var(--dim); margin-top: 6px; align-items: center; }
+  .keyline i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+
+  .calc { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+  @media (max-width: 760px) { .calc { grid-template-columns: 1fr 1fr; } }
+  .calc label { display: block; font-size: 14px; color: var(--dim); }
+  .calc input { width: 100%; margin-top: 3px; padding: 7px 9px; font-size: 16px; border: 1px solid #C9C9D1; border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 14px; color: var(--dim); background: #F7F6F9; font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+
+  ul.notice { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+  ul.notice li { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; grid-template-columns: 150px 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 760px) { ul.notice li { grid-template-columns: 1fr; gap: 6px; } }
+  ul.notice b { display: block; }
+  .callout { background: var(--warn-bg); color: var(--warn-fg); border-radius: 12px; padding: 14px 16px; margin-top: 16px; max-width: 860px; }
+  .callout b { display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Court check: 5 seconds to 10 seconds, what changes on screen</h1>
+  <p class="lead">
+    Player phones and the courtside tablet learn about court changes two ways at once: a live push from
+    Supabase, and a check every 5 seconds that re-reads the courts whether or not anything changed.
+    This page shows which parts of the screen use which, and what a slower (or push-only) check would
+    and would not change.
+  </p>
+
+  <h2>1. What on screen is affected</h2>
+  <p class="note">
+    The 5-second check lives in <code>useCourtState</code>. Three screens use it. The tags show how each
+    piece of the screen stays current today.
+  </p>
+
+  <div class="screens">
+    <div class="screen">
+      <h3>Player phone: My Games</h3>
+      <p class="where"><code>/sessions/:id</code> and <code>/match-schedule</code></p>
+      <div class="device">
+        <div class="block">
+          <div class="court">
+            <b>COURT 1</b>
+            <div class="g">Game 3 &middot; on court</div>
+            <div class="p">Ana &amp; Boyet vs Chito &amp; Dan</div>
+          </div>
+          <div class="court">
+            <b>COURT 2</b>
+            <div class="g">Game 4 &middot; on court</div>
+            <div class="p">Eli &amp; Fay vs Gus &amp; Hal</div>
+          </div>
+          <span class="tag poll">Check every 5 s + live push</span>
+        </div>
+        <div class="block">
+          <div class="you">
+            <div class="row"><span class="g">Your next game: Game 7</span><span class="timer">07:12</span></div>
+          </div>
+          <span class="tag push">Live push only</span>
+          <span class="tag local">Timer: local 1 s tick</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <h3>Courtside tablet</h3>
+      <p class="where"><code>/live-board</code></p>
+      <div class="device wide">
+        <div class="row" style="gap:10px; align-items:stretch;">
+          <div class="court" style="flex:1; margin:0;">
+            <b>COURT 1</b>
+            <div class="g">Game 3</div>
+            <div class="p">Ana &amp; Boyet vs Chito &amp; Dan</div>
+            <div class="p">Next in queue: Game 5</div>
+          </div>
+          <div class="court" style="flex:1; margin:0;">
+            <b>COURT 2</b>
+            <div class="g">Game 4</div>
+            <div class="p">Eli &amp; Fay vs Gus &amp; Hal</div>
+            <div class="p">Next in queue: Game 5</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;"><span class="tag poll">Check every 5 s + live push</span></div>
+      </div>
+    </div>
+
+    <div class="screen">
+      <h3>Admin session page</h3>
+      <p class="where"><code>/session/:id</code></p>
+      <div class="device">
+        <div class="court">
+          <b>COURT 1 (admin)</b>
+          <div class="g">Game 3 &middot; Finish</div>
+          <div class="p">Mark done, send next game on</div>
+        </div>
+        <div class="block">
+          <span class="tag none">Not affected</span>
+          <p class="p" style="margin:6px 0 0; color: var(--muted); font-size:13px;">
+            Uses its own hooks. Its only timer is the local 1 s tick.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="tag poll">Check every 5 s + live push</span> the part this change is about</span>
+    <span><span class="tag push">Live push only</span> already needs no checking</span>
+    <span><span class="tag local">Local timer</span> never touches the database</span>
+  </div>
+
+  <p class="note" style="margin-top:14px;">
+    Worth noticing: the "Your next game" list on the very same phone screen already updates from the live
+    push alone. Only the court cards also check every 5 seconds.
+  </p>
+
+  <h2>2. Try it: one game finishes, what does a phone see?</h2>
+  <p class="note">
+    The admin taps Finish on Game 3 at 3 seconds. Pick how the phone stays current and what goes wrong,
+    and the timeline shows when the court card flips to Game 5 and how many database reads it cost.
+  </p>
+
+  <div class="panel">
+    <div class="controls">
+      <fieldset>
+        <legend>How the phone stays current</legend>
+        <label class="opt"><input type="radio" name="mode" value="5" checked>
+          <span>Today: check every 5 s, plus live push <small>Every refresh is 2 database reads (session and matches).</small></span></label>
+        <label class="opt"><input type="radio" name="mode" value="10">
+          <span>Check every 10 s, plus live push <small>Same as today, half as often.</small></span></label>
+        <label class="opt"><input type="radio" name="mode" value="30">
+          <span>Check every 30 s, plus live push <small>A slow safety net: it still repairs a lost push, just not quickly.</small></span></label>
+        <label class="opt"><input type="radio" name="mode" value="down">
+          <span>Live push only, check only when push is down <small>Checks every 5 s while the "Reconnecting&hellip;" badge shows.</small></span></label>
+      </fieldset>
+      <fieldset>
+        <legend>What happens</legend>
+        <label class="opt"><input type="radio" name="scen" value="normal" checked>
+          <span>Normal <small>The push arrives within about a second.</small></span></label>
+        <label class="opt"><input type="radio" name="scen" value="lost">
+          <span>One push is silently lost <small>The connection still says "connected", but this one event never arrives.</small></span></label>
+        <label class="opt"><input type="radio" name="scen" value="down">
+          <span>Live connection down from 2 s to 22 s <small>Internet is fine, only live push is down (like the Realtime errors in the logs).</small></span></label>
+      </fieldset>
+    </div>
+
+    <div class="tl" id="tl">
+      <div class="cap">Live push connection</div>
+      <div class="lane" id="laneStatus"></div>
+      <div class="cap">Refreshes of the court data</div>
+      <div class="lane" id="laneRef"></div>
+      <div class="cap">What the Court 1 card shows on the phone</div>
+      <div class="lane" id="laneCard"></div>
+    </div>
+    <div class="axis"><span>0 s</span><span>10 s</span><span>20 s</span><span>30 s</span><span>40 s</span></div>
+    <div class="keyline">
+      <span><i style="background:#6F3E87"></i>refresh from a live push</span>
+      <span><i style="background:#E8A100"></i>refresh from the check</span>
+      <span><i style="background:#0F766E"></i>catch-up when push reconnects</span>
+    </div>
+
+    <div class="res" aria-live="polite">
+      <div class="stat"><div class="big" id="outShown">&nbsp;</div><div class="sm" id="outShownSm">&nbsp;</div></div>
+      <div class="stat"><div class="big" id="outReads">&nbsp;</div><div class="sm">database reads in 40 s for this one phone (2 per refresh)</div></div>
+    </div>
+    <div class="verdict" id="outVerdict"></div>
+  </div>
+
+  <h2>3. The numbers for a whole session</h2>
+  <p class="note">
+    Change the assumptions to match a real night. This counts the worst case of every screen open and in
+    the foreground, because hidden tabs skip the check.
+  </p>
+  <div class="panel">
+    <div class="calc">
+      <label>Phones with the app open<input type="number" id="cPhones" value="16" min="1"></label>
+      <label>Session length (hours)<input type="number" id="cHours" value="2" min="0.5" step="0.5"></label>
+      <label>Games in the session<input type="number" id="cGames" value="20" min="1"></label>
+      <label>Live refreshes per game<input type="number" id="cPush" value="4" min="1"></label>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Option</th><th>Reads per phone per minute</th><th>Reads per phone, whole session</th><th>All phones, whole session</th><th>Versus today</th></tr></thead>
+        <tbody id="calcBody"></tbody>
+      </table>
+    </div>
+    <p class="note" style="margin-top:12px;">
+      Each refresh is 2 reads (<code>sessions</code> and <code>matches</code>), plus a <code>profiles</code>
+      read about once a minute when names need refreshing. "Live refreshes per game" is a guess: a game
+      starting, finishing and its score being saved each trigger a push. Treat the last two rows as estimates.
+    </p>
+  </div>
+
+  <h2>4. What you could actually notice</h2>
+  <ul class="notice">
+    <li><span><b>Normal night</b><span class="tag local">No difference</span></span>
+      <span>The push arrives about a second after the admin taps Finish, so the court cards flip at the same
+      moment under all three options. The check never gets to matter.</span></li>
+    <li><span><b>A push is lost while "connected"</b><span class="tag poll">Only real cost</span></span>
+      <span>Today the 5-second check repairs the card within 5 s. At 10 s within 10 s, at 30 s within 30 s. With push-only,
+      nothing repairs it until the next game change, a page reload, or the app coming back to the foreground.
+      This is the one case where push-only is visibly worse.</span></li>
+    <li><span><b>Live connection drops</b><span class="tag local">Same under all</span></span>
+      <span>The "Reconnecting&hellip;" badge appears. Options 1 and 2 keep checking. Push-only starts checking
+      every 5 s at that moment. On reconnect the app refreshes once to catch up, which is already built.</span></li>
+    <li><span><b>Someone edits their name or avatar</b><span class="tag poll">Slightly later</span></span>
+      <span>Names and avatars are cached for 60 seconds, and only re-read at a refresh. Today and 10 s: within about
+      a minute. Push-only: at the next refresh after the cache expires, so possibly the next game change.</span></li>
+    <li><span><b>Phone comes back to the foreground</b><span class="tag local">No difference</span></span>
+      <span>Refreshes immediately on return, separate from the check. Unchanged.</span></li>
+    <li><span><b>On-court timer, admin Finish buttons, "Your next game"</b><span class="tag none">Not affected</span></span>
+      <span>The timer is a local 1 s tick. The admin page has its own hooks. "Your next game" already uses push only.</span></li>
+    <li><span><b>Courtside tablet</b><span class="tag poll">Needs one extra change</span></span>
+      <span>Options 1 and 2 are a one-line change. Push-only needs the live-push status passed into the court hook, and
+      the tablet currently throws that status away (it also never shows a connection warning).</span></li>
+  </ul>
+
+  <div class="callout">
+    <b>What this will not fix</b>
+    Fewer reads help a small database, but the live push is not free: every change makes Supabase check each
+    listener's permissions, and each phone keeps several channels open. The memory chart showed the database
+    swapping to disk before anything broke, so a bigger instance is still the real headroom. Treat this change as
+    reducing load, not as a guarantee against another outage.
+  </div>
+
+  <h2>5. Where the code lives</h2>
+  <ul style="max-width:760px; color: var(--dim);">
+    <li><code>src/hooks/useCourtState.ts</code> lines 114-136: the 5 s check and the foreground refresh.</li>
+    <li><code>src/hooks/useRealtime.ts</code>: the live push, the status (<code>connected</code>, <code>reconnecting</code>, <code>disconnected</code>) and the catch-up refresh on reconnect.</li>
+    <li><code>src/views/LiveBoardView.tsx</code>, <code>PlayerView.tsx</code>, <code>SessionPlayerDetailView.tsx</code>: the three screens that use both.</li>
+  </ul>
+
+</div>
+
+<script>
+(function () {
+  var WINDOW = 40, PHASE = 1.2, EVENT = 3, PUSH_DELAY = 0.8, FALLBACK = 5, DOWN_FROM = 2, DOWN_TO = 22;
+  var mode = '5', scen = 'normal';
+
+  function pct(t) { return (t / WINDOW * 100).toFixed(2) + '%'; }
+  function el(id) { return document.getElementById(id); }
+
+  function compute() {
+    var r = [], t;
+    if (scen === 'normal') r.push({ t: EVENT + PUSH_DELAY, k: 'push' });
+    if (mode === '5' || mode === '10' || mode === '30') {
+      var step = Number(mode);
+      for (t = PHASE; t <= WINDOW; t += step) r.push({ t: t, k: 'poll' });
+    } else if (scen === 'down') {
+      for (t = DOWN_FROM + FALLBACK; t < DOWN_TO; t += FALLBACK) r.push({ t: t, k: 'poll' });
+    }
+    if (scen === 'down') r.push({ t: DOWN_TO, k: 'catchup' });
+    r.sort(function (a, b) { return a.t - b.t; });
+    var shown = null;
+    for (var i = 0; i < r.length; i++) { if (r[i].t >= EVENT) { shown = r[i].t; break; } }
+    return { r: r, shown: shown };
+  }
+
+  function render() {
+    var c = compute();
+    var status = el('laneStatus'), ref = el('laneRef'), card = el('laneCard');
+    [status, ref, card].forEach(function (lane) {
+      Array.prototype.slice.call(lane.querySelectorAll('.down,.dot,.seg,.evt')).forEach(function (n) { n.remove(); });
+    });
+
+    if (scen === 'down') {
+      var d = document.createElement('div');
+      d.className = 'down';
+      d.style.left = pct(DOWN_FROM); d.style.width = (((DOWN_TO - DOWN_FROM) / WINDOW) * 100).toFixed(2) + '%';
+      status.appendChild(d);
+    }
+    c.r.forEach(function (x) {
+      var d = document.createElement('div');
+      d.className = 'dot ' + x.k; d.style.left = pct(x.t);
+      d.title = x.k + ' refresh at ' + x.t.toFixed(1) + ' s';
+      ref.appendChild(d);
+    });
+
+    var cut = c.shown === null ? EVENT : c.shown;
+    var old = document.createElement('div');
+    old.className = 'seg old'; old.style.left = '0'; old.style.width = pct(cut); old.textContent = 'Game 3';
+    card.appendChild(old);
+    var nw = document.createElement('div');
+    nw.className = 'seg ' + (c.shown === null ? 'stale' : 'new');
+    nw.style.left = pct(cut); nw.style.width = ((1 - cut / WINDOW) * 100).toFixed(2) + '%';
+    nw.textContent = c.shown === null ? 'Still showing Game 3 (should be Game 5)' : 'Game 5';
+    card.appendChild(nw);
+
+    [status, ref, card].forEach(function (lane) {
+      var e = document.createElement('div'); e.className = 'evt'; e.style.left = pct(EVENT);
+      if (lane === status) e.innerHTML = '<span>Admin finishes Game 3</span>';
+      lane.appendChild(e);
+    });
+
+    var shownEl = el('outShown'), shownSm = el('outShownSm');
+    if (c.shown === null) {
+      shownEl.textContent = 'Not within 40 s';
+      shownSm.textContent = 'The card stays on Game 3 until something else refreshes it.';
+    } else {
+      var lag = c.shown - EVENT;
+      shownEl.textContent = 'Game 5 at ' + c.shown.toFixed(1) + ' s';
+      shownSm.textContent = lag.toFixed(1) + ' s after the admin tapped Finish.';
+    }
+    el('outReads').textContent = String(c.r.length * 2);
+
+    var v = el('outVerdict'), text, cls;
+    if (c.shown === null) {
+      cls = 'bad';
+      text = 'This is the risk of push-only. Nothing is checking, the status still says connected, so the court card stays wrong until the next game change or a reload.';
+    } else if (scen === 'normal') {
+      cls = 'ok';
+      text = 'The push gets there first, so all three options look the same on screen. What differs is the number of reads, not what the player sees.';
+    } else if (scen === 'lost') {
+      cls = 'warn';
+      text = 'The check repairs the missed push. The slower the check, the longer the card stays wrong, which is the whole cost of a slower check.';
+    } else {
+      cls = 'warn';
+      text = mode === 'down'
+        ? 'Checking starts as soon as the connection drops, so the card recovers about as fast as today, and the app also catches up on reconnect.'
+        : 'The check keeps running during the drop, so the card recovers without waiting for the connection to come back.';
+    }
+    v.className = 'verdict ' + cls; v.textContent = text;
+  }
+
+  Array.prototype.slice.call(document.querySelectorAll('input[name=mode]')).forEach(function (i) {
+    i.addEventListener('change', function () { mode = i.value; render(); });
+  });
+  Array.prototype.slice.call(document.querySelectorAll('input[name=scen]')).forEach(function (i) {
+    i.addEventListener('change', function () { scen = i.value; render(); });
+  });
+
+  function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  function calc() {
+    var phones = Number(el('cPhones').value) || 0, hours = Number(el('cHours').value) || 0;
+    var games = Number(el('cGames').value) || 0, perGame = Number(el('cPush').value) || 0;
+    var mins = hours * 60;
+    var rows = [
+      { name: 'Today: check every 5 s', perMin: 12 * 2 + 1 },
+      { name: 'Check every 10 s', perMin: 6 * 2 + 1 },
+      { name: 'Check every 30 s (safety net)', perMin: 2 * 2 + 1 }
+    ];
+    var pushRefreshes = games * perGame;
+    var pushTotal = pushRefreshes * 2 + Math.min(pushRefreshes, mins) + 1;
+    var base = rows[0].perMin * mins;
+    var out = '';
+    rows.forEach(function (x, i) {
+      var per = x.perMin * mins;
+      out += '<tr><td>' + x.name + '</td><td class="num">' + x.perMin + '</td><td class="num">' + fmt(per) +
+        '</td><td class="num">' + fmt(per * phones) + '</td><td class="num">' + (i === 0 ? 'baseline' : '-' + Math.round((1 - per / base) * 100) + '%') + '</td></tr>';
+    });
+    out += '<tr><td>Live push only, check only when push is down (estimate)</td><td class="num">' + (mins ? (pushTotal / mins).toFixed(1) : '0') +
+      '</td><td class="num">' + fmt(pushTotal) + '</td><td class="num">' + fmt(pushTotal * phones) +
+      '</td><td class="num">' + (base ? '-' + Math.round((1 - pushTotal / base) * 100) + '%' : '-') + '</td></tr>';
+    el('calcBody').innerHTML = out;
+  }
+  ['cPhones', 'cHours', 'cGames', 'cPush'].forEach(function (id) { el(id).addEventListener('input', calc); });
+
+  render(); calc();
+})();
+</script>
+</body>
+</html>

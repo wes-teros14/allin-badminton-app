@@ -1,30 +1,42 @@
 # Handoff — current snapshot
 
-Updated: 2026-09-30. Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-04 (evening, Manila). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- **"Who's going" row (option B)** is live on `/sessions` open-registration cards: faces + "9 of 14 going", which expands into name chips. It replaced the separate count line and the first-draft "See who's going" toggle.
-- `dev` and `main` pushed at session end.
-- Build (`tsc -b`), lint and all 376 unit tests pass.
-- Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest` (CLI's own cache file).
+- **Free-plan load reduction shipped** (branch `015-free-plan-load` → `dev` → `main`): court poll 30 s
+  while Realtime is connected (5 s fallback), burst coalescing, unique channel topics, cheers channel
+  only for live sessions, profile ensured once per user, 10 s sign-in timeout with a "Can't reach the
+  server" screen, leaderboard listeners coalesced.
+- **Prod DB changed today (also DEV):** `session_registrations` added to the Realtime publication (072
+  had never been applied to prod); `pg_net` dropped (083). Both verified.
+- `tsc -b`, lint on changed files, 391 unit tests, `npm run build` pass. Pages checked in the browser,
+  no console errors; idle court polls 0 in 20 s (was 4), safety poll at 33 s.
+- Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
-## Done this session
+## Done this session (earlier, already pushed)
 
-- Two POC rounds in `temporary_files/`; user picked B from `whos-going-declutter-options.html`.
-- `usePlayerSessions` loads `registrants` per open session (`buildRegistrantsBySession`, tested); `MySessionsView` has `RegistrantsRow` and `registrantsCountLabel` (tested).
-- Lessons added to `CLAUDE.md` (window-global names in POC scripts, load bencium before UI work, theme colour on the wrapper) and `tasks/lessons.md`.
+- UI/UX critique + fixes (generator presets/help/sliders, schedule tracker, ARIA tabs, `--primary-ink`).
+- Missing-profile fix (`ensureProfile` on sign-in), "slots" copy, hide settled-fee row once matches exist.
+- Oct 4 outage investigated end to end; notes in `docs/qa-log.html` and `tasks/lessons.md`.
 
-## Verified, and how
+## Not verified
 
-- Playwright against the dev app as Admin at 390 px, dark mode. `sessions` responses were rewritten closed → open in the browser only (no data changed). No page errors; the old count line was gone; the row and the admin button were both at y = 309.5, 44 px tall; the list opened in place with 14 names, "You" first.
-- Not seen live: "N of M going" and "spots left", because the dev session has no limit. Covered by unit tests only.
+- The "Can't reach the server" screen was never triggered (no way to stall the backend locally).
+- Two-tab "finish a match" live update and live registration updates on a real session — a browser
+  check was blocked by the permission classifier.
 
 ## Immediate next steps
 
-- Check on a phone against a real prod session that has a max.
-- The list only refreshes when *your own* registration changes (same as the old count). Others' sign-ups show on reload.
+- **Before the next session:** restart the prod project (Project Settings → General → Restart
+  project) 15–30 min before play.
+- **After the next session:** compare edge-log requests per 30 min with Oct 4 (06:00–07:35 UTC:
+  ~2,300–4,200 per 30 min). Target ≤ half. Query via the Supabase connector `query_logs`.
 
 ## Open questions
 
-- Carried over: prod migration history out of sync (never `db push` to prod); CLI was logged into a foreign account (`inkphantom123456@gmail.com`); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root unresolved.
+- Is the reduction enough, or does the box still stall? If it stalls again, the remaining free option
+  is moving live updates to Realtime Broadcast; otherwise a paid compute upgrade.
+- Carried over: prod migration history out of sync (never `db push` to prod); `TodayView` old board;
+  confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root unresolved; prod
+  `service_role` key still not rotated.
