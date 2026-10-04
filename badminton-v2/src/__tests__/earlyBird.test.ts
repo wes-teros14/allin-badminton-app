@@ -16,7 +16,7 @@ describe('rankEarlyBirds', () => {
       ...session('s1', ['a', 'b', 'c', 'd', 'e', 'f']),
       ...session('s2', ['b', 'a', 'c']),
     ]
-    expect(rankEarlyBirds(regs, new Set(), 5)).toEqual([
+    expect(rankEarlyBirds(regs, { places: 5 })).toEqual([
       { playerId: 'a', points: 9, firsts: 1, place: 1 },
       { playerId: 'b', points: 9, firsts: 1, place: 1 },
       { playerId: 'c', points: 6, firsts: 0, place: 2 },
@@ -47,7 +47,7 @@ describe('rankEarlyBirds', () => {
       ...session('s1', ['x', 'p', 'y', 'q', 'r']),
       ...session('s2', ['p', 'q', 'y', 'r', 'x']),
     ]
-    const ranked = rankEarlyBirds(regs, new Set(), 5)
+    const ranked = rankEarlyBirds(regs, { places: 5 })
     const x = ranked.find((e) => e.playerId === 'x')!
     const y = ranked.find((e) => e.playerId === 'y')!
     expect(x.points).toBe(y.points)
@@ -57,7 +57,7 @@ describe('rankEarlyBirds', () => {
   it('removes excluded players before counting places', () => {
     // With the organiser first, "a" must still score 5, not 4.
     const regs = session('s1', ['organiser', 'a', 'b'])
-    expect(rankEarlyBirds(regs, new Set(['organiser']))).toEqual([
+    expect(rankEarlyBirds(regs, { excluded: new Set(['organiser']) })).toEqual([
       { playerId: 'a', points: 5, firsts: 1, place: 1 },
       { playerId: 'b', points: 4, firsts: 0, place: 2 },
     ])
@@ -69,12 +69,23 @@ describe('rankEarlyBirds', () => {
       ...session('s2', ['a', 'b', 'd', 'c']),
     ]
     // c and d: 3+2 = 5 each, no firsts → both 3rd.
-    expect(rankEarlyBirds(regs, new Set(), 3).map((e) => [e.playerId, e.place])).toEqual([
+    expect(rankEarlyBirds(regs, { places: 3 }).map((e) => [e.playerId, e.place])).toEqual([
       ['a', 1], ['b', 2], ['c', 3], ['d', 3],
     ])
   })
 
   it('returns nothing without registrations', () => {
     expect(rankEarlyBirds([])).toEqual([])
+  })
+})
+
+describe('rankEarlyBirds eligibility', () => {
+  it('hides inactive players without handing their points to anyone', () => {
+    // "gone" was 1st; "a" keeps 4 points for 2nd, it is not promoted to 5.
+    const regs = session('s1', ['gone', 'a', 'b'])
+    expect(rankEarlyBirds(regs, { eligible: new Set(['a', 'b']) })).toEqual([
+      { playerId: 'a', points: 4, firsts: 0, place: 1 },
+      { playerId: 'b', points: 3, firsts: 0, place: 2 },
+    ])
   })
 })
