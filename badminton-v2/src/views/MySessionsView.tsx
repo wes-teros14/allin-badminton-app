@@ -28,10 +28,10 @@ function DetailItem({
   )
 }
 
-/** "9 of 14 going", "All 14 spots taken", or "11 going" when there is no limit. */
+/** "9 of 14 going", "All 14 slots taken", or "11 going" when there is no limit. */
 export function registrantsCountLabel(count: number, maxPlayers: number | null | undefined): string {
   if (maxPlayers == null) return `${count} going`
-  if (count >= maxPlayers) return `All ${maxPlayers} spots taken`
+  if (count >= maxPlayers) return `All ${maxPlayers} slots taken`
   return `${count} of ${maxPlayers} going`
 }
 
@@ -73,7 +73,7 @@ function RegistrantsRow({
       </p>
     )
   } else {
-    const spotsLeft = maxPlayers != null ? Math.max(maxPlayers - registrants.length, 0) : 0
+    const slotsLeft = maxPlayers != null ? Math.max(maxPlayers - registrants.length, 0) : 0
     row = (
       <>
         <button
@@ -117,9 +117,9 @@ function RegistrantsRow({
                   </span>
                 )
               })}
-              {spotsLeft > 0 && (
+              {slotsLeft > 0 && (
                 <span className="inline-flex items-center rounded-full border border-dashed border-border px-2.5 py-0.5 text-xs text-muted-foreground">
-                  {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'} left
+                  {slotsLeft} {slotsLeft === 1 ? 'slot' : 'slots'} left
                 </span>
               )}
             </div>
@@ -416,7 +416,9 @@ export function MySessionsView() {
     <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 py-8">
       <div className="mb-6 space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Sessions</h1>
-        <p className="text-sm text-muted-foreground">Upcoming, live, and past badminton sessions.</p>
+        <p className="text-sm text-muted-foreground">
+          Upcoming, live, and past badminton sessions. Tap a session to register, pay, and see your games.
+        </p>
       </div>
 
       {loading ? (
