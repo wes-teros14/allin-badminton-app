@@ -14,10 +14,7 @@ Updated: 2026-10-04 (night, Manila). Overwrite this file on every update; it is 
   no console errors; idle court polls 0 in 20 s (was 4), safety poll at 33 s.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
-- **🐦 Early Bird rebuilt (branch `016-early-bird-points`):** points race, last 8 finished sessions,
-  5-4-3-2-1 for the first 5 self-registered, organisers excluded, top 3 on the Awards card, badge for
-  1st only. Seen on DEV in the browser; prod expectation: Ronwald 31, Jerome 20, AJ 20 (Jerome 2nd on
-  1st places).
+- **🐦 Early Bird is an all-time points race** (branches `016`, `017`): every finished session, 5-4-3-2-1 for the first 5 self-registered, organisers excluded, only active players (last 4) shown, top 3 on the Awards card, badge for 1st only. Prod expectation: Ronwald 72, AJ 52, Anthony 43. Seen on DEV only.
 
 ## Done this session (earlier, already pushed)
 
