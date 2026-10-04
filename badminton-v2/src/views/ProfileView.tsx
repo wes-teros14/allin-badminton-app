@@ -5,6 +5,7 @@ import { useProfileStats } from '@/hooks/useProfileStats'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
+import { fetchEarlyBirds } from '@/lib/earlyBirdData'
 import { cheerSharePct, rankCheerShares } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
 import { resizeImageFile } from '@/lib/imageResize'
@@ -190,22 +191,10 @@ const MAX_AVATAR_BYTES = 1 * 1024 * 1024 // enforced after client-side resize/co
 const MAX_AVATAR_INPUT_BYTES = 20 * 1024 * 1024 // reject absurdly large originals before we even try to process them
 
 async function fetchAwards(userId: string): Promise<Award[]> {
-  const latestSessionRes = await supabase
-    .from('sessions')
-    .select('id')
-    .neq('status', 'setup')
-    .order('date', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const latestSessionId = (latestSessionRes.data as { id: string } | null)?.id ?? null
-
-  const [cheerRes, statsRes, earlyBirdRes, eligibleIds] = await Promise.all([
+  const [cheerRes, statsRes, earlyBirds, eligibleIds] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
-    latestSessionId
-      ? supabase.from('session_registrations').select('player_id').eq('session_id', latestSessionId).eq('source', 'self').order('registered_at', { ascending: true }).limit(1).maybeSingle()
-      : Promise.resolve({ data: null }),
+    fetchEarlyBirds(),
     fetchEligiblePlayerIds(),
   ])
 
@@ -216,7 +205,6 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     .filter(c => eligibleIds.has(c.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => eligibleIds.has(s.player_id))
-  const earlyBirdPlayerId = (earlyBirdRes.data as { player_id: string } | null)?.player_id ?? null
 
   /** Sole holder of the highest share in one category, or nobody if it is tied. */
   function topShare(getCount: (c: typeof cheers[number]) => number): string | null {
@@ -252,7 +240,8 @@ async function fetchAwards(userId: string): Promise<Award[]> {
   // Same carve-out the Awards tab applies: this one award is still a raw count.
   if (top(stats.filter(s => !ATTENDANCE_AWARD_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
     awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
-  if (earlyBirdPlayerId === userId)
+  // Badge for 1st place only (shared on a full tie), as the Awards card shows.
+  if (earlyBirds.some(e => e.place === 1 && e.playerId === userId))
     awards.push({ emoji: '🐦', label: 'Registration Early Bird' })
 
   return awards
