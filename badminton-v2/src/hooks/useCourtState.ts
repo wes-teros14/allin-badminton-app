@@ -96,7 +96,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
   const isFirstLoad = useRef(true)
   /**
    * Player names and avatars are static for practically the whole session, so
-   * they are cached rather than re-read on every 5-second tick. The cache
+   * they are cached rather than re-read on every refresh. The cache
    * expires (see PROFILE_CACHE_TTL_MS) so an edited nickname or avatar still
    * propagates.
    */
@@ -111,29 +111,10 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
-  useEffect(() => {
-    if (!sessionId || isClosed) return
-    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
-
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        refresh()
-      }
-    }, 5000)
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refresh()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    return () => {
-      window.clearInterval(intervalId)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }, [isClosed, refresh, sessionId])
+  // No polling here: callers pass `refresh` to useRealtime as `onPoll`, which
+  // polls every 30 s while Realtime is connected and every 5 s only when it is
+  // not. This hook used to poll every 5 s regardless, which on Oct 4 2026 was
+  // about half of all requests to the database (docs/qa-log.html).
 
   useEffect(() => {
     let cancelled = false

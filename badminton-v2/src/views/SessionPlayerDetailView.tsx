@@ -328,14 +328,16 @@ function ScheduleTab({
   onRegister: () => void
 }) {
   const { matches, playerDisplayName, playerAvatarUrl, sessionMatchTotal, sessionMatchPlayed, sessionName, sessionDate, sessionVenue, sessionTime, sessionDuration, sessionId: resolvedId, isLoading, refresh } = usePlayerSchedule(nameSlug, sessionId)
-  const { courts, isLoading: courtsLoading, refresh: refreshCourts } = useCourtState(resolvedId || undefined)
+  const { courts, isLoading: courtsLoading, isClosed: courtsClosed, refresh: refreshCourts } = useCourtState(resolvedId || undefined)
   // Courts and the personal schedule are two reads; a realtime ping has to
   // refresh both or the strip goes stale while your own card updates.
   const refreshAll = useCallback(() => {
     refresh()
     refreshCourts()
   }, [refresh, refreshCourts])
-  const { status } = useRealtime(resolvedId, refreshAll)
+  const { status } = useRealtime(resolvedId, refreshAll, 'live-board', {
+    onPoll: courtsClosed ? undefined : refreshCourts,
+  })
   const { phoneNumber, qrCodeUrl, isLoading: paymentSettingsLoading } = usePaymentSettings()
   const hasPaymentInfo = phoneNumber != null || qrCodeUrl != null
   const showPaymentInfo = shouldShowPaymentInfo({ isRegistered, paid, exempt, hasPaymentInfo })
