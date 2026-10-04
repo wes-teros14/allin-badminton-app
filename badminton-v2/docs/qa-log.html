@@ -1680,6 +1680,19 @@
   <h2 class="topic" id="payments">Payments &amp; the fee card</h2>
 
   <div class="qa">
+    <p class="q">Why do I still see "You are registered" when the matches are already created?</p>
+    <p class="a">
+      That card is <code>SessionFeeWaivedLine</code> — what a player on the Payment Settings "don't
+      pay" list sees in place of the payment card. It renders on
+      <code>isRegistered &amp;&amp; exempt === true &amp;&amp; paid !== true</code>
+      (<code>SessionPlayerDetailView.tsx</code>) with no session-status check, so it stays for the whole
+      session by design; it doubles as the registration confirmation. A paying player's equivalent is
+      the thin green "Session fee paid" strip, which also stays all session — the waived version is just
+      a full card with a registration headline, so once games exist it reads like a stale step.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Why is there a step saying “You are registered” when the card only appears if you are registered?</p>
     <p class="a">
       That is exactly why it can exist. The whole block is gated on
