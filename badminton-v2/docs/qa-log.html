@@ -138,6 +138,19 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">How does “Cheer later” decide between the bar and the full cheers gate?</p>
+    <p class="a">
+      <code>PlayerLayout</code> asks <code>useCheerLater()</code> whether the signed-in player has a row in
+      <code>cheer_later_players</code> (migration 084). RLS lets a player read only their own row, while the
+      admin manages the list on Settings → Cheers. If they’re on it, the page stays mounted and
+      <code>CheersReminder</code> shows a bar (wording from <code>lib/cheerReminder.ts</code>, e.g. “15
+      games done · 45 cheers to give”) plus the same <code>CheersPanel</code> in a sheet. If the lookup
+      fails, they get the full gate. The celebration plays over the bar and waits only while the sheet is
+      open. It takes effect the next time the player opens the app.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">

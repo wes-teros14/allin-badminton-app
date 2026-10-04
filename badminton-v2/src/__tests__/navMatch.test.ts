@@ -41,7 +41,7 @@ function activeTabs(pathname: string): string[] {
     ['Players', isUnder(pathname, '/players')],
     ['Inventory', isUnder(pathname, '/inventory')],
     ['Finance', isUnder(pathname, '/finance')],
-    ['Payment Settings', isUnder(pathname, '/payment-settings')],
+    ['Settings', isUnder(pathname, '/settings')],
   ]
   return tabs.filter(([, active]) => active).map(([label]) => label)
 }
@@ -58,7 +58,7 @@ describe('nav bar highlighting', () => {
     expect(activeTabs('/inventory')).toEqual(['Inventory'])
     expect(activeTabs('/finance')).toEqual(['Finance'])
     expect(activeTabs('/finance/abc-123')).toEqual(['Finance'])
-    expect(activeTabs('/payment-settings')).toEqual(['Payment Settings'])
+    expect(activeTabs('/settings')).toEqual(['Settings'])
   })
 
   it('underlines nothing on routes with no tab of their own', () => {
