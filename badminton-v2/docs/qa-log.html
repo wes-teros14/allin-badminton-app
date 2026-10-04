@@ -475,6 +475,37 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">How does the 🐦 Registration Early Bird award work, and can it be a top 5?</p>
+    <p class="a">
+      Today (as of 2026-10-04): one winner, the first <em>self</em>-registered player
+      (<code>session_registrations.source = 'self'</code>, migration 025) of the session with the
+      latest <code>date</code> whose status isn't <code>setup</code>. Same query in
+      <code>LeaderboardView.fetchAwardsLeaderboard</code> and <code>ProfileView.fetchAwards</code>.
+      Flaw: "latest date" is the furthest-future open session. On Oct 4 that was Oct 25, three weeks
+      out with 2 sign-ups, so the title flips whenever a session is created. No eligibility or
+      organiser exclusion applies. Options A–C are mocked with real data in
+      <code>temporary_files/early-bird-top5-options.html</code>. Over the last 8 finished sessions, a
+      5-4-3-2-1 points race gives Ronwald 31, Jerome 20, AJ 20, Anthony 14, Len 11 (organisers
+      excluded; Jerome ahead of AJ on 1st places, 2 vs 0).
+      <strong>Shipped 2026-10-04 as option C, top 3:</strong> <code>lib/earlyBird.ts</code> (pure,
+      tested) + <code>lib/earlyBirdData.ts</code>; last 8 finished sessions, first 5 self-registered
+      score 5-4-3-2-1, organisers removed before places are counted, tie-break on 1st places, full ties
+      share the place. Profile badge goes to 1st place only.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Points race top 5: Ronwald 29, Jerome 20, AJ 19, Anthony 14, Len 11.”</p>
+    <p>
+      Wrong order of operations: organisers were dropped <em>after</em> ranking each session, so they
+      still occupied places and everyone behind them was scored one place too low. Excluding them
+      <em>before</em> ranking (what "can't win" means) gives Ronwald 31, Jerome 20, AJ 20, and B becomes
+      AJ 7× not 6×. Any exclusion rule must be applied before positions are counted.
+    </p>
+  </div>
+
   <h2 class="topic" id="theming">Theming &amp; light mode</h2>
 
   <div class="qa">
