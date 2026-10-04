@@ -758,3 +758,22 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
   lookup error instead of "No schedule found". Existing stuck accounts need the one-off SQL backfill.
 - **Rule:** never make a player screen depend on a row only a database trigger creates without a
   client-side self-heal on every entry point.
+
+## 2026-10-04 — Prod app stopped loading for ~80 minutes mid-session
+
+- **Symptom:** from ~15:40 to ~17:05 Manila the app sat on a spinner for every player. Supabase
+  showed a Disk IO budget warning; memory/swap charts showed the box over-committed.
+- **Root cause:** Free plan NANO compute (~0.5 GB) ran out of memory under ordinary session load
+  (~2 requests/s from ~12 phones). Logs (read via the Supabase connector): statement timeouts from
+  07:35 UTC, Realtime "Too many database timeouts" and a lost replication slot, then 522/524 from the
+  gateway; no crash or restart. Half the load was the court state's fixed 5 s poll; the first
+  statements to time out were Realtime subscription inserts (157 websocket connects in 95 min).
+- **Fix (branch 015-free-plan-load):** poll 30 s while Realtime is connected (5 s fallback),
+  coalesce event bursts with jitter, unique channel topics per hook instance, cheers channel filtered
+  to live sessions and no longer resubscribed on navigation, profile ensured once per user id,
+  sign-in times out after 10 s with a "Can't reach the server" screen, leaderboard listeners
+  coalesced. DB: `pg_net` dropped (083), `session_registrations` published (072 was never applied to
+  prod; migrations 051–081 were applied by hand and are not in prod's migration history).
+- **Rule:** a poll next to a Realtime subscription is a safety net, not a heartbeat — make its
+  interval depend on the connection status. And check prod's publication/migration state directly;
+  a migration file in the repo is not proof it ran.

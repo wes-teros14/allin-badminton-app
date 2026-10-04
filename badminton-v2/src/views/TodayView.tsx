@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { computeStatsFromResults } from '@/lib/matchResults'
+import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
@@ -118,16 +119,24 @@ export function TodayView() {
     if (!sessionLoading) load()
   }, [sessionLoading, load])
 
-  // Realtime: refetch when match_results change
+  // Realtime: refetch when match_results change. Only while a session is live
+  // (no channel at all the rest of the week), and once per burst: a split
+  // result inserts two rows. match_results has no session_id to filter on.
+  const loadRef = useRef(load)
+  loadRef.current = load
+  const liveSessionId = activeSession?.sessionId ?? null
   useEffect(() => {
+    if (!liveSessionId) return
+    const reload = createCoalescedRunner(() => loadRef.current(), () => coalesceDelay())
     const channel = supabase
-      .channel('today-leaderboard-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_results' }, () => {
-        load()
-      })
+      .channel(`today-leaderboard-rt-${liveSessionId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_results' }, () => reload.schedule())
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [load])
+    return () => {
+      reload.cancel()
+      supabase.removeChannel(channel)
+    }
+  }, [liveSessionId])
 
   const mostImproved = entries
     .filter((e) => e.improvement !== undefined && e.improvement > 0 && e.games >= 2)

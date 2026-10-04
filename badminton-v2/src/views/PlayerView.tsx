@@ -406,13 +406,16 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
   const {
     courts,
     isLoading: courtsLoading,
+    isClosed: courtsClosed,
     refresh: refreshCourts,
   } = useCourtState(sessionId || undefined)
   const refreshAll = useCallback(() => {
     refresh()
     refreshCourts()
   }, [refresh, refreshCourts])
-  const { status } = useRealtime(sessionId, refreshAll)
+  const { status } = useRealtime(sessionId, refreshAll, 'live-board', {
+    onPoll: courtsClosed ? undefined : refreshCourts,
+  })
 
   if (!isLoading && notFound) {
     return (

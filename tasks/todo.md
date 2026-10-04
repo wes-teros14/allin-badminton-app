@@ -1,3 +1,65 @@
+# Free-plan load reduction — plan (after the 2026-10-04 outage)
+
+Evidence (prod logs, 06:00–07:35 UTC Oct 4): ~10,800 requests / 95 min from ~12 devices. Court poll
+(sessions+matches pair) ≈ 3,800 of ~7,800 GETs. First failures at 07:35 were Realtime
+`insert into realtime.subscription`; 157 websocket connects in 95 min. `ensureProfile` read ran 107×
+for one user. Goal: roughly halve load, and fail visibly instead of spinning.
+
+Branch: `015-free-plan-load`.
+
+## Status (2026-10-04) — done on `015-free-plan-load`
+
+Deviations from the original plan are marked **changed**.
+
+### Fix 1 — poll only as a fallback
+- [x] Poll moved out of `useCourtState` into `useRealtime({ onPoll })` (**changed**: avoids a
+      circular status hand-off between the two hooks). 30 s while connected, 5 s otherwise, plus an
+      immediate refresh on `visibilitychange`. Callers: `LiveBoardView`, `PlayerView` (ScheduleView),
+      `SessionPlayerDetailView`. No poll for closed sessions.
+- [x] Burst coalescing: 300 ms + up to 700 ms jitter (`lib/realtimePolicy.ts`, unit-tested).
+- [x] Bug found: `supabase.channel()` returns the existing channel for a reused topic, so My Games and
+      the embedded All Games tab shared one channel. Topics now carry a `useId()` suffix.
+- [x] Measured locally: 0 court polls in 20 s idle (was 4), safety-net poll at 33 s.
+- [ ] Manual two-tab "finish a match" test — not run (no live session on DEV).
+
+### Fix 2 — fewer subscribe/unsubscribe cycles
+- [x] `useMatchCheers`: fetch keyed on the session *set*, display order applied client-side; channel
+      filtered server-side to in-progress sessions (`session_id=in.(…)`), none when nothing is live;
+      `load` held in a ref; cheer types read once.
+- [x] `session_registrations` listeners: table published instead (6b).
+- [ ] Before/after channel count across a walk-through — not measured.
+
+### Fix 3 — `ensureProfile` once per user
+- [x] Same-id user object kept on token refresh / refocus (`USER_UPDATED` still replaces it); profile
+      effect keyed on `user.id`.
+- [ ] Provider unit test — not written (vitest runs in `node`, no React renderer set up).
+
+### Fix 4 — unscoped fan-out (**changed**)
+- [x] Kept `match_results` listeners: the result insert happens *after* the match update
+      (`useAdminActions.finishMatch`), so listening to `matches` alone would miss the final result.
+      With one live session at a time a session filter would not cut events anyway.
+- [x] Instead: leaderboard listeners coalesced, not resubscribed on `load` identity, and the Today
+      leaderboard only subscribes while a session is active.
+
+### Fix 5 — fail visibly
+- [x] `getSession` and profile load time out after 10 s → `ConnectionProblem` screen with Try again.
+      A failed profile read is no longer treated as "no role".
+- [ ] Not exercised against a real failure (no way to stall the backend locally).
+- [ ] Court "Reconnecting…" notice — skipped: `LiveIndicator` already shows the Realtime status.
+- **changed**: no POC first (user approved going straight to implementation).
+
+### Fix 6 — database (applied to DEV and prod 2026-10-04)
+- [x] 6a `083_drop_pg_net.sql` — applied, verified `pg_net` gone.
+- [x] 6b `072_session_registrations_realtime` — had never been applied to prod; applied, verified in
+      the publication with replica identity FULL.
+- [ ] Optional `cron.job_run_details` cleanup — skipped (24 rows/day, negligible).
+
+### Verify / ship
+- [x] `tsc -b`, eslint on changed files, 391 unit tests pass; pages checked in the browser, no console
+      errors.
+- [ ] Next session: compare edge-log requests per 30 min with Oct 4 (target ≤ half).
+- [x] lessons.md entry; qa-log updated.
+
 # Payment-exempt players — plan
 
 Admin keeps a list of players who don't pay (the admin, typically). They skip the payment steps and
