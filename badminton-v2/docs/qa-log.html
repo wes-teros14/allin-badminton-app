@@ -291,6 +291,17 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Do all the leaderboard places get the bunny (celebration) card?</p>
+    <p class="a">
+      Since 2026-10-06, yes: all 13 boards. That’s Individual, Partners, the six Cheers categories and the five awards
+      (<code>WATCHED_BOARDS</code> in <code>lib/podiumCelebration.ts</code>). Before that the awards were left out,
+      because each had a single holder and no podium. A medal shows for 1st–3rd, the bunny for anything lower, and drops are
+      announced too. Falling off a board entirely is never announced, so a Win Streak ending is silent. The
+      “🏆 New award” toast still exists in the code, but nothing creates award notifications, so it never fires.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">
