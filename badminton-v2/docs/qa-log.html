@@ -151,6 +151,79 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“A Fan Favourite award: the player with the highest share of cheers received from opponents.”</p>
+    <p>
+      Wrong, and the reason is already written in this log. Cheering is compulsory: in every match you
+      cheer all three other players, so one partner and <em>two opponents</em>. Everyone’s received
+      cheers are therefore about two thirds from opponents by construction, and the “share” cannot
+      separate anyone. Any cheer award has to be about <em>which of the six types</em> is chosen, never
+      about who gives or how many. “Player of the Session” was also redundant: the session Leaderboard
+      tab (<code>SessionPlayerDetailView</code>) already ranks one night by win rate.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How would Most Improved, All-Rounder, Hot Hand and Most Versatile be calculated?</p>
+    <p class="a">
+      Proposals only, nothing built (2026-10-06). <strong>Most Improved</strong>: win rate over the last 3
+      completed sessions minus win rate before them, with minimum games in both windows.
+      <strong>All-Rounder</strong>: normalised Shannon entropy of the six cheer shares; small samples
+      bias it downward by about (6−1)/(2n) nats, so n=15 loses roughly 9% of the scale and n=60 about 2%,
+      meaning a bare 15-cheer floor would favour whoever played most. <strong>Hot Hand</strong>: longest
+      run of consecutive match wins in <code>completed_at</code> order; a split 1–1 match ends the run,
+      an abandoned match (no result rows) is skipped. <strong>Most Versatile</strong>: distinct partners
+      in the last 12 games, but partners are assigned by the schedule generator, so it measures the
+      generator, not the player.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“A 1–1 split is a draw, the same rule the Individual board uses” and “raise All-Rounder’s floor to 45 cheers and it’s fair.”</p>
+    <p>
+      Both wrong, found on review against code and prod data (2026-10-06). The Individual board reads
+      <code>player_stats</code>, which counts one game per <code>match_results</code> row, so a split 1–1 is
+      2 games and 1 win there, not a draw. An award that should agree with that board must count games too.
+    </p>
+    <p>
+      All-Rounder: on prod, cheer spread correlates with cheers received (r = 0.32). Players under 45 cheers
+      average 79.1% spread and players with 45+ average 89.4%, more than sampling bias explains. The top five
+      sit within 1.4 points of each other (94.5–95.9%), and Swift Movement averages only 4.8% of anyone’s
+      cheers, so an even spread is unreachable. Most Improved by win rate is mostly noise: the top +20 came
+      from 6 recent games (z ≈ 1). The generator also balances every match by level, and 11 of 27 levelled
+      players were re-levelled 24 times, which pulls an improving player’s win rate back down.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Hot Hand should count games, like the Individual board.”</p>
+    <p>
+      Wrong for a streak. From May to July matches were two games each, so counting games doubled every
+      2–0. On prod the longest game run is 30, but it spans only 18 matches. A streak must count
+      <strong>matches</strong> (won = took every game, 1–1 = draw), so its length doesn’t depend on the
+      night’s format. Per match on prod (2026-10-06): top current runs are 8, 5 and 4; all-time bests are
+      18, 9 and 7; 6 players are on 3+ right now. All-time best follows matches played (r = 0.55) and the
+      current run barely does (r = 0.12), so the current run is the fair one. POC:
+      <code>temporary_files/win-streak-award-options.html</code>.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“11 of 27 players were re-levelled 24 times” and “Most Improved could use the biggest level rise.”</p>
+    <p>
+      Both wrong. <code>session_registrations.level</code> is only a per-session <em>override</em> (82% of rows
+      are empty); the level a player normally has lives on <code>profiles.level</code>, and the generator uses
+      override ?? profile level (<code>useRoster.ts</code>). Profile levels keep no history, so the 24 “changes”
+      were overrides, and a level-rise award can’t be computed. With the real effective levels, levels do predict
+      results: the lower-rated pair won only 48 of 214 uneven matches (22%), and 8 of 67 (12%) at a 2+ gap
+      (prod, 2026-10-06).
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">

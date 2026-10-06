@@ -19,6 +19,8 @@ import type { CheerTypeSlug } from '@/types/app'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
+import { fetchWinStreaks } from '@/lib/winStreakData'
+import { WIN_STREAK_MIN_RUN } from '@/lib/winStreak'
 import { Avatar } from '@/components/Avatar'
 import { PlayerRowBody, RankedBoard, RowStat } from '@/components/RankedBoard'
 import { useAuth } from '@/hooks/useAuth'
@@ -41,6 +43,8 @@ interface AwardEntry {
   ranking?: { place: number; name: string; valueLabel: string }[]
   /** One line on how the award is decided, shown under the label. */
   rule?: string
+  /** What an empty ranking says; defaults to "no data yet". */
+  emptyText?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -346,13 +350,12 @@ function CheersLeaderboard() {
 }
 
 async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
-  const [cheerRes, statsRes, profilesRes, cheerTimestampsRes, sessionsRes, earlyBirds, eligibleIds] = await Promise.all([
-    supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
+  const [statsRes, profilesRes, sessionsRes, earlyBirds, winStreaks, eligibleIds] = await Promise.all([
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
-    supabase.from('cheers').select('receiver_id, giver_id, created_at').order('created_at', { ascending: false }),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: true }),
     fetchEarlyBirds(),
+    fetchWinStreaks(),
     fetchEligiblePlayerIds(),
   ])
 
@@ -361,22 +364,20 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
-  // Every award, cheer-based or attendance-based, is drawn from the same pool
-  // the other tabs rank: established players who are still turning up.
+  // Every award is drawn from the same pool the other tabs rank: established
+  // players who are still turning up.
   const isRankable = (id: string) => nameMap.has(id) && eligibleIds.has(id)
   // The two attendance awards are still raw counts, so the organiser who is at
   // every session would hold both permanently. Everything else is a rate.
   const holdsAttendanceAward = (id: string) => isRankable(id) && !ATTENDANCE_AWARD_EXCLUDED.has(id)
 
-  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
-    .filter(s => isRankable(s.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => isRankable(s.player_id))
-  // nameMap holds active profiles only; an early bird who has since been
+  // nameMap holds active profiles only; a placed player who has since been
   // deactivated is still named, as before.
-  const missingEarlyBirds = earlyBirds.map((e) => e.playerId).filter((id) => !nameMap.has(id))
-  if (missingEarlyBirds.length > 0) {
-    const pRes = await supabase.from('profiles').select('id, nickname, name_slug').in('id', missingEarlyBirds)
+  const missingNames = [...earlyBirds, ...winStreaks].map((e) => e.playerId).filter((id) => !nameMap.has(id))
+  if (missingNames.length > 0) {
+    const pRes = await supabase.from('profiles').select('id, nickname, name_slug').in('id', missingNames)
     for (const p of (pRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>) {
       nameMap.set(p.id, formatDisplayName(p.nickname, p.name_slug))
     }
@@ -386,13 +387,11 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     name: nameMap.get(e.playerId) ?? 'Unknown player',
     valueLabel: `${e.points} pts`,
   }))
-  const cheerTimestamps = (cheerTimestampsRes.data ?? []) as Array<{ receiver_id: string; giver_id: string; created_at: string }>
-
-  // Tiebreaker maps: latest activity timestamp per player
-  const latestReceivedAt = new Map<string, string>()
-  for (const c of cheerTimestamps) {
-    if (!latestReceivedAt.has(c.receiver_id)) latestReceivedAt.set(c.receiver_id, c.created_at)
-  }
+  const winStreakRanking = winStreaks.map((e) => ({
+    place: e.place,
+    name: nameMap.get(e.playerId) ?? 'Unknown player',
+    valueLabel: String(e.run),
+  }))
 
   function topHolder(arr: Array<{ player_id: string; value: number }>, tiebreaker?: Map<string, string>): { holder: string | null; value: number } {
     if (arr.length === 0) return { holder: null, value: 0 }
@@ -426,34 +425,6 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     if (maxStreak >= 2) streakEntries.push({ player_id: playerId, value: maxStreak })
   }
 
-  /**
-   * A cheer award goes to the highest *share*, not the highest count, and only
-   * among players past the received floor. "Most Cheers Received" and "Most
-   * Cheers Given" are gone entirely: cheering is compulsory after every game,
-   * so both were three-per-match attendance counts wearing a rosette — and
-   * "Most Sessions Joined" below already says that honestly.
-   */
-  function topShareHolder(
-    getCount: (c: typeof cheers[number]) => number,
-  ): { holder: string | null; valueLabel: string | null } {
-    const ranked = rankCheerShares(
-      cheers.map((c) => ({
-        playerId: c.player_id,
-        categoryCount: getCount(c),
-        totalReceived: c.cheers_received,
-      })),
-      { maxPlaces: 1 },
-    )
-
-    // A shared first place has no single holder, matching how the count-based
-    // awards already render a tie as vacant.
-    if (ranked.length !== 1) return { holder: null, valueLabel: null }
-    return {
-      holder: nameMap.get(ranked[0].playerId) ?? null,
-      valueLabel: `${ranked[0].sharePct}%`,
-    }
-  }
-
   const countAward = (
     emoji: string,
     label: string,
@@ -477,13 +448,17 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       ranking: earlyBirdRanking,
       rule: 'All sessions · first 5 to register score 5-4-3-2-1',
     },
-    // Cheer-based awards, by share of the holder's own received cheers
-    { emoji: '⚔️', label: 'Top Fierce Offense',   ...topShareHolder(c => c.offense_received) },
-    { emoji: '🛡️', label: 'Top Iron Defense',     ...topShareHolder(c => c.defense_received) },
-    { emoji: '🎯', label: 'Top Smooth Technique', ...topShareHolder(c => c.technique_received) },
-    { emoji: '💨', label: 'Top Swift Movement',   ...topShareHolder(c => c.movement_received) },
-    { emoji: '🤝', label: 'Top Good Sport',       ...topShareHolder(c => c.good_sport_received) },
-    { emoji: '💪', label: 'Top Solid Effort',     ...topShareHolder(c => c.solid_effort_received) },
+    {
+      emoji: '⚡',
+      label: 'Win Streak',
+      holder: winStreakRanking[0]?.name ?? null,
+      valueLabel: null,
+      ranking: winStreakRanking,
+      rule: 'Matches won in a row right now · a loss or draw ends it',
+      emptyText: `Nobody is on a run of ${WIN_STREAK_MIN_RUN} or more right now`,
+    },
+    // The six cheer awards (Top Fierce Offense etc.) left this tab on 2026-10-06:
+    // the Cheers tab already ranks every category. Their badges stay on My Profile.
   ]
 
   return awards
@@ -525,7 +500,7 @@ function AwardsLeaderboard() {
             </div>
           </div>
           {a.ranking.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic py-2">Vacant — no data yet</p>
+            <p className="text-sm text-muted-foreground italic py-2">{a.emptyText ?? 'Vacant — no data yet'}</p>
           ) : (
             <ol className="mt-2">
               {a.ranking.map((r) => (
