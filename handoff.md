@@ -1,6 +1,6 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-06 (late, end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-06 (end of session, after award celebrations). Overwrite this file on every update; it is never a running history.
 
 ## State
 
@@ -8,11 +8,11 @@ Updated: 2026-10-06 (late, end of session). Overwrite this file on every update;
   - **Every Awards board is a top 5** (`AWARD_PLACES` in `lib/denseRank.ts`).
   - **🗡️ Giant Slayer** is the fifth award: gap 20 points, win rate from 4 earlier games, 3 underdog games to qualify, counted in games. It's on the Awards tab, with a profile badge for 1st.
 - The name was not picked by the owner; it uses the recommended "Giant Slayer". Other options were 🐶 Top Underdog, 💥 Upset Maker, 🎲 Against the Odds and 🏹 David vs Goliath.
-- `tsc -b`, 424 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
+- `tsc -b`, 431 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
 - 084 `cheer_later_players` is on prod and dev.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
-- **Awards now trigger the celebration card** (branch `023-award-celebrations`, committed locally, **not pushed**): all five, drops included; "See the board" opens the exact award.
+- **Awards now trigger the celebration card** (branch `023-award-celebrations`, pushed to `dev` and `main`): all five, drops included; "See the board" opens the exact award.
 
 ## Verified, and how
 
