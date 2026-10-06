@@ -252,6 +252,45 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“15 players qualify for Giant Slayer, with two tied for 1st at 33%.”</p>
+    <p>
+      That count included inactive players; awards only show active ones. Active only (2026-10-06, gap 10,
+      5 earlier matches, 5 underdog matches): <strong>12 qualify</strong>, one leader at 33% (2 of 6), then
+      30%, 25%, 22% and a three-way tie on 20%. Tuning report:
+      <code>temporary_files/giant-slayer-tuning-report.html</code>. It also shows why 10 points is the natural
+      cut-off: below it the weaker pair wins 41–44% (close to a coin flip), and from 10 points it drops to
+      26%, then 25%, 21% and 7%.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“10 points is the natural cut-off for Giant Slayer.”</p>
+    <p>
+      True only when counting <em>matches</em>. The owner chose to count <strong>games</strong>, like the profile
+      (a 1–1 is one win and one loss). Per game on prod (2026-10-06, 598 games, win rate from 3 earlier games), the
+      weaker pair wins 43%, 36%, 38% and 35% at gaps of 0–5, 5–10, 10–15 and 15–20 points, then 21% at 20–25 and
+      18% at 25+. That is the same shape with 5, 8 or 10 earlier games. So per game the break is at <strong>20 points</strong>.
+      At 20: 128 underdog games, underdogs win 20%, 10 active players qualify. At 10: 271 games, 28%, 18 qualify.
+      Game-level report checked against SQL: 271 underdog games and 77 upsets in both.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How is Giant Slayer finally calculated?</p>
+    <p class="a">
+      Built 2026-10-06 (<code>lib/giantSlayer.ts</code>). Every game is replayed in the order it was recorded,
+      counted like the profile (a 1–1 is one win and one loss). Going into each game, a player’s win rate is their
+      record over every earlier game in all sessions, and a pair’s strength is the average of the two. If a pair
+      goes in 20+ points weaker and wins that game, it’s an upset. Score = upsets ÷ underdog games. A player’s win
+      rate is used from their 5th game (4 earlier games), and a player is ranked after 3 underdog games. It’s a
+      top 5, ties share a place, and only active players appear. On prod: 107 underdog games, 21 upsets, 11 qualify.
+      Levels are never used, because they’re private.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">
