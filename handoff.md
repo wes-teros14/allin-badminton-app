@@ -1,6 +1,6 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-06 (late, end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-06 (end of session, after award celebrations). Overwrite this file on every update; it is never a running history.
 
 ## State
 
@@ -8,11 +8,15 @@ Updated: 2026-10-06 (late, end of session). Overwrite this file on every update;
   - **Every Awards board is a top 5** (`AWARD_PLACES` in `lib/denseRank.ts`).
   - **🗡️ Giant Slayer** is the fifth award: gap 20 points, win rate from 4 earlier games, 3 underdog games to qualify, counted in games. It's on the Awards tab, with a profile badge for 1st.
 - The name was not picked by the owner; it uses the recommended "Giant Slayer". Other options were 🐶 Top Underdog, 💥 Upset Maker, 🎲 Against the Odds and 🏹 David vs Goliath.
-- `tsc -b`, 424 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
+- `tsc -b`, 431 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
 - 084 `cheer_later_players` is on prod and dev.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
+- **Awards now trigger the celebration card** (branch `023-award-celebrations`, pushed to `dev` and `main`): all five, drops included; "See the board" opens the exact award.
+
 ## Verified, and how
+
+- Award celebration on dev (browser-only state rewind): the card showed "4 to celebrate!" for the four awards the Admin holds, and "See the board" opened `/leaderboard?tab=awards&award=joined` with that award selected. 431 unit tests pass.
 
 - The app's `rankGiantSlayers` was run on the same 598 prod games as the tuning report: identical results (107 underdog games, 21 upsets, 11 qualify, the same top 5 in order). The game-level report was itself checked against SQL.
 - Dev, Playwright as Admin: five switcher buttons fit at 390 px, and Giant Slayer shows Test Admin 75% (3 of 4 games as underdog). No page errors.

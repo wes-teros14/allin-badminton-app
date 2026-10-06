@@ -7,6 +7,7 @@
  */
 
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
+import { awardBoard, isAwardKey } from '@/lib/awardBoards'
 import type { BoardKey, NewPlacing } from '@/lib/podiumCelebration'
 
 const ORDINALS = ['1st', '2nd', '3rd'] as const
@@ -19,15 +20,30 @@ export function ordinal(rank: number): string {
 export function boardTitle(board: BoardKey): string {
   if (board === 'wins') return 'Individual'
   if (board === 'pairs') return 'Partners'
+  const award = awardKeyOf(board)
+  if (award) return awardBoard(award).label
   const slug = board.slice('cheers:'.length)
   return CHEER_CATEGORIES.find((c) => c.slug === slug)?.name ?? 'Cheers'
 }
 
+/** The award a board key names, or null for every other board. */
+function awardKeyOf(board: BoardKey) {
+  const key = board.startsWith('award:') ? board.slice('award:'.length) : null
+  return isAwardKey(key) ? key : null
+}
+
 /** Which leaderboard tab to open for this board. */
-export function boardTab(board: BoardKey): 'wins' | 'pairs' | 'cheers' {
+export function boardTab(board: BoardKey): 'wins' | 'pairs' | 'cheers' | 'awards' {
   if (board === 'wins') return 'wins'
   if (board === 'pairs') return 'pairs'
+  if (awardKeyOf(board)) return 'awards'
   return 'cheers'
+}
+
+/** Where "See the board" goes: the tab, and for an award the award itself. */
+export function boardHref(board: BoardKey): string {
+  const award = awardKeyOf(board)
+  return award ? `/leaderboard?tab=awards&award=${award}` : `/leaderboard?tab=${boardTab(board)}`
 }
 
 /**
@@ -44,6 +60,8 @@ export function boardPreposition(board: BoardKey): 'on' | 'in' {
 function boardMeasure(board: BoardKey): string {
   if (board === 'wins') return 'most wins'
   if (board === 'pairs') return 'pair win rate'
+  const award = awardKeyOf(board)
+  if (award) return awardBoard(award).measure
   return 'share of your cheers'
 }
 
