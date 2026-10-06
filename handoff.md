@@ -1,32 +1,34 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-06 (afternoon). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-06 (end of session). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- **Win Streak is live** (`dev`/`main` pushed). The six cheer awards are off the Awards tab; their profile badges stay.
-- **Celebration card waits for an answer** (branch `020-celebration-stays`, committed locally, NOT pushed yet):
-  - Dimmed page, "See the board" / "Close", Escape closes. No auto-dismiss and no follow-up toast.
-  - Confetti: 300 pieces, ~5 s trickle, slower fall.
-- `tsc -b`, lint, 414 unit tests and the build pass.
-- Carried over: 084 `cheer_later_players` is on prod, NOT on dev.
+- All pushed to `dev` and `main` this session:
+  - ⚡ Win Streak award; the six cheer awards are off the Awards tab (their profile badges stay).
+  - The celebration card waits for "See the board" / "Close": dimmed page, no auto-dismiss, no follow-up toast. Confetti is 300 pieces and falls longer.
+  - 📅 Most Sessions Joined and 🔥 Attendance Streak show a top 3.
+  - Owner's `CLAUDE.md` rules: concise reporting, ambiguity, when stuck, evidence.
+- `tsc -b`, 414 unit tests and the build pass.
+- 084 `cheer_later_players` is on prod, NOT on dev (dev 404s and falls back to the full gate).
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
 ## Verified, and how
 
-- Celebration card: Playwright on dev as Admin, after rewinding this browser's saved celebration state (no data changed). Seven 1st places showed:
-  - "See the board" was focused, and the card was still up after 8 s.
-  - A tap on the page behind did nothing.
-  - Close removed it with 0 toasts; "See the board" went to `/leaderboard?tab=wins`; Escape closed it.
-- Win Streak: on dev the card renders; prod numbers come from SQL only (top runs 8, 5, 4).
+- Playwright on dev as Admin, 390 px, dark:
+  - The Awards tab shows all four cards as ranked lists. Dev has one active player, so only 1st rows; a real top 3 with ties is not seen in the browser.
+  - The celebration card stays until answered, after rewinding saved state in the browser only.
+
+## Not verified
+
+- The top 3 lists with real prod data, and the confetti feel on a real phone (120 Hz still runs about twice as fast).
 
 ## Immediate next steps
 
-- Push `020-celebration-stays` → `dev` → `main` once the owner confirms.
-- Then discuss the parked awards: 🗡️ Giant Slayer and 🧹 Clean Sweep (details in `project_memory.md`).
+- Discuss the parked awards: 🗡️ Giant Slayer and 🧹 Clean Sweep (numbers in `project_memory.md`).
 - Apply 084 to dev: paste `badminton-v2/supabase/migrations/084_cheer_later_players.sql` into the dev SQL editor.
-- Carried over: restart prod 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4.
+- Restart prod 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4.
 
 ## Open questions
 
-- Carried over: is the load reduction enough? Prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.
+- Is the load reduction enough? Prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.

@@ -13,6 +13,7 @@ import type {
   PairLeaderboardEntry,
 } from '@/lib/leaderboardData'
 import { MIN_CHEERS_RECEIVED, rankCheerShares } from '@/lib/cheerShare'
+import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import type { CheerCategory } from '@/lib/cheerTypes'
 import type { CheerTypeSlug } from '@/types/app'
@@ -39,7 +40,7 @@ interface AwardEntry {
   holder: string | null
   /** Pre-formatted, because cheer awards read "62%" and count awards read "9". */
   valueLabel: string | null
-  /** A placed award (Early Bird) shows its whole podium instead of one holder. */
+  /** A placed award shows its whole podium (top 3) instead of one holder. */
   ranking?: { place: number; name: string; valueLabel: string }[]
   /** One line on how the award is decided, shown under the label. */
   rule?: string
@@ -393,16 +394,19 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     valueLabel: String(e.run),
   }))
 
-  function topHolder(arr: Array<{ player_id: string; value: number }>, tiebreaker?: Map<string, string>): { holder: string | null; value: number } {
-    if (arr.length === 0) return { holder: null, value: 0 }
-    const sorted = [...arr].filter(a => a.value > 0).sort((a, b) => {
-      if (b.value !== a.value) return b.value - a.value
-      const ta = tiebreaker?.get(a.player_id) ?? ''
-      const tb = tiebreaker?.get(b.player_id) ?? ''
-      return tb.localeCompare(ta)
-    })
-    if (sorted.length === 0) return { holder: null, value: 0 }
-    return { holder: nameMap.get(sorted[0].player_id) ?? null, value: sorted[0].value }
+  /**
+   * The top three places of a count award, dense like every other board
+   * (1, 1, 2 — never 1, 1, 3), cut by places rather than rows.
+   */
+  function topThree(arr: Array<{ player_id: string; value: number }>) {
+    const ordered = arr
+      .filter((a) => a.value > 0)
+      .sort((a, b) => b.value - a.value || a.player_id.localeCompare(b.player_id))
+    return cutToPlaces(assignDenseRanks(ordered, (a) => a.value), 3).map((a) => ({
+      place: a.rank,
+      name: nameMap.get(a.player_id) ?? 'Unknown player',
+      valueLabel: String(a.value),
+    }))
   }
 
   // Consecutive sessions streak per player
@@ -425,21 +429,21 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     if (maxStreak >= 2) streakEntries.push({ player_id: playerId, value: maxStreak })
   }
 
-  const countAward = (
-    emoji: string,
-    label: string,
-    result: { holder: string | null; value: number },
-  ): AwardEntry => ({
-    emoji,
-    label,
-    holder: result.holder,
-    valueLabel: result.value > 0 ? String(result.value) : null,
-  })
-
   const awards: AwardEntry[] = [
     // System-generated awards first
-    countAward('📅', 'Most Sessions Joined', topHolder(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended })))),
-    countAward('🔥', 'Attendance Streak', topHolder(streakEntries)),
+    ...([
+      ['📅', 'Most Sessions Joined', 'Finished sessions attended',
+        topThree(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended })))],
+      ['🔥', 'Attendance Streak', 'Most finished sessions in a row',
+        topThree(streakEntries)],
+    ] as const).map(([emoji, label, rule, ranking]): AwardEntry => ({
+      emoji,
+      label,
+      holder: ranking[0]?.name ?? null,
+      valueLabel: null,
+      ranking: [...ranking],
+      rule,
+    })),
     {
       emoji: '🐦',
       label: 'Registration Early Bird',
