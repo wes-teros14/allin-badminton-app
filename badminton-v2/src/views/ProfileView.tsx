@@ -6,6 +6,7 @@ import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
+import { fetchWinStreaks } from '@/lib/winStreakData'
 import { cheerSharePct, rankCheerShares } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
 import { resizeImageFile } from '@/lib/imageResize'
@@ -191,16 +192,18 @@ const MAX_AVATAR_BYTES = 1 * 1024 * 1024 // enforced after client-side resize/co
 const MAX_AVATAR_INPUT_BYTES = 20 * 1024 * 1024 // reject absurdly large originals before we even try to process them
 
 async function fetchAwards(userId: string): Promise<Award[]> {
-  const [cheerRes, statsRes, earlyBirds, eligibleIds] = await Promise.all([
+  const [cheerRes, statsRes, earlyBirds, winStreaks, eligibleIds] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     fetchEarlyBirds(),
+    fetchWinStreaks(),
     fetchEligiblePlayerIds(),
   ])
 
-  // These badges must agree with the Awards tab exactly — a badge here that the
-  // leaderboard does not show is a contradiction the reader cannot diagnose. So
-  // the same eligibility, the same share ranking, and the same six awards.
+  // These badges use the same eligibility and rankings as the Awards tab, so a
+  // badge here always matches a holder there. One deliberate exception: the six
+  // cheer badges stay here although the Awards tab dropped those cards on
+  // 2026-10-06 (the owner's call) — the Cheers tab still ranks every category.
   const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
     .filter(c => eligibleIds.has(c.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
@@ -243,6 +246,8 @@ async function fetchAwards(userId: string): Promise<Award[]> {
   // Badge for 1st place only (shared on a full tie), as the Awards card shows.
   if (earlyBirds.some(e => e.place === 1 && e.playerId === userId))
     awards.push({ emoji: '🐦', label: 'Registration Early Bird' })
+  if (winStreaks.some(e => e.place === 1 && e.playerId === userId))
+    awards.push({ emoji: '⚡', label: 'Win Streak' })
 
   return awards
 }
