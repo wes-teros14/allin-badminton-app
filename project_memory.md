@@ -219,10 +219,17 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   records the news as seen. Hold on *loading* as well as on the visible gate: the gate reloads between
   cheers and briefly reports no gate. Anything new that takes over the screen on launch must join this
   hold, or the celebration plays behind it and is lost.
-- **Card timing and confetti (2026-09-27, user-tuned):** card stays 4.5 s (`BASE_DWELL_MS`, +0.6 s per
-  extra achievement, cap 6 s). Confetti is 240 pieces: half burst, half trickled over 180 frames so it
-  lasts as long as the card. Physics are per-frame, so on a 120 Hz phone it runs about twice as fast
-  (unchanged, not yet addressed).
+- **The card waits for an answer (2026-10-06, option B in `temporary_files/celebration-card-close-options.html`).**
+  It dims and blocks the page and offers **See the board** (navigates to the best placing's tab) and
+  **Close**; Escape also closes, and the scrim is deliberately not a close target. It replaced a 4.5 s
+  auto-dismiss followed by an 8 s "View" toast (the toast and `toastLine` are gone), because both were
+  missed by looking away. This reverses the earlier rule "a celebration you have to close has become a
+  dialog" at the owner's request. Rejected: tap-anywhere-to-close (a tap meant for the page closes it and
+  the toast is still missable) and a corner ✕ without dimming (a small target floating over the page).
+- **Confetti (re-tuned 2026-10-06):** 300 pieces, half burst and half trickled over 300 frames (~5 s),
+  gravity 0.18 with a terminal fall speed of 5 px/frame, slower fade (decay 0.0035–0.007), so pieces
+  keep falling for several seconds. Physics are per-frame, so on a 120 Hz phone it runs about twice as
+  fast (unchanged, not yet addressed).
 - **"Cheer later" replaces the gate for listed players (built 2026-10-04, migration 084).**
   Admin routes are nested inside `PlayerLayout`, which renders `<CheersPanel>` *instead of* `<Outlet>`,
   so finishing your own match unmounts the Live page mid-changeover. Direction the user chose: a
