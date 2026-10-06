@@ -72,9 +72,17 @@ describe('rankWinStreaks', () => {
   it('cuts by places, not rows', () => {
     const ranked = rankWinStreaks(
       [...runOf('A', 9), ...runOf('B', 8), ...runOf('C', 7), ...runOf('D', 7), ...runOf('E', 6)],
-      { eligible: new Set(['A', 'B', 'C', 'D', 'E']) },
+      { eligible: new Set(['A', 'B', 'C', 'D', 'E']), places: 3 },
     )
     expect(ranked.map((e) => e.playerId)).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('shows five places by default, like every Awards board', () => {
+    const ranked = rankWinStreaks(
+      [...runOf('A', 9), ...runOf('B', 8), ...runOf('C', 7), ...runOf('D', 6), ...runOf('E', 5), ...runOf('F', 4)],
+      { eligible: new Set(['A', 'B', 'C', 'D', 'E', 'F']) },
+    )
+    expect(ranked.map((e) => e.place)).toEqual([1, 2, 3, 4, 5])
   })
 
   it('is empty when nobody is on a run of 3', () => {

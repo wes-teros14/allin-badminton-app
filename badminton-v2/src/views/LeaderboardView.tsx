@@ -13,7 +13,7 @@ import type {
   PairLeaderboardEntry,
 } from '@/lib/leaderboardData'
 import { MIN_CHEERS_RECEIVED, rankCheerShares } from '@/lib/cheerShare'
-import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
+import { AWARD_PLACES, assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import type { CheerCategory } from '@/lib/cheerTypes'
 import type { CheerTypeSlug } from '@/types/app'
@@ -399,14 +399,14 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   const nameOf = (id: string) => nameMap.get(id) ?? 'Unknown player'
 
   /**
-   * The top three places of a count award, dense like every other board
+   * The top places of a count award, dense like every other board
    * (1, 1, 2 — never 1, 1, 3), cut by places rather than rows.
    */
-  function topThree(arr: Array<{ player_id: string; value: number }>) {
+  function topPlaces(arr: Array<{ player_id: string; value: number }>) {
     const ordered = arr
       .filter((a) => a.value > 0)
       .sort((a, b) => b.value - a.value || a.player_id.localeCompare(b.player_id))
-    return cutToPlaces(assignDenseRanks(ordered, (a) => a.value), 3).map((a): AwardRow => ({
+    return cutToPlaces(assignDenseRanks(ordered, (a) => a.value), AWARD_PLACES).map((a): AwardRow => ({
       playerId: a.player_id,
       name: nameOf(a.player_id),
       value: a.value,
@@ -444,7 +444,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       short: 'Joined',
       rule: 'Finished sessions attended',
       unit: (n) => plural(n, 'session', 'sessions'),
-      rows: topThree(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))),
+      rows: topPlaces(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))),
       emptyText: 'Nobody has qualified yet.',
     },
     {
@@ -454,7 +454,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       short: 'Streak',
       rule: 'Most finished sessions in a row',
       unit: () => 'in a row',
-      rows: topThree(streakEntries),
+      rows: topPlaces(streakEntries),
       emptyText: 'Nobody has a streak of 2 sessions yet.',
     },
     {
@@ -486,7 +486,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
 
 /**
  * The Awards tab, laid out like the Cheers tab (2026-10-06): one award at a
- * time behind a switcher, drawn through the same RankedBoard as every other
+ * time behind a switcher, top AWARD_PLACES, drawn through the same RankedBoard as every other
  * tab. It used to be a stack of bespoke cards, the only tab that looked
  * different from the other three.
  */
@@ -511,7 +511,7 @@ function AwardsLeaderboard() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground text-center">
-        Top 3 · {MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
+        Top {AWARD_PLACES} · {MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
       </p>
 
       <div className="grid grid-cols-4 gap-1.5">

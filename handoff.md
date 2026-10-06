@@ -11,7 +11,7 @@ Updated: 2026-10-06 (end of session). Overwrite this file on every update; it is
   - The Awards tab is laid out like Cheers: a four-way switcher plus the same medal board as every tab.
   - Owner's `CLAUDE.md` rules: concise reporting, ambiguity, when stuck, evidence.
 - `tsc -b`, 414 unit tests and the build pass.
-- 084 `cheer_later_players` is on prod, NOT on dev (dev 404s and falls back to the full gate).
+- 084 `cheer_later_players` is on prod **and dev** (dev applied by the owner 2026-10-06 via SQL editor; verified: request 200, Settings card loads the list).
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
 ## Verified, and how
@@ -28,7 +28,6 @@ Updated: 2026-10-06 (end of session). Overwrite this file on every update; it is
 ## Immediate next steps
 
 - Discuss the parked awards: 🗡️ Giant Slayer and 🧹 Clean Sweep (numbers in `project_memory.md`).
-- Apply 084 to dev: paste `badminton-v2/supabase/migrations/084_cheer_later_players.sql` into the dev SQL editor.
 - Restart prod 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4.
 
 ## Open questions

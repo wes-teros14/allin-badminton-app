@@ -98,6 +98,8 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - Before proposing a cheer-based award or stat, run it against the compulsory-cheering rule: each match everyone cheers the other three (1 partner, 2 opponents), so anything counting who cheers, how many, or opponent-vs-partner share is a constant. Also check the session Leaderboard tab and `TodayView` before proposing a per-session ranking.
 - Before proposing a stats-based award, check the counting unit the existing board uses (`player_stats` counts games, not matches) and run the formula on prod data. Two of four award formulas I proposed from reasoning alone were noise or biased once measured.
 - A player's level is `profiles.level` (no history); `session_registrations.level` is only a per-session override and is mostly NULL. Use override ?? profile level, as `useRoster` does, never the registration column alone.
+- Player levels are private to the owner. Never propose or build anything player-facing that shows or implies a level, including "beat a higher-rated pair".
+- When a query's answer contradicts a simpler sanity check, suspect the query first. I swapped which team won (`t1 = 0` means team 1 took no games) and nearly reported that weaker pairs win 79%.
 - When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 
 ## .env Files

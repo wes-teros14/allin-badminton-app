@@ -224,6 +224,34 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">How would Giant Slayer be computed, and is Clean Sweep session-level only?</p>
+    <p class="a">
+      Proposals, not built (2026-10-06). <strong>Giant Slayer</strong>: each player’s level is the session
+      override if set, else <code>profiles.level</code>, else 5 (as <code>useRoster</code> does). A pair’s
+      strength is the sum of its two levels. If your pair’s sum is lower and you won the whole match, that
+      is one upset win for both of you. The award counts upset wins (or upset wins ÷ underdog matches),
+      top 3. On prod the lower pair won 48 of 214 uneven matches (22%), 8 of 67 at a 2+ gap.
+      Profile levels have no history, so old matches use today’s level. <strong>Clean Sweep</strong>
+      is <em>detected</em> per session (3+ matches, every one won; a draw spoils it) but the award
+      <em>counts</em> those nights all-time: 19 so far in 28 sessions, leaders 5, 2, 2.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Giant Slayer: an upset is beating a pair with a higher combined level.”</p>
+    <p>
+      Not usable: levels are private to the admin, and an award for beating a “higher-rated” pair would
+      tell players who is rated higher. Replacement (proposal, 2026-10-06): a pair’s strength is the
+      average of its two players’ win rates over matches <em>before</em> this one (each with 5+ matches).
+      An upset is a pair 10+ points weaker winning the whole match. On prod the weaker pair won 18 of 85 (21%),
+      and 2 of 28 at a 20-point gap, as predictive as levels and fully public. There were 21 upset matches,
+      and the leaders had 10, 3 and 3. The 10 belongs to a 32% player, who is the underdog in most matches,
+      so rank by upset wins ÷ underdog matches.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">
