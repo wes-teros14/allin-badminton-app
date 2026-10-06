@@ -34,18 +34,31 @@ import { boardTab } from '@/lib/celebrationLabels'
 
 type Tab = 'wins' | 'pairs' | 'cheers' | 'awards'
 
+interface AwardRow {
+  playerId: string
+  name: string
+  value: number
+  /** Dense place, 1-based: equal values share it. */
+  rank: number
+}
+
+/**
+ * One award on the Awards tab. Every award is a ranked top 3 drawn through
+ * RankedBoard, the same board every other tab uses.
+ */
 interface AwardEntry {
+  key: string
   emoji: string
   label: string
-  holder: string | null
-  /** Pre-formatted, because cheer awards read "62%" and count awards read "9". */
-  valueLabel: string | null
-  /** A placed award shows its whole podium (top 3) instead of one holder. */
-  ranking?: { place: number; name: string; valueLabel: string }[]
-  /** One line on how the award is decided, shown under the label. */
-  rule?: string
-  /** What an empty ranking says; defaults to "no data yet". */
-  emptyText?: string
+  /** Switcher label: fits a quarter of a 384px phone. */
+  short: string
+  /** One line on how the award is decided. */
+  rule: string
+  /** The unit under a row's number, e.g. "sessions". */
+  unit: (value: number) => string
+  rows: AwardRow[]
+  /** What an empty board says. */
+  emptyText: string
 }
 
 // ---------------------------------------------------------------------------
@@ -383,16 +396,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       nameMap.set(p.id, formatDisplayName(p.nickname, p.name_slug))
     }
   }
-  const earlyBirdRanking = earlyBirds.map((e) => ({
-    place: e.place,
-    name: nameMap.get(e.playerId) ?? 'Unknown player',
-    valueLabel: `${e.points} pts`,
-  }))
-  const winStreakRanking = winStreaks.map((e) => ({
-    place: e.place,
-    name: nameMap.get(e.playerId) ?? 'Unknown player',
-    valueLabel: String(e.run),
-  }))
+  const nameOf = (id: string) => nameMap.get(id) ?? 'Unknown player'
 
   /**
    * The top three places of a count award, dense like every other board
@@ -402,10 +406,11 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     const ordered = arr
       .filter((a) => a.value > 0)
       .sort((a, b) => b.value - a.value || a.player_id.localeCompare(b.player_id))
-    return cutToPlaces(assignDenseRanks(ordered, (a) => a.value), 3).map((a) => ({
-      place: a.rank,
-      name: nameMap.get(a.player_id) ?? 'Unknown player',
-      valueLabel: String(a.value),
+    return cutToPlaces(assignDenseRanks(ordered, (a) => a.value), 3).map((a): AwardRow => ({
+      playerId: a.player_id,
+      name: nameOf(a.player_id),
+      value: a.value,
+      rank: a.rank,
     }))
   }
 
@@ -429,37 +434,48 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     if (maxStreak >= 2) streakEntries.push({ player_id: playerId, value: maxStreak })
   }
 
+  const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
+
   const awards: AwardEntry[] = [
-    // System-generated awards first
-    ...([
-      ['📅', 'Most Sessions Joined', 'Finished sessions attended',
-        topThree(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended })))],
-      ['🔥', 'Attendance Streak', 'Most finished sessions in a row',
-        topThree(streakEntries)],
-    ] as const).map(([emoji, label, rule, ranking]): AwardEntry => ({
-      emoji,
-      label,
-      holder: ranking[0]?.name ?? null,
-      valueLabel: null,
-      ranking: [...ranking],
-      rule,
-    })),
     {
-      emoji: '🐦',
-      label: 'Registration Early Bird',
-      holder: earlyBirdRanking[0]?.name ?? null,
-      valueLabel: null,
-      ranking: earlyBirdRanking,
-      rule: 'All sessions · first 5 to register score 5-4-3-2-1',
+      key: 'joined',
+      emoji: '📅',
+      label: 'Most Sessions Joined',
+      short: 'Joined',
+      rule: 'Finished sessions attended',
+      unit: (n) => plural(n, 'session', 'sessions'),
+      rows: topThree(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))),
+      emptyText: 'Nobody has qualified yet.',
     },
     {
+      key: 'attendance-streak',
+      emoji: '🔥',
+      label: 'Attendance Streak',
+      short: 'Streak',
+      rule: 'Most finished sessions in a row',
+      unit: () => 'in a row',
+      rows: topThree(streakEntries),
+      emptyText: 'Nobody has a streak of 2 sessions yet.',
+    },
+    {
+      key: 'early-bird',
+      emoji: '🐦',
+      label: 'Registration Early Bird',
+      short: 'Early',
+      rule: 'All sessions · first 5 to register score 5-4-3-2-1',
+      unit: (n) => plural(n, 'point', 'points'),
+      rows: earlyBirds.map((e) => ({ playerId: e.playerId, name: nameOf(e.playerId), value: e.points, rank: e.place })),
+      emptyText: 'Nobody has qualified yet.',
+    },
+    {
+      key: 'win-streak',
       emoji: '⚡',
       label: 'Win Streak',
-      holder: winStreakRanking[0]?.name ?? null,
-      valueLabel: null,
-      ranking: winStreakRanking,
+      short: 'Wins',
       rule: 'Matches won in a row right now · a loss or draw ends it',
-      emptyText: `Nobody is on a run of ${WIN_STREAK_MIN_RUN} or more right now`,
+      unit: (n) => plural(n, 'win in a row', 'wins in a row'),
+      rows: winStreaks.map((e) => ({ playerId: e.playerId, name: nameOf(e.playerId), value: e.run, rank: e.place })),
+      emptyText: `Nobody is on a run of ${WIN_STREAK_MIN_RUN} or more right now.`,
     },
     // The six cheer awards (Top Fierce Offense etc.) left this tab on 2026-10-06:
     // the Cheers tab already ranks every category. Their badges stay on My Profile.
@@ -468,11 +484,16 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   return awards
 }
 
-const PLACE_LABELS = ['1st', '2nd', '3rd']
-
+/**
+ * The Awards tab, laid out like the Cheers tab (2026-10-06): one award at a
+ * time behind a switcher, drawn through the same RankedBoard as every other
+ * tab. It used to be a stack of bespoke cards, the only tab that looked
+ * different from the other three.
+ */
 function AwardsLeaderboard() {
   const [awards, setAwards] = useState<AwardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setIsLoading(true)
@@ -482,58 +503,75 @@ function AwardsLeaderboard() {
 
   useEffect(() => { load() }, [load])
 
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-16 bg-muted rounded-xl animate-pulse" />
-        ))}
-      </div>
-    )
-  }
+  if (isLoading) return <BoardSkeleton height="h-14" />
+  if (awards.length === 0) return <p className="text-muted-foreground text-sm">No awards yet.</p>
+
+  const selected = awards.find((a) => a.key === selectedKey) ?? awards[0]
 
   return (
-    <div className="space-y-2">
-      {awards.map(a => a.ranking ? (
-        <div key={a.label} className="bg-card border border-border rounded-xl px-4 pt-3 pb-1">
-          <div className="flex items-center gap-3">
-            <span className="text-xl shrink-0">{a.emoji}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-muted-foreground">{a.label}</p>
-              {a.rule && <p className="text-xs text-muted-foreground">{a.rule}</p>}
-            </div>
-          </div>
-          {a.ranking.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic py-2">{a.emptyText ?? 'Vacant — no data yet'}</p>
-          ) : (
-            <ol className="mt-2">
-              {a.ranking.map((r) => (
-                <li key={`${r.place}-${r.name}`} className="flex items-center gap-3 py-2 border-t border-border text-sm">
-                  <span className={`w-8 text-xs font-bold tabular-nums ${r.place === 1 ? 'text-gold-ink' : 'text-muted-foreground'}`}>
-                    {PLACE_LABELS[r.place - 1] ?? `${r.place}th`}
-                  </span>
-                  <span className="flex-1 min-w-0 truncate font-semibold">{r.name}</span>
-                  <span className="font-bold text-primary-ink tabular-nums shrink-0">{r.valueLabel}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      ) : (
-        <div key={a.label} className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3">
-          <span className="text-xl shrink-0">{a.emoji}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-muted-foreground">{a.label}</p>
-            <p className="font-semibold text-sm truncate">
-              {a.holder ?? <span className="text-muted-foreground italic">Vacant — tied or no data</span>}
-            </p>
-          </div>
-          {a.holder && a.valueLabel && (
-            <span className="text-sm font-bold text-primary-ink tabular-nums shrink-0">{a.valueLabel}</span>
-          )}
-        </div>
-      ))}
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground text-center">
+        Top 3 · {MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
+      </p>
+
+      <div className="grid grid-cols-4 gap-1.5">
+        {awards.map((award) => {
+          const isOn = award.key === selected.key
+          return (
+            <button
+              key={award.key}
+              type="button"
+              onClick={() => setSelectedKey(award.key)}
+              aria-pressed={isOn}
+              aria-label={award.label}
+              className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                isOn
+                  ? 'border-primary bg-primary-subtle text-foreground'
+                  : 'border-border bg-card text-muted-foreground hover:border-primary/60'
+              }`}
+            >
+              <span className="text-[17px] leading-none" aria-hidden="true">{award.emoji}</span>
+              <span className="text-[11px] font-bold uppercase tracking-wide">{award.short}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div>
+        <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-tight text-foreground">
+          <span className="text-2xl leading-none" aria-hidden="true">{selected.emoji}</span>
+          {selected.label}
+        </h2>
+        <p className="mb-2.5 mt-0.5 text-xs text-muted-foreground">{selected.rule}</p>
+
+        {selected.rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{selected.emptyText}</p>
+        ) : (
+          <RankedBoard
+            entries={selected.rows}
+            tiedNoun="players"
+            keyOf={(row) => row.playerId}
+            renderRow={(row, variant) => <AwardRowBody row={row} unit={selected.unit(row.value)} variant={variant} />}
+          />
+        )}
+      </div>
     </div>
+  )
+}
+
+/** Everything on an award row except the marker, which the place owns. */
+function AwardRowBody({ row, unit, variant }: { row: AwardRow; unit: string; variant: 'podium' | 'list' }) {
+  const podium = variant === 'podium'
+  return (
+    <>
+      <span className={`flex-1 min-w-0 truncate ${podium ? 'text-[15px] font-semibold' : 'text-sm font-medium'}`}>
+        {row.name}
+      </span>
+      <div className="text-right shrink-0">
+        <p className={`font-bold text-primary-ink tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>{row.value}</p>
+        <p className="text-xs text-muted-foreground">{unit}</p>
+      </div>
+    </>
   )
 }
 
