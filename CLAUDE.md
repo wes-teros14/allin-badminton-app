@@ -179,53 +179,34 @@ fully answerable in a short chat reply.
 
 POC HTML files go in `/temporary_files`, not in `docs/` or the app source tree.
 
-## Plain Language Recap
-End every technical explanation with a short plain language section before
-finishing your turn. This is for me, not for a stakeholder, so it applies even
-when the explanation was already fairly simple.
+## Reporting Information
 
-**Before writing the recap:** scan the full explanation, not just its last
-section, and decide whether it covered one core idea or several distinct
-sub-points (separate steps, separate causes, separate components). That
-decision picks the format below.
+- Report to me extremely concisely. Sacrifice grammar for brevity.
+- Never drop negations, numbers, or warnings. "Not deployed" must not become "deployed".
+- Keep code, commands, and error messages exact.
 
-**Format — single concept**
-    ---
-    **In plain terms**
-    [One or two sentences with no jargon]
-    **Think of it like:** [One analogy carried through to the end]
-    **Example:** [One concrete case, real numbers or real names where possible]
 
-**Format — multiple parts**
-    ---
-    **In plain terms**
-    1. [Sub-point one, no jargon]
-       **Think of it like:** [This part, in the shared analogy world]
-       **Example:** [One concrete case for this part]
-    2. [Sub-point two, no jargon]
-       **Think of it like:** [This part, same analogy world, next piece]
-       **Example:** [One concrete case for this part]
-    3. [Sub-point three, no jargon]
-       **Think of it like:** [This part, same analogy world, next piece]
-       **Example:** [One concrete case for this part]
+## Handling ambiguity
 
-**Rules**
-- Anchor the analogy in something everyday such as a kitchen, a mailroom, a
-  filing cabinet, or a delivery service. Keep the analogy world free of
-  technical words. If the analogy needs jargon to work, it has failed.
-- Stay inside one analogy world for the whole recap, even in multi-part
-  format. Each numbered part gets its own "Think of it like" line, but all of
-  them must be different corners of the same world (e.g. different stations
-  in the same kitchen), never a new unrelated analogy per part.
-- Numbered parts should map to sub-points actually covered in the
-  explanation, in the order they were covered, not a restructuring.
-- Close the last numbered part with a bridge phrase that ties the analogy
-  back to the actual concept, so the recap
+If a request is ambiguous:
 
-These rules are self contained and do not depend on any skill being loaded. If a
-plain language or analogy skill is available in the session, follow its structure
-instead, since it holds the agreed wording for terms I have already covered.
+- **Expensive to undo** (API or schema changes, renaming public interfaces,
+  edits across multiple files): ask exactly ONE clarifying question first.
+- **Cheap to undo** (filenames, formatting, small choices): decide, proceed,
+  and state the assumption in one line.
+- **Specs and planning:** ask as many questions as needed, in one block.
 
-## UI/UX
+## When stuck
 
-When designing or building UI or UX, use the bencium, impeccable and intent skills
+- After two failed attempts, stop. Do not try a third.
+- Tell me what's blocking you and what you've already ruled out.
+
+
+
+## Evidence over assumptions
+
+
+- Don't trust assumptions when verifiable information exists. Check first, then act.
+- State all assumptions used in the response.
+- Separate **verified evidence** (cite the source) from **reasoning or inference**.
+- Evidence before confidence.
