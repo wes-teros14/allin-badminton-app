@@ -88,14 +88,3 @@ export function cardLabel(placing: NewPlacing): { title: string; detail: string 
   }
   return { title, detail: `${title} · ${measure}` }
 }
-
-/** "You're 2nd on Individual", plus "— and 2 more" when several landed at once. */
-export function toastLine(best: NewPlacing, extraCount: number): string {
-  const where = `${boardPreposition(best.board)} ${boardTitle(best.board)}`
-  const head =
-    best.kind === 'first-appearance'
-      ? `You made the ${boardTitle(best.board)} board — ${ordinal(best.rank)}`
-      : `You're ${ordinal(best.rank)} ${where}`
-
-  return extraCount > 0 ? `${head} — and ${extraCount} more` : head
-}
