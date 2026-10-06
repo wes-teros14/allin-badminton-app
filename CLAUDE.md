@@ -95,6 +95,9 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - An empty queue or table proves nothing is pending, not that a feature is unused. Before calling an extension unused, grep migrations and check live functions/triggers/cron that call it.
 - A POC's first screen must already show each option's effect. Never hide the sample behind a "press this to see it" step, and send the file with SendUserFile so it actually reaches the user.
 - When asking the user to decide something, describe the thing in plain words (what it looks like, when it appears) and give an example. An internal name like "the celebration" or "the hold" means nothing to them.
+- Before proposing a cheer-based award or stat, run it against the compulsory-cheering rule: each match everyone cheers the other three (1 partner, 2 opponents), so anything counting who cheers, how many, or opponent-vs-partner share is a constant. Also check the session Leaderboard tab and `TodayView` before proposing a per-session ranking.
+- Before proposing a stats-based award, check the counting unit the existing board uses (`player_stats` counts games, not matches) and run the formula on prod data. Two of four award formulas I proposed from reasoning alone were noise or biased once measured.
+- A player's level is `profiles.level` (no history); `session_registrations.level` is only a per-session override and is mostly NULL. Use override ?? profile level, as `useRoster` does, never the registration column alone.
 - When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 
 ## .env Files
