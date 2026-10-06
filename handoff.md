@@ -7,7 +7,7 @@ Updated: 2026-10-06 (end of session, after award celebrations). Overwrite this f
 - Pushed to `dev` and `main` this round:
   - **Every Awards board is a top 5** (`AWARD_PLACES` in `lib/denseRank.ts`).
   - **🗡️ Giant Slayer** is the fifth award: gap 20 points, win rate from 4 earlier games, 3 underdog games to qualify, counted in games. It's on the Awards tab, with a profile badge for 1st.
-- The name was not picked by the owner; it uses the recommended "Giant Slayer". Other options were 🐶 Top Underdog, 💥 Upset Maker, 🎲 Against the Odds and 🏹 David vs Goliath.
+- **Renamed by the owner to "Against the Odds"** (branch `024-against-the-odds`): label and profile badge; switcher chip reads "Odds"; emoji still 🗡️; code and board key still `giant-slayer`.
 - `tsc -b`, 431 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
 - 084 `cheer_later_players` is on prod and dev.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
@@ -27,7 +27,6 @@ Updated: 2026-10-06 (end of session, after award celebrations). Overwrite this f
 
 ## Immediate next steps
 
-- Owner to confirm the name, or pick another.
 - Clean Sweep is still parked (numbers in `project_memory.md`).
 - Restart prod 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4.
 
