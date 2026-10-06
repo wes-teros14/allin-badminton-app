@@ -11,6 +11,7 @@
  */
 
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
+import { AWARD_BOARDS, type AwardKey } from '@/lib/awardBoards'
 import type { CheerTypeSlug } from '@/types/app'
 
 /** Places that count as a podium. Matches MEDALS in LeaderboardView. */
@@ -20,23 +21,29 @@ export const PODIUM_PLACES = 3
  * Which leaderboard a placing belongs to. Cheers carries its category, because
  * each of the six is its own board with its own podium.
  */
-export type BoardKey = 'wins' | 'pairs' | `cheers:${CheerTypeSlug}`
+export type BoardKey = 'wins' | 'pairs' | `cheers:${CheerTypeSlug}` | `award:${AwardKey}`
 
 export const cheersBoard = (slug: CheerTypeSlug): BoardKey => `cheers:${slug}`
+export const awardBoardKey = (key: AwardKey): BoardKey => `award:${key}`
 
 /**
  * Every board this feature watches, in the order a tie between two equally good
  * placings is broken.
  *
  * Derived from CHEER_CATEGORIES rather than listed by hand, so a seventh cheer
- * type is added in one place — the same reason that list exists. The Awards
- * board is deliberately absent: it has a single holder and no second or third
- * place, so there is no podium to detect.
+ * type is added in one place — the same reason that list exists.
+ *
+ * The five awards joined on 2026-10-06, once every award became a ranked top 5.
+ * They used to be left out because each had a single holder and no podium. They
+ * behave exactly like the other boards, drops included. Adding them is safe for
+ * existing holders: a board missing from a player's last snapshot is silent the
+ * first time (see newPodiumPlacings).
  */
 export const WATCHED_BOARDS: readonly BoardKey[] = [
   'wins',
   'pairs',
   ...CHEER_CATEGORIES.map((c) => cheersBoard(c.slug)),
+  ...AWARD_BOARDS.map((a) => awardBoardKey(a.key)),
 ]
 
 /**

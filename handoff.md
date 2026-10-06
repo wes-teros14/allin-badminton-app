@@ -12,7 +12,11 @@ Updated: 2026-10-06 (late, end of session). Overwrite this file on every update;
 - 084 `cheer_later_players` is on prod and dev.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
+- **Awards now trigger the celebration card** (branch `023-award-celebrations`, committed locally, **not pushed**): all five, drops included; "See the board" opens the exact award.
+
 ## Verified, and how
+
+- Award celebration on dev (browser-only state rewind): the card showed "4 to celebrate!" for the four awards the Admin holds, and "See the board" opened `/leaderboard?tab=awards&award=joined` with that award selected. 431 unit tests pass.
 
 - The app's `rankGiantSlayers` was run on the same 598 prod games as the tuning report: identical results (107 underdog games, 21 upsets, 11 qualify, the same top 5 in order). The game-level report was itself checked against SQL.
 - Dev, Playwright as Admin: five switcher buttons fit at 390 px, and Giant Slayer shows Test Admin 75% (3 of 4 games as underdog). No page errors.

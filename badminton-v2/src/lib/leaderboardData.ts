@@ -17,7 +17,8 @@ import { rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTallyMatch } from '@/lib/pairStats'
 import { rankCheerShares } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
-import { cheersBoard } from '@/lib/podiumCelebration'
+import { awardBoardKey, cheersBoard } from '@/lib/podiumCelebration'
+import { fetchAwardsLeaderboard } from '@/lib/awardsLeaderboard'
 import type { RankSnapshot } from '@/lib/podiumCelebration'
 
 export interface LeaderboardEntry {
@@ -288,10 +289,11 @@ export async function fetchLatestSessionCompletion(): Promise<string | null> {
 export async function fetchPlayerStandings(playerId: string): Promise<RankSnapshot> {
   const standings: RankSnapshot = {}
 
-  const [winsRes, pairsRes, cheersRes] = await Promise.allSettled([
+  const [winsRes, pairsRes, cheersRes, awardsRes] = await Promise.allSettled([
     fetchAllTimeLeaderboard(),
     fetchPairLeaderboard(),
     fetchCheerLeaderboard(),
+    fetchAwardsLeaderboard(),
   ])
 
   if (winsRes.status === 'fulfilled') {
@@ -317,6 +319,13 @@ export async function fetchPlayerStandings(playerId: string): Promise<RankSnapsh
         })),
       )
       standings[cheersBoard(category.slug)] = ranked.find((r) => r.playerId === playerId)?.rank ?? null
+    }
+  }
+
+  if (awardsRes.status === 'fulfilled') {
+    // Places beyond the top 5 are not shown on the tab, so they count as unplaced.
+    for (const award of awardsRes.value) {
+      standings[awardBoardKey(award.key)] = award.rows.find((r) => r.playerId === playerId)?.rank ?? null
     }
   }
 

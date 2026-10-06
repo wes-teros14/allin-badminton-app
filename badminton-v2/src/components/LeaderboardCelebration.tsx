@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router'
 import { CelebrationCard, type CelebrationChoice } from '@/components/CelebrationCard'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { useLeaderboardCelebration } from '@/hooks/useLeaderboardCelebration'
-import { boardTab, cardLabel } from '@/lib/celebrationLabels'
+import { boardHref, cardLabel } from '@/lib/celebrationLabels'
 import type { NewPlacing } from '@/lib/podiumCelebration'
 
 /**
@@ -37,7 +37,7 @@ export function LeaderboardCelebration({ held: gateHeld = false }: { held?: bool
     dismiss()
     // The sweep was already armed when the card appeared, so arriving here and
     // arriving later under their own steam land in the same state.
-    if (choice === 'board' && best) navigate(`/leaderboard?tab=${boardTab(best.board)}`)
+    if (choice === 'board' && best) navigate(boardHref(best.board))
   }, [shown, dismiss, navigate])
 
   // Latch the announcement so the card keeps rendering its own content while it

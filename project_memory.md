@@ -224,6 +224,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   records the news as seen. Hold on *loading* as well as on the visible gate: the gate reloads between
   cheers and briefly reports no gate. Anything new that takes over the screen on launch must join this
   hold, or the celebration plays behind it and is lost.
+- **All five awards trigger the celebration card (2026-10-06),** exactly like Individual, Partners and the six
+  Cheers boards, drops included (owner's choice). Board keys are `award:<key>`; names live once in
+  `lib/awardBoards.ts`; the award data moved from `LeaderboardView` to `lib/awardsLeaderboard.ts` so the tab and
+  `fetchPlayerStandings` read the same function. A place beyond the top 5 counts as unplaced, and falling off a
+  board is never announced, so a Win Streak ending is silent. "See the board" opens the exact award
+  (`/leaderboard?tab=awards&award=<key>`, `boardHref`). Adding the boards was silent for existing holders because
+  a board missing from the last snapshot is never news.
 - **The card waits for an answer (2026-10-06, option B in `temporary_files/celebration-card-close-options.html`).**
   It dims and blocks the page and offers **See the board** (navigates to the best placing's tab) and
   **Close**; Escape also closes, and the scrim is deliberately not a close target. It replaced a 4.5 s
