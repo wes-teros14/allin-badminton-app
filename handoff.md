@@ -1,36 +1,33 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-06 (end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-06 (late, end of session). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- All pushed to `dev` and `main` this session:
-  - ⚡ Win Streak award; the six cheer awards are off the Awards tab (their profile badges stay).
-  - The celebration card waits for "See the board" / "Close": dimmed page, no auto-dismiss, no follow-up toast. Confetti is 300 pieces and falls longer.
-  - 📅 Most Sessions Joined and 🔥 Attendance Streak show a top 3.
-  - The Awards tab is laid out like Cheers: a four-way switcher plus the same medal board as every tab.
-  - Owner's `CLAUDE.md` rules: concise reporting, ambiguity, when stuck, evidence.
-- `tsc -b`, 414 unit tests and the build pass.
-- 084 `cheer_later_players` is on prod, NOT on dev (dev 404s and falls back to the full gate).
+- Pushed to `dev` and `main` this round:
+  - **Every Awards board is a top 5** (`AWARD_PLACES` in `lib/denseRank.ts`).
+  - **🗡️ Giant Slayer** is the fifth award: gap 20 points, win rate from 4 earlier games, 3 underdog games to qualify, counted in games. It's on the Awards tab, with a profile badge for 1st.
+- The name was not picked by the owner; it uses the recommended "Giant Slayer". Other options were 🐶 Top Underdog, 💥 Upset Maker, 🎲 Against the Odds and 🏹 David vs Goliath.
+- `tsc -b`, 424 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
+- 084 `cheer_later_players` is on prod and dev.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
 ## Verified, and how
 
-- Playwright on dev as Admin, 390 px, dark:
-  - Awards tab, both themes: the switcher shows each award's name, rule and a medal board (or its empty text). Dev has one active player, so only 1st rows; a real top 3 with ties is not seen in the browser.
-  - One light-theme run loaded every award empty (all calls 200). It did not happen in 2 reruns; unexplained, and the loading code is unchanged from before.
-  - The celebration card stays until answered, after rewinding saved state in the browser only.
+- The app's `rankGiantSlayers` was run on the same 598 prod games as the tuning report: identical results (107 underdog games, 21 upsets, 11 qualify, the same top 5 in order). The game-level report was itself checked against SQL.
+- Dev, Playwright as Admin: five switcher buttons fit at 390 px, and Giant Slayer shows Test Admin 75% (3 of 4 games as underdog). No page errors.
 
 ## Not verified
 
-- The top 3 lists with real prod data, and the confetti feel on a real phone (120 Hz still runs about twice as fast).
+- Giant Slayer on prod in the app itself (the app runs against dev). Expected prod top 5: 67% (2 of 3), 50% (3 of 6), 33% (2 of 6), 31% (5 of 16), 30% (3 of 10).
 
 ## Immediate next steps
 
-- Discuss the parked awards: 🗡️ Giant Slayer and 🧹 Clean Sweep (numbers in `project_memory.md`).
-- Apply 084 to dev: paste `badminton-v2/supabase/migrations/084_cheer_later_players.sql` into the dev SQL editor.
+- Owner to confirm the name, or pick another.
+- Clean Sweep is still parked (numbers in `project_memory.md`).
 - Restart prod 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4.
 
 ## Open questions
 
-- Is the load reduction enough? Prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.
+- The leader can qualify with only 3 underdog games (2 of 3 = 67%). Fine by the owner's choice; revisit if it feels too jumpy.
+- Carried over: is the load reduction enough? Prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.

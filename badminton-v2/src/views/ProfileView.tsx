@@ -6,7 +6,7 @@ import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
-import { fetchWinStreaks } from '@/lib/winStreakData'
+import { fetchMatchAwards } from '@/lib/matchAwardsData'
 import { cheerSharePct, rankCheerShares } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
 import { resizeImageFile } from '@/lib/imageResize'
@@ -192,11 +192,11 @@ const MAX_AVATAR_BYTES = 1 * 1024 * 1024 // enforced after client-side resize/co
 const MAX_AVATAR_INPUT_BYTES = 20 * 1024 * 1024 // reject absurdly large originals before we even try to process them
 
 async function fetchAwards(userId: string): Promise<Award[]> {
-  const [cheerRes, statsRes, earlyBirds, winStreaks, eligibleIds] = await Promise.all([
+  const [cheerRes, statsRes, earlyBirds, { winStreaks, giantSlayers }, eligibleIds] = await Promise.all([
     supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
     supabase.from('player_stats').select('player_id, sessions_attended'),
     fetchEarlyBirds(),
-    fetchWinStreaks(),
+    fetchMatchAwards(),
     fetchEligiblePlayerIds(),
   ])
 
@@ -243,6 +243,8 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     awards.push({ emoji: '🐦', label: 'Registration Early Bird' })
   if (winStreaks.some(e => e.place === 1 && e.playerId === userId))
     awards.push({ emoji: '⚡', label: 'Win Streak' })
+  if (giantSlayers.some(e => e.place === 1 && e.playerId === userId))
+    awards.push({ emoji: '🗡️', label: 'Giant Slayer' })
 
   return awards
 }

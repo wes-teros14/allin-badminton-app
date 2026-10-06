@@ -8,6 +8,13 @@
  * broken to the person looking at it.
  */
 
+/**
+ * How many places every Awards board shows (2026-10-06: top 5, matching the
+ * Cheers boards; Individual and Partners show 10). One constant so the awards
+ * cannot drift apart.
+ */
+export const AWARD_PLACES = 5
+
 export interface RankGroup<T> {
   rank: number
   items: T[]

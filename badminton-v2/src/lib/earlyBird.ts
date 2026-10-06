@@ -13,8 +13,10 @@
  * picked the furthest-future open session (weeks away, two sign-ups) and so
  * changed hands every time a session was created.
  */
+import { AWARD_PLACES } from '@/lib/denseRank'
+
 export const EARLY_BIRD_SCORED = 5
-export const EARLY_BIRD_PLACES = 3
+export const EARLY_BIRD_PLACES = AWARD_PLACES
 
 export interface EarlyBirdRegistration {
   sessionId: string

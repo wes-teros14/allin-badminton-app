@@ -16,8 +16,9 @@
  */
 
 import type { MatchOutcome } from '@/lib/matchResults'
+import { AWARD_PLACES } from '@/lib/denseRank'
 
-export const WIN_STREAK_PLACES = 3
+export const WIN_STREAK_PLACES = AWARD_PLACES
 /** A run shorter than this is not shown. */
 export const WIN_STREAK_MIN_RUN = 3
 

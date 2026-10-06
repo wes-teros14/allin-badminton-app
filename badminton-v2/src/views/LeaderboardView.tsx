@@ -13,15 +13,16 @@ import type {
   PairLeaderboardEntry,
 } from '@/lib/leaderboardData'
 import { MIN_CHEERS_RECEIVED, rankCheerShares } from '@/lib/cheerShare'
-import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
+import { AWARD_PLACES, assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import type { CheerCategory } from '@/lib/cheerTypes'
 import type { CheerTypeSlug } from '@/types/app'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
-import { fetchWinStreaks } from '@/lib/winStreakData'
+import { fetchMatchAwards } from '@/lib/matchAwardsData'
 import { WIN_STREAK_MIN_RUN } from '@/lib/winStreak'
+import { GIANT_SLAYER_GAP, GIANT_SLAYER_MIN_UNDERDOG_GAMES } from '@/lib/giantSlayer'
 import { Avatar } from '@/components/Avatar'
 import { PlayerRowBody, RankedBoard, RowStat } from '@/components/RankedBoard'
 import { useAuth } from '@/hooks/useAuth'
@@ -40,22 +41,26 @@ interface AwardRow {
   value: number
   /** Dense place, 1-based: equal values share it. */
   rank: number
+  /** Overrides the award's unit line, e.g. "2 of 6 games as underdog". */
+  detail?: string
 }
 
 /**
- * One award on the Awards tab. Every award is a ranked top 3 drawn through
+ * One award on the Awards tab. Every award is a ranked top AWARD_PLACES drawn through
  * RankedBoard, the same board every other tab uses.
  */
 interface AwardEntry {
   key: string
   emoji: string
   label: string
-  /** Switcher label: fits a quarter of a 384px phone. */
+  /** Switcher label: fits a fifth of a 384px phone. */
   short: string
   /** One line on how the award is decided. */
   rule: string
   /** The unit under a row's number, e.g. "sessions". */
   unit: (value: number) => string
+  /** How a row's number is printed; defaults to the number itself. */
+  format?: (value: number) => string
   rows: AwardRow[]
   /** What an empty board says. */
   emptyText: string
@@ -364,12 +369,12 @@ function CheersLeaderboard() {
 }
 
 async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
-  const [statsRes, profilesRes, sessionsRes, earlyBirds, winStreaks, eligibleIds] = await Promise.all([
+  const [statsRes, profilesRes, sessionsRes, earlyBirds, { winStreaks, giantSlayers }, eligibleIds] = await Promise.all([
     supabase.from('player_stats').select('player_id, sessions_attended'),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: true }),
     fetchEarlyBirds(),
-    fetchWinStreaks(),
+    fetchMatchAwards(),
     fetchEligiblePlayerIds(),
   ])
 
@@ -389,7 +394,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     .filter(s => isRankable(s.player_id))
   // nameMap holds active profiles only; a placed player who has since been
   // deactivated is still named, as before.
-  const missingNames = [...earlyBirds, ...winStreaks].map((e) => e.playerId).filter((id) => !nameMap.has(id))
+  const missingNames = [...earlyBirds, ...winStreaks, ...giantSlayers].map((e) => e.playerId).filter((id) => !nameMap.has(id))
   if (missingNames.length > 0) {
     const pRes = await supabase.from('profiles').select('id, nickname, name_slug').in('id', missingNames)
     for (const p of (pRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>) {
@@ -399,14 +404,14 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
   const nameOf = (id: string) => nameMap.get(id) ?? 'Unknown player'
 
   /**
-   * The top three places of a count award, dense like every other board
+   * The top places of a count award, dense like every other board
    * (1, 1, 2 — never 1, 1, 3), cut by places rather than rows.
    */
-  function topThree(arr: Array<{ player_id: string; value: number }>) {
+  function topPlaces(arr: Array<{ player_id: string; value: number }>) {
     const ordered = arr
       .filter((a) => a.value > 0)
       .sort((a, b) => b.value - a.value || a.player_id.localeCompare(b.player_id))
-    return cutToPlaces(assignDenseRanks(ordered, (a) => a.value), 3).map((a): AwardRow => ({
+    return cutToPlaces(assignDenseRanks(ordered, (a) => a.value), AWARD_PLACES).map((a): AwardRow => ({
       playerId: a.player_id,
       name: nameOf(a.player_id),
       value: a.value,
@@ -444,7 +449,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       short: 'Joined',
       rule: 'Finished sessions attended',
       unit: (n) => plural(n, 'session', 'sessions'),
-      rows: topThree(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))),
+      rows: topPlaces(stats.filter(s => holdsAttendanceAward(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))),
       emptyText: 'Nobody has qualified yet.',
     },
     {
@@ -454,7 +459,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       short: 'Streak',
       rule: 'Most finished sessions in a row',
       unit: () => 'in a row',
-      rows: topThree(streakEntries),
+      rows: topPlaces(streakEntries),
       emptyText: 'Nobody has a streak of 2 sessions yet.',
     },
     {
@@ -477,6 +482,23 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
       rows: winStreaks.map((e) => ({ playerId: e.playerId, name: nameOf(e.playerId), value: e.run, rank: e.place })),
       emptyText: `Nobody is on a run of ${WIN_STREAK_MIN_RUN} or more right now.`,
     },
+    {
+      key: 'giant-slayer',
+      emoji: '🗡️',
+      label: 'Giant Slayer',
+      short: 'Slayer',
+      rule: `Games won as the pair ${Math.round(GIANT_SLAYER_GAP * 100)}+ points weaker on win rate going in · min. ${GIANT_SLAYER_MIN_UNDERDOG_GAMES} such games`,
+      unit: () => '',
+      format: (pct) => `${pct}%`,
+      rows: giantSlayers.map((e) => ({
+        playerId: e.playerId,
+        name: nameOf(e.playerId),
+        value: Math.round((100 * e.upsets) / e.underdogGames),
+        rank: e.place,
+        detail: `${e.upsets} of ${e.underdogGames} games as underdog`,
+      })),
+      emptyText: 'Nobody has beaten a much stronger pair often enough yet.',
+    },
     // The six cheer awards (Top Fierce Offense etc.) left this tab on 2026-10-06:
     // the Cheers tab already ranks every category. Their badges stay on My Profile.
   ]
@@ -486,7 +508,7 @@ async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
 
 /**
  * The Awards tab, laid out like the Cheers tab (2026-10-06): one award at a
- * time behind a switcher, drawn through the same RankedBoard as every other
+ * time behind a switcher, top AWARD_PLACES, drawn through the same RankedBoard as every other
  * tab. It used to be a stack of bespoke cards, the only tab that looked
  * different from the other three.
  */
@@ -511,10 +533,10 @@ function AwardsLeaderboard() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground text-center">
-        Top 3 · {MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
+        Top {AWARD_PLACES} · {MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
       </p>
 
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-5 gap-1.5">
         {awards.map((award) => {
           const isOn = award.key === selected.key
           return (
@@ -551,7 +573,14 @@ function AwardsLeaderboard() {
             entries={selected.rows}
             tiedNoun="players"
             keyOf={(row) => row.playerId}
-            renderRow={(row, variant) => <AwardRowBody row={row} unit={selected.unit(row.value)} variant={variant} />}
+            renderRow={(row, variant) => (
+              <AwardRowBody
+                row={row}
+                valueLabel={selected.format ? selected.format(row.value) : String(row.value)}
+                unit={row.detail ?? selected.unit(row.value)}
+                variant={variant}
+              />
+            )}
           />
         )}
       </div>
@@ -560,7 +589,17 @@ function AwardsLeaderboard() {
 }
 
 /** Everything on an award row except the marker, which the place owns. */
-function AwardRowBody({ row, unit, variant }: { row: AwardRow; unit: string; variant: 'podium' | 'list' }) {
+function AwardRowBody({
+  row,
+  valueLabel,
+  unit,
+  variant,
+}: {
+  row: AwardRow
+  valueLabel: string
+  unit: string
+  variant: 'podium' | 'list'
+}) {
   const podium = variant === 'podium'
   return (
     <>
@@ -568,7 +607,7 @@ function AwardRowBody({ row, unit, variant }: { row: AwardRow; unit: string; var
         {row.name}
       </span>
       <div className="text-right shrink-0">
-        <p className={`font-bold text-primary-ink tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>{row.value}</p>
+        <p className={`font-bold text-primary-ink tabular-nums ${podium ? 'text-[17px]' : 'text-sm'}`}>{valueLabel}</p>
         <p className="text-xs text-muted-foreground">{unit}</p>
       </div>
     </>

@@ -224,6 +224,73 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">How would Giant Slayer be computed, and is Clean Sweep session-level only?</p>
+    <p class="a">
+      Proposals, not built (2026-10-06). <strong>Giant Slayer</strong>: each player’s level is the session
+      override if set, else <code>profiles.level</code>, else 5 (as <code>useRoster</code> does). A pair’s
+      strength is the sum of its two levels. If your pair’s sum is lower and you won the whole match, that
+      is one upset win for both of you. The award counts upset wins (or upset wins ÷ underdog matches),
+      top 3. On prod the lower pair won 48 of 214 uneven matches (22%), 8 of 67 at a 2+ gap.
+      Profile levels have no history, so old matches use today’s level. <strong>Clean Sweep</strong>
+      is <em>detected</em> per session (3+ matches, every one won; a draw spoils it) but the award
+      <em>counts</em> those nights all-time: 19 so far in 28 sessions, leaders 5, 2, 2.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Giant Slayer: an upset is beating a pair with a higher combined level.”</p>
+    <p>
+      Not usable: levels are private to the admin, and an award for beating a “higher-rated” pair would
+      tell players who is rated higher. Replacement (proposal, 2026-10-06): a pair’s strength is the
+      average of its two players’ win rates over matches <em>before</em> this one (each with 5+ matches).
+      An upset is a pair 10+ points weaker winning the whole match. On prod the weaker pair won 18 of 85 (21%),
+      and 2 of 28 at a 20-point gap, as predictive as levels and fully public. There were 21 upset matches,
+      and the leaders had 10, 3 and 3. The 10 belongs to a 32% player, who is the underdog in most matches,
+      so rank by upset wins ÷ underdog matches.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“15 players qualify for Giant Slayer, with two tied for 1st at 33%.”</p>
+    <p>
+      That count included inactive players; awards only show active ones. Active only (2026-10-06, gap 10,
+      5 earlier matches, 5 underdog matches): <strong>12 qualify</strong>, one leader at 33% (2 of 6), then
+      30%, 25%, 22% and a three-way tie on 20%. Tuning report:
+      <code>temporary_files/giant-slayer-tuning-report.html</code>. It also shows why 10 points is the natural
+      cut-off: below it the weaker pair wins 41–44% (close to a coin flip), and from 10 points it drops to
+      26%, then 25%, 21% and 7%.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“10 points is the natural cut-off for Giant Slayer.”</p>
+    <p>
+      True only when counting <em>matches</em>. The owner chose to count <strong>games</strong>, like the profile
+      (a 1–1 is one win and one loss). Per game on prod (2026-10-06, 598 games, win rate from 3 earlier games), the
+      weaker pair wins 43%, 36%, 38% and 35% at gaps of 0–5, 5–10, 10–15 and 15–20 points, then 21% at 20–25 and
+      18% at 25+. That is the same shape with 5, 8 or 10 earlier games. So per game the break is at <strong>20 points</strong>.
+      At 20: 128 underdog games, underdogs win 20%, 10 active players qualify. At 10: 271 games, 28%, 18 qualify.
+      Game-level report checked against SQL: 271 underdog games and 77 upsets in both.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How is Giant Slayer finally calculated?</p>
+    <p class="a">
+      Built 2026-10-06 (<code>lib/giantSlayer.ts</code>). Every game is replayed in the order it was recorded,
+      counted like the profile (a 1–1 is one win and one loss). Going into each game, a player’s win rate is their
+      record over every earlier game in all sessions, and a pair’s strength is the average of the two. If a pair
+      goes in 20+ points weaker and wins that game, it’s an upset. Score = upsets ÷ underdog games. A player’s win
+      rate is used from their 5th game (4 earlier games), and a player is ranked after 3 underdog games. It’s a
+      top 5, ties share a place, and only active players appear. On prod: 107 underdog games, 21 upsets, 11 qualify.
+      Levels are never used, because they’re private.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">
