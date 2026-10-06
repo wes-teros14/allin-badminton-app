@@ -24,7 +24,7 @@ describe('award boards in the celebration', () => {
   it('reports a drop on an award like on any other board', () => {
     const [p] = newPodiumPlacings({ [slayer]: 2 }, { [slayer]: 4 })
     expect(p).toMatchObject({ kind: 'drop', rank: 4, previousRank: 2 })
-    expect(cardLabel(p).detail).toBe('Now 4th on Giant Slayer')
+    expect(cardLabel(p).detail).toBe('Now 4th on Against the Odds')
   })
 
   it('says nothing when a player falls off an award board entirely', () => {
@@ -34,7 +34,7 @@ describe('award boards in the celebration', () => {
 
 describe('award labels', () => {
   it('names the award and links straight to it', () => {
-    expect(boardTitle(slayer)).toBe('Giant Slayer')
+    expect(boardTitle(slayer)).toBe('Against the Odds')
     expect(boardTab(slayer)).toBe('awards')
     expect(boardHref(slayer)).toBe('/leaderboard?tab=awards&award=giant-slayer')
     expect(boardHref('wins')).toBe('/leaderboard?tab=wins')
