@@ -8,6 +8,7 @@ Updated: 2026-10-06 (end of session). Overwrite this file on every update; it is
   - ⚡ Win Streak award; the six cheer awards are off the Awards tab (their profile badges stay).
   - The celebration card waits for "See the board" / "Close": dimmed page, no auto-dismiss, no follow-up toast. Confetti is 300 pieces and falls longer.
   - 📅 Most Sessions Joined and 🔥 Attendance Streak show a top 3.
+  - The Awards tab is laid out like Cheers: a four-way switcher plus the same medal board as every tab.
   - Owner's `CLAUDE.md` rules: concise reporting, ambiguity, when stuck, evidence.
 - `tsc -b`, 414 unit tests and the build pass.
 - 084 `cheer_later_players` is on prod, NOT on dev (dev 404s and falls back to the full gate).
@@ -16,7 +17,8 @@ Updated: 2026-10-06 (end of session). Overwrite this file on every update; it is
 ## Verified, and how
 
 - Playwright on dev as Admin, 390 px, dark:
-  - The Awards tab shows all four cards as ranked lists. Dev has one active player, so only 1st rows; a real top 3 with ties is not seen in the browser.
+  - Awards tab, both themes: the switcher shows each award's name, rule and a medal board (or its empty text). Dev has one active player, so only 1st rows; a real top 3 with ties is not seen in the browser.
+  - One light-theme run loaded every award empty (all calls 200). It did not happen in 2 reruns; unexplained, and the loading code is unchanged from before.
   - The celebration card stays until answered, after rewinding saved state in the browser only.
 
 ## Not verified
