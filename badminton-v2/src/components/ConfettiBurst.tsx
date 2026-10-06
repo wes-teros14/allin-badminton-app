@@ -23,12 +23,15 @@ interface Particle {
 
 /**
  * The first half launches at once; the rest trickles out over this many frames
- * (~3s at 60fps). A single burst is spent in under 3s, and the card it frames
- * stays for 4.5s — without the trickle the screen empties while the card is up.
+ * (~5s at 60fps), so pieces keep falling for a while after the card appears.
+ * Raised from 180 on 2026-10-06 at the owner's request, with the slower fall below.
  */
-const TRICKLE_FRAMES = 180
+const TRICKLE_FRAMES = 300
+/** Downward pull per frame, and the speed a falling piece cannot exceed (it flutters). */
+const GRAVITY = 0.18
+const TERMINAL_VY = 5
 
-export function ConfettiBurst({ pieces = 240 }: { pieces?: number }) {
+export function ConfettiBurst({ pieces = 300 }: { pieces?: number }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -59,7 +62,7 @@ export function ConfettiBurst({ pieces = 240 }: { pieces?: number }) {
         spin: (Math.random() - 0.5) * 0.28,
         color: COLORS[(Math.random() * COLORS.length) | 0],
         life: 1,
-        decay: 0.006 + Math.random() * 0.006,
+        decay: 0.0035 + Math.random() * 0.0035,
         delay: i < pieces / 2 ? 0 : Math.random() * TRICKLE_FRAMES,
       })
     }
@@ -73,7 +76,7 @@ export function ConfettiBurst({ pieces = 240 }: { pieces?: number }) {
 
       for (const p of parts) {
         if (p.delay > 0) { p.delay -= 1; continue }
-        p.vy += 0.24          // gravity
+        p.vy = Math.min(p.vy + GRAVITY, TERMINAL_VY)
         p.vx *= 0.99          // drag
         p.x += p.vx
         p.y += p.vy

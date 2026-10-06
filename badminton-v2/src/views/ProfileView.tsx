@@ -218,14 +218,6 @@ async function fetchAwards(userId: string): Promise<Award[]> {
     return ranked.length === 1 ? ranked[0].playerId : null
   }
 
-  function top(arr: Array<{ player_id: string; value: number }>): string | null {
-    if (arr.length === 0) return null
-    const sorted = [...arr].sort((a, b) => b.value - a.value)
-    if (sorted[0].value === 0) return null
-    if (sorted.length > 1 && sorted[0].value === sorted[1].value) return null
-    return sorted[0].player_id
-  }
-
   const awards: Award[] = []
 
   if (topShare(c => c.offense_received) === userId)
@@ -241,7 +233,10 @@ async function fetchAwards(userId: string): Promise<Award[]> {
   if (topShare(c => c.solid_effort_received) === userId)
     awards.push({ emoji: '💪', label: 'Top Solid Effort' })
   // Same carve-out the Awards tab applies: this one award is still a raw count.
-  if (top(stats.filter(s => !ATTENDANCE_AWARD_EXCLUDED.has(s.player_id)).map(s => ({ player_id: s.player_id, value: s.sessions_attended }))) === userId)
+  // Badge for 1st place, shared on a tie, as the Awards card's top 3 shows it.
+  const joined = stats.filter(s => !ATTENDANCE_AWARD_EXCLUDED.has(s.player_id))
+  const mostJoined = Math.max(0, ...joined.map(s => s.sessions_attended))
+  if (mostJoined > 0 && joined.some(s => s.player_id === userId && s.sessions_attended === mostJoined))
     awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
   // Badge for 1st place only (shared on a full tie), as the Awards card shows.
   if (earlyBirds.some(e => e.place === 1 && e.playerId === userId))
