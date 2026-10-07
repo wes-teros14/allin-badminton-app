@@ -1,5 +1,5 @@
 /**
- * 🗡️ Against the Odds — called Giant Slayer in code (renamed 2026-10-06; the board key stays
+ * 🎲 Against the Odds — called Giant Slayer in code (renamed 2026-10-06; the board key stays
  * `giant-slayer` so saved celebration state and links keep working). Chosen 2026-10-06, tuned in
  * temporary_files/giant-slayer-tuning-report.html against prod data).
  *
