@@ -244,7 +244,7 @@ async function fetchAwards(userId: string): Promise<Award[]> {
   if (winStreaks.some(e => e.place === 1 && e.playerId === userId))
     awards.push({ emoji: '⚡', label: 'Win Streak' })
   if (giantSlayers.some(e => e.place === 1 && e.playerId === userId))
-    awards.push({ emoji: '🗡️', label: 'Against the Odds' })
+    awards.push({ emoji: '🎲', label: 'Against the Odds' })
 
   return awards
 }

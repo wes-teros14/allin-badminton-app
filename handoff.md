@@ -1,13 +1,13 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-06 (end of session, after award celebrations). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-07 (end of session). Overwrite this file on every update; it is never a running history.
 
 ## State
 
 - Pushed to `dev` and `main` this round:
   - **Every Awards board is a top 5** (`AWARD_PLACES` in `lib/denseRank.ts`).
-  - **🗡️ Giant Slayer** is the fifth award: gap 20 points, win rate from 4 earlier games, 3 underdog games to qualify, counted in games. It's on the Awards tab, with a profile badge for 1st.
-- **Renamed by the owner to "Against the Odds"** (branch `024-against-the-odds`): label and profile badge; switcher chip reads "Odds"; emoji still 🗡️; code and board key still `giant-slayer`.
+  - **🎲 Against the Odds** (code name Giant Slayer) is the fifth award: gap 20 points, win rate from 4 earlier games, 3 underdog games to qualify, counted in games. It's on the Awards tab, with a profile badge for 1st.
+- **Renamed by the owner to "Against the Odds" with the 🎲 emoji** (branches `024-against-the-odds`, `025-odds-dice`): label, profile badge and switcher chip ("Odds"); code and board key stay `giant-slayer`.
 - `tsc -b`, 431 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
 - 084 `cheer_later_players` is on prod and dev.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
