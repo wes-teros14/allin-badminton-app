@@ -11,7 +11,7 @@ export const AWARD_BOARDS = [
   { key: 'attendance-streak', emoji: '🔥', label: 'Attendance Streak', short: 'Streak', measure: 'sessions in a row' },
   { key: 'early-bird', emoji: '🐦', label: 'Registration Early Bird', short: 'Early', measure: 'early-registration points' },
   { key: 'win-streak', emoji: '⚡', label: 'Win Streak', short: 'Wins', measure: 'wins in a row' },
-  { key: 'giant-slayer', emoji: '🗡️', label: 'Against the Odds', short: 'Odds', measure: 'upsets as the underdog' },
+  { key: 'giant-slayer', emoji: '🎲', label: 'Against the Odds', short: 'Odds', measure: 'upsets as the underdog' },
 ] as const
 
 export type AwardKey = (typeof AWARD_BOARDS)[number]['key']

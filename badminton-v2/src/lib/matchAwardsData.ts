@@ -65,7 +65,7 @@ async function fetchFinishedMatchHistory(): Promise<{ matches: WinStreakMatch[];
   }
 }
 
-/** ⚡ Win Streak and 🗡️ Giant Slayer, placed among currently active players. */
+/** ⚡ Win Streak and 🎲 Against the Odds, placed among currently active players. */
 export async function fetchMatchAwards(): Promise<{ winStreaks: WinStreakEntry[]; giantSlayers: GiantSlayerEntry[] }> {
   const [{ matches, games }, eligible] = await Promise.all([fetchFinishedMatchHistory(), fetchEligiblePlayerIds()])
   return {
