@@ -36,9 +36,10 @@ export function registrantsCountLabel(count: number, maxPlayers: number | null |
 }
 
 /**
- * Who's going on an open session: the first few faces and the count, which
- * expand into name chips. It replaces the old "N / M registered" line, so the
- * card states the headcount once.
+ * Who's going on an open or closed session: the first few faces and the count,
+ * which expand into name chips. It replaces the old "N / M registered" line, so
+ * the card states the headcount once. Once registration has closed nothing is
+ * left to take, so it drops the slot count and the "be the first" prompt.
  *
  * It sits inside the card but outside the card's <Link> — a button inside an
  * anchor would navigate on every tap. `aside` is the admin shortcut, placed
@@ -47,11 +48,14 @@ export function registrantsCountLabel(count: number, maxPlayers: number | null |
 function RegistrantsRow({
   registrants,
   maxPlayers,
+  closed,
   currentUserId,
   aside,
 }: {
   registrants: SessionRegistrant[] | null
   maxPlayers: number | null | undefined
+  /** Registration has closed: no slots to count, no one left to invite. */
+  closed: boolean
   currentUserId: string | null
   aside: ReactNode
 }) {
@@ -69,7 +73,9 @@ function RegistrantsRow({
     // Nothing to expand, so this is plain text rather than a button.
     row = (
       <p className="flex min-h-11 items-center text-xs font-bold text-primary-ink">
-        {maxPlayers == null ? 'No one yet' : `0 of ${maxPlayers} going`}. Be the first.
+        {closed
+          ? 'No one registered'
+          : `${maxPlayers == null ? 'No one yet' : `0 of ${maxPlayers} going`}. Be the first.`}
       </p>
     )
   } else {
@@ -263,7 +269,7 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
     : paymentState === 'submitted' ? 'text-amber-600 dark:text-amber-500'
     : paymentState === 'exempt' ? 'text-muted-foreground'
     : 'text-destructive'
-  const showRegistrants = s.status === 'registration_open' && s.registrants !== undefined
+  const showRegistrants = (s.status === 'registration_open' || s.status === 'registration_closed') && s.registrants !== undefined
   const adminShortcut = (position: string) => isAdmin && (
     <Link
       to={`/session/${s.id}`}
@@ -386,6 +392,7 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
         <RegistrantsRow
           registrants={s.registrants ?? null}
           maxPlayers={s.maxPlayers}
+          closed={s.status === 'registration_closed'}
           currentUserId={currentUserId}
           aside={adminShortcut('top-0')}
         />
