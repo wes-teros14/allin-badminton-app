@@ -4,7 +4,7 @@ Updated: 2026-10-08. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **"Who's going" now stays on closed sessions** (branch `026-roster-after-close`): committed locally, **not pushed** (waiting for the owner's OK).
+- **"Who's going" now stays on closed sessions** (branch `026-roster-after-close`): pushed to `dev` and `main`.
   - A `registration_closed` card shows faces + "14 going" and expands into name chips, like an open one. No slot count, no "slots left", and an empty list says "No one registered".
   - Only `registration_closed` (not locked/live/finished) was assumed; easy to extend.
 - Everything before this is on `dev` and `main` (top-5 awards, 🎲 Against the Odds, awards celebrations, Settings, Cheer later, Win Streak).
@@ -18,7 +18,6 @@ Updated: 2026-10-08. Overwrite this file on every update; it is never a running 
 
 ## Immediate next steps
 
-- Push `026-roster-after-close` → `dev` → `main` once the owner confirms.
 - Clean Sweep is still parked (numbers in `project_memory.md`).
 - Restart prod 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4.
 
