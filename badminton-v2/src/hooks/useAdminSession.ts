@@ -32,6 +32,8 @@ interface UseAdminSessionResult {
   sessionName: string
   sessionDate: string
   sessionStatus: string | null
+  /** Admin's preferred subs for this session (max 2), in pick order. */
+  subPicks: string[]
   isLoading: boolean
   refresh: () => void
 }
@@ -59,6 +61,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
   const [sessionName, setSessionName] = useState('')
   const [sessionDate, setSessionDate] = useState('')
   const [sessionStatus, setSessionStatus] = useState<string | null>(null)
+  const [subPicks, setSubPicks] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
   const isFirstLoad = useRef(true)
@@ -79,7 +82,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
       if (sessionIdParam) {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, status, date, court_count, court_1_label, court_2_label')
+          .select('id, name, status, date, court_count, court_1_label, court_2_label, sub_picks')
           .eq('id', sessionIdParam)
           .maybeSingle()
 
@@ -101,11 +104,12 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
         setSessionStatus((session as { status: string }).status)
         setSessionDate((session as { date: string }).date)
         activeCourtCount = normalizeCourtCount((session as { court_count?: number | null }).court_count)
+        setSubPicks((session as { sub_picks?: string[] | null }).sub_picks ?? [])
         activeCourtLabels = buildCourtLabels(activeCourtCount, session)
       } else {
         const { data: session } = await supabase
           .from('sessions')
-          .select('id, name, status, date, court_count, court_1_label, court_2_label')
+          .select('id, name, status, date, court_count, court_1_label, court_2_label, sub_picks')
           .in('status', ['schedule_locked', 'in_progress'])
           .order('created_at', { ascending: false })
           .limit(1)
@@ -129,6 +133,7 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
         setSessionStatus((session as { status: string }).status)
         setSessionDate((session as { date: string }).date)
         activeCourtCount = normalizeCourtCount((session as { court_count?: number | null }).court_count)
+        setSubPicks((session as { sub_picks?: string[] | null }).sub_picks ?? [])
         activeCourtLabels = buildCourtLabels(activeCourtCount, session)
       }
 
@@ -222,5 +227,5 @@ export function useAdminSession(sessionIdParam?: string): UseAdminSessionResult 
     return () => { cancelled = true }
   }, [sessionIdParam, refreshKey])
 
-  return { courts, courtCount, queued, finished, sessionId, sessionName, sessionDate, sessionStatus, isLoading, refresh }
+  return { courts, courtCount, queued, finished, sessionId, sessionName, sessionDate, sessionStatus, subPicks, isLoading, refresh }
 }

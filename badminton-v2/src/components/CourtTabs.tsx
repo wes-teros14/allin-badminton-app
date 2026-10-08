@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import type { AdminCourtSlot, AdminMatchDisplay } from '@/hooks/useAdminSession'
 import { useAdminActions } from '@/hooks/useAdminActions'
@@ -8,6 +8,9 @@ import { defaultCourtLabel, findFirstOpenCourtNumber } from '@/lib/courts'
 import { elapsedSecondsFromStartedAt } from '@/utils/matchTiming'
 import type { SplitOutcome } from '@/lib/matchResults'
 import { getEligibleSubstitutes } from '@/lib/substitutes'
+import { SubsPanel } from '@/components/SubsPanel'
+import { useSessionLevels } from '@/hooks/useSessionLevels'
+import { useAuth } from '@/contexts/AuthContext'
 import { validateMatchPlayers } from '@/lib/matchPlayers'
 import { assignSlot, type MatchSlots, type SlotKey } from '@/lib/matchSlots'
 import { renderPlayerOptions } from '@/components/playerOptions'
@@ -18,21 +21,6 @@ function formatElapsed(seconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-function SubsPanel({ eligible }: { eligible: Array<{ id: string; displayName: string }> }) {
-  return (
-    <div className="mt-2 rounded-md border border-border bg-muted/30 p-2 text-xs">
-      <p className="font-medium text-muted-foreground mb-1">
-        Eligible Substitutes ({eligible.length})
-      </p>
-      {eligible.length === 0 ? (
-        <p className="text-muted-foreground italic">No eligible substitutes right now</p>
-      ) : (
-        <p className="text-foreground">{eligible.map((p) => p.displayName).join(', ')}</p>
-      )}
-    </div>
-  )
-}
-
 interface Props {
   courts: AdminCourtSlot[]
   queued: AdminMatchDisplay[]
@@ -41,6 +29,8 @@ interface Props {
   sessionId: string | null
   onDone: () => void
   splitScoring: boolean
+  /** Admin's preferred subs for this session (sessions.sub_picks). */
+  subPicks: string[]
 }
 
 function CourtCard({
@@ -58,7 +48,7 @@ function CourtCard({
   canEditLabel,
   onCourtLabelChange,
   onCourtLabelCommit,
-  subsList,
+  subsPanel,
   onToggleSubs,
 }: {
   court: AdminCourtSlot
@@ -75,7 +65,7 @@ function CourtCard({
   canEditLabel: boolean
   onCourtLabelChange: (courtNumber: number, label: string) => void
   onCourtLabelCommit: (courtNumber: number, label: string) => void
-  subsList: Array<{ id: string; displayName: string }> | null
+  subsPanel: ReactNode
   onToggleSubs: () => void
 }) {
   const current = court.current
@@ -228,7 +218,7 @@ function CourtCard({
                   Edit
                 </button>
               </div>
-              {subsList && <SubsPanel eligible={subsList} />}
+              {subsPanel}
             </>
           )}
         </div>
@@ -275,9 +265,12 @@ function PlayerSelect({
   )
 }
 
-export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDone, splitScoring }: Props) {
-  const { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt, unfinishMatch } = useAdminActions(onDone)
+export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDone, splitScoring, subPicks }: Props) {
+  const { isSaving, editMatch, setSubPicks, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt, unfinishMatch } = useAdminActions(onDone)
   const { players } = usePlayerList(sessionId ?? undefined)
+  const { levels, error: levelsError } = useSessionLevels(sessionId)
+  const { role } = useAuth()
+  const isOwner = role === 'admin'
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EditForm>({ t1p1Id: '', t1p2Id: '', t2p2Id: '', t2p1Id: '' })
   const [courtLabels, setCourtLabels] = useState<Record<number, string>>({})
@@ -288,7 +281,35 @@ export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDo
     .map((c) => c.current)
     .filter((m): m is AdminMatchDisplay => m != null)
 
-  const allActiveMatches: AdminMatchDisplay[] = [...currentlyPlayingMatches, ...queued]
+  const allMatches: AdminMatchDisplay[] = [...finished, ...currentlyPlayingMatches, ...queued]
+
+  function renderSubsPanel(target: AdminMatchDisplay) {
+    return (
+      <SubsPanel
+        target={target}
+        eligible={getEligibleSubstitutes(target, currentlyPlayingMatches, queued, players)}
+        allMatches={allMatches}
+        queued={queued}
+        levels={levels}
+        levelsError={levelsError}
+        picks={subPicks}
+        showLevels={isOwner}
+        canEditPicks={isOwner}
+        isSaving={isSaving}
+        onPicksChange={(next) => { if (sessionId) void setSubPicks(sessionId, next) }}
+        onSubIn={(outId, inId) => void handleSubIn(target, outId, inId)}
+      />
+    )
+  }
+
+  async function handleSubIn(target: AdminMatchDisplay, outId: string, inId: string) {
+    const slots: MatchSlots = { t1p1: target.t1p1Id, t1p2: target.t1p2Id, t2p1: target.t2p1Id, t2p2: target.t2p2Id }
+    const key = (Object.keys(slots) as SlotKey[]).find((k) => slots[k] === outId)
+    if (!key) return
+    await editMatch(target.id, fromSlots(assignSlot(slots, key, inId).next))
+    setSubsForId(null)
+    onDone()
+  }
 
   useEffect(() => {
     setCourtLabels(Object.fromEntries(courts.map((court) => [court.courtNumber, court.label])))
@@ -404,13 +425,7 @@ export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDo
                 onCourtLabelCommit={handleCourtLabelCommit}
                 onMarkDone={markDone}
                 onEdit={startEdit}
-                subsList={
-                  court.current && subsForId === court.current.id
-                    ? getEligibleSubstitutes(court.current.gameNumber, currentlyPlayingMatches, allActiveMatches, players, [
-                        court.current.t1p1Id, court.current.t1p2Id, court.current.t2p1Id, court.current.t2p2Id,
-                      ])
-                    : null
-                }
+                subsPanel={court.current && subsForId === court.current.id ? renderSubsPanel(court.current) : null}
                 onToggleSubs={() => {
                   if (!court.current) return
                   setSubsForId(subsForId === court.current.id ? null : court.current.id)
@@ -473,9 +488,6 @@ export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDo
                         <p className="font-medium">{m.t1p1} &amp; {m.t1p2}</p>
                         <p className="text-muted-foreground text-xs mt-0.5 mb-0.5">vs</p>
                         <p className="font-medium">{m.t2p1} &amp; {m.t2p2}</p>
-                        {subsForId === m.id && (
-                          <SubsPanel eligible={getEligibleSubstitutes(m.gameNumber, currentlyPlayingMatches, allActiveMatches, players, [m.t1p1Id, m.t1p2Id, m.t2p1Id, m.t2p2Id])} />
-                        )}
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -515,6 +527,7 @@ export function CourtTabs({ courts, queued, finished, isLoading, sessionId, onDo
                       </div>
                     </div>
                   )}
+                  {editingId !== m.id && subsForId === m.id && renderSubsPanel(m)}
                 </div>
               )
             })}
