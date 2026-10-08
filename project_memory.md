@@ -39,6 +39,21 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - Supabase dev project ref: `tsvetqzkullivprbjtli` (`npm run supabase:link:dev`).
 - Supabase prod project ref: `ensdfitpeyreunihkqkh` (`npm run supabase:link:prod`).
 - Production URL: **badmintontayo.mrkws.com**. The old `all-in-badminton-app.vercel.app` URL is superseded.
+- **Vercel has THREE projects connected to this repo, and only one serves the domain (found 2026-10-08).**
+  `all-in-badminton-app` serves `badmintontayo.mrkws.com` (its production bundle is byte-identical to the live
+  site's). `allin-badminton-app` and `allin-badminton-app-ixv2` also build every push but serve nothing that
+  matters (`all-in-badminton-app.vercel.app` itself now 404s). Each push to `main` triggers up to three production
+  builds; check the **project name** in the Vercel header before promoting anything.
+- **Never promote a Preview (dev) build to production.** Preview builds are compiled without the Supabase URL
+  (no `supabase.co` string anywhere in the bundle), so the app cannot reach any database; only a build made
+  from `main` with the Production env vars contains `ensdfitpeyreunihkqkh.supabase.co`. Promote only
+  deployments labelled Production.
+- **How to see what is actually live without Vercel access:** fetch the site's `index.html`, read the
+  `assets/index-*.js` name and search the chunks for a string from the latest change; compare with the bundle
+  name of a known deployment URL. GitHub's `/deployments` and `/commits/<sha>/status` APIs (repo is public) list
+  every Vercel build with its project name and state. On 2026-10-08 `main` commit 2e9b347 had **zero**
+  deployments in all three projects (no build was ever created), while its identical-tree `dev` commit 8bf0f63
+  got previews. Cause of the missed build: unknown (Vercel never created it).
 - Never read `.env`. If a value is needed, infer the variable name from config code or ask.
 - **`.env` is the only home for secrets, and the repo is already set up for it.** `.env.example`
   documents `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`; Vite

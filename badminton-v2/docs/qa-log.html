@@ -302,6 +302,20 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">I pushed to main and promoted dev in Vercel, but the live app never updated. Why?</p>
+    <p class="a">
+      Two separate things (2026-10-08). <strong>1. Wrong project:</strong> three Vercel projects are linked to the
+      repo (<code>all-in-badminton-app</code>, <code>allin-badminton-app</code>, <code>allin-badminton-app-ixv2</code>).
+      The domain <code>badmintontayo.mrkws.com</code> is served by <code>all-in-badminton-app</code>; the promote went into
+      <code>allin-badminton-app</code>, which is why nothing changed. <strong>2. No build for main:</strong> the newest
+      <code>main</code> commit (2e9b347) has no deployment in any project, so the domain still runs the previous
+      production build (b0b8b4e, Oct 7). Promoting a dev <em>preview</em> would not have helped and could break the
+      app: preview builds contain no Supabase URL, so they cannot reach the database. The fix is a fresh
+      production build of <code>main</code>.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">
