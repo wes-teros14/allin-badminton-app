@@ -598,6 +598,7 @@ export type Database = {
           session_notes: string | null
           shuttle_allocation_mode: Database["public"]["Enums"]["shuttle_allocation_mode"]
           split_match_scoring: boolean
+          sub_picks: string[]
           status: Database["public"]["Enums"]["session_status"]
           time: string | null
           venue: string | null
@@ -622,6 +623,7 @@ export type Database = {
           session_notes?: string | null
           shuttle_allocation_mode?: Database["public"]["Enums"]["shuttle_allocation_mode"]
           split_match_scoring?: boolean
+          sub_picks?: string[]
           status?: Database["public"]["Enums"]["session_status"]
           time?: string | null
           venue?: string | null
@@ -646,6 +648,7 @@ export type Database = {
           session_notes?: string | null
           shuttle_allocation_mode?: Database["public"]["Enums"]["shuttle_allocation_mode"]
           split_match_scoring?: boolean
+          sub_picks?: string[]
           status?: Database["public"]["Enums"]["session_status"]
           time?: string | null
           venue?: string | null

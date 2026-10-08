@@ -133,7 +133,7 @@ function SessionSummary({
 }
 
 function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; splitScoring: boolean }) {
-  const { courts, queued, finished, sessionId: sid, sessionName, sessionDate, isLoading, refresh } =
+  const { courts, queued, finished, sessionId: sid, sessionName, sessionDate, subPicks, isLoading, refresh } =
     useAdminSession(sessionId)
   const { status } = useRealtime(sid, refresh, 'session')
 
@@ -173,6 +173,7 @@ function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; split
         sessionId={sid}
         onDone={refresh}
         splitScoring={splitScoring}
+        subPicks={subPicks}
       />
     </div>
   )

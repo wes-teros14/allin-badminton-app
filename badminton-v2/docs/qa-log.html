@@ -351,6 +351,23 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Can I add somebody by email to register them to the app?</p>
+    <p class="a">
+      Not today. Sign-in is Google only (<code>signInWithOAuth</code> in <code>HomeView.tsx</code>,
+      <code>useRegistration.ts</code>, <code>App.tsx</code>); no email/password, no magic link. A player
+      exists only after their first Google sign-in: trigger <code>handle_new_user</code> (migration 001)
+      creates <code>profiles</code>, whose <code>id</code> references <code>auth.users</code>, as do
+      <code>session_registrations.player_id</code> and every match column. The admin "Add player" list
+      (<code>useRoster.ts</code>) only shows existing active profiles. So an email alone has nowhere to
+      live. Workable now: send them the app / session invite link, they sign in with Google once, then
+      appear in Add player. Building "add by email" needs an Edge Function using the service role
+      (<code>auth.admin.createUser</code> with name metadata, else the trigger slugs them as "user");
+      none exist in <code>supabase/functions</code>. Unverified: whether their later Google sign-in
+      links to that pre-made user (depends on Supabase identity-linking settings).
+    </p>
+  </div>
+
   <h2 class="topic" id="session-cards">Session cards</h2>
 
   <div class="qa">
@@ -1223,6 +1240,36 @@
       is the darkest the scale needs so white text clears 4.5&nbsp;: 1 at the lightest hues.
       Yellow-green (around 60°) is the worst case at <b>4.77&nbsp;: 1</b>; every one of the 360 hues
       was checked. Anything lighter fails there.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Can we add AI reasoning to "Subs" when a session starts and we need subs?</p>
+    <p class="a">
+      Today Subs is a filter, not a recommendation: <code>getEligibleSubstitutes</code>
+      (<code>src/lib/substitutes.ts</code>) drops anyone on court now, anyone in the next game
+      (game 3 for games 1 &amp; 2) and the game's own four, then sorts the rest <em>alphabetically</em>.
+      <code>SubsPanel</code> (<code>CourtTabs.tsx</code>) shows names only, and picking one is a manual edit.
+      So at the start of a night with a late player, ~6–10 names appear with no hint who fits best.
+      <b>Built 2026-10-08, no LLM</b> (a sort is instant, testable and free): <code>rankSubstitutes</code>
+      orders by (1) admin's ★ picks, max 2, stored per session in <code>sessions.sub_picks</code>
+      (migration 085), (2) closest level to the player marked out, (3) fewest games tonight, (4) most rest
+      before their own next game. Each row shows why, e.g. "Lv 3 (same) · 5 games · next G7", with one-tap
+      Sub in. Moderators see the order but not levels, and can't change stars (no UPDATE on
+      <code>sessions</code>). Rejected: an LLM call, a "swap" with the late player, gender/partner tiebreaks.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What is the issue with the Subs rule that lets players due on court next show up as subs?</p>
+    <p class="a">
+      <code>getEligibleSubstitutes</code> blocks the players of game <code>nextGameNumber(N)</code>, which is
+      N+1 (or 3 for games 1–2). On 2 courts, games N and N+1 are usually on court <em>together</em>, so
+      N+1's players are already blocked as "on court" and the rule adds nothing. The game that actually
+      starts next, the first queued one (e.g. game 9 while 7 and 8 play), is never checked. Example: Ana
+      plays game 9; sub her into game 7 and she is still on court when game 8 ends and game 9 should start.
+      Fixed 2026-10-08: block by queue order — the first queued game for a game on court, the queued games
+      either side for a queued one.
     </p>
   </div>
 
@@ -2601,6 +2648,20 @@
       games are &hellip;&rdquo; line) &mdash; &ldquo;drawn&rdquo; read as a raffle. Three options for the placeholder
       are in <code>temporary_files/schedule-not-ready-poc.html</code>; B (the dashed card) shipped, reusing the
       existing component rather than building a new one.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">I'm 2nd in Against the Odds (ODDS) — why didn't the celebration (bunny, graffiti) play?</p>
+    <p class="a">
+      Working as designed, for two reasons (<code>hooks/useLeaderboardCelebration.ts</code>,
+      <code>lib/podiumCelebration.ts</code>). (1) Ranks are only re-checked when a session has
+      <em>completed</em> since the phone last looked (the "sentinel"); none has since Oct 4, and the
+      award appeared on Oct 6 from old games, so nothing ran. (2) Even when Oct 11 completes, a board
+      missing from the player's saved snapshot is recorded silently the first time, so nobody is
+      congratulated for a place they already held when the award launched. Result: award boards can
+      celebrate from the second completed session after launch (Oct 18), and only on a change of
+      place.
     </p>
   </div>
 
