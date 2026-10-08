@@ -40,6 +40,18 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
+  // The admin's preferred subs for the session (max 2; the DB CHECK enforces it too).
+  async function setSubPicks(sessionId: string, picks: string[]) {
+    setIsSaving(true)
+    try {
+      const { error } = await supabase.from('sessions').update({ sub_picks: picks }).eq('id', sessionId)
+      if (error) { toast.error(error.message); return }
+      onDone()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function moveUp(matchId: string, currentPosition: number, allQueued: AdminMatchDisplay[]) {
     const upper = allQueued.find((m) => m.gameNumber === currentPosition - 1)
     if (!upper) return
@@ -228,5 +240,5 @@ export function useAdminActions(onDone: () => void) {
     }
   }
 
-  return { isSaving, editMatch, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt, unfinishMatch }
+  return { isSaving, editMatch, setSubPicks, moveUp, moveDown, markDone, swapCourts, demoteToQueue, promoteTocourt, moveToCourt, unfinishMatch }
 }

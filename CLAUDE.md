@@ -100,6 +100,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - A player's level is `profiles.level` (no history); `session_registrations.level` is only a per-session override and is mostly NULL. Use override ?? profile level, as `useRoster` does, never the registration column alone.
 - Player levels are private to the owner. Never propose or build anything player-facing that shows or implies a level, including "beat a higher-rated pair".
 - When a query's answer contradicts a simpler sanity check, suspect the query first. I swapped which team won (`t1 = 0` means team 1 took no games) and nearly reported that weaker pairs win 79%.
+- An expandable panel in a list row goes below the row as a full-width sibling, never inside the row's `flex-1` text column — at 390 px that column is ~60 px wide.
 - When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 
 ## .env Files

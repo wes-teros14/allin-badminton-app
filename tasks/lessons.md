@@ -792,3 +792,14 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: the user opened the admin cheers-gate POC and saw no samples.
 - Root cause: every option opened in the "before" state, so nothing differed between tabs until you pressed "Finish my game". The file was also only opened in my browser pane, never sent to the user.
 - Fix: each tab now opens in the "after" state, with a Replay button; the file is delivered with SendUserFile.
+
+## 2026-10-08: Subs list offered players due on court right after
+- Symptom: on 2 courts, subbing into game 7 listed the players of game 9, who go on as soon as game 7 or 8 ends.
+- Root cause: `nextGameNumber(N)` blocked game N+1 (3 for games 1–2). On 2 courts N+1 is usually already on court, so the rule blocked nobody new; the first queued game was never checked. The 1–2 → 3 jump also ignored court count, so on 1 court game 2 slipped through.
+- Fix: `getEligibleSubstitutes` now blocks by start order — first queued game for a game on court, and the queued games right before and after a queued target (`src/lib/substitutes.ts`).
+- Rule: "next game" means next in the queue, never game number + 1.
+
+## 2026-10-08: Subs panel squeezed to ~60 px in the queue
+- Symptom: opening Subs on a queued game showed one word per line and overlapping level buttons at 390 px.
+- Root cause: the panel was rendered inside the row's `flex-1 min-w-0` middle column, between the game label and four buttons.
+- Fix: render it as a sibling below the row, full width.

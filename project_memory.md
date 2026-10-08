@@ -503,6 +503,15 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   used throughout this session (query every `input/select/button`, confirm each resolves a non-empty
   accessible name via wrapping label, `label[for]`, or `aria-label`).
 
+## Subs on the live court screen
+
+- **Ranked, not alphabetical (2026-10-08).** `SubsPanel` (`src/components/SubsPanel.tsx`) opens from Subs on a court card or a queued game. The admin taps "Who's out?" (one of the four), then each eligible player shows rank + reason ("Lv 3 (same) · 5 games · next G7") and one-tap **Sub in** → inline confirm → `editMatch` via `assignSlot`.
+- **Order** (`rankSubstitutes`, `src/lib/substitutes.ts`): admin ★ picks (pick order) → closest level to the player out → fewest games tonight (finished + on court + queued) → most rest before their own next game (tie-break only) → name. Unknown level sorts last on rule 2. In a standard night everyone has 4 games, so rule 3 only bites after a sub or no-show.
+- **★ picks: max 2, per session, in `sessions.sub_picks uuid[]`** (migration 085, CHECK `cardinality <= 2`, applied to dev + prod via MCP). Shared in the DB, not localStorage, so every phone sees the same stars. Only admins can write them (existing "sessions: admin all" policy); moderators see stars read-only.
+- **Levels hidden from moderators** — they get the same order with "N games · next G7" only. Levels come from `useSessionLevels` (override ?? profile level).
+- **Eligibility = queue order, not game number.** On court now, the target's four, and the game that starts right after it (first queued game for a game on court; queued games either side for a queued one) are blocked. The old `nextGameNumber(N)` (N+1, 3 for games 1–2) blocked a game already on court on 2 courts. At 14 players / 2 courts usually only ~2 are eligible; 16 players → ~4.
+- **Rejected:** an LLM call (no edge functions exist; adds key, latency, non-determinism for a 4-key sort), a "swap" with the late player (owner: problematic), and tiebreaks for time since last game, gender, repeat partners, sub-load spread. POC: `temporary_files/subs-ranking-poc.html`.
+
 ## Match schedule board
 
 - **`/match-schedule/session/:id?show=all` renders `AllMatchesView`, which draws
