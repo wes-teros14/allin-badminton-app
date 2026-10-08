@@ -1,36 +1,28 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-07 (end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-08. Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- Pushed to `dev` and `main` this round:
-  - **Every Awards board is a top 5** (`AWARD_PLACES` in `lib/denseRank.ts`).
-  - **🎲 Against the Odds** (code name Giant Slayer) is the fifth award: gap 20 points, win rate from 4 earlier games, 3 underdog games to qualify, counted in games. It's on the Awards tab, with a profile badge for 1st.
-- **Renamed by the owner to "Against the Odds" with the 🎲 emoji** (branches `024-against-the-odds`, `025-odds-dice`): label, profile badge and switcher chip ("Odds"); code and board key stay `giant-slayer`.
+- **"Who's going" now stays on closed sessions** (branch `026-roster-after-close`): committed locally, **not pushed** (waiting for the owner's OK).
+  - A `registration_closed` card shows faces + "14 going" and expands into name chips, like an open one. No slot count, no "slots left", and an empty list says "No one registered".
+  - Only `registration_closed` (not locked/live/finished) was assumed; easy to extend.
+- Everything before this is on `dev` and `main` (top-5 awards, 🎲 Against the Odds, awards celebrations, Settings, Cheer later, Win Streak).
 - `tsc -b`, 431 unit tests and the build pass. Lint: no errors (1 old warning in ProfileView).
-- 084 `cheer_later_players` is on prod and dev.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
-
-- **Awards now trigger the celebration card** (branch `023-award-celebrations`, pushed to `dev` and `main`): all five, drops included; "See the board" opens the exact award.
 
 ## Verified, and how
 
-- Award celebration on dev (browser-only state rewind): the card showed "4 to celebrate!" for the four awards the Admin holds, and "See the board" opened `/leaderboard?tab=awards&award=joined` with that award selected. 431 unit tests pass.
-
-- The app's `rankGiantSlayers` was run on the same 598 prod games as the tuning report: identical results (107 underdog games, 21 upsets, 11 qualify, the same top 5 in order). The game-level report was itself checked against SQL.
-- Dev, Playwright as Admin: five switcher buttons fit at 390 px, and Giant Slayer shows Test Admin 75% (3 of 4 games as underdog). No page errors.
-
-## Not verified
-
-- Giant Slayer on prod in the app itself (the app runs against dev). Expected prod top 5: 67% (2 of 3), 50% (3 of 6), 33% (2 of 6), 31% (5 of 16), 30% (3 of 10).
+- Dev, Playwright as Admin at 390 px, dark and light: the closed "New Session" card shows 14 faces/names, no slots chip, no page errors.
+- Not seen: the empty closed state ("No one registered") and a prod session; dev has one closed session with 14 registrants.
 
 ## Immediate next steps
 
+- Push `026-roster-after-close` → `dev` → `main` once the owner confirms.
 - Clean Sweep is still parked (numbers in `project_memory.md`).
 - Restart prod 15–30 min before the next session. Afterwards, compare edge-log requests per 30 min with Oct 4.
 
 ## Open questions
 
-- The leader can qualify with only 3 underdog games (2 of 3 = 67%). Fine by the owner's choice; revisit if it feels too jumpy.
+- Should the roster also show on locked / live / finished sessions? Unclear; owner only asked about "when registration closes".
 - Carried over: is the load reduction enough? Prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.
