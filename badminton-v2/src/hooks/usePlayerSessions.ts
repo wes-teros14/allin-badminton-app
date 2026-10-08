@@ -35,9 +35,10 @@ export interface SessionPickerItem {
   playerCount?: number
   maxPlayers?: number | null
   /**
-   * Who has registered, in sign-up order. Loaded alongside playerCount, so only
-   * for open sessions. null means the load failed — the card must say so rather
-   * than show an empty list.
+   * Who has registered, in sign-up order. Loaded alongside playerCount, for
+   * sessions that are open or closed to registration (the list stays visible
+   * after registration closes). null means the load failed — the card must say
+   * so rather than show an empty list.
    */
   registrants?: SessionRegistrant[] | null
 }
@@ -196,10 +197,13 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
         activeReceiptCount: activeReceiptsBySessionId.get(s.id) ?? 0,
       }))
 
-      const openItems = items.filter(s => s.status === 'registration_open')
+      // Who joined stays visible once registration closes, so closed sessions
+      // load their roster too. Only an open one can still take sign-ups, so only
+      // an open one carries a slot limit.
+      const rosterItems = items.filter(s => s.status === 'registration_open' || s.status === 'registration_closed')
 
-      if (openItems.length > 0) {
-        const openIds = openItems.map(s => s.id)
+      if (rosterItems.length > 0) {
+        const openIds = rosterItems.map(s => s.id)
 
         const [{ data: invitations }, { data: regRows, error: regError }] = await Promise.all([
           supabase
@@ -241,11 +245,11 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
           }
 
           const enriched = items.map(s => {
-            if (s.status !== 'registration_open') return s
+            if (s.status !== 'registration_open' && s.status !== 'registration_closed') return s
             return {
               ...s,
               playerCount: countMap[s.id] ?? 0,
-              maxPlayers: s.id in invMap ? invMap[s.id] : null,
+              maxPlayers: s.status === 'registration_open' && s.id in invMap ? invMap[s.id] : null,
               registrants: registrantsBySession ? (registrantsBySession.get(s.id) ?? []) : null,
             }
           })
