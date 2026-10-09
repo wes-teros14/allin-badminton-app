@@ -48,23 +48,30 @@ export function buildCourtSlots<T>(
   currentByCourt: Map<number, T>,
   queued: T[],
 ): CourtSlot<T>[] {
-  return Array.from({ length: courtCount }, (_, index) => {
-    const courtNumber = index + 1
+  const courtNumbers = Array.from({ length: courtCount }, (_, index) => index + 1)
+  const idle = courtNumbers.filter((courtNumber) => !currentByCourt.has(courtNumber))
+
+  return courtNumbers.map((courtNumber) => {
+    const idleIndex = idle.indexOf(courtNumber)
 
     return {
       courtNumber,
       label: labels[courtNumber] || defaultCourtLabel(courtNumber),
       current: currentByCourt.get(courtNumber) ?? null,
       /**
-       * The head of the shared queue — deliberately the same match for every
-       * court, because promotion goes to whichever court finishes next. It is
-       * NOT a per-court reservation.
+       * There is one shared queue, and its head goes to whichever court frees
+       * up next. Idle courts are filled first, in court order — that is what
+       * Start Session does (buildStartingCourtAssignments) — so the k-th idle
+       * court previews the k-th queued game, and a busy court previews the
+       * first game no idle court will take.
        *
-       * This was `queued[index]`, which made court 2 preview `queued[1]` — a
-       * game that could never land there next. It read as a per-court promise
-       * and was wrong on every court but the first.
+       * When every court is busy (most of a night) that is the queue head on
+       * every court, as before. Giving *idle* courts the head too put "Game 1"
+       * on both courts before the first game started (prod, 2026-10-09).
+       * `queued[index]` (by court number, not by idle order) was wrong the other
+       * way: a promise for court 2 that the queue never keeps.
        */
-      next: queued[0] ?? null,
+      next: queued[idleIndex >= 0 ? idleIndex : idle.length] ?? null,
     }
   })
 }
