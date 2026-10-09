@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-10-08
+Last updated: 2026-10-09
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -175,6 +175,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   the match (from matches already played), which predicts as well as levels on prod.
 
 - **One derivation helper per concept.** Payment state goes through `src/lib/paymentState.ts` (`derivePaymentState`) on all three surfaces — sessions list, session card, admin panel — because divergent copies previously showed different colours for the same row (FR-020). Same pattern for `sessionStatusStyle.ts` and `sessionStamp.ts`.
+- **"Your Share" has a free-text note (migration 086, 2026-10-09).** Finance → Your Share keeps the amount in
+  `sessions.personal_share_override` (subtracted from profit by `get_session_finance`) and adds "What it was for",
+  stored in its own admin-only table `session_finance_notes` (one row per session, 1–500 chars, a blank note deletes
+  the row, Clear Share clears both). Shown under "Your Share" in the Net Cash Summary. **Why a separate table:** every
+  column of `sessions` is readable by anyone with the public key (002: `anon, authenticated USING (true)`), and a
+  column-level REVOKE cannot override that table grant. Known and not fixed: the share *amount* on `sessions` is
+  publicly readable the same way. 086 is on prod (via MCP, timestamp version); dev depends on the owner pasting it.
 - **Payment-exempt players (migration 082, 2026-09-28).** Settings (was Payment Settings until 2026-10-04) → "Players who don't pay"
   (`PaymentExemptCard`, table `payment_exempt_players`, admin-only RLS). The flag is **snapshotted** on
   `session_registrations.payment_exempt`, never looked up live: a BEFORE INSERT trigger sets it from the
