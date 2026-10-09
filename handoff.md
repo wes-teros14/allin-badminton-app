@@ -4,6 +4,9 @@ Updated: 2026-10-09. Overwrite this file on every update; it is never a running 
 
 ## State
 
+- **Offline backup download** (branch `031-offline-backup`): pushed to `dev` and `main`.
+  - Last button on the admin session page (locked and live; moderators too). Admin picks moderator copy (no levels) or admin copy (levels).
+- `tsc -b`, build, 448 unit tests pass.
 - **Your Share note** (branch `030-share-note`): pushed to `dev` and `main`.
   - Finance → Your Share: "What it was for" text box (max 500), saved with Save Share, cleared with Clear Share, shown under Your Share in the Net Cash Summary.
   - Migration 086 `session_finance_notes` (admin-only) is **on prod**; **not on dev** until the owner pastes `086_session_finance_notes.sql` into the dev SQL editor. Until then dev shows "Couldn't load your saved note".
@@ -17,6 +20,8 @@ Updated: 2026-10-09. Overwrite this file on every update; it is never a running 
 
 ## Verified, and how
 
+- Offline backup on dev (real app, Playwright as Admin, 390 px): button last after Unlock Schedule; sheet opens; admin copy 23 KB with levels and 20 games; moderator copy 0 levels, 20 games; toast names the file; the file opens on its own.
+- Not seen: opening the file on a real Android phone (owner to try: Files → Downloads → open with Chrome), a moderator account, a live session.
 - Share note on dev (table stood in for in the browser only): save → field keeps the 2-line note; reload → still there; Clear → empty, 1 upsert + 1 delete sent. The dev session's real share amount went 120 → cleared (null; it read 0 before, same effect in the maths).
 - Not seen: the note inside the Net Cash Summary (the dev session has no shuttle/court cost, so the summary is hidden).
 - Dev, in-app browser as Admin at 390 px: court-card panel ranked 3 subs; ★ saved and moved Neil to #1; 3rd star disabled with "Max 2 picks"; Sub in Steph for Cait updated Game 3; queued-game panel full width in light theme. No console errors.
