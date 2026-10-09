@@ -40,10 +40,16 @@ const courtCostSchema = z.object({
 })
 type CourtCostFormOutput = z.output<typeof courtCostSchema>
 
+/** Matches the CHECK on session_finance_notes.personal_share_note (086). */
+const PERSONAL_SHARE_NOTE_MAX = 500
+
 const personalShareSchema = z.object({
   personalShare: z
     .number({ error: 'Enter a valid amount.' })
     .min(0, 'Share must be 0 or more.'),
+  personalShareNote: z
+    .string()
+    .max(PERSONAL_SHARE_NOTE_MAX, `Keep it under ${PERSONAL_SHARE_NOTE_MAX} characters.`),
 })
 type PersonalShareFormOutput = z.output<typeof personalShareSchema>
 
@@ -112,6 +118,10 @@ export default function FinanceDetailView() {
   }, [finance.effectivePersonalShare, personalShareForm])
 
   useEffect(() => {
+    personalShareForm.setValue('personalShareNote', finance.personalShareNote ?? '')
+  }, [finance.personalShareNote, personalShareForm])
+
+  useEffect(() => {
     const previousMode = previousModeRef.current
 
     if (finance.allocationMode !== 'manual') {
@@ -154,12 +164,12 @@ export default function FinanceDetailView() {
   }
 
   const onSavePersonalShare = async (values: PersonalShareFormOutput) => {
-    const { error } = await finance.savePersonalShare(values.personalShare)
+    const { error } = await finance.savePersonalShare(values.personalShare, values.personalShareNote)
     if (error) {
       toast.error('Failed to save your share. Try again.')
     } else {
       toast.success('Your share saved.')
-      personalShareForm.reset({ personalShare: values.personalShare })
+      personalShareForm.reset({ personalShare: values.personalShare, personalShareNote: values.personalShareNote.trim() })
     }
   }
 
@@ -169,7 +179,7 @@ export default function FinanceDetailView() {
       toast.error('Failed to clear your share. Try again.')
     } else {
       toast.success('Your share cleared.')
-      personalShareForm.reset({ personalShare: 0 })
+      personalShareForm.reset({ personalShare: 0, personalShareNote: '' })
     }
   }
 
@@ -522,6 +532,28 @@ export default function FinanceDetailView() {
                     </p>
                   )}
                 </div>
+                <div className="space-y-1">
+                  <Label htmlFor="personalShareNote">What it was for</Label>
+                  <textarea
+                    id="personalShareNote"
+                    rows={3}
+                    maxLength={PERSONAL_SHARE_NOTE_MAX}
+                    placeholder="e.g. Court booking 300 + 1 tube of shuttles"
+                    aria-invalid={!!personalShareForm.formState.errors.personalShareNote}
+                    className="w-full min-w-0 resize-y rounded-lg border border-input bg-transparent px-2.5 py-2 text-base leading-snug transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
+                    {...personalShareForm.register('personalShareNote')}
+                  />
+                  {personalShareForm.formState.errors.personalShareNote && (
+                    <p className="text-xs text-destructive mt-1">
+                      {personalShareForm.formState.errors.personalShareNote.message}
+                    </p>
+                  )}
+                  {finance.personalShareNoteError && (
+                    <p role="alert" className="text-xs text-destructive mt-1">
+                      Couldn’t load your saved note. Saving now would replace it.
+                    </p>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button type="submit" disabled={finance.isSavingPersonalShare}>
                     {finance.isSavingPersonalShare ? 'Saving...' : 'Save Share'}
@@ -529,7 +561,7 @@ export default function FinanceDetailView() {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={finance.isSavingPersonalShare || finance.personalShareOverride === null}
+                    disabled={finance.isSavingPersonalShare || (finance.personalShareOverride === null && !finance.personalShareNote)}
                     onClick={() => void onResetPersonalShare()}
                   >
                     Clear Share
@@ -575,9 +607,16 @@ export default function FinanceDetailView() {
                 <span className="text-sm text-muted-foreground">Court Cost</span>
                 <span className="text-sm">{formatPeso(finance.courtCost ?? 0)}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Your Share</span>
-                <span className="text-sm">{formatPeso(finance.effectivePersonalShare)}</span>
+              <div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Your Share</span>
+                  <span className="text-sm">{formatPeso(finance.effectivePersonalShare)}</span>
+                </div>
+                {finance.personalShareNote && (
+                  <p className="mt-0.5 whitespace-pre-line break-words text-xs text-muted-foreground">
+                    {finance.personalShareNote}
+                  </p>
+                )}
               </div>
               <div className="border-t border-border my-2" />
               <div className="flex justify-between items-center">

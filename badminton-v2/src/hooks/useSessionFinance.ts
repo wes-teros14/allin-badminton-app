@@ -55,6 +55,10 @@ export interface SessionFinanceData {
   profit: number
   personalShareOverride: number | null
   effectivePersonalShare: number
+  /** What the admin's share was for (migration 086). Admin-only, never in the maths. */
+  personalShareNote: string | null
+  /** Set when the note could not be read: the field must not pass for empty. */
+  personalShareNoteError: string | null
   totalShuttlesLogged: number
   isLoading: boolean
   fetchError: string | null
@@ -70,7 +74,8 @@ export interface SessionFinanceData {
   clearUsage: () => Promise<{ error: string | null }>
   saveAllocationMode: (mode: AllocationMode) => Promise<{ error: string | null }>
   saveCourtCost: (amount: number) => Promise<{ error: string | null }>
-  savePersonalShare: (amount: number | null) => Promise<{ error: string | null }>
+  /** Saves the amount and its note together; a blank note removes it. null clears both. */
+  savePersonalShare: (amount: number | null, note?: string) => Promise<{ error: string | null }>
   refetch: () => Promise<void>
 }
 
@@ -343,6 +348,8 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
   const [baseProfit, setBaseProfit] = useState(0)
   const [profit, setProfit] = useState(0)
   const [effectivePersonalShare, setEffectivePersonalShare] = useState(0)
+  const [personalShareNote, setPersonalShareNote] = useState<string | null>(null)
+  const [personalShareNoteError, setPersonalShareNoteError] = useState<string | null>(null)
   const [totalShuttlesLogged, setTotalShuttlesLogged] = useState(0)
 
   const fetchAll = useCallback(async (options?: { background?: boolean }) => {
@@ -385,6 +392,16 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     setProfit(Number(financeRow.profit_after_personal_share))
     setEffectivePersonalShare(Number(financeRow.effective_personal_share))
     setTotalShuttlesLogged(Number(financeRow.total_shuttles_logged))
+
+    // The note lives in its own admin-only table (086), not in sessions, which
+    // anyone can read. A failed read is reported, never shown as "no note".
+    const { data: noteRow, error: noteErr } = await supabase
+      .from('session_finance_notes')
+      .select('personal_share_note')
+      .eq('session_id', sessionId)
+      .maybeSingle()
+    setPersonalShareNoteError(noteErr ? noteErr.message : null)
+    setPersonalShareNote(noteErr ? null : ((noteRow as { personal_share_note: string } | null)?.personal_share_note ?? null))
 
     const { data: batchRows, error: batchErr } = await supabase
       .from('shuttle_batches')
@@ -559,7 +576,7 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     return { error: null }
   }, [sessionId, fetchAll, hasLoadedOnce])
 
-  const savePersonalShare = useCallback(async (amount: number | null): Promise<{ error: string | null }> => {
+  const savePersonalShare = useCallback(async (amount: number | null, note?: string): Promise<{ error: string | null }> => {
     setIsSavingPersonalShare(true)
     const { error } = await supabase
       .from('sessions')
@@ -568,6 +585,19 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     if (error) {
       setIsSavingPersonalShare(false)
       return { error: error.message }
+    }
+
+    // Clearing the share clears its note; a blank note is removed rather than stored.
+    const trimmed = amount === null ? '' : (note ?? '').trim()
+    const { error: noteError } = trimmed
+      ? await supabase
+        .from('session_finance_notes')
+        .upsert({ session_id: sessionId, personal_share_note: trimmed, updated_at: new Date().toISOString() } as never)
+      : await supabase.from('session_finance_notes').delete().eq('session_id', sessionId)
+    if (noteError) {
+      await fetchAll({ background: hasLoadedOnce })
+      setIsSavingPersonalShare(false)
+      return { error: noteError.message }
     }
 
     await fetchAll({ background: hasLoadedOnce })
@@ -591,6 +621,8 @@ export function useSessionFinance(sessionId: string): SessionFinanceData {
     profit,
     personalShareOverride: session?.personalShareOverride ?? null,
     effectivePersonalShare,
+    personalShareNote,
+    personalShareNoteError,
     totalShuttlesLogged,
     isLoading,
     fetchError,

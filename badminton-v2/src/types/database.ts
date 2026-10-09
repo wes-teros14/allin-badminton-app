@@ -264,6 +264,24 @@ export type Database = {
           },
         ]
       }
+      session_finance_notes: {
+        Row: {
+          personal_share_note: string
+          session_id: string
+          updated_at: string
+        }
+        Insert: {
+          personal_share_note: string
+          session_id: string
+          updated_at?: string
+        }
+        Update: {
+          personal_share_note?: string
+          session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cheer_later_players: {
         Row: {
           added_at: string
