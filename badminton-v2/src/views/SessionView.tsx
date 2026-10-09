@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router'
 import { Calendar, Clock, FileText, MapPin, PhilippinePeso, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import { OfflineBackupButton } from '@/components/OfflineBackupButton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -492,6 +493,8 @@ export function SessionView() {
             </Button>
           </>
         )}
+        {/* Last on the page by design: a safety net, not a step. */}
+        <OfflineBackupButton sessionId={session.id} canIncludeLevels={!isModerator} />
       </div>
     )
   }
@@ -515,6 +518,8 @@ export function SessionView() {
             <p className="text-sm text-muted-foreground pt-2">Actions are available once the session is Live.</p>
           </CardContent>
         </Card>
+        {/* The backup is most useful just before play, so moderators get it from the moment the schedule is locked. */}
+        {session.status === 'schedule_locked' && <OfflineBackupButton sessionId={session.id} canIncludeLevels={false} />}
       </div>
     )
   }
@@ -615,6 +620,7 @@ export function SessionView() {
           <Button onClick={startSession} className="w-full">Start Session</Button>
           <Button variant="outline" onClick={() => window.open(`/live-board/${session.id}`, '_blank')} className="w-full">Open LiveBoard</Button>
           <Button variant="outline" onClick={unlockSchedule} className="w-full">Unlock Schedule</Button>
+          <OfflineBackupButton sessionId={session.id} canIncludeLevels />
         </div>
       )}
     </div>
