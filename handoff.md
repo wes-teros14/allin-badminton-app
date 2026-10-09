@@ -4,7 +4,7 @@ Updated: 2026-10-09. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Your Share note** (branch `030-share-note`): committed locally, **not pushed**.
+- **Your Share note** (branch `030-share-note`): pushed to `dev` and `main`.
   - Finance → Your Share: "What it was for" text box (max 500), saved with Save Share, cleared with Clear Share, shown under Your Share in the Net Cash Summary.
   - Migration 086 `session_finance_notes` (admin-only) is **on prod**; **not on dev** until the owner pastes `086_session_finance_notes.sql` into the dev SQL editor. Until then dev shows "Couldn't load your saved note".
   - RLS tested on prod in a rolled-back block: admin reads/writes; player sees 0 and cannot write; anon cannot read.
