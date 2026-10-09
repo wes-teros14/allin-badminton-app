@@ -67,7 +67,7 @@ function ZoneHeading({ label, count }: { label: string; count?: number }) {
 }
 
 /** Four faces in a row, two a side, with the divider between them. */
-function MiniBand({ match, size }: { match: BoardMatch; size: number }) {
+function MiniBand({ match, size }: { match: Pick<BoardMatch, 'team1' | 'team2'>; size: number }) {
   return (
     <div className="flex items-center gap-1">
       {match.team1.map((p, i) => (
@@ -658,23 +658,17 @@ export function PersonalGameCard({
     )
   }
 
-  // Everything else: a single line. Your own name is dropped — it is on every
-  // row of your own list — so "with X vs Y & Z" fits beside the faces.
+  // Everything else: one line laid out exactly like an All Games row — four
+  // faces (you and your partner, "vs", the opponents) and both pairs by name.
+  // It used to drop your own face, which read as a lopsided "1 v 2".
   return (
-    <div className={`flex items-center gap-2 border-b border-border py-2.5 last:border-b-0 ${isNextUp ? 'font-semibold' : ''}`}>
-      <span className="w-5 shrink-0 text-right font-mono text-[11px] font-bold text-muted-foreground tabular-nums">
+    <div className={`flex items-center gap-2.5 border-b border-border py-2 last:border-b-0 ${isNextUp ? 'font-semibold' : ''}`}>
+      <span className="w-[22px] shrink-0 text-right font-mono text-[11px] font-bold text-muted-foreground">
         {match.gameNumber}
       </span>
-      <span className="flex shrink-0 items-center gap-[3px]">
-        <Avatar url={match.partnerAvatarUrl} name={match.partnerNameSlug} size={20} />
-        <span className="px-0.5 text-[8.5px] font-bold uppercase text-muted-foreground">v</span>
-        <Avatar url={match.opp1AvatarUrl} name={match.opp1NameSlug} size={20} />
-        <Avatar url={match.opp2AvatarUrl} name={match.opp2NameSlug} size={20} />
-      </span>
-      <span className={`min-w-0 flex-1 truncate text-[12.5px] ${isDone ? 'text-muted-foreground' : ''}`}>
-        <span className="text-muted-foreground">with</span>{' '}
-        <span className="font-semibold text-primary dark:text-[#DCC2EE]">{match.partnerNameSlug}</span>{' '}
-        <span className="text-muted-foreground">vs</span> {match.opp1NameSlug} &amp; {match.opp2NameSlug}
+      <MiniBand match={{ team1: mine, team2: theirs }} size={18} />
+      <span className={`min-w-0 flex-1 truncate text-xs ${isNextUp ? 'text-foreground' : 'text-muted-foreground'}`}>
+        {pairNames(mine)} vs {pairNames(theirs)}
       </span>
       {isDone ? (
         <OutcomeChip outcome={match.outcome} won={match.won} />

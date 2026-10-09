@@ -577,8 +577,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **The personal lists deliberately do not use the board's zones.** Sorting five games into
   "on court / up next / later" gains nothing and costs a predictable order. What carries over is the
   weight: your live game is a full band, everything else is a compact row.
-- **A personal row must name the player.** Rendering only the partner reads as though the partner is
-  playing the pair alone — "Boyet vs Chito & Dan" instead of "Ana & Boyet vs Chito & Dan".
+- **A personal row must name the player — and show them (2026-10-09).** Rendering only the partner reads as though
+  the partner is playing the pair alone — "Boyet vs Chito & Dan" instead of "Ana & Boyet vs Chito & Dan". The compact
+  My Games row now reuses the All Games "Later" row (`MiniBand`: you + partner, "vs", opponents; both pairs by name),
+  owner's call: "follow what All Games looks like". It used to drop your own face, which read as a lopsided
+  "partner v opp opp". Only the personal Win/Loss/Draw/Next chip differs from All Games.
 - **`/match-schedule/session/:id` without a slug is not a dead end.** `PlayerListViewInner`
   auto-redirects a signed-in, registered player to their own slug with `replace: true`
   (`src/views/PlayerView.tsx:216`). An admin who is not registered falls through to the picker.
@@ -604,13 +607,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   the 5-second poll too. Verify on a phone as well as the tablet. `CourtCard` by contrast is rendered
   only by `LiveBoardView` and is admin-gated — and `CourtTabs.tsx:44` defines a *different* local
   function also called `CourtCard`, used on the admin screen. Do not confuse the two.
-- **`next` on a court slot is the shared queue head, not a per-court reservation.** `buildCourtSlots`
-  gives every court `queued[0]`, because promotion takes the head and hands it to whichever court
-  *finishes* — never to a court that was already idle. It used to be `queued[index]`, so court 2
-  named a game that could never land there next. The fix is not "use `queued[0]` instead": under one
-  shared FIFO there is **no correct per-court `next`**, which is why the copy reads *Next in queue*
-  rather than *Next up* — a fact about the queue instead of a prediction about a court. Do not
-  reintroduce a per-court preview.
+- **`next` on a court slot: idle courts claim the queue in court order (revised 2026-10-09).** `buildCourtSlots`
+  gives the k-th *idle* court `queued[k]`, because Start Session (`buildStartingCourtAssignments`) fills idle courts
+  in court order; a *busy* court previews the first game no idle court takes. With every court busy (most of a night)
+  that is `queued[0]` on every court: promotion hands the head to whichever court finishes next. The old rule gave the
+  head to every court, so before the first game both courts said "Game 1" (prod bug, 2026-10-09). `queued[index]` by
+  court number stays wrong (it promised court 2 a game it never gets). Copy stays *Next in queue*.
 - **Player names and avatars come from a 60-second TTL cache** (`src/lib/profileCache.ts`), not a
   fetch per refresh. Two rules hold it together, each with a failure mode attached: only ids the
   cache has never seen are fetched (which is what keeps a mid-session *substitution* working), and
