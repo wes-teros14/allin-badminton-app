@@ -803,3 +803,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: opening Subs on a queued game showed one word per line and overlapping level buttons at 390 px.
 - Root cause: the panel was rendered inside the row's `flex-1 min-w-0` middle column, between the game label and four buttons.
 - Fix: render it as a sibling below the row, full width.
+
+## 2026-10-09: both courts said "Next in queue — Game 1" before the session started (prod)
+- Symptom: on `/sessions/<id>` with the schedule locked, Court 1 and Court 2 both previewed Game 1 with the same players.
+- Root cause: `buildCourtSlots` (`lib/courts.ts`) gave every court the queue head as `next`. Right while courts are busy (one court frees at a time), wrong when several courts are idle at once: Start Session fills them in court order (`buildStartingCourtAssignments`), so Court 2 gets Game 2. The old unit test asserted the buggy case.
+- Fix: idle courts claim queued games in court order; a busy court previews the first game no idle court takes. All-busy behaviour unchanged. Tests updated and added; verified on dev (Game 2 / Game 3 on a locked session).
