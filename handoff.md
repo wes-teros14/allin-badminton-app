@@ -4,6 +4,7 @@ Updated: 2026-10-09. Overwrite this file on every update; it is never a running 
 
 ## State
 
+- **My Games rows now match All Games** (branch `033-my-games-rows`, committed locally, **not pushed**): 4 faces (you + partner "vs" opponents) and "You & Partner vs A & B", reusing `MiniBand`. Win/Loss/Draw/Next chips kept. Was "partner v opp opp" since 2026-09-05.
 - **Prod bug fixed, pushed to `dev` and `main`** (branch `032-court-next-preview`): before the first game, both court cards said "Next in queue — Game 1". Idle courts now preview Game 1, Game 2… in court order; busy courts still preview the queue head. Verified on dev; 451 tests pass.
 - **Offline backup download** (branch `031-offline-backup`): pushed to `dev` and `main`.
   - Last button on the admin session page (locked and live; moderators too). Admin picks moderator copy (no levels) or admin copy (levels).
