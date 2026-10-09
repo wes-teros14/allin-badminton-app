@@ -175,6 +175,19 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   the match (from matches already played), which predicts as well as levels on prod.
 
 - **One derivation helper per concept.** Payment state goes through `src/lib/paymentState.ts` (`derivePaymentState`) on all three surfaces — sessions list, session card, admin panel — because divergent copies previously showed different colours for the same row (FR-020). Same pattern for `sessionStatusStyle.ts` and `sessionStamp.ts`.
+- **Offline backup download (2026-10-09).** "Download offline backup" is the last button on the admin session
+  page when the schedule is locked and when live; moderators get it too (when locked, under the read-only card).
+  It saves one standalone, read-only `.html` (no scripts, no network) for running the night by hand if the
+  internet or server goes down; nothing is imported back, the owner re-enters results by hand. Admin chooses
+  **Moderator copy** (no levels) or **Admin copy** (levels, "keep private"); a moderator gets the moderator copy
+  with no choice. Contents: on court now + up next, every game (done with winner/draw, playing, queued), "If
+  someone can't play" under each queued game, and each player's games. Sub suggestions use no levels: not in
+  that round, ★ picks first, then not due next round, then fewest games before. **Rounds are by queue order**
+  (each run of `court_count` games), not by game number, because game numbers are `queue_position` and can have
+  gaps. Logic `lib/offlineBackup.ts` (pure, tested, escapes every name), data `lib/offlineBackupData.ts` (fresh read
+  at export; levels only fetched for the admin copy), UI `components/OfflineBackupButton.tsx`. Rejected: a
+  "run it offline" interactive file (owner chose read-only; Android may not keep changes in a downloaded file),
+  an import button, a ZIP/PDF, and a log of past swaps (the app overwrites the player and keeps no history).
 - **"Your Share" has a free-text note (migration 086, 2026-10-09).** Finance → Your Share keeps the amount in
   `sessions.personal_share_override` (subtracted from profit by `get_session_finance`) and adds "What it was for",
   stored in its own admin-only table `session_finance_notes` (one row per session, 1–500 chars, a blank note deletes
