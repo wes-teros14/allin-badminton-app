@@ -316,6 +316,28 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">I don’t get how Early Bird option A (average points) is calculated.</p>
+    <p class="a">
+      Proposal, not built (2026-10-11). In each finished session the first 5 people who register <em>themselves</em>
+      score 5-4-3-2-1 (6th or later: 0), the same as today. Add those up, then divide by the number of sessions the
+      player registered for themselves (admin-added sessions are left out, since they had no chance to be early).
+      E.g. Anthony: 48 points ÷ 13 sessions = 3.69 per session, ahead of Ronwald’s 76 ÷ 22 = 3.45, though Ronwald has
+      more points in total. Best possible is 5.0 (1st every time). Why: total points follow attendance (r = 0.60 on prod);
+      the average follows it much less (0.32).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How is Early Bird option B (% in first 5) calculated?</p>
+    <p class="a">
+      Proposal, not built (2026-10-11). For each finished session a player registered for themselves: were they among
+      the first 5 self-registrations? Yes or no; 1st and 5th count the same. Score = yes count ÷ those sessions.
+      E.g. Ronwald 20 of 22 = 91%, Anthony 10 of 13 = 77%. A ranks Anthony first (more 1st places, 8 vs 7); B ranks
+      Ronwald first (almost always in the first 5). A asks “how early”, B asks “how often among the early ones”.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">
