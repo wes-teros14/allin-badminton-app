@@ -1,12 +1,12 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-09 (end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-11. Overwrite this file on every update; it is never a running history.
 
 ## State
 
 - **Win Streak now ranks the best run ever** (branch `035-win-streak-best`, committed locally, **not pushed**): was the current run. Expected prod top 5: 18, 9, 7, 7, 6, 6. 453 tests pass.
 - Pushed to `dev` and `main` this session:
-  - **Your Share note** (Finance): "What it was for" text; migration 086 `session_finance_notes` (admin-only) on **prod**.
+  - **Your Share note** (Finance): "What it was for" text; migration 086 `session_finance_notes` (admin-only) on **prod and dev** (dev pasted by the owner, 2026-10-11).
   - **Download offline backup**: last button on the admin session page (locked + live; moderators too). Moderator copy (no levels) / admin copy (levels).
   - **Court preview fix**: before the first game, courts show Game 1 / Game 2 (was Game 1 twice). Confirmed by the owner on prod.
   - **My Games rows** look like All Games rows (you + partner vs opponents, 4 faces).
@@ -25,12 +25,9 @@ Updated: 2026-10-09 (end of session). Overwrite this file on every update; it is
 
 ## Immediate next steps
 
-- **Dev DB:** paste `badminton-v2/supabase/migrations/086_session_finance_notes.sql` into the dev SQL editor (dev finance shows "Couldn't load your saved note" until then).
-- Check Subs on prod once as admin before the next session (from the other session's work).
-- Restart prod 15–30 min before the next session; afterwards compare edge-log requests per 30 min with Oct 4.
+- **Today (Oct 11) is a session day:** restart prod 15–30 min before 2 PM; check Subs on prod once as admin; download an offline backup once the schedule is locked and try it on the phone.
+- After tonight: compare edge-log requests per 30 min with Oct 4 (~2,300–4,200; target ≤ half).
 
 ## Open questions
 
-- Move the share *amount* (`sessions.personal_share_override`, publicly readable) into the admin-only table too?
-- Should "who's going" also show on locked / live / finished session cards?
 - Carried over: Clean Sweep parked; load reduction enough?; prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.
