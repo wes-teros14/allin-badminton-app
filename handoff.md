@@ -1,16 +1,16 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-11. Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-11 (end of session). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- **Win Streak now ranks the best run ever** (branch `035-win-streak-best`, committed locally, **not pushed**): was the current run. Expected prod top 5: 18, 9, 7, 7, 6, 6. 453 tests pass.
+- **Win Streak now ranks the best run ever** (branch `035-win-streak-best`, pushed to `dev` and `main`): was the current run. Expected prod top 5: 18, 9, 7, 7, 6, 6. 453 tests pass.
 - Pushed to `dev` and `main` this session:
   - **Your Share note** (Finance): "What it was for" text; migration 086 `session_finance_notes` (admin-only) on **prod and dev** (dev pasted by the owner, 2026-10-11).
   - **Download offline backup**: last button on the admin session page (locked + live; moderators too). Moderator copy (no levels) / admin copy (levels).
   - **Court preview fix**: before the first game, courts show Game 1 / Game 2 (was Game 1 twice). Confirmed by the owner on prod.
   - **My Games rows** look like All Games rows (you + partner vs opponents, 4 faces).
-- `tsc -b`, build, 451 unit tests pass. Lint: no errors in changed files.
+- `tsc -b`, build, 453 unit tests pass. Lint: no errors in changed files.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
 ## Verified, and how
