@@ -4,6 +4,7 @@ Updated: 2026-10-09 (end of session). Overwrite this file on every update; it is
 
 ## State
 
+- **Win Streak now ranks the best run ever** (branch `035-win-streak-best`, committed locally, **not pushed**): was the current run. Expected prod top 5: 18, 9, 7, 7, 6, 6. 453 tests pass.
 - Pushed to `dev` and `main` this session:
   - **Your Share note** (Finance): "What it was for" text; migration 086 `session_finance_notes` (admin-only) on **prod**.
   - **Download offline backup**: last button on the admin session page (locked + live; moderators too). Moderator copy (no levels) / admin copy (levels).

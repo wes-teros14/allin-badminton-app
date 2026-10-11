@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-10-09
+Last updated: 2026-10-11
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -395,7 +395,15 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **My Profile computes its own award badges.** It has to agree with the Awards tab, so it calls the same `fetchEligiblePlayerIds` and `rankCheerShares(..., { maxPlaces: 1 })`, resolving a tie to nobody the same way. The two files diverged once already, showing badges on profiles that the leaderboard did not award. Change one, check the other. **One deliberate exception since 2026-10-06:** the six cheer awards ("Top Fierce Offense" etc.) were removed from the Awards tab because the Cheers tab already ranks every category, but the owner chose to keep their badges on My Profile. Do not "fix" that mismatch.
 - **Awards boards show a top 5 (`AWARD_PLACES` in `lib/denseRank.ts`, 2026-10-06),** matching Cheers (Individual and Partners show 10). Early Bird and Win Streak read the same constant, so the awards can't drift apart.
 - **The Awards tab looks like the Cheers tab (2026-10-06).** One award at a time behind a four-way switcher (📅 Joined, 🔥 Streak, 🐦 Early, ⚡ Wins), then the award's name, its rule, and a top 3 drawn through `RankedBoard`, the same medal podium every tab uses (dense places, ties share a place). It replaced a stack of bespoke cards, the only tab that looked different. Award rows carry `playerId/name/value/rank` plus a unit ("sessions", "in a row", "points", "wins in a row"). Most Sessions Joined and Attendance Streak became top 3 the same day; Attendance Streak still means the longest run of consecutive finished sessions ever. The profile's 📅 badge follows 1st place and is shared on a tie.
-- **⚡ Win Streak (2026-10-06, top 3 on the Awards card, profile badge for 1st).** Current run of *match* wins, newest backwards; a loss or a 1–1 draw ends it, an abandoned match (no results) is skipped, minimum run 3, active players only, no organiser exclusion (it's merit). Counted in matches, not games: May–July matches were two games each and per-game counting turned an 18-match run into "30". Current run rather than all-time best because best tracks matches played (r = 0.55) and current barely does (r = 0.12). Logic `lib/winStreak.ts` (pure, tested), data `lib/winStreakData.ts` (paged, uses `getMatchOutcome`). POC `temporary_files/win-streak-award-options.html`. Names considered: Hot Hand (🔥 clashes with Attendance Streak), On a Roll, In the Zone, Unbeaten Run / Walang Talo (draws don't end it, runs double).
+- **⚡ Win Streak = best run ever (revised 2026-10-11, owner).** Longest run of consecutive *match* wins a player has
+  ever had; a loss or a 1–1 draw ends a run but the best is kept; abandoned matches skipped; minimum 3; active players
+  only; top 5; no organiser exclusion. Counted in matches, not games (May–July two-game matches turned an 18-match run
+  into "30" per game). **Why best-ever:** the first version (current run, 2026-10-06) punished one bad game — the
+  leader on 7 dropped to 0 on a single loss — and only 2 of 19 active players were ever on the board. Best-ever on prod
+  (2026-10-11): 18, 9, 7, 7, 6, 6; follows matches played only slightly among active players (r = 0.26). Accepted cost:
+  the 18 from May–July may hold 1st for a long time. Rejected: best run in the last 8 sessions (9, 7, 6, 5, 5, 5) and
+  "draws don't end a run" (same numbers today; draws only happen on split-scoring nights). Logic `lib/winStreak.ts`
+  (`winRuns` returns current and best; ranking uses best), data via `lib/matchAwardsData.ts`.
 - **🎲 Against the Odds — "Giant Slayer" in code (built 2026-10-06, top 5 on the Awards tab, profile badge for 1st).** Owner renamed it the same day and picked the 🎲 emoji on 2026-10-07; the label lives in `lib/awardBoards.ts` (short "Odds") and the board key stays `giant-slayer` so saved celebration state and `?award=` links keep working. Replays every
   *game* (not match) in recorded order, counted like the profile: a 1–1 is one win and one loss. Going into
   each game, a player's win rate is their record over every earlier game, all sessions; a pair's strength is
