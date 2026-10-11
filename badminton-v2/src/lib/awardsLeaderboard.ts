@@ -4,6 +4,7 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
 import { fetchMatchAwards } from '@/lib/matchAwardsData'
 import { WIN_STREAK_MIN_RUN } from '@/lib/winStreak'
+import { EARLY_BIRD_MIN_SESSIONS } from '@/lib/earlyBird'
 import { GIANT_SLAYER_GAP, GIANT_SLAYER_MIN_UNDERDOG_GAMES } from '@/lib/giantSlayer'
 import { AWARD_PLACES, assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { awardBoard, type AwardBoardInfo } from '@/lib/awardBoards'
@@ -129,9 +130,16 @@ export async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     },
     {
       ...awardBoard('early-bird'),
-      rule: 'All sessions · first 5 to register score 5-4-3-2-1',
-      unit: (n) => plural(n, 'point', 'points'),
-      rows: earlyBirds.map((e) => ({ playerId: e.playerId, name: nameOf(e.playerId), value: e.points, rank: e.place })),
+      rule: `Average points per session · first 5 to register score 5-4-3-2-1 · min. ${EARLY_BIRD_MIN_SESSIONS} sessions`,
+      unit: () => 'pts per session',
+      format: (avg) => avg.toFixed(2),
+      rows: earlyBirds.map((e) => ({
+        playerId: e.playerId,
+        name: nameOf(e.playerId),
+        value: e.average,
+        rank: e.place,
+        detail: `${e.points} pts in ${e.sessions} sessions`,
+      })),
       emptyText: 'Nobody has qualified yet.',
     },
     {
