@@ -136,10 +136,10 @@ export async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     },
     {
       ...awardBoard('win-streak'),
-      rule: 'Matches won in a row right now · a loss or draw ends it',
+      rule: 'Most matches won in a row, ever · a loss or draw ends a run',
       unit: (n) => plural(n, 'win in a row', 'wins in a row'),
       rows: winStreaks.map((e) => ({ playerId: e.playerId, name: nameOf(e.playerId), value: e.run, rank: e.place })),
-      emptyText: `Nobody is on a run of ${WIN_STREAK_MIN_RUN} or more right now.`,
+      emptyText: `Nobody has won ${WIN_STREAK_MIN_RUN} matches in a row yet.`,
     },
     {
       ...awardBoard('giant-slayer'),

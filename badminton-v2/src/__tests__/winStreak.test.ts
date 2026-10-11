@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { currentWinRuns, rankWinStreaks, type WinStreakMatch } from '@/lib/winStreak'
+import { winRuns, rankWinStreaks, type WinStreakMatch } from '@/lib/winStreak'
 import type { MatchOutcome } from '@/lib/matchResults'
 
 let clock = 0
@@ -15,37 +15,53 @@ function match(outcome: MatchOutcome | null, players: [string, string, string, s
   }
 }
 
-describe('currentWinRuns', () => {
+describe('winRuns', () => {
   it('counts the run back from the newest match', () => {
-    const runs = currentWinRuns([match('team2'), match('team1'), match('team1'), match('team1')])
-    expect(runs.get('A')).toBe(3)
-    expect(runs.get('C')).toBe(0)
+    const runs = winRuns([match('team2'), match('team1'), match('team1'), match('team1')])
+    expect(runs.get('A')?.current).toBe(3)
+    expect(runs.get('C')?.current).toBe(0)
   })
 
   it('ends a run on a draw as well as a loss', () => {
-    const runs = currentWinRuns([match('team1'), match('team1'), match('draw'), match('team1')])
-    expect(runs.get('A')).toBe(1)
+    const runs = winRuns([match('team1'), match('team1'), match('draw'), match('team1')])
+    expect(runs.get('A')?.current).toBe(1)
   })
 
   it('skips an abandoned match instead of ending the run', () => {
-    const runs = currentWinRuns([match('team1'), match(null), match('team1')])
-    expect(runs.get('A')).toBe(2)
+    const runs = winRuns([match('team1'), match(null), match('team1')])
+    expect(runs.get('A')?.current).toBe(2)
   })
 
   it('replays matches in the order they ended, not the order given', () => {
     const early = match('team2')
     const late = match('team1')
-    expect(currentWinRuns([late, early]).get('A')).toBe(1)
+    expect(winRuns([late, early]).get('A')?.current).toBe(1)
   })
 
   it('follows each player through different partners', () => {
-    const runs = currentWinRuns([
+    const runs = winRuns([
       match('team1', ['A', 'B', 'C', 'D']),
       match('team2', ['C', 'D', 'A', 'E']),
       match('team1', ['A', 'C', 'B', 'D']),
     ])
-    expect(runs.get('A')).toBe(3)
-    expect(runs.get('B')).toBe(0)
+    expect(runs.get('A')?.current).toBe(3)
+    expect(runs.get('B')?.current).toBe(0)
+  })
+})
+
+describe('best run', () => {
+  it('keeps the best run after a loss or a draw ends it', () => {
+    const runs = winRuns([match('team1'), match('team1'), match('team1'), match('team2'), match('team1'), match('draw'), match('team1')])
+    expect(runs.get('A')).toEqual({ current: 1, best: 3 })
+  })
+
+  it('ranks by best run, so a player whose run just ended keeps their place', () => {
+    const ranked = rankWinStreaks([
+      ...Array.from({ length: 5 }, () => match('team1', ['A', 'B', 'X', 'Y'])),
+      match('team2', ['A', 'B', 'X', 'Y']),
+      ...Array.from({ length: 3 }, () => match('team1', ['C', 'D', 'X', 'Y'])),
+    ], { eligible: new Set(['A', 'C']) })
+    expect(ranked).toEqual([{ playerId: 'A', run: 5, place: 1 }, { playerId: 'C', run: 3, place: 2 }])
   })
 })
 
