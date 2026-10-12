@@ -1,9 +1,10 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-11 (end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-12. Overwrite this file on every update; it is never a running history.
 
 ## State
 
+- **No-fee banner flash fixed** (branch `037-registered-banner-flash`, not pushed yet): "✅ You're registered!" no longer flashes before the "No fee" row. Verified on dev with a delayed schedule load.
 - **Early Bird now ranks average points per session**, min. 8 self-registered sessions (branch `036-early-bird-average`, pushed to `dev` and `main`). Expected prod top 5: Anthony 3.69, Ronwald 3.45, AJ 2.29, Jax 2.25, Len 1.73. 456 tests pass.
 - **Win Streak now ranks the best run ever** (branch `035-win-streak-best`, pushed to `dev` and `main`): was the current run. Expected prod top 5: 18, 9, 7, 7, 6, 6. 453 tests pass.
 - Pushed to `dev` and `main` this session:

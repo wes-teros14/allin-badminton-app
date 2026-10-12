@@ -338,6 +338,27 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Registration Early Bird counts finished sessions right?</p>
+    <p class="a">
+      Yes. <code>lib/earlyBirdData.ts</code> reads only self-registrations whose session has
+      <code>status = 'complete'</code> (shown as “Finished”, set by Finish Session). Open, closed, locked and live
+      sessions don’t count, so a session’s sign-ups only score once the admin finishes it. Filing a session away
+      (<code>closed_at</code>) doesn’t matter either way.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why do I still see “✅ You’re registered!” for a split second when opening a session?</p>
+    <p class="a">
+      Diagnosis 2026-10-12, not fixed yet. The banner (<code>SessionPlayerDetailView.tsx:535</code>) shows when you’re
+      registered and neither the payment card nor the “no fee” row is showing. The “no fee” row
+      (<code>showWaived</code>, line 349) waits for your schedule to load (<code>!isLoading</code>); the banner doesn’t.
+      Wes and Yelli are on the “Players who don’t pay” list, so while the schedule loads the banner fills the gap, then the
+      “no fee” row replaces it. An earlier fix gated the banner on payment settings only. Fix: also wait for the schedule.
+    </p>
+  </div>
+
   <h2 class="topic" id="accounts">Accounts &amp; profiles</h2>
 
   <div class="qa">
