@@ -814,3 +814,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Root cause: the banner was gated on `paymentSettingsLoading` but not on the schedule load. `showWaived` needs `!isLoading`, so while the schedule loaded it was false and the banner's `!showWaived` passed.
 - Fix: banner also requires `!isLoading` (`SessionPlayerDetailView.tsx`). Verified with a delayed-`matches` Playwright run: old code showed the banner, new code never did.
 - Rule: a fallback shown "when no other state applies" must wait for every query those other states wait for.
+
+## 2026-10-23: Wins board skipped the shared eligibility gate
+- Symptom: found while planning guest accounts — a guest would have shown on the Wins board and its podium celebration even with the guest rule in `fetchEligiblePlayerIds`.
+- Root cause: `fetchAllTimeLeaderboard` (`lib/leaderboardData.ts`) kept its own inline copy of the 3-sessions / last-4 rules, despite project memory saying every board used the gate.
+- Fix: it now calls `fetchEligiblePlayerIds`. Rule: before adding a rule to a "single gate", grep for copies of its constants (`MIN_SESSIONS_PLAYED`, `RECENT_SESSIONS_WINDOW`) — a memory note saying it is single is not proof.

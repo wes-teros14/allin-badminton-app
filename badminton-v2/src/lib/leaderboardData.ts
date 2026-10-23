@@ -11,7 +11,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
-import { fetchEligiblePlayerIds, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
+import { fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTallyMatch } from '@/lib/pairStats'
@@ -78,21 +78,13 @@ export const PODIUM_PLACES = 3
 export const MAX_PLACES = 10
 
 export async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
-  const [statsRes, profilesRes, recentSessionsRes] = await Promise.all([
-    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0).gte('sessions_attended', MIN_SESSIONS_PLAYED),
+  // The shared gate, not a local copy: the copy that lived here skipped the
+  // guest rule (2026-10-23), and the podium celebration reads this board.
+  const [statsRes, profilesRes, eligibleIds] = await Promise.all([
+    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0),
     supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
-    supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
+    fetchEligiblePlayerIds(),
   ])
-
-  const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
-  const activePlayerIds = new Set<string>()
-  if (recentSessionIds.length > 0) {
-    const { data: registrations } = await supabase
-      .from('session_registrations')
-      .select('player_id')
-      .in('session_id', recentSessionIds)
-    for (const r of (registrations ?? []) as Array<{ player_id: string }>) activePlayerIds.add(r.player_id)
-  }
 
   type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
   const profileRows = (profilesRes.data ?? []) as ProfileRow[]
@@ -100,7 +92,7 @@ export async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
 
   const ordered = ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number; sessions_attended: number }>)
-    .filter((s) => nameMap.has(s.player_id) && activePlayerIds.has(s.player_id))
+    .filter((s) => nameMap.has(s.player_id) && eligibleIds.has(s.player_id))
     .map((s) => ({
       playerId: s.player_id,
       displayName: nameMap.get(s.player_id)!,

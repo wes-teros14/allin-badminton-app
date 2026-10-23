@@ -437,6 +437,7 @@ export type Database = {
           gender: string | null
           id: string
           is_active: boolean
+          is_guest: boolean
           level: number | null
           name_slug: string
           nickname: string | null
@@ -449,6 +450,7 @@ export type Database = {
           gender?: string | null
           id: string
           is_active?: boolean
+          is_guest?: boolean
           level?: number | null
           name_slug: string
           nickname?: string | null
@@ -461,6 +463,7 @@ export type Database = {
           gender?: string | null
           id?: string
           is_active?: boolean
+          is_guest?: boolean
           level?: number | null
           name_slug?: string
           nickname?: string | null
