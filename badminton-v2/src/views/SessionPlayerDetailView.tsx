@@ -531,8 +531,10 @@ function ScheduleTab({
                Gated on `paymentSettingsLoading` because the settings query
                starts at `null`: without it this banner painted on the first
                frame of every unpaid visit and was replaced by the payment card
-               a moment later. */
-            !showPaymentInfo && !showWaived && !paymentSettingsLoading && (
+               a moment later. Gated on the schedule (`isLoading`) too: the
+               "no fee" row waits for it, so a no-fee player saw this banner
+               flash until the schedule landed (2026-10-12). */
+            !showPaymentInfo && !showWaived && !paymentSettingsLoading && !isLoading && (
               <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
                 ✅ You&apos;re registered!
               </div>
