@@ -808,3 +808,9 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: on `/sessions/<id>` with the schedule locked, Court 1 and Court 2 both previewed Game 1 with the same players.
 - Root cause: `buildCourtSlots` (`lib/courts.ts`) gave every court the queue head as `next`. Right while courts are busy (one court frees at a time), wrong when several courts are idle at once: Start Session fills them in court order (`buildStartingCourtAssignments`), so Court 2 gets Game 2. The old unit test asserted the buggy case.
 - Fix: idle courts claim queued games in court order; a busy court previews the first game no idle court takes. All-busy behaviour unchanged. Tests updated and added; verified on dev (Game 2 / Game 3 on a locked session).
+
+## 2026-10-12: "✅ You're registered!" flashed for no-fee players on opening a session
+- Symptom: tapping a registration-open session showed the green banner for a split second, then the "No fee" row (owner is payment-exempt).
+- Root cause: the banner was gated on `paymentSettingsLoading` but not on the schedule load. `showWaived` needs `!isLoading`, so while the schedule loaded it was false and the banner's `!showWaived` passed.
+- Fix: banner also requires `!isLoading` (`SessionPlayerDetailView.tsx`). Verified with a delayed-`matches` Playwright run: old code showed the banner, new code never did.
+- Rule: a fallback shown "when no other state applies" must wait for every query those other states wait for.
