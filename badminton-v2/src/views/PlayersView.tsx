@@ -128,11 +128,34 @@ function PlayerStatusButton({
   )
 }
 
+/** A guest still plays and shows in session views, but never on an all-time board or award. */
+function GuestButton({
+  isGuest,
+  onToggle,
+}: {
+  isGuest: boolean
+  onToggle: () => void
+}) {
+  return (
+    <Button
+      type="button"
+      variant={isGuest ? 'default' : 'outline'}
+      size="sm"
+      onClick={onToggle}
+      aria-pressed={isGuest}
+      title="Guests are left off all-time leaderboards and awards"
+    >
+      {isGuest ? 'Guest' : 'Not guest'}
+    </Button>
+  )
+}
+
 function PlayerCard({
   player,
   onSaveNickname,
   onUpdatePlayer,
   onToggleActive,
+  onToggleGuest,
 }: {
   player: {
     id: string
@@ -142,10 +165,12 @@ function PlayerCard({
     gender: 'M' | 'F' | null
     level: number | null
     isActive: boolean
+    isGuest: boolean
   }
   onSaveNickname: (id: string, nickname: string | null) => Promise<void>
   onUpdatePlayer: (id: string, updates: { gender?: 'M' | 'F' | null; level?: number | null }) => Promise<void>
   onToggleActive: (id: string, isActive: boolean) => Promise<void>
+  onToggleGuest: (id: string, isGuest: boolean) => Promise<void>
 }) {
   return (
     <Card
@@ -198,17 +223,23 @@ function PlayerCard({
           </label>
         </div>
 
-        <PlayerStatusButton
-          isActive={player.isActive}
-          onToggle={() => onToggleActive(player.id, !player.isActive)}
-        />
+        <div className="flex flex-wrap gap-2">
+          <PlayerStatusButton
+            isActive={player.isActive}
+            onToggle={() => onToggleActive(player.id, !player.isActive)}
+          />
+          <GuestButton
+            isGuest={player.isGuest}
+            onToggle={() => onToggleGuest(player.id, !player.isGuest)}
+          />
+        </div>
       </CardContent>
     </Card>
   )
 }
 
 export function PlayersView() {
-  const { players, isLoading, updatePlayer, setActive } = usePlayers()
+  const { players, isLoading, updatePlayer, setActive, setGuest } = usePlayers()
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -324,6 +355,7 @@ export function PlayersView() {
                     onSaveNickname={saveNickname}
                     onUpdatePlayer={updatePlayer}
                     onToggleActive={setActive}
+                    onToggleGuest={setGuest}
                   />
                 ))}
               </div>
@@ -398,10 +430,16 @@ export function PlayersView() {
                           </select>
                         </TableCell>
                         <TableCell className="py-3">
-                          <PlayerStatusButton
-                            isActive={player.isActive}
-                            onToggle={() => setActive(player.id, !player.isActive)}
-                          />
+                          <div className="flex flex-wrap gap-2">
+                            <PlayerStatusButton
+                              isActive={player.isActive}
+                              onToggle={() => setActive(player.id, !player.isActive)}
+                            />
+                            <GuestButton
+                              isGuest={player.isGuest}
+                              onToggle={() => setGuest(player.id, !player.isGuest)}
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

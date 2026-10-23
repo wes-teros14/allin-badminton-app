@@ -1,3 +1,27 @@
+# Guest accounts — plan (2026-10-23)
+
+Context: walk-ins play on a shared dummy account (`workislife99@gmail.com`). Its games must show in the session
+views (schedule, session Leaderboard tab, TodayView) but never on any all-time board, award, badge or podium
+celebration. Decided with the owner: a real player's games with or against the guest still count in that
+player's own all-time stats; pairs with the guest stay off Partners.
+
+- [x] Migration `087_profiles_is_guest.sql`: `is_guest boolean not null default false`; set it true for the
+      profile whose `email = 'workislife99@gmail.com'`. Applied to prod via MCP (never `db push`); owner pastes on dev.
+- [x] `fetchEligiblePlayerIds` (`lib/boardEligibility.ts`): also drop profiles with `is_guest`. That one gate
+      covers Cheers, Partners (both partners checked), Awards, Early Bird, Win Streak, Against the Odds, profile badges.
+- [x] `fetchAllTimeLeaderboard` (`lib/leaderboardData.ts:80`): the Wins board copies the gate inline and skips it;
+      switch it to `fetchEligiblePlayerIds`. This also fixes the podium celebration's `wins` standing.
+- [x] `types/database.ts`: add `is_guest` to profiles Row/Insert/Update.
+- [x] Tests: gate drops a guest; Wins board drops a guest; a pair containing a guest is dropped.
+- [x] Not changed (per decision): session views, `player_stats`, a guest showing in another player's
+      "Best partners"/"Toughest opponents" on My Profile. No admin toggle — the flag is set in SQL.
+
+Verify: `tsc -b`, unit tests, build. Prod: guest is flagged and every board/award query on prod returns no guest row
+(read-only checks). Dev: Playwright as Admin at 390 px — guest absent from Wins/Partners/Cheers/Awards, present on a
+session's Leaderboard tab.
+
+Review: done 2026-10-23. Prod migration applied, guest flagged; 459 tests, `tsc -b` clean. Dev Wins board renders (guest query 400s on dev until 087 is pasted, ignored). Not checked in-browser on prod.
+
 # Cheer later + Settings page — plan (2026-10-04)
 
 Decided with the user: Payment Settings becomes Settings, with layout 1 (Payments and Cheers sections on one
