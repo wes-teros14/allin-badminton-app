@@ -11,6 +11,8 @@ export interface Player {
   level: number | null
   role: string
   isActive: boolean
+  /** Shared walk-in login, kept off every all-time board (migration 087). */
+  isGuest: boolean
 }
 
 interface ProfileRow {
@@ -22,6 +24,7 @@ interface ProfileRow {
   level: number | null
   role: string
   is_active: boolean | null
+  is_guest: boolean
 }
 
 export function usePlayers() {
@@ -31,7 +34,7 @@ export function usePlayers() {
   async function fetchPlayers() {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name_slug, email, nickname, gender, level, role, is_active')
+      .select('id, name_slug, email, nickname, gender, level, role, is_active, is_guest')
       .order('name_slug')
     if (error) { toast.error(error.message); return }
     setPlayers(
@@ -44,6 +47,7 @@ export function usePlayers() {
         level: p.level ?? null,
         role: p.role,
         isActive: p.is_active ?? true,
+        isGuest: p.is_guest,
       }))
     )
     setIsLoading(false)
@@ -63,5 +67,11 @@ export function usePlayers() {
     setPlayers((prev) => prev.map((p) => p.id === id ? { ...p, isActive } : p))
   }
 
-  return { players, isLoading, updatePlayer, setActive }
+  async function setGuest(id: string, isGuest: boolean) {
+    const { error } = await supabase.from('profiles').update({ is_guest: isGuest } as Record<string, unknown>).eq('id', id)
+    if (error) { toast.error(error.message); return }
+    setPlayers((prev) => prev.map((p) => p.id === id ? { ...p, isGuest } : p))
+  }
+
+  return { players, isLoading, updatePlayer, setActive, setGuest }
 }

@@ -8,7 +8,8 @@
 -- player_stats is unchanged, so the guest's opponents and partners keep
 -- those games in their own all-time stats (decided 2026-10-23).
 --
--- No admin toggle: the flag is set here, in SQL.
+-- Admins toggle it on the Players page (Guest / Not guest); this sets the
+-- first one. Admins can already update any profile (migration 043).
 -- =============================================================
 
 ALTER TABLE public.profiles
