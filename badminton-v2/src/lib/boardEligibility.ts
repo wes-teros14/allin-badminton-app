@@ -33,33 +33,52 @@ export const ATTENDANCE_AWARD_EXCLUDED = new Set([
 ])
 
 /**
- * The two rules every board shares: a player must be established (attended at
- * least `MIN_SESSIONS_PLAYED` sessions) and still turning up (registered for at
- * least one of the last `RECENT_SESSIONS_WINDOW` completed sessions).
+ * The rules every board shares: a player must be established (attended at
+ * least `MIN_SESSIONS_PLAYED` sessions), still turning up (registered for at
+ * least one of the last `RECENT_SESSIONS_WINDOW` completed sessions), and not a
+ * guest account. A guest (`profiles.is_guest`, migration 087) is a shared login
+ * walk-ins play on: it shows in the session views but never on an all-time
+ * board, award or badge. Its opponents' and partners' own stats still count
+ * those games; pairs with a guest drop off Partners because both partners must
+ * pass this gate.
  *
  * Deliberately says nothing about the excluded accounts: that list belongs to
  * the two attendance awards, not to eligibility for a ranked board.
  */
 export async function fetchEligiblePlayerIds(): Promise<Set<string>> {
-  const [seasonedRes, recentSessionsRes] = await Promise.all([
+  const [seasonedRes, recentSessionsRes, guestsRes] = await Promise.all([
     supabase.from('player_stats').select('player_id').gte('sessions_attended', MIN_SESSIONS_PLAYED),
     supabase.from('sessions').select('id').eq('status', 'complete').order('date', { ascending: false }).limit(RECENT_SESSIONS_WINDOW),
+    supabase.from('profiles').select('id').eq('is_guest', true),
   ])
 
-  const seasoned = new Set(
-    ((seasonedRes.data ?? []) as Array<{ player_id: string }>).map((s) => s.player_id),
-  )
+  const seasoned = ((seasonedRes.data ?? []) as Array<{ player_id: string }>).map((s) => s.player_id)
   const recentSessionIds = ((recentSessionsRes.data ?? []) as Array<{ id: string }>).map((s) => s.id)
-  if (seasoned.size === 0 || recentSessionIds.length === 0) return new Set()
+  if (seasoned.length === 0 || recentSessionIds.length === 0) return new Set()
 
   const { data: registrations } = await supabase
     .from('session_registrations')
     .select('player_id')
     .in('session_id', recentSessionIds)
 
+  return selectEligible({
+    seasoned,
+    recentRegistrants: ((registrations ?? []) as Array<{ player_id: string }>).map((r) => r.player_id),
+    guests: ((guestsRes.data ?? []) as Array<{ id: string }>).map((g) => g.id),
+  })
+}
+
+/** The pure part of `fetchEligiblePlayerIds`: seasoned, recently registered, not a guest. */
+export function selectEligible({ seasoned, recentRegistrants, guests }: {
+  seasoned: Iterable<string>
+  recentRegistrants: Iterable<string>
+  guests: Iterable<string>
+}): Set<string> {
+  const seasonedSet = new Set(seasoned)
+  const guestSet = new Set(guests)
   const eligible = new Set<string>()
-  for (const r of (registrations ?? []) as Array<{ player_id: string }>) {
-    if (seasoned.has(r.player_id)) eligible.add(r.player_id)
+  for (const id of recentRegistrants) {
+    if (seasonedSet.has(id) && !guestSet.has(id)) eligible.add(id)
   }
   return eligible
 }

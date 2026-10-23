@@ -361,6 +361,17 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“<code>fetchEligiblePlayerIds</code>, which every all-time board and award already calls.”</p>
+    <p>
+      Wrong for one board. The Wins board (<code>fetchAllTimeLeaderboard</code>, <code>lib/leaderboardData.ts</code>) kept its
+      own copy of the 3-session / last-4 rules, so a guest would still have shown there and in its podium
+      celebration. Fixed 2026-10-23: it now calls the shared gate. Built with migration 087
+      (<code>profiles.is_guest</code>); real players' games with a guest still count for them, decided by the owner.
+    </p>
+  </div>
+
   <div class="qa">
     <p class="q">Why do I still see “✅ You’re registered!” for a split second when opening a session?</p>
     <p class="a">
