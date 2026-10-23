@@ -349,6 +349,19 @@
   </div>
 
   <div class="qa">
+    <p class="q">I need dummy accounts for walk-ins whose stats count for the session only, not the all-time leaderboard. How?</p>
+    <p class="a">
+      Every account needs an <code>auth.users</code> row (the <code>handle_new_user</code> trigger makes the profile), so a
+      dummy is created once in Supabase Auth and reused, then added from the roster's “Add player”. The board rules
+      alone won't keep reusable dummies off: “Guest 1” attends many sessions, so it would pass the 3-session and
+      last-4-sessions gates. The fix is one flag (e.g. <code>profiles.is_guest</code>) checked in
+      <code>fetchEligiblePlayerIds</code> (<code>lib/boardEligibility.ts</code>), which every all-time board and award already
+      calls; pairs with a guest drop off Partners because both partners must be eligible. Open point: real players'
+      games with or against a guest still count in their own all-time stats unless changed separately.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Why do I still see “✅ You’re registered!” for a split second when opening a session?</p>
     <p class="a">
       Diagnosis 2026-10-12, not fixed yet. The banner (<code>SessionPlayerDetailView.tsx:535</code>) shows when you’re
