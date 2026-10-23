@@ -4,7 +4,7 @@ Updated: 2026-10-23. Overwrite this file on every update; it is never a running 
 
 ## State
 
-- **Guest accounts** (branch `038-guest-accounts`, not pushed yet): `profiles.is_guest` with a Guest toggle on the Players page; guests kept off every all-time board/award/badge; Wins board now uses the shared gate. Migration 087 **applied on prod** (1 guest flagged: nickname "Kel", 1 session). **Dev: owner must paste `087_profiles_is_guest.sql` into the dev SQL editor** — until then the **Players page on dev stays on its loading skeleton** (it selects `is_guest`) and the board guest query 400s (ignored). 459 tests pass.
+- **Guest accounts** (branch `038-guest-accounts`, pushed to `dev` and `main` 2026-10-23): `profiles.is_guest` with a Guest toggle on the Players page; guests kept off every all-time board/award/badge; Wins board now uses the shared gate. Migration 087 **applied on prod** (1 guest flagged: nickname "Kel", 1 session). **Dev: owner must paste `087_profiles_is_guest.sql` into the dev SQL editor** — until then the **Players page on dev stays on its loading skeleton** (it selects `is_guest`) and the board guest query 400s (ignored). 459 tests pass.
 - **No-fee banner flash fixed**, pushed to `dev` and `main` (2026-10-23).
 - **Early Bird now ranks average points per session**, min. 8 self-registered sessions (branch `036-early-bird-average`, pushed to `dev` and `main`). Expected prod top 5: Anthony 3.69, Ronwald 3.45, AJ 2.29, Jax 2.25, Len 1.73. 456 tests pass.
 - **Win Streak now ranks the best run ever** (branch `035-win-streak-best`, pushed to `dev` and `main`): was the current run. Expected prod top 5: 18, 9, 7, 7, 6, 6. 453 tests pass.
