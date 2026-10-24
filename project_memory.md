@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-10-23
+Last updated: 2026-10-24
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -19,7 +19,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - Tailwind v4 — tokens declared as CSS variables in `badminton-v2/src/index.css` and mapped under `@theme inline`. A new brand token needs **both** the `--x` variable and a `--color-x: var(--x)` line, or the utility class won't exist.
 - **The app has both themes as of 2026-09-05; dark is the default.** `index.html` no longer hard-codes `class="dark"` — an inline pre-paint script reads `localStorage['badminton-theme']` and only an explicit `light` turns the lights on, so an existing player who never touches the toggle sees no change. `ThemeProvider` (`src/contexts/ThemeContext.tsx`) owns the state and is mounted above `<Routes>` in `App.tsx`, deliberately *not* inside `PlayerLayout` — `/live-board`, `/live-board/:sessionId` and `/register` never mount that layout.
 - **Both token blocks now matter.** A token defined in one block but not the other silently resolves to the wrong theme's value. `.live-board-dark` had exactly this bug latent: it uses `text-muted-foreground` but never defined `--muted-foreground`, which worked only while `<html>` was always dark. It now carries its own. `--muted-surface`, `--success`, `--primary-hover` and `--primary-pressed` have zero usages in `src/`, so their values cannot break anything.
-- shadcn/ui in `src/components/ui`. Icons: `lucide-react`. Toasts: `sonner`.
+- shadcn/ui in `src/components/ui`. Icons: `lucide-react`. Toasts: `sonner`; its theme is overridden in `index.css` (`[data-sonner-toast]`) — override every text slot, sonner hard-codes `[data-description]` to `#3f3f3f`.
 - Supabase for auth (Google OAuth + PKCE), Postgres, Storage (receipts), and Realtime.
 - Deployed on Vercel.
 
