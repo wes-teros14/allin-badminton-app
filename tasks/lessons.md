@@ -819,3 +819,9 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: found while planning guest accounts — a guest would have shown on the Wins board and its podium celebration even with the guest rule in `fetchEligiblePlayerIds`.
 - Root cause: `fetchAllTimeLeaderboard` (`lib/leaderboardData.ts`) kept its own inline copy of the 3-sessions / last-4 rules, despite project memory saying every board used the gate.
 - Fix: it now calls `fetchEligiblePlayerIds`. Rule: before adding a rule to a "single gate", grep for copies of its constants (`MIN_SESSIONS_PLAYED`, `RECENT_SESSIONS_WINDOW`) — a memory note saying it is single is not proof.
+
+## 2026-10-24: toast second line barely visible (receipt + cheers summary toasts)
+- Symptom: on dark theme, the description under "Kurt uploaded a payment receipt" ("Xmas Party · Nov. 22, 2026") was near-invisible; same for the cheers summary toast.
+- Root cause: our CSS overrides sonner's toast background and text, but not `[data-description]`, which sonner hard-codes to `#3f3f3f` (its light theme): ~1.8:1 on `--card` `#1A1025`.
+- Fix: `[data-sonner-toast] [data-description] { color: var(--muted-foreground) }` in `index.css`. Measured: 7.4:1 dark, 6.0:1 light.
+- Rule: when overriding a library's theme colours, override every text slot it styles, not just the container.
