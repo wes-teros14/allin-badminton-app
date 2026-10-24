@@ -266,6 +266,12 @@ html:not(.dark) .theme-orb {
   border-color: var(--border) !important;
   color: var(--foreground) !important;
 }
+/* Sonner hard-codes the description to #3f3f3f (its light theme), which is
+   ~1.8:1 on the dark card: the receipt and cheers summary toasts' second line
+   was barely visible (2026-10-24). */
+[data-sonner-toast] [data-description] {
+  color: var(--muted-foreground) !important;
+}
 [data-sonner-toast].toast-award {
   border-color: var(--gold) !important;
 }
