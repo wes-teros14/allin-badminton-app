@@ -9,7 +9,7 @@ has no login).
 ## Storage
 - [x] Migration 088: public bucket `announcer-clips` (public read, admin-only insert/update/delete, like
       `avatars` in 069) + table `announcer_clips (key text pk, path text, updated_at)`; key = player id or
-      `phrase:court-1..N`, `phrase:and`, `phrase:versus`. anon/authenticated read, admin write.
+      `phrase:court`, `phrase:number-1..9`, `phrase:and`, `phrase:versus` (changed 2026-10-26 from court-1..4). anon/authenticated read, admin write.
 - [x] Clips are saved as short mono WAV: plays everywhere, so no iPhone/Android format question. ~1 s ≈ 40 KB.
 
 ## Recording (admin)

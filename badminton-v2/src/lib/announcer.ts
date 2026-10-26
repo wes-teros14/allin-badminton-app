@@ -21,13 +21,18 @@ export interface NewGame {
 export type SeenGames = Map<number, string | null>
 
 export const PHRASE_KEYS = {
+  court: 'phrase:court',
+  number: (n: number) => `phrase:number-${n}`,
   and: 'phrase:and',
   versus: 'phrase:versus',
-  court: (n: number) => `phrase:court-${n}`,
 } as const
 
-/** Courts with a fixed-word clip; the Settings page lists these. */
-export const ANNOUNCER_COURTS = [1, 2, 3, 4] as const
+/**
+ * "Court" and each number are separate clips, so any court reads as "Court" +
+ * its number: 11 recordings in all instead of one per court (owner, 2026-10-26).
+ * A court above 9 has no number clip, so its call uses the computer voice.
+ */
+export const ANNOUNCER_COURT_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const
 
 export function snapshot(courts: readonly AnnouncerCourt[]): SeenGames {
   return new Map(courts.map((c) => [c.courtNumber, c.current?.id ?? null]))
@@ -53,10 +58,10 @@ export function detectNewGames(prev: SeenGames | null, courts: readonly Announce
   return started
 }
 
-/** "Court 2 … AJ … and … Jaz … versus … Sim … and … Kurt", as clip keys. */
+/** "Court … 2 … AJ … and … Jaz … versus … Sim … and … Kurt", as clip keys. */
 export function buildCall(game: NewGame): string[] {
   return [
-    PHRASE_KEYS.court(game.courtNumber),
+    PHRASE_KEYS.court, PHRASE_KEYS.number(game.courtNumber),
     game.team1[0], PHRASE_KEYS.and, game.team1[1],
     PHRASE_KEYS.versus,
     game.team2[0], PHRASE_KEYS.and, game.team2[1],
