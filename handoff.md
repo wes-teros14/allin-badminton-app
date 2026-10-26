@@ -4,6 +4,7 @@ Updated: 2026-10-26. Overwrite this file on every update; it is never a running 
 
 ## State
 
+- **Fixed words reworked** (branch `041-announcer-court-numbers`, not pushed): "Court" + numbers 1–9 as separate clips, replacing "Court 1"…"Court 4".
 - **Court announcer built** (branch `040-court-announcer`, pushed to `dev` and `main`): admin records/uploads name clips (Players page) and fixed words (Settings → Announcer); live-board tablet 🔊 chip downloads clips and calls each new game.
 - Migration 088 (`announcer_clips` table + public `announcer-clips` bucket) **applied on prod**. **Dev: not applied — owner to paste `088_announcer_clips.sql` into the dev SQL editor.** Until then dev's Players page shows "Couldn't load name recordings" and the Settings card an error; nothing else breaks.
 - 471 unit tests, `tsc -b`, build pass. Lint: only pre-existing errors in `MatchGeneratorPanel.tsx:162`.

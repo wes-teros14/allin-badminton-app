@@ -39,9 +39,9 @@ describe('detectNewGames', () => {
 })
 
 describe('buildCall', () => {
-  it('reads court, team 1, versus, team 2', () => {
+  it('reads "Court", the number, team 1, versus, team 2', () => {
     expect(buildCall({ courtNumber: 2, team1: ['aj', 'jaz'], team2: ['sim', 'kurt'] })).toEqual([
-      'phrase:court-2', 'aj', 'phrase:and', 'jaz', 'phrase:versus', 'sim', 'phrase:and', 'kurt',
+      'phrase:court', 'phrase:number-2', 'aj', 'phrase:and', 'jaz', 'phrase:versus', 'sim', 'phrase:and', 'kurt',
     ])
   })
 })

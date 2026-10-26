@@ -1950,7 +1950,7 @@
     <p class="q">Can we call players over the Bluetooth speaker when the game changes — text to speech or prerecorded names?</p>
     <p class="a">
       Built as prerecorded clips (2026-10-26, migration 088). The admin records or uploads each player’s name on the
-      Players page and the fixed words (“Court 1–4”, “and”, “versus”) on Settings; each becomes a trimmed, levelled
+      Players page and the fixed words (“Court”, the numbers 1–9, “and”, “versus” — 12 clips, so any court reads “Court” + its number) on Settings; each becomes a trimmed, levelled
       ~1 s WAV in the public <code>announcer-clips</code> bucket. The live-board tablet (already on the speaker) gets a
       🔊 Announcer chip: one tap downloads every clip into the Cache API, so calls play even if the wifi drops. A call
       fires when a court’s current match id changes (<code>lib/announcer.ts</code>), never on first load or a reload. A
