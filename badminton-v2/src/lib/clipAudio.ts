@@ -21,7 +21,7 @@ const SILENCE_THRESHOLD = 0.02
 const PADDING_SECONDS = 0.08
 
 /** Drops leading and trailing silence, keeping a little padding. */
-export function trimSilence(samples: Float32Array, sampleRate: number): Float32Array {
+export function trimSilence(samples: Float32Array, sampleRate: number, paddingSeconds = PADDING_SECONDS): Float32Array {
   let first = -1
   let last = -1
   for (let i = 0; i < samples.length; i++) {
@@ -31,7 +31,7 @@ export function trimSilence(samples: Float32Array, sampleRate: number): Float32A
     }
   }
   if (first === -1) return new Float32Array(0)
-  const pad = Math.round(PADDING_SECONDS * sampleRate)
+  const pad = Math.round(paddingSeconds * sampleRate)
   return samples.slice(Math.max(0, first - pad), Math.min(samples.length, last + pad + 1))
 }
 

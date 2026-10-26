@@ -1960,6 +1960,17 @@
   </div>
 
   <div class="qa">
+    <p class="q">What does the “🔊 Announcer · 1 of 16 names” chip on the live board do?</p>
+    <p class="a">
+      It is the announcer’s on/off switch (<code>components/AnnouncerButton.tsx</code>). 🔊 means on: the clips are
+      downloaded to this device and each new game on a court will be called. “1 of 16” = players in this session’s games
+      who have a name recording, out of everyone in those games; the other 15 are read by the computer voice. Tap once to
+      turn it off (“🔈 Announcer off”); after a reload it shows “🔇 Tap to turn sound on”, because browsers need a tap
+      before playing sound. The count is taken when it is switched on, so turn it off and on again after recording more names.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What kind of audio file can the announcer upload read?</p>
     <p class="a">
       Whatever the phone’s browser decodes — <code>processClip</code> (<code>lib/clipAudio.ts</code>) hands the file to
@@ -2757,6 +2768,22 @@
   </div>
 
   <h2 class="topic" id="session-lifecycle">Session lifecycle</h2>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“No stats will be saved if the session is deleted, right?” (asked before testing on prod)</p>
+    <p>
+      No — stats are counters written the moment things happen, and deleting a session does not undo them. Prod
+      triggers: <code>on_match_result_insert</code> adds games/wins and pair stats as each game is finished with a
+      winner; <code>on_cheer_insert</code> adds cheer stats (and notifies the player); <code>on_session_complete</code>
+      adds <code>sessions_attended</code> on Finish Session. There is no delete trigger, so <code>player_stats</code>,
+      <code>player_pair_stats</code> and <code>player_cheer_stats</code> keep the numbers after the delete cascades the
+      matches away. <code>reverse_session_stats(id)</code> (migration 018) undoes games/wins, pairs and
+      sessions_attended — not cheers — and decrements sessions_attended for every registrant even if the session was
+      never finished. Safe announcer test: change what is on a court (Start session, move a queued game to a court)
+      without recording a winner.
+    </p>
+  </div>
 
   <div class="qa">
     <p class="q">I want a stage after Live where the leaderboards update but the session is not yet in Past Sessions. How does that work?</p>

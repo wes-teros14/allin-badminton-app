@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { buildCall, detectNewGames, snapshot, type NewGame, type SeenGames } from '@/lib/announcer'
 import { clipUrl, fetchAnnouncerClips } from '@/hooks/useAnnouncerClips'
+import { trimSilence } from '@/lib/clipAudio'
 import type { CourtSlot } from '@/lib/courts'
 import type { CourtMatchDisplay } from '@/hooks/useCourtState'
 
@@ -24,9 +25,19 @@ export type AnnouncerStatus = 'off' | 'locked' | 'loading' | 'ready' | 'error'
 
 const STORAGE_KEY = 'announcer:on'
 const CACHE_NAME = 'announcer-clips'
-/** Pause between the parts of one call, and after a call before the next. */
-const GAP_SECONDS = 0.12
-const CALL_GAP_SECONDS = 0.6
+/**
+ * Pause between the words of one call. Kept short, and each clip is re-trimmed
+ * tighter on load (`PLAYBACK_PADDING_SECONDS`), because the saved clips carry
+ * 80 ms of padding at each end: with a 120 ms gap on top, every word boundary
+ * was ~0.3 s and the call dragged (owner, 2026-10-26).
+ */
+const GAP_SECONDS = 0.04
+const PLAYBACK_PADDING_SECONDS = 0.02
+/** Each call is said twice, with this pause in between, so a missed first hearing is caught. */
+const CALL_REPEATS = 2
+const REPEAT_GAP_SECONDS = 0.7
+/** Pause after a call before the next court's call. */
+const CALL_GAP_SECONDS = 0.8
 
 function readRemembered(): boolean {
   try { return localStorage.getItem(STORAGE_KEY) === '1' } catch { return false }
@@ -80,6 +91,15 @@ function speak(text: string): Promise<void> {
   })
 }
 
+/** Re-trims a decoded clip to a tighter padding, so words run together naturally. */
+function tighten(ctx: AudioContext, buffer: AudioBuffer): AudioBuffer {
+  const samples = trimSilence(buffer.getChannelData(0), buffer.sampleRate, PLAYBACK_PADDING_SECONDS)
+  if (samples.length === 0) return buffer
+  const out = ctx.createBuffer(1, samples.length, buffer.sampleRate)
+  out.getChannelData(0).set(samples)
+  return out
+}
+
 export function useAnnouncer({
   sessionId,
   courts,
@@ -120,15 +140,18 @@ export function useAnnouncer({
     const buffers = buffersRef.current
     const phrasesMissing = keys.some((k) => k.startsWith('phrase:') && !buffers.has(k))
     const nameOf = (id: string) => names.get(id) ?? 'player'
-    if (phrasesMissing) {
-      // Mixing recorded names with spoken filler words sounds broken; say it all.
-      await speak(`Court ${game.courtNumber}. ${nameOf(game.team1[0])} and ${nameOf(game.team1[1])}, versus ${nameOf(game.team2[0])} and ${nameOf(game.team2[1])}.`)
-    } else {
-      for (const key of keys) {
+    for (let round = 0; round < CALL_REPEATS; round++) {
+      if (round > 0) await pause(REPEAT_GAP_SECONDS)
+      if (phrasesMissing) {
+        // Mixing recorded names with spoken filler words sounds broken; say it all.
+        await speak(`Court ${game.courtNumber}. ${nameOf(game.team1[0])} and ${nameOf(game.team1[1])}, versus ${nameOf(game.team2[0])} and ${nameOf(game.team2[1])}.`)
+        continue
+      }
+      for (const [index, key] of keys.entries()) {
+        if (index > 0) await pause(GAP_SECONDS)
         const buffer = buffers.get(key)
         if (buffer) await playBuffer(buffer)
         else await speak(nameOf(key))
-        await pause(GAP_SECONDS)
       }
     }
     await pause(CALL_GAP_SECONDS)
@@ -168,7 +191,7 @@ export function useAnnouncer({
       const decoded = new Map<string, AudioBuffer>()
       await Promise.all([...urls].map(async ([key, url]) => {
         try {
-          decoded.set(key, await ctxRef.current!.decodeAudioData(await fetchClipBytes(url)))
+          decoded.set(key, tighten(ctxRef.current!, await ctxRef.current!.decodeAudioData(await fetchClipBytes(url))))
         } catch { /* that one falls back to the computer voice */ }
       }))
       buffersRef.current = decoded
