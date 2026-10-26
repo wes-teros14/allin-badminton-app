@@ -1,3 +1,45 @@
+# Court announcer (prerecorded names) — plan (2026-10-26)
+
+Context: when a game starts on a court, the live-board tablet (already on the Bluetooth speaker, Spotify
+alongside) calls it out: "Court 2 … [AJ] … and … [Jaz] … versus … [Sim] … and … [Kurt]". Decided with the owner:
+prerecorded clips stored on the server and downloaded to the tablet ahead of time; the admin records every
+name and the fixed words; only the game starting now is announced; clips readable by link (the live board
+has no login).
+
+## Storage
+- [x] Migration 088: public bucket `announcer-clips` (public read, admin-only insert/update/delete, like
+      `avatars` in 069) + table `announcer_clips (key text pk, path text, updated_at)`; key = player id or
+      `phrase:court-1..N`, `phrase:and`, `phrase:versus`. anon/authenticated read, admin write.
+- [x] Clips are saved as short mono WAV: plays everywhere, so no iPhone/Android format question. ~1 s ≈ 40 KB.
+
+## Recording (admin)
+- [x] `lib/clipAudio.ts` (pure, tested): trim leading/trailing silence, normalise peak, encode WAV.
+- [x] Record control: hold-to-record via MediaRecorder → decode → `clipAudio` → preview ▶ → Save (upload +
+      upsert `announcer_clips`). Re-record replaces.
+- [x] Players page: 🎙 per player (record / play / re-record), plus a "no recording" filter.
+- [x] Second option, Upload: pick an audio file already on the phone (recorder app, MP3/M4A, voice note) → same
+      decode → trim → normalise → WAV → preview → Save. Unreadable format → clear error naming the file type.
+      (iPhone may not decode WhatsApp `.opus`; test both platforms.) Same two options on the fixed-words card.
+- [x] Settings page: "Announcer voice" card for the fixed words (Court 1…N, "and", "versus").
+
+## Announcing (live board tablet)
+- [x] `useCourtState`: add player `id` to `CourtPlayerDisplay` (additive; phones unaffected).
+- [x] "🔊 Announcer" button on the live board: one tap unlocks audio, downloads the session's clips into the
+      Cache API (keyed by `updated_at`, so a re-record refreshes), decodes them once, shows "14 of 16 names ready".
+      Off by default; remembered per tablet.
+- [x] `lib/announcer.ts` (pure, tested): detect a court whose current match id changed to a new one — never on
+      first load or a reload (no burst of calls when the tablet opens); build the clip sequence.
+- [x] Playback through Web Audio, clips back to back with short gaps; two courts starting together queue.
+- [x] Missing name clip → that name via the phone's text-to-speech; missing phrase clip → whole call via text-to-speech.
+
+## Verify
+- [x] Dev: upload an MP3 and an M4A/OGG; an unsupported file shows the error.
+- [x] Unit: change detection (first load silent, reload silent, new match once, two courts queued), WAV encoder, trim.
+- [x] Dev, Playwright: record (fake mic), save, live board announces on a court change.
+- [ ] **On the real tablet with Spotify playing**: is the call audible over the music, ducked, or does it pause Spotify? (Unknown until tested.)
+
+Review (2026-10-26): built per the approved plan. Deviation: record is tap-to-start/tap-to-stop (hold is unreliable on touch). Clips are all downloaded on switch-on, not only the session's players (≈40 KB each; covers subs). 471 tests, `tsc -b`, build pass. Dev via Playwright with 088 stubbed (dev not migrated): record (fake mic) + upload WAV + bad file error at 390/1280; live board: one call on a court change, none on repeat poll or reload. Prod: 088 applied, anon read-only verified. Not tested: MP3/M4A/OGG uploads, real audio output, Spotify interplay.
+
 # Guest accounts — plan (2026-10-23)
 
 Context: walk-ins play on a shared dummy account (`workislife99@gmail.com`). Its games must show in the session

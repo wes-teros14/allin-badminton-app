@@ -14,10 +14,13 @@ import {
 } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { usePlayers } from '@/hooks/usePlayers'
+import { useAuth } from '@/hooks/useAuth'
+import { useAnnouncerClips, type AnnouncerClip } from '@/hooks/useAnnouncerClips'
+import { ClipRecorder } from '@/components/ClipRecorder'
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-type StatusFilter = 'all' | 'active' | 'inactive'
+type StatusFilter = 'all' | 'active' | 'inactive' | 'unrecorded'
 
 function matchesSearch(value: string | null | undefined, query: string) {
   return (value ?? '').toLowerCase().includes(query)
@@ -156,6 +159,7 @@ function PlayerCard({
   onUpdatePlayer,
   onToggleActive,
   onToggleGuest,
+  nameCall,
 }: {
   player: {
     id: string
@@ -171,6 +175,8 @@ function PlayerCard({
   onUpdatePlayer: (id: string, updates: { gender?: 'M' | 'F' | null; level?: number | null }) => Promise<void>
   onToggleActive: (id: string, isActive: boolean) => Promise<void>
   onToggleGuest: (id: string, isGuest: boolean) => Promise<void>
+  /** The announcer's recording controls; admin only, so absent for moderators. */
+  nameCall?: React.ReactNode
 }) {
   return (
     <Card
@@ -233,6 +239,13 @@ function PlayerCard({
             onToggle={() => onToggleGuest(player.id, !player.isGuest)}
           />
         </div>
+
+        {nameCall && (
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name call</p>
+            {nameCall}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -240,6 +253,19 @@ function PlayerCard({
 
 export function PlayersView() {
   const { players, isLoading, updatePlayer, setActive, setGuest } = usePlayers()
+  const { role } = useAuth()
+  const isAdmin = role === 'admin'
+  const { clips, save: saveClip, loadError: clipsError } = useAnnouncerClips()
+  const unrecordedCount = players.filter((player) => player.isActive && !clips.has(player.id)).length
+
+  const nameCall = (player: { id: string; nickname: string | null; nameSlug: string }, clip: AnnouncerClip | undefined) =>
+    isAdmin && !clipsError ? (
+      <ClipRecorder
+        label={player.nickname ?? player.nameSlug}
+        clip={clip}
+        onSave={(wav) => saveClip(player.id, wav)}
+      />
+    ) : undefined
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -255,6 +281,7 @@ export function PlayersView() {
     .filter((player) => {
       if (statusFilter === 'active') return player.isActive
       if (statusFilter === 'inactive') return !player.isActive
+      if (statusFilter === 'unrecorded') return player.isActive && !clips.has(player.id)
       return true
     })
     .filter((player) => {
@@ -303,6 +330,7 @@ export function PlayersView() {
                 ['all', 'All'],
                 ['active', 'Active'],
                 ['inactive', 'Inactive'],
+                ...(isAdmin && !clipsError ? [['unrecorded', `No name recording (${unrecordedCount})`] as const] : []),
               ] as const).map(([value, label]) => (
                 <Button
                   key={value}
@@ -324,6 +352,12 @@ export function PlayersView() {
               className="w-full lg:max-w-sm"
             />
           </div>
+
+          {isAdmin && clipsError && (
+            <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Couldn’t load name recordings: {clipsError}
+            </p>
+          )}
 
           {isLoading ? (
             <div className="space-y-2">
@@ -356,6 +390,7 @@ export function PlayersView() {
                     onUpdatePlayer={updatePlayer}
                     onToggleActive={setActive}
                     onToggleGuest={setGuest}
+                    nameCall={nameCall(player, clips.get(player.id))}
                   />
                 ))}
               </div>
@@ -364,11 +399,11 @@ export function PlayersView() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[18%]">Player</TableHead>
-                      <TableHead className="w-[22%]">Email</TableHead>
-                      <TableHead className="w-[22%]">Nickname</TableHead>
-                      <TableHead className="w-[14%]">Gender</TableHead>
-                      <TableHead className="w-[12%]">
+                      <TableHead className="w-[14%]">Player</TableHead>
+                      <TableHead className="w-[16%]">Email</TableHead>
+                      <TableHead className="w-[16%]">Nickname</TableHead>
+                      <TableHead className="w-[12%]">Gender</TableHead>
+                      <TableHead className="w-[10%]">
                         <div className="flex flex-col">
                           <span>Level</span>
                           <span className="text-xs font-normal text-muted-foreground">
@@ -377,6 +412,7 @@ export function PlayersView() {
                         </div>
                       </TableHead>
                       <TableHead className="w-[12%]">Status</TableHead>
+                      {isAdmin && !clipsError && <TableHead className="w-[20%]">Name call</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -441,6 +477,9 @@ export function PlayersView() {
                             />
                           </div>
                         </TableCell>
+                        {isAdmin && !clipsError && (
+                          <TableCell className="py-3">{nameCall(player, clips.get(player.id))}</TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
