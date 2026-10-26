@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-10-24
+Last updated: 2026-10-26
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -613,6 +613,16 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   games completed yet." text on `TodayView` and the session-scoped Leaderboard tab — same dashed-card
   icon+heading language as `NoScheduleYet`, deliberately *without* its step tracker (no
   registration/payment step is left to show once games are already being played).
+
+## Court announcer (2026-10-26, migration 088)
+
+- **What:** the live-board tablet (already on the Bluetooth speaker, Spotify alongside) calls each new game: "Court 2 … AJ … and … Jaz … versus … Sim … and … Kurt".
+- **Prerecorded, not TTS** (owner's choice): names mispronounced by text-to-speech; clips recorded by the **admin** (names on Players page, fixed words "Court 1–4"/"and"/"versus" on Settings). Two ways in: Record (mic, tap start/stop, 5 s cap) or Upload (any file the browser decodes). Both go through `processClip` (`lib/clipAudio.ts`) → trimmed, peak-normalised 22.05 kHz mono **WAV**, so iPhone/Android recording formats never reach the tablet.
+- **Storage:** public bucket `announcer-clips` + table `announcer_clips (key, path, updated_at)`; key = player uuid or `phrase:*`. Public read because the live board has no login (a clip is just a spoken name); admin-only write.
+- **Tablet:** 🔊 chip on `LiveBoardView`. Switching on (must be a tap — browser audio unlock) downloads *all* clips into the Cache API keyed by URL `?v=updated_at` (re-record → fresh download), decodes once, holds a screen wake lock. On/off remembered in localStorage; after a reload it shows "Tap to turn sound on".
+- **When it calls:** `detectNewGames` compares each court's current match id with the last seen — not object identity (`useCourtState` rebuilds objects every load). First load and reloads are seeded silently; tracking runs even while off so switching on never replays old games. One promise queue serialises calls; `speak`/`playBuffer` have time caps so a missing `end` event can't stall the queue.
+- **Fallbacks:** missing name clip → computer voice for that name; missing fixed word → computer voice reads the whole call (mixing voices mid-sentence sounds broken).
+- Rejected: "Next up" calls (owner: only the game starting now); per-player self-recording (admin records all); announcing from any admin phone (the tablet is the one device on the speaker).
 
 ## Courts on player screens
 

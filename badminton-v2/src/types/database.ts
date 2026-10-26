@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcer_clips: {
+        Row: {
+          key: string
+          path: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          key: string
+          path: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          key?: string
+          path?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string | null

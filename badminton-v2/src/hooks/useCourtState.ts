@@ -5,6 +5,8 @@ import { formatDisplayName } from '@/lib/formatDisplayName'
 import { commitProfileFetch, createProfileCache, planProfileFetch } from '@/lib/profileCache'
 
 export interface CourtPlayerDisplay {
+  /** Player id; the court announcer keys its name clips on it. */
+  id: string
   name: string
   avatarUrl: string | null
 }
@@ -258,6 +260,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
         return cached ? formatDisplayName(cached.nickname, cached.name_slug) : id
       }
       const player = (id: string): CourtPlayerDisplay => ({
+        id,
         name: name(id),
         avatarUrl: cachedProfiles.get(id)?.avatar_url ?? null,
       })

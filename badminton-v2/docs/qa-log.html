@@ -1946,6 +1946,30 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Can we call players over the Bluetooth speaker when the game changes — text to speech or prerecorded names?</p>
+    <p class="a">
+      Built as prerecorded clips (2026-10-26, migration 088). The admin records or uploads each player’s name on the
+      Players page and the fixed words (“Court 1–4”, “and”, “versus”) on Settings; each becomes a trimmed, levelled
+      ~1 s WAV in the public <code>announcer-clips</code> bucket. The live-board tablet (already on the speaker) gets a
+      🔊 Announcer chip: one tap downloads every clip into the Cache API, so calls play even if the wifi drops. A call
+      fires when a court’s current match id changes (<code>lib/announcer.ts</code>), never on first load or a reload. A
+      missing name falls back to the computer voice; a missing fixed word makes the computer voice read the whole call.
+      Open: whether Android lowers, overlaps or pauses Spotify during a call — test on the tablet.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What kind of audio file can the announcer upload read?</p>
+    <p class="a">
+      Whatever the phone’s browser decodes — <code>processClip</code> (<code>lib/clipAudio.ts</code>) hands the file to
+      <code>decodeAudioData</code>. MP3, M4A/AAC, WAV and FLAC work on Android and iPhone; OGG/OPUS (WhatsApp voice
+      notes) and WEBM work on Android Chrome, unclear on iPhone; AMR/3GP likely not. From browser knowledge, not tested
+      per format. Everything is re-encoded to WAV, so the tablet never meets a format it can’t play. Unreadable files
+      show “Can’t read that .xxx file…”.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">
