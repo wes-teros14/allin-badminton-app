@@ -1,32 +1,32 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-24 (end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-26. Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- **Toast second line readable** (branch `039-toast-description-contrast`, pushed to `dev` and `main`): sonner's `#3f3f3f` description (~1.8:1 on dark) now `--muted-foreground` — 7.4:1 dark, 6.0:1 light. Affects receipt and cheers summary toasts.
-- **Guest accounts** (branch `038-guest-accounts`, pushed to `dev` and `main`): `profiles.is_guest`, Guest / Not guest toggle on the Players page; guests off every all-time board, award, badge and podium; the Wins board now uses the shared gate. Migration 087 on **prod and dev** (dev pasted by the owner, 2026-10-24). Prod guest: `workislife99` (nickname "Kel").
-- **No-fee banner flash fixed**, pushed to `dev` and `main` (2026-10-23).
-- 459 unit tests, `tsc -b` and build pass.
+- **Court announcer built** (branch `040-court-announcer`, pushed to `dev` and `main`): admin records/uploads name clips (Players page) and fixed words (Settings → Announcer); live-board tablet 🔊 chip downloads clips and calls each new game.
+- Migration 088 (`announcer_clips` table + public `announcer-clips` bucket) **applied on prod**. **Dev: not applied — owner to paste `088_announcer_clips.sql` into the dev SQL editor.** Until then dev's Players page shows "Couldn't load name recordings" and the Settings card an error; nothing else breaks.
+- 471 unit tests, `tsc -b`, build pass. Lint: only pre-existing errors in `MatchGeneratorPanel.tsx:162`.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
 ## Verified, and how
 
-- Toast contrast: Playwright on dev fired a receipt-style toast through the app's sonner; colour read via canvas, both themes.
-- Guest toggle: Playwright as Admin at 390 px and 1280 px (stubbed `is_guest` before dev had 087); PATCH `{"is_guest":true}` sent, button turns "Guest" with `aria-pressed=true`.
-- Prod: 087 applied, exactly 1 profile flagged.
+- Dev via Playwright with 088 stubbed: Record (fake mic) → preview → Save at 390 px and 1280 px; Upload WAV → Save; corrupt `.mp3` → error toast; Settings card lists 6 words.
+- Live board (dev session `27ff6ffd…`, matches stubbed): enable → "3 of 14 names"; court 1 changes game → exactly 1 call queued; repeat poll → 0; reload → 0 and chip "Tap to turn sound on".
+- Prod: bucket public, anon SELECT yes / INSERT no, 6 policies.
 
 ## Not verified
 
-- Boards on prod in a browser with the guest flagged (guest has 1 session, so it would not have qualified anyway).
-- Guest toggle saving against a real DB (dev now has 087 — one tap on dev would confirm).
-- Carried over: offline backup on a real Android phone.
+- Real sound out of the tablet/speaker; **Spotify interplay** (does Android duck, overlap or pause it?).
+- Uploads of MP3, M4A, OGG/OPUS (only WAV and a corrupt file tested); iPhone recording.
+- Wake lock on the real tablet.
 
 ## Immediate next steps
 
-- Optional: rename the prod guest from "Kel" to something like "Guest" on the Players page.
-- Compare edge-log requests per 30 min after the next session with Oct 4 (~2,300–4,200; target ≤ half).
+- Owner on prod: Settings → Announcer → record the 6 words; Players → record a few names; open live board on the tablet, tap 🔈 Announcer, finish a game, listen with Spotify playing.
+- Paste 088 on dev.
 
 ## Open questions
 
+- If Spotify drowns the call: options are lowering Spotify volume manually, or a short chime before the call (not built).
 - Carried over: Clean Sweep parked; load reduction enough?; prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.

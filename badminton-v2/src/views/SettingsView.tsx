@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { PaymentExemptCard } from '@/components/PaymentExemptCard'
 import { CheerLaterCard } from '@/components/CheerLaterCard'
+import { AnnouncerPhrasesCard } from '@/components/AnnouncerPhrasesCard'
 import { useAuth } from '@/hooks/useAuth'
 
 const MAX_QR_BYTES = 5 * 1024 * 1024
@@ -157,6 +158,9 @@ export function SettingsView() {
 
       <SectionHeading>Cheers</SectionHeading>
       <CheerLaterCard />
+
+      <SectionHeading>Announcer</SectionHeading>
+      <AnnouncerPhrasesCard />
     </div>
   )
 }

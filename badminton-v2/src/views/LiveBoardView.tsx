@@ -3,11 +3,14 @@ import { useParams } from 'react-router'
 import { useCourtState } from '@/hooks/useCourtState'
 import { useRealtime } from '@/hooks/useRealtime'
 import { CourtCard } from '@/components/CourtCard'
+import { AnnouncerButton } from '@/components/AnnouncerButton'
+import { useAnnouncer } from '@/hooks/useAnnouncer'
 
 export function LiveBoardView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
   const { courts, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, isReloading, refresh } = useCourtState(sessionIdParam)
   useRealtime(sessionId, refresh, 'live-board', { onPoll: isClosed ? undefined : refresh })
+  const announcer = useAnnouncer({ sessionId, courts, isLoading })
   const [isPortrait, setIsPortrait] = useState(false)
 
   useEffect(() => {
@@ -64,6 +67,8 @@ export function LiveBoardView() {
           ))}
         </div>
       )}
+
+      {hasSession && !isClosed && <AnnouncerButton {...announcer} />}
     </div>
   )
 }
