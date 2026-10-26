@@ -1,11 +1,13 @@
 -- =============================================================
 -- Migration: 088_announcer_clips
 -- Prerecorded name calls for the court announcer. When a game starts on a
--- court, the live-board tablet plays e.g. "Court 2 … AJ … and … Jaz …
+-- court, the live-board tablet plays e.g. "Court … 2 … AJ … and … Jaz …
 -- versus … Sim … and … Kurt" from these clips.
 --
 -- One WAV per key: a player's uuid, or a fixed word
--- ('phrase:court-1'..'phrase:court-4', 'phrase:and', 'phrase:versus').
+-- ('phrase:court', 'phrase:number-1'..'phrase:number-9', 'phrase:and',
+-- 'phrase:versus'; was 'phrase:court-1'..'-4' until 2026-10-26, before any
+-- were recorded).
 -- The admin records or uploads them (Players page, Settings page).
 --
 -- Public read: the live board runs without a login, and a clip is only a
