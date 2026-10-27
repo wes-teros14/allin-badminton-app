@@ -1,12 +1,13 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-26. Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-27. Overwrite this file on every update; it is never a running history.
 
 ## State
 
+- **Announcer pacing** (branch `042-announcer-pacing`, pushed to `dev` and `main`): words 40 ms apart (clips re-trimmed to 20 ms on load), each call said twice. Not yet heard by anyone.
 - **Fixed words reworked** (branch `041-announcer-court-numbers`, pushed to `dev` and `main`): "Court" + numbers 1–9 as separate clips, replacing "Court 1"…"Court 4".
 - **Court announcer built** (branch `040-court-announcer`, pushed to `dev` and `main`): admin records/uploads name clips (Players page) and fixed words (Settings → Announcer); live-board tablet 🔊 chip downloads clips and calls each new game.
-- Migration 088 (`announcer_clips` table + public `announcer-clips` bucket) **applied on prod**. **Dev: not applied — owner to paste `088_announcer_clips.sql` into the dev SQL editor.** Until then dev's Players page shows "Couldn't load name recordings" and the Settings card an error; nothing else breaks.
+- Migration 088 (`announcer_clips` table + public `announcer-clips` bucket) **applied on prod**. Also on **dev** (pasted by the owner, 2026-10-26). Owner testing locally against dev (not on prod: finishing games/cheers/Finish Session write stats that a session delete does not undo).
 - 471 unit tests, `tsc -b`, build pass. Lint: only pre-existing errors in `MatchGeneratorPanel.tsx:162`.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
 
@@ -25,7 +26,6 @@ Updated: 2026-10-26. Overwrite this file on every update; it is never a running 
 ## Immediate next steps
 
 - Owner on prod: Settings → Announcer → record the 6 words; Players → record a few names; open live board on the tablet, tap 🔈 Announcer, finish a game, listen with Spotify playing.
-- Paste 088 on dev.
 
 ## Open questions
 
