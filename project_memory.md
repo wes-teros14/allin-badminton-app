@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-10-26
+Last updated: 2026-10-27
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -616,13 +616,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 ## Court announcer (2026-10-26, migration 088)
 
-- **What:** the live-board tablet (already on the Bluetooth speaker, Spotify alongside) calls each new game: "Court 2 … AJ … and … Jaz … versus … Sim … and … Kurt".
-- **Prerecorded, not TTS** (owner's choice): names mispronounced by text-to-speech; clips recorded by the **admin** (names on Players page, fixed words on Settings: "Court", the numbers 1–9, "and", "versus" — the number is its own clip so any court reads "Court" + number; owner rejected one clip per court and a court-less "please proceed to the available court"). Two ways in: Record (mic, tap start/stop, 5 s cap) or Upload (any file the browser decodes). Both go through `processClip` (`lib/clipAudio.ts`) → trimmed, peak-normalised 22.05 kHz mono **WAV**, so iPhone/Android recording formats never reach the tablet.
+- **What:** the live-board tablet (already on the Bluetooth speaker, Spotify alongside) calls each new game: "Court 2 … Game 5 … AJ … and … Jaz … versus … Sim … and … Kurt". The game number is the board's queue position and reuses the 1–9 number clips (above 9 → computer voice).
+- **Prerecorded, not TTS** (owner's choice): names mispronounced by text-to-speech; clips recorded by the **admin** (names on Players page, fixed words on Settings: "Court", "Game", the numbers 1–9, "and", "versus" — the number is its own clip so any court reads "Court" + number; owner rejected one clip per court and a court-less "please proceed to the available court"). Two ways in: Record (mic, tap start/stop, 5 s cap) or Upload (any file the browser decodes). Both go through `processClip` (`lib/clipAudio.ts`) → trimmed, peak-normalised 22.05 kHz mono **WAV**, so iPhone/Android recording formats never reach the tablet.
 - **Storage:** public bucket `announcer-clips` + table `announcer_clips (key, path, updated_at)`; key = player uuid or `phrase:*`. Public read because the live board has no login (a clip is just a spoken name); admin-only write.
 - **Tablet:** 🔊 chip on `LiveBoardView`. Switching on (must be a tap — browser audio unlock) downloads *all* clips into the Cache API keyed by URL `?v=updated_at` (re-record → fresh download), decodes once, holds a screen wake lock. On/off remembered in localStorage; after a reload it shows "Tap to turn sound on".
 - **When it calls:** `detectNewGames` compares each court's current match id with the last seen — not object identity (`useCourtState` rebuilds objects every load). First load and reloads are seeded silently; tracking runs even while off so switching on never replays old games. One promise queue serialises calls; `speak`/`playBuffer` have time caps so a missing `end` event can't stall the queue.
-- **Pacing:** each call is said **twice** (0.7 s apart). Words are 40 ms apart, and every clip is re-trimmed on load to 20 ms padding (saved clips keep 80 ms) — at 120 ms gaps + 80 ms padding the owner found it too slow.
-- **Fallbacks:** missing name clip → computer voice for that name; missing fixed word → computer voice reads the whole call (mixing voices mid-sentence sounds broken).
+- **Pacing:** each call is said **three times** (0.7 s apart). Words are 40 ms apart (0 ms before the court number, game number, "and" and name 2, so "Court 2", "Game 5", "name1 and name2" run together), and every clip is re-trimmed on load to 20 ms padding (saved clips keep 80 ms) — at 120 ms gaps + 80 ms padding the owner found it too slow.
+- **Fallbacks (revised 2026-10-27):** any word with no clip (name or fixed word) → computer voice for just that word; the rest still plays from clips. Consecutive unrecorded words are joined into ONE utterance (each `speak()` pays the engine's start-up lag), with commas before team 1's first name and before "versus". Whether the default system voice needs internet depends on the tablet's voice (network voices do) — unverified. Earlier rule (whole call by computer voice) dropped at owner's request. Admin can delete a recording (Delete button on Settings words and Players names); no migration needed, 088 already allows it.
 - Rejected: "Next up" calls (owner: only the game starting now); per-player self-recording (admin records all); announcing from any admin phone (the tablet is the one device on the speaker).
 
 ## Courts on player screens
