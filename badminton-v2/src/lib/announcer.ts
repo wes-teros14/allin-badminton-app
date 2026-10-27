@@ -8,11 +8,12 @@
 
 export interface AnnouncerCourt {
   courtNumber: number
-  current: { id: string; team1: { id: string }[]; team2: { id: string }[] } | null
+  current: { id: string; gameNumber: number; team1: { id: string }[]; team2: { id: string }[] } | null
 }
 
 export interface NewGame {
   courtNumber: number
+  gameNumber: number
   team1: [string, string]
   team2: [string, string]
 }
@@ -22,15 +23,26 @@ export type SeenGames = Map<number, string | null>
 
 export const PHRASE_KEYS = {
   court: 'phrase:court',
+  game: 'phrase:game',
   number: (n: number) => `phrase:number-${n}`,
   and: 'phrase:and',
   versus: 'phrase:versus',
 } as const
 
+/** The spoken word for a phrase clip key, for the computer voice when it has no recording. */
+export function phraseText(key: string): string {
+  if (key === PHRASE_KEYS.court) return 'Court'
+  if (key === PHRASE_KEYS.game) return 'Game'
+  if (key === PHRASE_KEYS.and) return 'and'
+  if (key === PHRASE_KEYS.versus) return 'versus'
+  return key.replace('phrase:number-', '')
+}
+
 /**
  * "Court" and each number are separate clips, so any court reads as "Court" +
  * its number: 11 recordings in all instead of one per court (owner, 2026-10-26).
- * A court above 9 has no number clip, so its call uses the computer voice.
+ * A court or game above 9 has no number clip, so that number uses the computer voice
+ * (the game number reuses the same 1–9 clips as the court number).
  */
 export const ANNOUNCER_COURT_NUMBERS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const
 
@@ -51,6 +63,7 @@ export function detectNewGames(prev: SeenGames | null, courts: readonly Announce
     if (!current || prev.get(court.courtNumber) === current.id) continue
     started.push({
       courtNumber: court.courtNumber,
+      gameNumber: current.gameNumber,
       team1: [current.team1[0].id, current.team1[1].id],
       team2: [current.team2[0].id, current.team2[1].id],
     })
@@ -58,10 +71,11 @@ export function detectNewGames(prev: SeenGames | null, courts: readonly Announce
   return started
 }
 
-/** "Court … 2 … AJ … and … Jaz … versus … Sim … and … Kurt", as clip keys. */
+/** "Court … 2 … Game … 5 … AJ … and … Jaz … versus … Sim … and … Kurt", as clip keys. */
 export function buildCall(game: NewGame): string[] {
   return [
     PHRASE_KEYS.court, PHRASE_KEYS.number(game.courtNumber),
+    PHRASE_KEYS.game, PHRASE_KEYS.number(game.gameNumber),
     game.team1[0], PHRASE_KEYS.and, game.team1[1],
     PHRASE_KEYS.versus,
     game.team2[0], PHRASE_KEYS.and, game.team2[1],

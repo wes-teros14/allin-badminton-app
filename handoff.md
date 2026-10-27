@@ -1,33 +1,27 @@
 # Handoff — current snapshot
 
-Updated: 2026-10-27. Overwrite this file on every update; it is never a running history.
+Updated: 2026-10-27 (end of session). Overwrite this file on every update; it is never a running history.
 
 ## State
 
-- **Announcer pacing** (branch `042-announcer-pacing`, pushed to `dev` and `main`): words 40 ms apart (clips re-trimmed to 20 ms on load), each call said twice. Not yet heard by anyone.
-- **Fixed words reworked** (branch `041-announcer-court-numbers`, pushed to `dev` and `main`): "Court" + numbers 1–9 as separate clips, replacing "Court 1"…"Court 4".
-- **Court announcer built** (branch `040-court-announcer`, pushed to `dev` and `main`): admin records/uploads name clips (Players page) and fixed words (Settings → Announcer); live-board tablet 🔊 chip downloads clips and calls each new game.
-- Migration 088 (`announcer_clips` table + public `announcer-clips` bucket) **applied on prod**. Also on **dev** (pasted by the owner, 2026-10-26). Owner testing locally against dev (not on prod: finishing games/cheers/Finish Session write stats that a session delete does not undo).
-- 471 unit tests, `tsc -b`, build pass. Lint: only pre-existing errors in `MatchGeneratorPanel.tsx:162`.
+- **Announcer changes this session** (branch `dev`, pushed to `dev` and `main`): call is now "Court N … Game M … names"; any unrecorded word falls back to the computer voice per word (consecutive ones joined into one utterance with commas); Delete-recording button; calls said 3 times; no pause before court number, game number, "and", name 2. Not yet heard by anyone.
+- Migrations through 088 applied on dev and prod (owner confirmed, not verified by me).
+- 471 unit tests, `tsc -b`, build pass.
 - Left uncommitted on purpose: `badminton-v2/supabase/.temp/cli-latest`.
-
-## Verified, and how
-
-- Dev via Playwright with 088 stubbed: Record (fake mic) → preview → Save at 390 px and 1280 px; Upload WAV → Save; corrupt `.mp3` → error toast; Settings card lists 6 words.
-- Live board (dev session `27ff6ffd…`, matches stubbed): enable → "3 of 14 names"; court 1 changes game → exactly 1 call queued; repeat poll → 0; reload → 0 and chip "Tap to turn sound on".
-- Prod: bucket public, anon SELECT yes / INSERT no, 6 policies.
 
 ## Not verified
 
-- Real sound out of the tablet/speaker; **Spotify interplay** (does Android duck, overlap or pause it?).
-- Uploads of MP3, M4A, OGG/OPUS (only WAV and a corrupt file tested); iPhone recording.
-- Wake lock on the real tablet.
+- Real sound from the tablet; **Spotify interplay**; how long the computer voice lags on the real tablet (joining words is a fix by reasoning, not measured).
+- Whether the tablet's default voice is a network voice (needs internet).
+- Delete button clicked in the app (typechecks only).
 
 ## Immediate next steps
 
-- Owner on prod: Settings → Announcer → record the 6 words; Players → record a few names; open live board on the tablet, tap 🔈 Announcer, finish a game, listen with Spotify playing.
+- Owner: Settings → Announcer → record the new "Game" word (13 words now); listen on the tablet with Spotify playing.
+- If computer voice still lags: pick a local voice in `speak()` and/or raise its rate.
 
 ## Open questions
 
-- If Spotify drowns the call: options are lowering Spotify volume manually, or a short chime before the call (not built).
-- Carried over: Clean Sweep parked; load reduction enough?; prod migration history out of sync (never `db push` to prod); `TodayView` old board; confetti per-frame speed; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.
+- Spotify drowning the call: lower Spotify volume manually, or a short chime before the call (not built).
+- Game numbers above 9 use the computer voice (no clip) — record more number clips, or accept?
+- Carried over: Clean Sweep parked; prod migration history out of sync (never `db push` to prod); `TodayView` old board; no UI for abandoning a game; `temp/` at repo root; prod `service_role` key not rotated.

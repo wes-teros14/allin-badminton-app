@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { buildCall, detectNewGames, snapshot, type NewGame, type SeenGames } from '@/lib/announcer'
+import { buildCall, phraseText, detectNewGames, snapshot, type NewGame, type SeenGames } from '@/lib/announcer'
 import { clipUrl, fetchAnnouncerClips } from '@/hooks/useAnnouncerClips'
 import { trimSilence } from '@/lib/clipAudio'
 import type { CourtSlot } from '@/lib/courts'
@@ -33,11 +33,16 @@ const CACHE_NAME = 'announcer-clips'
  */
 const GAP_SECONDS = 0.04
 const PLAYBACK_PADDING_SECONDS = 0.02
-/** Each call is said twice, with this pause in between, so a missed first hearing is caught. */
-const CALL_REPEATS = 2
+/** Each call is said this many times, with a pause in between, so a missed hearing is caught. */
+const CALL_REPEATS = 3
 const REPEAT_GAP_SECONDS = 0.7
 /** Pause after a call before the next court's call. */
 const CALL_GAP_SECONDS = 0.8
+/** No pause before the court number, the game number, "and" and name2 (buildCall positions 1, 3, 5, 6), so "Court 1", "Game 5" and "name1 and name2" run together. */
+const TIGHT_GAP_SECONDS = 0
+/** Where the computer voice takes a breath: before team 1's first name and before "versus" (buildCall positions 4, 7). */
+const COMMA_BEFORE_INDEXES = new Set([4, 7])
+const TIGHT_BEFORE_INDEXES = new Set([1, 3, 5, 6])
 
 function readRemembered(): boolean {
   try { return localStorage.getItem(STORAGE_KEY) === '1' } catch { return false }
@@ -138,20 +143,22 @@ export function useAnnouncer({
   const playCall = useCallback(async (game: NewGame, names: Map<string, string>) => {
     const keys = buildCall(game)
     const buffers = buffersRef.current
-    const phrasesMissing = keys.some((k) => k.startsWith('phrase:') && !buffers.has(k))
     const nameOf = (id: string) => names.get(id) ?? 'player'
+    // A word with no recording is spoken by the computer voice; the rest still play from clips.
+    const wordOf = (key: string) => (key.startsWith('phrase:') ? phraseText(key) : nameOf(key))
     for (let round = 0; round < CALL_REPEATS; round++) {
       if (round > 0) await pause(REPEAT_GAP_SECONDS)
-      if (phrasesMissing) {
-        // Mixing recorded names with spoken filler words sounds broken; say it all.
-        await speak(`Court ${game.courtNumber}. ${nameOf(game.team1[0])} and ${nameOf(game.team1[1])}, versus ${nameOf(game.team2[0])} and ${nameOf(game.team2[1])}.`)
-        continue
-      }
-      for (const [index, key] of keys.entries()) {
-        if (index > 0) await pause(GAP_SECONDS)
-        const buffer = buffers.get(key)
-        if (buffer) await playBuffer(buffer)
-        else await speak(nameOf(key))
+      for (let index = 0; index < keys.length; index++) {
+        if (index > 0) await pause(TIGHT_BEFORE_INDEXES.has(index) ? TIGHT_GAP_SECONDS : GAP_SECONDS)
+        const buffer = buffers.get(keys[index])
+        if (buffer) { await playBuffer(buffer); continue }
+        // Consecutive unrecorded words go in one utterance: each speak() pays the voice engine's start-up lag.
+        let end = index
+        while (end + 1 < keys.length && !buffers.has(keys[end + 1])) end++
+        let text = ''
+        for (let i = index; i <= end; i++) text += (i > index ? (COMMA_BEFORE_INDEXES.has(i) ? ', ' : ' ') : '') + wordOf(keys[i])
+        await speak(text)
+        index = end
       }
     }
     await pause(CALL_GAP_SECONDS)

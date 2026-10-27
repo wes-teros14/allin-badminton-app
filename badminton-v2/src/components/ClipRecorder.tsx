@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, Play, Square, Upload } from 'lucide-react'
+import { Mic, Play, Square, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -25,16 +25,19 @@ export function ClipRecorder({
   label,
   clip,
   onSave,
+  onDelete,
   className,
 }: {
   /** What is being recorded, for screen readers: "AJ", "Court 1". */
   label: string
   clip: AnnouncerClip | undefined
   onSave: (wav: Blob) => Promise<boolean>
+  onDelete?: () => Promise<boolean>
   className?: string
 }) {
   const [stage, setStage] = useState<Stage>({ kind: 'idle' })
   const [elapsed, setElapsed] = useState(0)
+  const [deleting, setDeleting] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const previewUrlRef = useRef<string | null>(null)
@@ -107,6 +110,14 @@ export function ClipRecorder({
     }
   }
 
+  async function remove() {
+    if (!onDelete || !window.confirm(`Delete the recording for ${label}? The computer voice will read it instead.`)) return
+    setDeleting(true)
+    const ok = await onDelete()
+    setDeleting(false)
+    if (ok) toast.success(`Deleted: ${label}`)
+  }
+
   const hidden = (
     <input
       ref={fileRef}
@@ -163,9 +174,16 @@ export function ClipRecorder({
         <Upload className="size-3.5" /> Upload
       </Button>
       {clip ? (
-        <Button type="button" variant="ghost" size="sm" onClick={() => void new Audio(clipUrl(clip)).play()} aria-label={`Play saved clip for ${label}`}>
-          <Play className="size-3.5" /> Play
-        </Button>
+        <>
+          <Button type="button" variant="ghost" size="sm" onClick={() => void new Audio(clipUrl(clip)).play()} aria-label={`Play saved clip for ${label}`}>
+            <Play className="size-3.5" /> Play
+          </Button>
+          {onDelete && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => void remove()} disabled={deleting} aria-label={`Delete recording for ${label}`}>
+              <Trash2 className="size-3.5" /> {deleting ? 'Deleting…' : 'Delete'}
+            </Button>
+          )}
+        </>
       ) : (
         <span className="text-xs text-muted-foreground">No recording</span>
       )}

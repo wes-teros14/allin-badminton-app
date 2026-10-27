@@ -255,7 +255,7 @@ export function PlayersView() {
   const { players, isLoading, updatePlayer, setActive, setGuest } = usePlayers()
   const { role } = useAuth()
   const isAdmin = role === 'admin'
-  const { clips, save: saveClip, loadError: clipsError } = useAnnouncerClips()
+  const { clips, save: saveClip, remove: removeClip, loadError: clipsError } = useAnnouncerClips()
   const unrecordedCount = players.filter((player) => player.isActive && !clips.has(player.id)).length
 
   const nameCall = (player: { id: string; nickname: string | null; nameSlug: string }, clip: AnnouncerClip | undefined) =>
@@ -264,6 +264,7 @@ export function PlayersView() {
         label={player.nickname ?? player.nameSlug}
         clip={clip}
         onSave={(wav) => saveClip(player.id, wav)}
+        onDelete={() => removeClip(player.id)}
       />
     ) : undefined
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')

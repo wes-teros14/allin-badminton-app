@@ -1,5 +1,5 @@
 /**
- * Settings card for the court announcer's fixed words: "Court", the numbers
+ * Settings card for the court announcer's fixed words: "Court", "Game", the numbers
  * 1–9, "and", "versus". Players' names are recorded on the Players page; these
  * join them into "Court … 2 … AJ … and … Jaz … versus … Sim … and … Kurt".
  * Each saves on its own, like the other cards below the Save button.
@@ -12,13 +12,14 @@ import { ANNOUNCER_COURT_NUMBERS, PHRASE_KEYS } from '@/lib/announcer'
 
 const PHRASES: Array<{ key: string; label: string }> = [
   { key: PHRASE_KEYS.court, label: 'Court' },
+  { key: PHRASE_KEYS.game, label: 'Game' },
   ...ANNOUNCER_COURT_NUMBERS.map((n) => ({ key: PHRASE_KEYS.number(n), label: String(n) })),
   { key: PHRASE_KEYS.and, label: 'and' },
   { key: PHRASE_KEYS.versus, label: 'versus' },
 ]
 
 export function AnnouncerPhrasesCard() {
-  const { clips, isLoading, loadError, save } = useAnnouncerClips()
+  const { clips, isLoading, loadError, save, remove } = useAnnouncerClips()
   const recorded = PHRASES.filter((p) => clips.has(p.key)).length
 
   return (
@@ -29,8 +30,8 @@ export function AnnouncerPhrasesCard() {
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
           The live board calls each new game, e.g. “Court 2 … AJ and Jaz … versus … Sim and Kurt”. Record
-          these once; record names on the Players page. If a call needs a word that isn’t recorded, the tablet’s
-          computer voice reads that whole call.
+          these once; record names on the Players page. A word that isn’t recorded is read by the tablet’s
+          computer voice.
         </p>
 
         {isLoading ? (
@@ -51,6 +52,7 @@ export function AnnouncerPhrasesCard() {
                     label={phrase.label}
                     clip={clips.get(phrase.key)}
                     onSave={(wav) => save(phrase.key, wav)}
+                    onDelete={() => remove(phrase.key)}
                   />
                 </li>
               ))}

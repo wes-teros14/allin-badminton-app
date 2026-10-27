@@ -5,7 +5,7 @@ function court(courtNumber: number, matchId: string | null, players = ['a', 'b',
   return {
     courtNumber,
     current: matchId
-      ? { id: matchId, team1: [{ id: players[0] }, { id: players[1] }], team2: [{ id: players[2] }, { id: players[3] }] }
+      ? { id: matchId, gameNumber: 7, team1: [{ id: players[0] }, { id: players[1] }], team2: [{ id: players[2] }, { id: players[3] }] }
       : null,
   }
 }
@@ -18,7 +18,7 @@ describe('detectNewGames', () => {
   it('announces a new game on a court once', () => {
     const before = snapshot([court(1, 'm1'), court(2, 'm2')])
     const after = [court(1, 'm3', ['p', 'q', 'r', 's']), court(2, 'm2')]
-    expect(detectNewGames(before, after)).toEqual([{ courtNumber: 1, team1: ['p', 'q'], team2: ['r', 's'] }])
+    expect(detectNewGames(before, after)).toEqual([{ courtNumber: 1, gameNumber: 7, team1: ['p', 'q'], team2: ['r', 's'] }])
     // The next poll returns the same courts: nothing new.
     expect(detectNewGames(snapshot(after), after)).toEqual([])
   })
@@ -39,9 +39,9 @@ describe('detectNewGames', () => {
 })
 
 describe('buildCall', () => {
-  it('reads "Court", the number, team 1, versus, team 2', () => {
-    expect(buildCall({ courtNumber: 2, team1: ['aj', 'jaz'], team2: ['sim', 'kurt'] })).toEqual([
-      'phrase:court', 'phrase:number-2', 'aj', 'phrase:and', 'jaz', 'phrase:versus', 'sim', 'phrase:and', 'kurt',
+  it('reads "Court", its number, "Game", its number, team 1, versus, team 2', () => {
+    expect(buildCall({ courtNumber: 2, gameNumber: 5, team1: ['aj', 'jaz'], team2: ['sim', 'kurt'] })).toEqual([
+      'phrase:court', 'phrase:number-2', 'phrase:game', 'phrase:number-5', 'aj', 'phrase:and', 'jaz', 'phrase:versus', 'sim', 'phrase:and', 'kurt',
     ])
   })
 })

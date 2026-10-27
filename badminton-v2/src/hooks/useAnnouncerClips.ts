@@ -59,5 +59,17 @@ export function useAnnouncerClips() {
     return true
   }, [user?.id])
 
-  return { clips, isLoading, loadError, save }
+  /** Removes the recording; that word falls back to the computer voice. */
+  const remove = useCallback(async (key: string): Promise<boolean> => {
+    const clip = clips.get(key)
+    if (!clip) return true
+    // Row first: the live board reads the table, so the clip stops being played even if the file delete fails.
+    const { error } = await supabase.from('announcer_clips').delete().eq('key', key)
+    if (error) { toast.error(error.message); return false }
+    await supabase.storage.from(ANNOUNCER_BUCKET).remove([clip.path])
+    setClips((prev) => { const next = new Map(prev); next.delete(key); return next })
+    return true
+  }, [clips])
+
+  return { clips, isLoading, loadError, save, remove }
 }

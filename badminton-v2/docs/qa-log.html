@@ -1981,6 +1981,17 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Does playing the system (computer) voice need internet?</p>
+    <p class="a">
+      Depends on the tablet’s default voice, which <code>speak()</code> in <code>hooks/useAnnouncer.ts</code> never
+      picks (no <code>voice</code> set). A local voice (<code>SpeechSynthesisVoice.localService === true</code>) works
+      offline; a network voice (e.g. Chrome’s “Google …” voices) needs internet. From browser knowledge, not tested on
+      the venue tablet. Recorded clips are cached and always work offline, so only unrecorded words are at risk when
+      the wifi drops.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">
