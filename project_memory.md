@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-10-27
+Last updated: 2026-11-02
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -166,6 +166,14 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   `status = 'complete'` and would all have needed `IN (...)`. Also rejected: a stage *between* Live and Done that
   commits stats early — a back-step from it to Live would double-count attendance unless a decrement trigger shipped
   with it. `useSession.reopenSession` clears `closed_at` but has no UI yet. The stepper's *Closed* dot is display only.
+- **Session details are editable at every stage after Setup (2026-11-02)** via `EditSessionDialog` (admins only).
+  Rules: court count locks once Live (games are on courts); price warns when anyone has paid (finance revenue is
+  `paid count × price`, so it re-prices collected money); date warns on a finished session (reorders streaks).
+  Scheduled registration open stays Setup-only.
+- **Absent registered player, finished session:** attendance comes from `session_registrations` at finish
+  (trigger `increment_sessions_attended_on_complete`), and streaks / board eligibility read registrations of
+  finished sessions too. Only deleting the registration fully excludes them — which also drops their paid
+  revenue and cascades their `session_receipts` rows (receipt image stays in storage). Done for Jey on Nov 1.
 
 ## Data conventions worth not relearning
 

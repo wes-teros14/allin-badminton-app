@@ -825,3 +825,13 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Root cause: our CSS overrides sonner's toast background and text, but not `[data-description]`, which sonner hard-codes to `#3f3f3f` (its light theme): ~1.8:1 on `--card` `#1A1025`.
 - Fix: `[data-sonner-toast] [data-description] { color: var(--muted-foreground) }` in `index.css`. Measured: 7.4:1 dark, 6.0:1 light.
 - Rule: when overriding a library's theme colours, override every text slot it styles, not just the container.
+
+## 2026-11-02: Finance table scrolled sideways on desktop
+- Symptom: on a desktop browser the Finance list had a horizontal scrollbar and Net Cash was cut off.
+- Root cause: `FinanceView` was capped at `max-w-lg` (512 px) at every width; five money columns need ~620 px.
+- Fix: `max-w-lg lg:max-w-2xl` (672 px from 1024 px up), same as `SessionView`. Measured at 1300 px with prod-sized amounts: table 624 px in a 624 px container, no scroll.
+
+## 2026-11-02: session details only editable during Setup
+- Symptom: notes, price, venue etc. could not be changed once registration opened (needed for Nov 1, hosted by someone else).
+- Root cause: the only form was `SetupCard`; every later stage rendered `SessionSummary` read-only.
+- Fix: `EditSessionDialog` on every non-setup stage (admins only; RLS already allows admin updates at any status). Court count locks once Live; price warns when anyone has paid (revenue = paid × price); date warns on a finished session (streak order).
