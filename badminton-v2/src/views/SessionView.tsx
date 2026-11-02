@@ -17,6 +17,7 @@ import { RosterPanel } from '@/components/RosterPanel'
 import { MatchGeneratorPanel } from '@/components/MatchGeneratorPanel'
 import { CourtTabs } from '@/components/CourtTabs'
 import { LiveIndicator } from '@/components/LiveIndicator'
+import { EditSessionDialog } from '@/components/EditSessionDialog'
 
 const STATUS_STEP: Record<string, number> = {
   setup: 0, registration_open: 1, registration_closed: 2,
@@ -133,10 +134,25 @@ function SessionSummary({
   )
 }
 
-function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; splitScoring: boolean }) {
+function LiveSessionView({
+  sessionId, splitScoring, editAction, detailsVersion,
+}: {
+  sessionId: string
+  splitScoring: boolean
+  editAction: ReactNode
+  detailsVersion: number
+}) {
   const { courts, queued, finished, sessionId: sid, sessionName, sessionDate, subPicks, isLoading, refresh } =
     useAdminSession(sessionId)
   const { status } = useRealtime(sid, refresh, 'session')
+
+  // Skip the mount run: useAdminSession already loads once on its own.
+  const lastDetailsVersion = useRef(detailsVersion)
+  useEffect(() => {
+    if (lastDetailsVersion.current === detailsVersion) return
+    lastDetailsVersion.current = detailsVersion
+    refresh()
+  }, [detailsVersion, refresh])
 
   return (
     <div className="space-y-4 relative">
@@ -163,6 +179,7 @@ function LiveSessionView({ sessionId, splitScoring }: { sessionId: string; split
           >
             Open LiveBoard
           </button>
+          {editAction}
           <BackToAdmin />
         </div>
       </div>
@@ -360,7 +377,7 @@ export function SessionView() {
   const { role } = useAuth()
   const isModerator = role === 'moderator'
   const {
-    session, invitation, playerCount, isLoading,
+    session, invitation, playerCount, isLoading, refresh,
     openRegistration, closeRegistration, reopenRegistration, lockSchedule, unlockSchedule, startSession, unstartSession,
     finishSession,
   } = useSession(sessionId)
@@ -374,6 +391,10 @@ export function SessionView() {
   // (a sibling with its own independent player-fetching hook) refetches
   // immediately instead of only picking up changes on next page load.
   const [rosterVersion, setRosterVersion] = useState(0)
+
+  // The live view loads the session name/date through its own hook; bumping
+  // this makes it refetch after an edit.
+  const [detailsVersion, setDetailsVersion] = useState(0)
 
   const [splitScoring, setSplitScoring] = useState(session?.split_match_scoring ?? false)
   const [splitSaving, setSplitSaving] = useState(false)
@@ -447,7 +468,10 @@ export function SessionView() {
         <BackToAdmin />
         <SessionStepper status={session.status} closedAt={session.closed_at} />
         <Card>
-          <CardHeader><CardTitle>{session.name}</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <CardTitle>{session.name}</CardTitle>
+            {!isModerator && <EditSessionDialog session={session} onSaved={refresh} />}
+          </CardHeader>
           <CardContent className="text-sm space-y-1">
             <p>{formatSessionDate(session.date)}</p>
             {isClosed ? (
@@ -474,7 +498,12 @@ export function SessionView() {
     return (
       <div className="p-4 max-w-lg lg:max-w-2xl mx-auto space-y-4">
         <SessionStepper status={session.status} />
-        <LiveSessionView sessionId={session.id} splitScoring={session.split_match_scoring ?? false} />
+        <LiveSessionView
+          sessionId={session.id}
+          splitScoring={session.split_match_scoring ?? false}
+          editAction={!isModerator ? <EditSessionDialog session={session} onSaved={() => { refresh(); setDetailsVersion((v) => v + 1) }} /> : null}
+          detailsVersion={detailsVersion}
+        />
         {!isModerator && (
           <>
             <Button
@@ -540,7 +569,10 @@ export function SessionView() {
             notes={session.session_notes}
           />
         )}
-        <BackToAdmin />
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <BackToAdmin />
+          {session.status !== 'setup' && <EditSessionDialog session={session} onSaved={refresh} />}
+        </div>
       </div>
 
       <SessionStepper status={session.status} />

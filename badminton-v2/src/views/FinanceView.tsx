@@ -47,7 +47,7 @@ export default function FinanceView() {
   )
 
   return (
-    <div className="p-6 max-w-lg mx-auto space-y-6">
+    <div className="p-6 max-w-lg lg:max-w-2xl mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h1 className="text-lg font-semibold text-primary">Finance</h1>
         <div className="flex items-center gap-4">
