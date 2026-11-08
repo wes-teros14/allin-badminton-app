@@ -4,7 +4,7 @@ import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { isUnder } from '@/lib/navMatch'
-import ppLogo from '@/assets/pp-logo.jpeg'
+import appLogo from '@/assets/logo-nav.png'
 
 export function TopNavBar() {
   const { user, role } = useAuth()
@@ -116,7 +116,7 @@ export function TopNavBar() {
   return (
     <nav className="relative bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
       <Link to="/" className="shrink-0">
-        <img src={ppLogo} alt="PP" className="w-8 h-8 rounded-full object-cover" />
+        <img src={appLogo} alt="Badminton Tayo home" className="w-8 h-8 rounded-md object-cover" />
       </Link>
       <div className="flex items-center gap-6 flex-1 min-w-0">
         {primaryTabs.filter((tab) => tab.show).map((tab) => renderTab(tab))}
