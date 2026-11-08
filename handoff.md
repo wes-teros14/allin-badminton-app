@@ -1,15 +1,14 @@
 # Handoff — current snapshot
 
-Updated: 2026-11-02 (end of session). Overwrite this file on every update; it is never a running history.
+Updated: 2026-11-08. Overwrite this file on every update; it is never a running history.
 
 ## Done this session
 
-- **Prod data, Nov 1 session** (`92801dac-…`): games renumbered 3–12 → 1–10 in schedule order; session finished with **0 games recorded** (Sim's winner sheet didn't match the schedule for games 5, 9, 10); Jey's registration deleted (absent) — her paid revenue and 1 receipt row went with it; her `sessions_attended` stays 12.
-- **Finance tab:** `lg:max-w-2xl`, no sideways scroll on desktop.
-- **Edit session dialog** (`EditSessionDialog.tsx`) on every stage after Setup. Branch `089-edit-session-details` → `dev` → `main`.
-- 471 tests, `tsc -b` pass.
+- New app logo (bunny "Badminton Tayo!"): favicon + apple-touch + 192/512 icons in `public/`, nav home button uses `src/assets/logo-nav.png` (rounded square). HomeView 80 px logos still `pp-logo.jpeg` (not asked).
 
 ## Not verified
+
+- New favicon on real phones / iOS home-screen icon.
 
 - Edit button on a **Live** session (DEV had none) — the live view's refetch after save is untested.
 - Price warning with real paid players only tested via a temporary DEV flag (reverted).

@@ -214,3 +214,22 @@ Claude has no CLI migration path; this needs the user.
   by the user) left on the list.
 - Found on the way: the card rendered a failed load as "Nobody yet" — fixed to show the error.
 - Tests: 371 passing (8 new).
+
+---
+
+# New app logo — "Badminton Tayo!" bunny (2026-11-08)
+
+## Plan
+
+- [x] Source: user-supplied 2000×2000 webp (bunny + "Badminton Tayo!" text on purple/green court).
+- [x] Generate with Pillow (LANCZOS): `public/logo-32.png`, `public/logo-192.png`, `public/logo-512.png`,
+      `public/apple-touch-icon.png` (180), `src/assets/logo-nav.png` (96, for the 32 px nav at 3× DPR).
+- [x] `index.html`: favicon → `/logo-32.png` + 192 icon + `apple-touch-icon`.
+- [x] `TopNavBar.tsx` home button: import new logo; `rounded-md` instead of `rounded-full`, so the
+      square art's corners (where the text starts) aren't cropped.
+- [x] Out of scope (not asked): HomeView 80 px logos and Live Board keep `pp-logo.jpeg`.
+- [x] `npm run build`, check nav + tab icon in browser, commit on `dev`, push, merge `dev` → `main`, push.
+
+## Review
+
+- Shipped 2026-11-08. Verified on dev server: favicon links resolve to `/logo-32.png`, `/logo-192.png`, `/apple-touch-icon.png`; nav image is `logo-nav.png` (96 px natural) at 32 px, rounded square. `npm run build` passes.
