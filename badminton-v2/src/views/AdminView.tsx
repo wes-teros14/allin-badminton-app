@@ -9,6 +9,7 @@ import { useSessionList } from '@/hooks/useSessionList'
 import type { Session } from '@/hooks/useSession'
 import { compareSessionsByScheduledDate } from '@/views/MySessionsView'
 import { sessionStatusPillClassName } from '@/lib/sessionStatusStyle'
+import { ShareSessionDialog } from '@/components/ShareSessionDialog'
 
 const STATUS_LABELS: Record<string, string> = {
   setup: 'Setup',
@@ -130,6 +131,9 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
           </span>
         </div>
         <div className="flex gap-2 shrink-0">
+          {/* Only once the games exist and before play starts: earlier there is
+              no "first on court", later those games are already over. */}
+          {session.status === 'schedule_locked' && <ShareSessionDialog session={session} />}
           {session.status === 'complete' && session.closed_at == null && (
             <Button variant={confirmClose ? 'destructive' : 'outline'} size="sm" disabled={closing} onClick={handleCloseClick}>
               {confirmClose ? 'Confirm?' : 'Close'}

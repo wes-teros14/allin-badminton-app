@@ -104,6 +104,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - Game numbers in the app are `matches.queue_position` and can have gaps (a removed game). Never derive "which games start together" from the number; use the position in the ordered queue.
 - When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 - Never call a gate "the single gate" from memory notes. Grep for copies of its constants first — the Wins board had a private copy of `fetchEligiblePlayerIds` that memory said was gone.
+- Under browser-pane viewport emulation, screenshot coordinates do not map to the page — click by `ref` from `find`, never by pixel. A missed click on a card that navigates looks exactly like a stopPropagation bug.
 
 ## .env Files
 
