@@ -143,7 +143,7 @@ export function HomeView() {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm space-y-8 text-center">
           <div className="space-y-3">
-            <img src="/pp-logo.jpeg" alt="PP" className="mx-auto w-20 h-20 rounded-full object-cover" />
+            <img src="/logo-192.png" alt="Badminton Tayo" className="mx-auto w-20 h-20 rounded-full object-cover" />
             <div className="space-y-2">
               <h1 className="text-4xl font-bold tracking-tight text-primary">Badminton Tayo!</h1>
               <p className="text-sm text-muted-foreground">Game Na Kahit Walang Warm Up</p>
@@ -174,7 +174,7 @@ export function HomeView() {
 
   return (
     <div className="flex flex-col items-center gap-6 px-6 pt-10 pb-16">
-      <img src="/pp-logo.jpeg" alt="PP" className="w-20 h-20 rounded-full object-cover" />
+      <img src="/logo-192.png" alt="Badminton Tayo" className="w-20 h-20 rounded-full object-cover" />
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold">Welcome back!</h1>
         <p className="text-sm text-muted-foreground max-w-xs">

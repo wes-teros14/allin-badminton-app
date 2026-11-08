@@ -116,7 +116,7 @@ export function TopNavBar() {
   return (
     <nav className="relative bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
       <Link to="/" className="shrink-0">
-        <img src={appLogo} alt="Badminton Tayo home" className="w-8 h-8 rounded-md object-cover" />
+        <img src={appLogo} alt="Badminton Tayo home" className="w-8 h-8 rounded-full object-cover" />
       </Link>
       <div className="flex items-center gap-6 flex-1 min-w-0">
         {primaryTabs.filter((tab) => tab.show).map((tab) => renderTab(tab))}
