@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-02
+Last updated: 2026-11-12
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -66,12 +66,19 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Never pass a secret on a command line** — not as an inline `VAR=...` prefix, not as a flag. It is
   captured by shell history *and* by Claude Code's permission allowlist. Run the script that reads
   `.env` instead.
-- **The local Supabase CLI link defaults to prod, and Claude has no CLI access token here.**
+- **The local Supabase CLI link defaults to prod.**
   `badminton-v2/supabase/.temp/project-ref` reads `ensdfitpeyreunihkqkh` (prod) as of 2026-09-19, not
-  the dev ref. `supabase link`/`db push` both fail with `LegacyPlatformAuthRequiredError` (no
-  `SUPABASE_ACCESS_TOKEN`, not logged in) — Claude cannot apply a **migration** itself and must hand the
-  exact `supabase login && supabase link --project-ref tsvetqzkullivprbjtli && supabase db push`
-  sequence to the user instead. Relink to dev before ever running `db push` by hand.
+  the dev ref. Hand the user the exact
+  `supabase login && supabase link --project-ref tsvetqzkullivprbjtli && supabase db push` sequence for
+  migrations. Relink to dev before ever running `db push` by hand.
+- **`badminton-v2/.env.prod` holds only `SUPABASE_ACCESS_TOKEN`** (a personal access token, account-wide;
+  regenerated 2026-11-12 after the old one returned 401). There is **no prod service-role key** on this
+  machine; `.env.development` has the dev one. A script can read prod with that token via the
+  Management API (`POST api.supabase.com/v1/projects/<ref>/database/query`, runs as postgres) — keep it
+  SELECT-only and read the token at runtime, never print it. The anon key returns 0 rows (RLS).
+- **vite-node fills `import.meta.env` from the repo's `.env*` files (dev), not from `process.env`** set
+  in the script. A "prod" script that imports `src/lib/supabase` silently talks to DEV — print the
+  project ref first.
 - **The Supabase MCP server does reach PROD, and that is a separate channel from the CLI.**
   `.mcp.json` points at `project_ref=ensdfitpeyreunihkqkh` (prod) and connects as the `postgres` role,
   so Claude *can* run arbitrary SQL — including writes — against production. Verified 2026-09-20 by
@@ -394,6 +401,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Leaderboards
 
 - Four tabs on `/leaderboard`: **Individual** (win rate; called *Mga Lodi* until 2026-09-05), **Partners** (partnership win rate), **Cheers**, **Awards**.
+- **Off-app board snapshots (Xmas 2026 ref magnets) reuse the app's own fetchers.** `badminton-v2/scripts/xmas2026/dump-prod-boards.ts` (run with `npx vite-node`) pulls raw prod tables SELECT-only, patches `supabase.from` with an in-memory PostgREST-style builder, then calls `fetchAllTimeLeaderboard`/`fetchPairLeaderboard`/`fetchAwardsLeaderboard`/`fetchCheerLeaderboard` + `rankCheerShares` — so ranks can't drift from the app. Don't reimplement board logic in SQL for exports. Pipeline: dump → `per-player.js` → `build-all.js` → `docs/xmas2026/ref-magnets-all.html` (frames A Candy Cane + D Snow Ticket, 600×900 = 2×3 in @300 dpi, photo window transparent in PNGs). The `*.json` outputs hold prod player data and are gitignored.
 - **Every ranked board renders through one component.** `RankedBoard` / `RankPlace` in `components/RankedBoard.tsx` (moved out of `LeaderboardView.tsx` 2026-09-28) draw a medal podium for places 1–3 and a fixed 34 px numbered chip for every place below, with a divider naming the places actually on screen. Tied and untied places go through the *same* path deliberately — the previous code drew the rank inside the card for untied places and outside it for tied ones, so the rank column never lined up. Keeping the marker column a fixed width is the fix; don't reintroduce a second rendering path for ties. The **session Leaderboard tab** (`SessionPlayerDetailView`) uses it too since 2026-09-28, with the same order and dense-rank rule as all-time and no place cut; it previously numbered by row index, so two players on 83% got 🥇 and 🥈. `TodayView` (`/today`, linked from nowhere) still carries the old index-numbered copy.
 - **Rank arithmetic lives in `src/lib/denseRank.ts`** (`assignDenseRanks`, `cutToPlaces`, `groupByRank`) and is shared. Equal rates take the same place; the next distinct rate takes the next number (1, 1, 2 — never 1, 1, 3); and the cut counts **places, not rows**, so a board may show twelve rows across ten places. Both boards must keep using it — index-based numbering next to dense ranks contradicts itself the moment anyone ties.
 - **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligiblePlayerIds()` plus `MIN_SESSIONS_PLAYED` and `RECENT_SESSIONS_WINDOW`. Every surface asks that one function: Individual, Partners, Cheers, Awards, and the award badges on My Profile. The rules are 3+ sessions attended and registered for at least one of the last 4 completed sessions. Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy. (The Wins board still had one until 2026-10-23; it now calls the gate too.)

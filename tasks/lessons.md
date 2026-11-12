@@ -835,3 +835,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: notes, price, venue etc. could not be changed once registration opened (needed for Nov 1, hosted by someone else).
 - Root cause: the only form was `SetupCard`; every later stage rendered `SessionSummary` read-only.
 - Fix: `EditSessionDialog` on every non-setup stage (admins only; RLS already allows admin updates at any status). Court count locks once Live; price warns when anyone has paid (revenue = paid × price); date warns on a finished session (streak order).
+
+## 2026-11-12: reading prod leaderboards from a script
+- Symptom: script meant for prod printed dev project ref and 0 rows; second try got `401 Invalid access token`.
+- Root cause: vite-node fills `import.meta.env` from `.env`/`.env.development`, ignoring `process.env` set at runtime; anon key is RLS-blocked anyway. `.env.prod` holds only `SUPABASE_ACCESS_TOKEN` (no prod service key), and it had expired.
+- Fix: user regenerated the personal access token. `badminton-v2/scripts/dump-prod-boards.ts` pulls raw prod tables with SELECT-only Management API queries, then runs the app's own board fetchers on an in-memory copy (patched `supabase.from`), so ranks match the app. Cross-checked Anthony 85–22 against direct SQL.
