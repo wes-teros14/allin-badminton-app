@@ -39,3 +39,6 @@ dist-ssr
 # Vitest HTML report (generated artifact)
 /html/
 .vercel
+
+# Xmas 2026 magnet build: prod player data dumps
+scripts/xmas2026/*.json

@@ -105,6 +105,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - When a POC switches theme with `data-theme` on a wrapper, set `color` and `background` on that wrapper, not on `body` — `body` sits outside the switch and keeps the other theme's text colour. Screenshot both themes before calling it done.
 - Never call a gate "the single gate" from memory notes. Grep for copies of its constants first — the Wins board had a private copy of `fetchEligiblePlayerIds` that memory said was gone.
 - Under browser-pane viewport emulation, screenshot coordinates do not map to the page — click by `ref` from `find`, never by pixel. A missed click on a card that navigates looks exactly like a stopPropagation bug.
+- vite-node takes `import.meta.env` from the repo's `.env*` files, not from `process.env` set in the script, so a script can silently hit DEV. Print the project ref before trusting any number from a prod script.
 
 ## .env Files
 
