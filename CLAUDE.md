@@ -106,6 +106,9 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - Never call a gate "the single gate" from memory notes. Grep for copies of its constants first — the Wins board had a private copy of `fetchEligiblePlayerIds` that memory said was gone.
 - Under browser-pane viewport emulation, screenshot coordinates do not map to the page — click by `ref` from `find`, never by pixel. A missed click on a card that navigates looks exactly like a stopPropagation bug.
 - vite-node takes `import.meta.env` from the repo's `.env*` files, not from `process.env` set in the script, so a script can silently hit DEV. Print the project ref before trusting any number from a prod script.
+- When an export path differs from the preview path (masks, clips, a second SVG), verify by diffing the exported pixels against the preview render over the whole affected area — sampling a few edge pixels missed a mask that clipped shuttles only in the PNG.
+- Never test in a browser tab the user may be using — open a new tab. Pressing Reset in the owner's tuner tab both wiped their work and exposed a bug they then hit.
+- A Reset that reassigns state objects (`CARD = saved.CARD`) kills every control that captured the old object. Refill in place (clear keys, `Object.assign`).
 
 ## .env Files
 

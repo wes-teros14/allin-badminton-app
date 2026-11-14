@@ -27,7 +27,8 @@ if (window.TUNE) {
       ${slider("tfs", "Text size", 14, 40, 0.5)}
       ${slider("ty", "Top edge", 40, 400, 1)}
       <b style="font-size:13px;margin-top:4px">Print fit</b>
-      ${slider("fit", "Whole design", 0.85, 1, 0.005)}
+      ${slider("fitx", "Width", 0.85, 1, 0.005)}
+      ${slider("fity", "Height", 0.85, 1, 0.005)}
       <p id="fitinfo" style="margin:0;font-size:12px;color:var(--mut)"></p>
       <b style="font-size:13px;margin-top:4px">Racket (this frame)</b>
       ${slider("rs", "Size", 0.4, 2, 0.05)}
@@ -53,7 +54,7 @@ if (window.TUNE) {
   who.innerHTML = PLAYERS.map((p, i) => `<option value="${i}">${esc(p.name)}</option>`).join("");
   ["who", "frm", "md", "vw", "real"].forEach(id => document.getElementById(id).addEventListener("change", draw));
   const frameKey = () => FRAMES[document.getElementById("frm").value].id;
-  const SL = { tileH: [CARD, "tileH"], bigFs: [CARD, "bigFs"], labelFs: [CARD, "labelFs"], badgeFs: [CARD, "badgeFs"], totLabelFs: [CARD, "totLabelFs"], tfs: [TITLE, "fs"], ty: [TITLE, "y"], fit: [FIT, "s"] };
+  const SL = { tileH: [CARD, "tileH"], bigFs: [CARD, "bigFs"], labelFs: [CARD, "labelFs"], badgeFs: [CARD, "badgeFs"], totLabelFs: [CARD, "totLabelFs"], tfs: [TITLE, "fs"], ty: [TITLE, "y"], fitx: [FIT, "sx"], fity: [FIT, "sy"] };
   document.getElementById("ttxt").value = TITLE.text;
   document.getElementById("ttxt").addEventListener("input", e => { TITLE.text = e.target.value; draw(); });
   for (const id of Object.keys(SL)) document.getElementById(id).addEventListener("input", e => { SL[id][0][SL[id][1]] = +e.target.value; draw(); });
@@ -88,8 +89,8 @@ if (window.TUNE) {
     const p = PLAYERS[who.value], t = FRAMES[document.getElementById("frm").value];
     document.getElementById("stage").innerHTML = magnetSVG(t, p, false);
     const svg = document.querySelector("#stage > svg"), c = cardBox();
-    const fy = (v) => H * (1 - FIT.s) / 2 + v * FIT.s;
-    if (document.getElementById("vw").value === "card") svg.setAttribute("viewBox", `0 ${fy(c.y) - 60} ${W} ${c.h * FIT.s + 90}`);
+    const fy = (v) => H * (1 - FIT.sy) / 2 + v * FIT.sy;
+    if (document.getElementById("vw").value === "card") svg.setAttribute("viewBox", `0 ${fy(c.y) - 60} ${W} ${c.h * FIT.sy + 90}`);
     const fitG = svg.querySelector("g[data-fit]");
     svg.style.cssText = "width:auto;max-width:100%;height:auto;max-height:calc(100vh - 140px);display:block;margin:0 auto;user-select:none";
     const bw = BUN.h * 119 / 165, bx = c.x + BUN.x, by = c.y + BUN.y;
@@ -109,8 +110,8 @@ if (window.TUNE) {
     const paperW = W * (5 / 2.54) / 2, px0 = (W - paperW) / 2;
     svg.insertAdjacentHTML("beforeend", `<g pointer-events="none"><rect x="${px0}" y="0" width="${paperW}" height="${H}" fill="none" stroke="#e0457b" stroke-width="2" stroke-dasharray="10 6"/>
       <text x="${W / 2}" y="${H - 6}" text-anchor="middle" font-size="14" font-weight="700" fill="#e0457b">5 cm paper edge</text></g>`);
-    const dw = W * FIT.s / 300 * 2.54, margin = (5 - dw) / 2 * 10;
-    document.getElementById("fitinfo").textContent = `Design ${dw.toFixed(2)} × ${(H * FIT.s / 300 * 2.54).toFixed(2)} cm · ${margin >= 0 ? margin.toFixed(1) + " mm spare each side of 5 cm" : "WIDER than 5 cm by " + (-margin * 2).toFixed(1) + " mm"}`;
+    const dw = W * FIT.sx / 300 * 2.54, dh = H * FIT.sy / 300 * 2.54, margin = (5 - dw) / 2 * 10, vmargin = (7.62 - dh) / 2 * 10, stretch = (FIT.sy / FIT.sx - 1) * 100;
+    document.getElementById("fitinfo").textContent = `Design ${dw.toFixed(2)} × ${dh.toFixed(2)} cm · ${margin >= 0 ? margin.toFixed(1) + " mm spare each side of 5 cm" : "WIDER than 5 cm by " + (-margin * 2).toFixed(1) + " mm"} · ${vmargin.toFixed(1)} mm top/bottom of 3 in${Math.abs(stretch) >= 0.5 ? ` · shapes ${stretch.toFixed(1)}% taller than wide` : ""}`;
     syncSliders();
     const pt = (px) => round(px * 0.24, 1);
     document.getElementById("pts").textContent = `At print size: headline ${pt(TITLE.fs)} pt · big number ${pt(CARD.bigFs)} pt · label ${pt(CARD.labelFs)} pt · badge ${pt(CARD.badgeFs)} pt (comfortable reading ≈ 6 pt+)`;
@@ -148,6 +149,9 @@ if (window.TUNE) {
     try { await navigator.clipboard.writeText(txt); b.textContent = "Copied ✓"; } catch { b.textContent = "Copy the text above"; }
     setTimeout(() => (b.textContent = "Copy values"), 1500);
   });
-  document.getElementById("reset").addEventListener("click", () => { const s = JSON.parse(START); BUN = s.BUN; CARD = s.CARD; RKT = s.RKT; TITLE = s.TITLE; SHUT = s.SHUT; FIT = s.FIT; SEL = 0; document.getElementById("ttxt").value = TITLE.text; draw(); });
+  document.getElementById("reset").addEventListener("click", () => { const s = JSON.parse(START);
+    // refill the existing objects: the sliders hold references to them, so replacing them would leave every slider dead
+    for (const [o, v] of [[BUN, s.BUN], [CARD, s.CARD], [RKT, s.RKT], [TITLE, s.TITLE], [SHUT, s.SHUT], [FIT, s.FIT]]) { for (const k of Object.keys(o)) delete o[k]; Object.assign(o, v); }
+    SEL = 0; document.getElementById("ttxt").value = TITLE.text; draw(); });
   draw();
 }
