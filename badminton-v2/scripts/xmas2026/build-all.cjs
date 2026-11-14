@@ -52,9 +52,19 @@ const PHOTO = {x:40, y:78, w:520, h:762, r:18};
 let HOLE = false;
 let BUN = {x:20, y:1, h:74, nameX:86};   // bunny box + name start, relative to the card's top-left
 // Highlights tiles: height, big value, label, rank badge (all magnet px; 600 px = 2 in, so pt = px * 0.24)
-let CARD = {tileH:117, bigFs:46, labelFs:27, badgeFs:18.5, bigGap:6, labelGap:11};
+let CARD = {tileH:120, bigFs:46, labelFs:27, badgeFs:18.5, bigGap:6, labelGap:11, totLabelFs:17};
+// Loose shuttles drawn over the photo edge, per frame: position, angle, scale, band colour; on:false hides one
+let SHUT = {
+  candy:[{x:206,y:66,rot:120,s:.7,c:"#c62828"},{x:536,y:142,rot:38,s:1,c:"#6f3e87"},{x:470,y:84,rot:-20,s:.7,c:"#2e7d4f"},{x:566,y:470,rot:-125,s:.8,c:"#c62828"}],
+  snow:[{x:238.3,y:78.4,rot:120,s:.7,c:"#b8862b"},{x:66,y:207.5,rot:-38,s:1,c:"#6f3e87"},{x:36,y:470,rot:125,s:.8,c:"#b8862b"}],
+};
+const shuttles = (key) => SHUT[key].map((q, i) => q.on === false ? "" : \`<g data-sh="\${i}">\${svgShuttle(q.x, q.y, q.rot, q.s, "#fff", q.c)}</g>\`).join("");
+// Whole-design scale inside the 2 x 3 in canvas (0.95 = 1.9 in wide, fits 5 cm paper with ~1 mm each side)
+let FIT = {s:0.95};
+// Headline ribbon: text, font size, top edge (magnet px)
+let TITLE = {text:"2026 Year-End Highlights", fs:26, y:86};
 // Corner racket per frame: position of the racket's throat, angle, scale
-let RKT = {candy:{x:29.4, y:75.2, rot:170, s:.9}, snow:{x:562.5, y:412.1, rot:-7, s:.8}};
+let RKT = {candy:{x:29.4, y:75.2, rot:170, s:.9}, snow:{x:535.9, y:380.4, rot:17, s:.8}};
 ${art}
 /* ---------- stats card, drawn in SVG so it exports with the frame ---------- */
 const SHORT = {"Most Sessions Joined":"Most Sessions","Attendance Streak":"Attendance Streak","Registration Early Bird":"Early Bird","Win Streak":"Win Streak","Against the Odds":"Against the Odds"};
@@ -98,11 +108,12 @@ function cardSVG(p){
       <rect x="\${x0}" y="\${y0}" width="\${cw}" height="\${HH}" fill="#6f3e87"/>
       <rect x="\${x0}" y="\${y0+HH-6}" width="\${cw}" height="6" fill="url(#stripe)"/>
       <text x="\${x0+BUN.nameX}" y="\${y0+44}" font-size="\${p.name.length>9?30:36}" font-weight="700" fill="#fff">\${esc(p.name)}</text>
-      <text x="\${x0+BUN.nameX+1}" y="\${y0+64}" font-size="13.5" letter-spacing="1" fill="#fff" opacity=".88">BADMINTON TAYO! · XMAS 2026</text>\`;
+      <text x="\${x0+BUN.nameX+1}" y="\${y0+64}" font-size="13.5" letter-spacing="1" fill="#fff" opacity=".88">BADMINTON TAYO!</text>\`;
   [[p.places,"PLACES","#fff"],[p.top3,"TOP 3","#fff"],[p.first,"1ST","#f3cf7a"]].forEach(([n,l,c],k)=>{
-    const cx = x0 + cw - 150 + k*56;
-    s += \`<text x="\${cx}" y="\${y0+40}" text-anchor="middle" font-size="30" font-weight="700" fill="\${c}">\${n}</text>
-           <text x="\${cx}" y="\${y0+60}" text-anchor="middle" font-size="12" letter-spacing=".5" fill="#fff" opacity=".85">\${l}</text>\`;
+    // column width grows with the label size so PLACES never runs into TOP 3
+    const colW = Math.max(56, CARD.totLabelFs * 4), cx = x0 + cw - 18 - colW/2 - (2 - k)*colW;
+    s += \`<text x="\${cx}" y="\${y0+38}" text-anchor="middle" font-size="30" font-weight="700" fill="\${c}">\${n}</text>
+           <text x="\${cx}" y="\${y0+40+CARD.totLabelFs*1.15}" text-anchor="middle" font-size="\${CARD.totLabelFs}" font-weight="600" letter-spacing=".3" fill="#fff">\${l}</text>\`;
   });
   if (list) {
     const cols = list.length > 1 ? 2 : 1, colW = cw / cols;
@@ -136,13 +147,38 @@ function cardSVG(p){
   });
   return s + "</g>" + \`<svg id="bun" x="\${x0+BUN.x}" y="\${y0+BUN.y}" width="\${(BUN.h*119/165).toFixed(1)}" height="\${BUN.h}" viewBox="49 49 119 165"><image href="\${LOGO}" width="193" height="237"/></svg>\`;
 }
+/* headline ribbon across the top of the photo (owner chose "option 2" from the title mock) */
+function titleSVG(){
+  const txt = TITLE.text.trim(); if (!txt) return "";
+  const fs = TITLE.fs, h = Math.round(fs * 1.7), y = TITLE.y, cx = 300;
+  const w = Math.min(520, Math.max(240, txt.length * fs * 0.6 + 60));
+  return \`<g>
+    <path d="M\${cx - w/2 - 34} \${y + h*.28} h44 v\${h} h-44 l14 -\${h/2}z" fill="#4f2a63" stroke="#1b1220" stroke-width="2"/>
+    <path d="M\${cx + w/2 + 34} \${y + h*.28} h-44 v\${h} h44 l-14 -\${h/2}z" fill="#4f2a63" stroke="#1b1220" stroke-width="2"/>
+    <rect x="\${cx - w/2}" y="\${y}" width="\${w}" height="\${h}" rx="4" fill="#6f3e87" stroke="#1b1220" stroke-width="2"/>
+    <rect x="\${cx - w/2 + 5}" y="\${y + 5}" width="\${w - 10}" height="\${h - 10}" rx="2" fill="none" stroke="#f3cf7a" stroke-width="1.5"/>
+    <text x="\${cx}" y="\${y + h/2 + fs*.36}" text-anchor="middle" font-size="\${fs}" font-weight="700" fill="#f3cf7a" letter-spacing=".5"\${txt.length*fs*.6 > w - 24 ? \` textLength="\${w - 24}" lengthAdjust="spacingAndGlyphs"\` : ""}>\${esc(txt)}</text></g>\`;
+}
+// The canvas stays 600 x 900 (2 x 3 in); the whole design is shrunk and centred inside it so it
+// survives printing on paper that is really 5 cm (1.97 in) wide.
+// The margin the shrink leaves is filled with the frame's own background (bleed allowance), never white.
+// Drawn inside the scaled group in design units so the Candy Cane stripes line up with the frame's.
+const BLEED = { candy: "url(#cc)", snow: "#fbf6ee" };
+const fitOpen = (theme) => {
+  const s = FIT.s, tx = W*(1-s)/2, ty = H*(1-s)/2, ox = -tx/s, oy = -ty/s, ow = W/s, oh = H/s;
+  const ring = \`<path fill-rule="evenodd" fill="\${BLEED[theme.id] || "#fff"}" d="M\${ox} \${oy}h\${ow}v\${oh}h-\${ow}z M1 1v\${H-2}h\${W-2}v-\${H-2}z"/>\`;
+  return \`<g data-fit="1" transform="translate(\${tx.toFixed(2)} \${ty.toFixed(2)}) scale(\${s})">\${ring}\`;
+};
 function magnetSVG(theme, p, forExport){
   const font = 'font-family="Segoe UI, system-ui, sans-serif"';
-  if (!forExport) return \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${W} \${H}" \${font}>\${theme.art()}\${cardSVG(p)}</svg>\`;
-  HOLE = true; const [under, over = ""] = theme.art().split("<!--OVER-->"); HOLE = false; const q = PHOTO;
-  return \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${W} \${H}" width="\${W}" height="\${H}" \${font}>
+  // anything after <!--TOP--> in a frame (Snow Ticket's ornaments and bow) is drawn above the headline ribbon
+  if (!forExport) { const [main, top = ""] = theme.art().split("<!--TOP-->");
+    return \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${W} \${H}" \${font}>\${fitOpen(theme)}\${main}\${cardSVG(p)}\${titleSVG()}\${top}</g></svg>\`; }
+  HOLE = true; const [under, rest = ""] = theme.art().split("<!--OVER-->"); HOLE = false; const q = PHOTO;
+  const [over, top = ""] = rest.split("<!--TOP-->");
+  return \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${W} \${H}" width="\${W}" height="\${H}" \${font}>\${fitOpen(theme)}
     <mask id="hole"><rect width="\${W}" height="\${H}" fill="#fff"/><rect x="\${q.x}" y="\${q.y}" width="\${q.w}" height="\${q.h}" rx="\${q.r}" fill="#000"/></mask>
-    <g mask="url(#hole)">\${under}</g>\${over}\${cardSVG(p)}</svg>\`;
+    <g mask="url(#hole)">\${under}</g>\${over}\${cardSVG(p)}\${titleSVG()}\${top}</g></svg>\`;
 }
 const FRAMES = THEMES.filter(t => t.id === "candy" || t.id === "snow");
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-");

@@ -175,9 +175,7 @@ const THEMES = [
      ${svgShuttle(300,H-22,-90,.5,"#fff","#c62828")}
      <!--OVER-->
      <g id="rkt">${svgRacket(RKT.candy.x,RKT.candy.y,RKT.candy.rot,RKT.candy.s,"#6f3e87")}</g>
-     ${svgShuttle(206,66,120,.7,"#fff","#c62828")}
-     ${svgShuttle(536,142,38,1,"#fff","#6f3e87")}${svgShuttle(470,84,-20,.7,"#fff","#2e7d4f")}
-     ${svgShuttle(566,470,-125,.8,"#fff","#c62828")}
+     ${shuttles("candy")}
      ${svgHolly(548,52,200,1.15)}
      ${svgHolly(44,H-44,20,1.15)}${svgHolly(556,H-44,160,1.15)}
      ${svgBow(300,46,1.15,"#2e7d4f")}
@@ -242,8 +240,10 @@ const THEMES = [
  { id:"snow", name:"D · Snow Ticket", sub:"Cream & gold rules, hanging ornaments, shuttle snowfall",
    art(){
      const r = rng(41); let fall="";
-     for(let i=0;i<26;i++){ const x=r()*W, y=90+r()*(H-120); if(x>26&&x<574&&y>52&&y<856) {i--; continue;} fall += r()<.5 ? svgShuttle(x,y,r()*360,.32+r()*.12,"#fff","#b8862b") : svgSnow(x,y,.9+r()*.6,"#a48cc0",.8); }
-     const hang=[[150,46,"#d4262f",14],[205,28,"#b8862b",12],[395,28,"#2e7d4f",12],[450,46,"#d4262f",14]];
+     for(let i=0;i<26;i++){ const x0=r()*W, y=90+r()*(H-120); if(x0>26&&x0<574&&y>52&&y<856) {i--; continue;}
+       const x = x0 < W/2 ? Math.max(x0, 14) : Math.min(x0, W-14);   // keep each shuttle clear of the trimmed edge
+       fall += r()<.5 ? svgShuttle(x,y,r()*360,.32+r()*.12,"#fff","#b8862b") : (r(), ""); }   /* snowflakes removed 2026-11-14; r() still consumed so the shuttles keep their places */
+     const hang=[[118,56,"#d4262f",14],[205,44,"#b8862b",12],[395,44,"#2e7d4f",12],[482,56,"#d4262f",14]];   // strings long enough that every ball overlaps the headline ribbon
      return `
      <defs><pattern id="strings" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#fff"/><path d="M0 0H7M0 0V7" stroke="#cbb27a" stroke-width="1.2"/></pattern></defs>
      <rect width="${W}" height="${H}" fill="#fbf6ee"/>
@@ -253,10 +253,10 @@ const THEMES = [
      ${photoSlot("#fff","#b8862b")}
      ${svgGift(36,H-50,36,30,"#2e7d4f","#f3cf7a")}${svgGift(528,H-50,36,30,"#6f3e87","#f3cf7a")}
      <!--OVER-->
-     ${hang.map(([x,len,c,rr])=>svgOrn(x,22+len+rr+6,rr,c,len)).join("")}
      <g id="rkt">${svgRacket(RKT.snow.x,RKT.snow.y,RKT.snow.rot,RKT.snow.s,"#6f3e87")}</g>
-     ${svgShuttle(96,62,120,.7,"#fff","#b8862b")}
-     ${svgShuttle(64,142,-38,1,"#fff","#6f3e87")}${svgShuttle(36,470,125,.8,"#fff","#b8862b")}
+     ${shuttles("snow")}
+     <!--TOP-->
+     ${hang.map(([x,len,c,rr])=>svgOrn(x,22+len+rr+6,rr,c,len)).join("")}
      ${svgBow(300,40,.9,"#6f3e87","#f3cf7a")}
 `;
    }},
