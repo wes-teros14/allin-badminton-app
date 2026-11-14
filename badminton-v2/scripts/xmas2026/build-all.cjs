@@ -60,7 +60,7 @@ let SHUT = {
 };
 const shuttles = (key) => SHUT[key].map((q, i) => q.on === false ? "" : \`<g data-sh="\${i}">\${svgShuttle(q.x, q.y, q.rot, q.s, "#fff", q.c)}</g>\`).join("");
 // Whole-design scale inside the 2 x 3 in canvas (0.95 = 1.9 in wide, fits 5 cm paper with ~1 mm each side)
-let FIT = {s:0.95};
+let FIT = {sx:0.95, sy:1};   // width and height scale separately: paper is 5 cm wide but a full 3 in tall
 // Headline ribbon: text, font size, top edge (magnet px)
 let TITLE = {text:"2026 Year-End Highlights", fs:26, y:86};
 // Corner racket per frame: position of the racket's throat, angle, scale
@@ -165,9 +165,9 @@ function titleSVG(){
 // Drawn inside the scaled group in design units so the Candy Cane stripes line up with the frame's.
 const BLEED = { candy: "url(#cc)", snow: "#fbf6ee" };
 const fitOpen = (theme) => {
-  const s = FIT.s, tx = W*(1-s)/2, ty = H*(1-s)/2, ox = -tx/s, oy = -ty/s, ow = W/s, oh = H/s;
+  const sx = FIT.sx, sy = FIT.sy, tx = W*(1-sx)/2, ty = H*(1-sy)/2, ox = -tx/sx, oy = -ty/sy, ow = W/sx, oh = H/sy;
   const ring = \`<path fill-rule="evenodd" fill="\${BLEED[theme.id] || "#fff"}" d="M\${ox} \${oy}h\${ow}v\${oh}h-\${ow}z M1 1v\${H-2}h\${W-2}v-\${H-2}z"/>\`;
-  return \`<g data-fit="1" transform="translate(\${tx.toFixed(2)} \${ty.toFixed(2)}) scale(\${s})">\${ring}\`;
+  return \`<g data-fit="1" transform="translate(\${tx.toFixed(2)} \${ty.toFixed(2)}) scale(\${sx} \${sy})">\${ring}\`;
 };
 function magnetSVG(theme, p, forExport){
   const font = 'font-family="Segoe UI, system-ui, sans-serif"';
@@ -177,7 +177,7 @@ function magnetSVG(theme, p, forExport){
   HOLE = true; const [under, rest = ""] = theme.art().split("<!--OVER-->"); HOLE = false; const q = PHOTO;
   const [over, top = ""] = rest.split("<!--TOP-->");
   return \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${W} \${H}" width="\${W}" height="\${H}" \${font}>\${fitOpen(theme)}
-    <mask id="hole"><rect width="\${W}" height="\${H}" fill="#fff"/><rect x="\${q.x}" y="\${q.y}" width="\${q.w}" height="\${q.h}" rx="\${q.r}" fill="#000"/></mask>
+    <mask id="hole" maskUnits="userSpaceOnUse" x="-100" y="-100" width="\${W+200}" height="\${H+200}"><rect x="-100" y="-100" width="\${W+200}" height="\${H+200}" fill="#fff"/><rect x="\${q.x}" y="\${q.y}" width="\${q.w}" height="\${q.h}" rx="\${q.r}" fill="#000"/></mask>
     <g mask="url(#hole)">\${under}</g>\${over}\${cardSVG(p)}\${titleSVG()}\${top}</g></svg>\`;
 }
 const FRAMES = THEMES.filter(t => t.id === "candy" || t.id === "snow");

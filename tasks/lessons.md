@@ -840,3 +840,13 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: script meant for prod printed dev project ref and 0 rows; second try got `401 Invalid access token`.
 - Root cause: vite-node fills `import.meta.env` from `.env`/`.env.development`, ignoring `process.env` set at runtime; anon key is RLS-blocked anyway. `.env.prod` holds only `SUPABASE_ACCESS_TOKEN` (no prod service key), and it had expired.
 - Fix: user regenerated the personal access token. `badminton-v2/scripts/dump-prod-boards.ts` pulls raw prod tables with SELECT-only Management API queries, then runs the app's own board fetchers on an in-memory copy (patched `supabase.from`), so ranks match the app. Cross-checked Anthony 85–22 against direct SQL.
+
+## 2026-11-14: magnet PNG cut shuttles the preview showed
+- Symptom: border shuttles on the Snow Ticket frame were clipped in downloaded PNGs but whole in the HTML preview.
+- Root cause: the export wraps the frame's background layer in `mask#hole` (to punch the photo window); its white rect covered only the 600 × 900 design area. After the 95 % print-fit shrink added bleed around the design, anything past the design edge was masked out in the PNG only.
+- Fix: mask uses `maskUnits="userSpaceOnUse"` with a rect 100 px past every edge (`scripts/xmas2026/build-all.cjs`). Verified by diffing export vs preview pixels over the whole border: 0 differing pixels for both frames.
+
+## 2026-11-14: tuner Width/Height sliders did nothing
+- Symptom: owner moved the Print fit sliders and the magnet preview didn't change.
+- Root cause: tuner Reset reassigned `BUN`/`CARD`/`RKT`/`TITLE`/`SHUT`/`FIT` to fresh parsed copies, while the slider table held references to the original objects — after any Reset, card, headline and fit sliders wrote to orphaned objects. Triggered by my own test clicking Reset in the owner's tab.
+- Fix: Reset now clears and refills the existing objects in place (`scripts/xmas2026/tuner.js`). Verified: sliders move the design before and after two Resets. Tests now run in a separate tab.
