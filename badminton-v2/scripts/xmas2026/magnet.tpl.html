@@ -174,7 +174,7 @@ const THEMES = [
      ${photoSlot("#fff","#1b1220")}
      ${svgShuttle(300,H-22,-90,.5,"#fff","#c62828")}
      <!--OVER-->
-     ${svgRacket(29.4,75.2,170,.9,"#6f3e87")}
+     <g id="rkt">${svgRacket(RKT.candy.x,RKT.candy.y,RKT.candy.rot,RKT.candy.s,"#6f3e87")}</g>
      ${svgShuttle(206,66,120,.7,"#fff","#c62828")}
      ${svgShuttle(536,142,38,1,"#fff","#6f3e87")}${svgShuttle(470,84,-20,.7,"#fff","#2e7d4f")}
      ${svgShuttle(566,470,-125,.8,"#fff","#c62828")}
@@ -254,7 +254,7 @@ const THEMES = [
      ${svgGift(36,H-50,36,30,"#2e7d4f","#f3cf7a")}${svgGift(528,H-50,36,30,"#6f3e87","#f3cf7a")}
      <!--OVER-->
      ${hang.map(([x,len,c,rr])=>svgOrn(x,22+len+rr+6,rr,c,len)).join("")}
-     ${svgRacket(570.6,75.2,-170,.9,"#6f3e87")}
+     <g id="rkt">${svgRacket(RKT.snow.x,RKT.snow.y,RKT.snow.rot,RKT.snow.s,"#6f3e87")}</g>
      ${svgShuttle(96,62,120,.7,"#fff","#b8862b")}
      ${svgShuttle(64,142,-38,1,"#fff","#6f3e87")}${svgShuttle(36,470,125,.8,"#fff","#b8862b")}
      ${svgBow(300,40,.9,"#6f3e87","#f3cf7a")}

@@ -1992,6 +1992,28 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Last week the announcer downloaded zero name clips. Why?</p>
+    <p class="a">
+      There were none to download. Prod <code>announcer_clips</code> had 0 rows and the <code>announcer-clips</code>
+      bucket 0 files; Postgres counters showed 0 inserts ever since migration 088 (2026-10-26). The two test clips were
+      recorded on DEV. On 2026-11-08 the tablet loaded the empty list (<code>GET announcer_clips</code> → 200) and
+      requested no files. The chip still says "ready · 0 of N names" and never says that nothing is recorded
+      (<code>useAnnouncer.ts:196-218</code>).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">With no voices uploaded, does it still announce with the default TTS?</p>
+    <p class="a">
+      Yes, as far as the code goes. Every missing clip falls back to <code>speechSynthesis</code>, and consecutive missing
+      words are joined, so with zero clips each new game is one utterance, said three times: "Court 2 Game 5, AJ and Jaz,
+      versus Sim and Kurt" (<code>useAnnouncer.ts:151-161</code>). Names come from the court data, not the clip table.
+      Caveats: the chip must be tapped on; whether the tablet's default voice needs internet is unverified, and whether
+      it actually spoke on 2026-11-08 was not checked (no server log exists for local speech).
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">

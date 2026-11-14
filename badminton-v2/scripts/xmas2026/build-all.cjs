@@ -51,6 +51,10 @@ const W = 600, H = 900;
 const PHOTO = {x:40, y:78, w:520, h:762, r:18};
 let HOLE = false;
 let BUN = {x:20, y:1, h:74, nameX:86};   // bunny box + name start, relative to the card's top-left
+// Highlights tiles: height, big value, label, rank badge (all magnet px; 600 px = 2 in, so pt = px * 0.24)
+let CARD = {tileH:117, bigFs:46, labelFs:27, badgeFs:18.5, bigGap:6, labelGap:11};
+// Corner racket per frame: position of the racket's throat, angle, scale
+let RKT = {candy:{x:29.4, y:75.2, rot:170, s:.9}, snow:{x:562.5, y:412.1, rot:-7, s:.8}};
 ${art}
 /* ---------- stats card, drawn in SVG so it exports with the frame ---------- */
 const SHORT = {"Most Sessions Joined":"Most Sessions","Attendance Streak":"Attendance Streak","Registration Early Bird":"Early Bird","Win Streak":"Win Streak","Against the Odds":"Against the Odds"};
@@ -78,7 +82,7 @@ function rowsFor(p){
     : {rank:i.rank, label:SHORT[i.board] || i.board, val:i.value});
 }
 function cardSVG(p){
-  const t = tilesFor(p), HH = 80, TH = 86, RH = 31;
+  const t = tilesFor(p), HH = 80, TH = CARD.tileH, RH = 31;
   const list = MODE === "full" ? rowsFor(p) : null;
   const split = ({1:[1],2:[2],3:[3],4:[2,2],5:[3,2],6:[3,3]})[t.length] || [];
   const listRows = list ? Math.ceil(list.length / (list.length > 1 ? 2 : 1)) : 0;
@@ -119,11 +123,16 @@ function cardSVG(p){
     if (tile.rank===1) s += \`<rect x="\${tx}" y="\${ty}" width="\${tw}" height="\${TH}" fill="#fbf3e2"/>\`;
     if (c) s += \`<path d="M\${tx} \${ty} v\${TH}" stroke="#ece6f0" stroke-width="1.5"/>\`;
     if (r) s += \`<path d="M\${tx} \${ty} h\${tw}" stroke="#ece6f0" stroke-width="1.5"/>\`;
-    s += m ? \`<rect x="\${tx+8}" y="\${ty+8}" width="38" height="20" rx="10" fill="\${m}"/><text x="\${tx+27}" y="\${ty+23}" text-anchor="middle" font-size="13.5" font-weight="700" fill="#fff">\${ord(tile.rank)}</text>\`
-           : \`<text x="\${tx+27}" y="\${ty+23}" text-anchor="middle" font-size="13.5" font-weight="700" fill="#6b6577">\${ord(tile.rank)}</text>\`;
-    const lab = tile.label, fs = lab.length > 17 ? 15 : 18;
-    s += \`<text x="\${tx+tw/2}" y="\${ty+52}" text-anchor="middle" font-size="\${tile.big.length>5?32:38}" font-weight="700" fill="#6f3e87">\${esc(tile.big)}</text>
-           <text x="\${tx+tw/2}" y="\${ty+75}" text-anchor="middle" font-size="\${fs}" fill="#1b1220">\${esc(lab)}</text>\`;
+    const bf = CARD.badgeFs, bw = bf*2.8, bh = bf*1.48;
+    s += m ? \`<rect x="\${tx+8}" y="\${ty+8}" width="\${bw}" height="\${bh}" rx="\${bh/2}" fill="\${m}"/><text x="\${tx+8+bw/2}" y="\${ty+8+bh*.74}" text-anchor="middle" font-size="\${bf}" font-weight="700" fill="#fff">\${ord(tile.rank)}</text>\`
+           : \`<text x="\${tx+8+bw/2}" y="\${ty+8+bh*.74}" text-anchor="middle" font-size="\${bf}" font-weight="700" fill="#6b6577">\${ord(tile.rank)}</text>\`;
+    // label sits on the tile floor, the big value just above it; both shrink to fit the tile width
+    const lab = tile.label, fs = lab.length > 17 ? CARD.labelFs - 3 : CARD.labelFs;
+    const bigFs = tile.big.length > 5 ? CARD.bigFs - 6 : CARD.bigFs;
+    const labY = ty + TH - CARD.labelGap, bigY = labY - fs - CARD.bigGap;
+    const fit = (txt, size, bold) => { const est = txt.length * size * (bold ? .6 : .53), max = tw - 14; return est > max ? \` textLength="\${max}" lengthAdjust="spacingAndGlyphs"\` : ""; };
+    s += \`<text x="\${tx+tw/2}" y="\${bigY}" text-anchor="middle" font-size="\${bigFs}" font-weight="700" fill="#6f3e87"\${fit(tile.big, bigFs, true)}>\${esc(tile.big)}</text>
+           <text x="\${tx+tw/2}" y="\${labY}" text-anchor="middle" font-size="\${fs}" fill="#1b1220"\${fit(lab, fs, false)}>\${esc(lab)}</text>\`;
   });
   return s + "</g>" + \`<svg id="bun" x="\${x0+BUN.x}" y="\${y0+BUN.y}" width="\${(BUN.h*119/165).toFixed(1)}" height="\${BUN.h}" viewBox="49 49 119 165"><image href="\${LOGO}" width="193" height="237"/></svg>\`;
 }
