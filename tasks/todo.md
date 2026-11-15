@@ -1,3 +1,85 @@
+# Live updates: Postgres Changes → Broadcast — plan (2026-11-15, DEV done; prod not started)
+
+Why (measured on prod, Nov 15): the box is short of memory (≈400 MB RAM, 230–370 MB in swap, commitment
+1.3 GB). The fixes we tried don't work: restarting (swap refills in about an hour) and lowering
+`shared_buffers` (only 15.6 MB of 224 MB is used; the box has no huge pages, so the unused part takes no RAM).
+The cheapest thing left is to make the app do less database work.
+
+Realtime's Postgres Changes poll (`list_changes`) takes **263 s of 539 s of all DB time since the 16:12
+restart (49%)**, averaging 12.2 ms over 21,627 calls. It runs non-stop whenever anyone has the app open, and
+on every poll it checks each change against each subscriber's access rules. It is always the first query to
+stall. Broadcast pushes a message only when a row actually changes, and checks access once, when a phone joins.
+
+**Will not fix:** the swap itself. Expected: about half of the DB work goes away, there is no constant
+poll, and stalls should be rarer. If stalls continue after this, the only fix left is a compute upgrade.
+
+## Design
+- **Messages carry no data, only "this changed".** Clients keep today's refetch logic unchanged: coalesce
+  plus jitter, the 30 s safety poll, the keep-last-good board, and the backoff retries.
+- **Topics:**
+  - `session:<id>`: changes to `matches`, `sessions`, `session_registrations`, `session_receipts`, and
+    `match_results` (the trigger looks up `session_id` through `matches`).
+  - `user:<id>`: changes to `notifications` (`user_id`), `player_stats` (`player_id`), and
+    `session_registrations` (`player_id`).
+- **Triggers:** one trigger function that calls `realtime.send(jsonb, 'changed', topic, true)`, with
+  `FOR EACH STATEMENT` triggers using transition tables. A bulk write (the generator inserting 40 games)
+  then sends one message per session instead of 40. `realtime.send` and `broadcast_changes` already exist
+  on prod.
+- **Private channels with access rules on `realtime.messages`:**
+  - Anyone, including the logged-out live board, may receive `session:%`.
+  - Only the owner may receive `user:<id>`.
+  - Nobody may send from a phone. This stops anyone from spamming fake "changed" messages that would
+    make every phone refetch.
+- **Client:** one `useLiveChannel(topic, onChange)` helper, with the same connected / reconnecting /
+  disconnected status as `useRealtime`. It replaces all 13 `postgres_changes` listeners:
+  - `useRealtime` (the live board, PlayerView ×2, SessionPlayerDetailView, SessionView)
+  - `useMatchCheers` (a duplicate `matches` UPDATE listener; fold it into the session topic)
+  - `useRoster`, `useRegisteredPlayers`, `SessionPlayerDetailView` (leaderboard and my-registration), `TodayView`
+  - `NotificationContext`, `usePlayerSessions`, `ProfileView`
+
+## Steps
+- [x] 0. Build a 20-device simulation on DEV (`scripts/loadtest/`), with its project ref hard-checked
+       before it runs.
+       - Devices: 20 sign-ins using the dev test accounts. Each one subscribes like the app and polls
+         every 30 s.
+       - Admin: finishes a game every ~4 min across 3 courts; players cheer.
+       - Measures: DB time per minute (`pg_stat_statements` deltas), `list_changes` calls, request
+         latency p50/p95, and the delay from a write until every device sees it.
+       - Run it now as the before-measurement.
+- [x] 1. Migration (additive): the trigger function, the triggers, and the `realtime.messages` access
+       rules. Postgres Changes keeps working, so nothing breaks yet.
+- [x] 2. Verify on DEV that the logged-out live board can join a private `session:` channel. If it can't,
+       make the `session:` topics public (still message-only), but then phones can send fake messages.
+- [x] 3. Client: add `useLiveChannel`, convert all 13 listeners, and add unit tests for the topic
+       helpers. Check the live board, player view, notifications and roster on localhost.
+- [x] 4. Re-run the simulation and compare DB time, polls and update delay with step 0.
+       DEV, 20 devices, 20 min, a game every 2 min, Nov 15:
+       - DB time: 37.0 s before vs 28.5 s after. The 28.5 s includes 9.4 s of a leftover poll: Realtime
+         kept polling for ~10 min after the last old-style subscriber left (it stopped at 12:59:16).
+         Without that it is 19.1 s, about 48% less.
+       - The poll's own cost: 18.3 s, 49% of DB time before, the same share as prod. After the leftover
+         poll stopped it ran 0 times.
+       - Updates delivered: 100% in both runs. Delay p50 295 ms after vs 734 ms before; p95 1.7 s vs
+         1.0 s.
+       - Requests: no failures in either run.
+       - Stalls: per-minute p95 over 1 s happened in 4 of 19 minutes before, and in 1 of 11 minutes
+         after the poll stopped. A DEV-wide stall at 12:51–12:52 (p95 5.1 s) happened while the
+         leftover poll was still running.
+       - One device's channel errored twice at 16.5 min and rejoined within 3 s with no missed
+         updates. Cause unclear.
+- [ ] 5. Prod rollout, on a day without a session: run the migration (owner runs `db push` to prod),
+       then deploy.
+- [ ] 6. Once every phone is on the new version, remove the tables from the `supabase_realtime`
+       publication. Old cached app versions then fall back to the 30 s poll.
+- [ ] 7. First session after rollout: pull logs and metrics the same day and compare DB time and stalls
+       with Nov 15.
+
+## Open questions
+- Can a logged-out (anon) phone join a private channel? Answered by step 2.
+- Do old PWA versions stay cached on players' phones? This decides when step 6 is safe.
+
+---
+
 # Court announcer (prerecorded names) — plan (2026-10-26)
 
 Context: when a game starts on a court, the live-board tablet (already on the Bluetooth speaker, Spotify

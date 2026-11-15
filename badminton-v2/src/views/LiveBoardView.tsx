@@ -9,7 +9,7 @@ import { useAnnouncer } from '@/hooks/useAnnouncer'
 export function LiveBoardView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
   const { courts, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, isReloading, loadFailed, refresh } = useCourtState(sessionIdParam)
-  const { status } = useRealtime(sessionId, refresh, 'live-board', { onPoll: isClosed ? undefined : refresh })
+  const { status } = useRealtime(sessionId, refresh, { onPoll: isClosed ? undefined : refresh })
   // The board keeps its last good data when a reload fails, so it can be out of
   // date without looking it — say so. Realtime's own 'reconnecting' is skipped:
   // it is also the state before the first subscribe, and the polls cover it.

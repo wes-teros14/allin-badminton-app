@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prod Server Memory</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --ink:#e7e9ee; --muted:#9aa3b2; --line:#2a2f3a;
+          --used:#60a5fa; --cache:#a78bfa; --swap:#f87171; --free:#374151; --good:#4ade80; --amber:#fbbf24; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 system-ui, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 36px 0 6px; }
+  p { margin: 0 0 12px; max-width: 72ch; }
+  .lead, .sub { color: var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  svg { width:100%; height:auto; display:block; }
+  svg text { fill: var(--ink); font: 13px system-ui, sans-serif; }
+  svg .muted { fill: var(--muted); font-size: 12px; }
+  svg .dark { fill: #0b0d12; font-weight: 600; }
+  .scroll { overflow-x: auto; } .scroll svg { min-width: 640px; }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; color:var(--muted); font-size:13px; margin-top:10px; }
+  .sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:6px; }
+  .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .procs { display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:10px; margin-top: 10px; }
+  .proc { background:#1d212a; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .proc .n { font-size: 22px; font-weight: 700; }
+  .proc .t { font-weight: 600; }
+  .proc .d { color: var(--muted); font-size: 13px; }
+  ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); }
+  li { margin: 5px 0; } li b { color: var(--ink); }
+  .fix { border: 1px solid rgba(251, 191, 36, .35); background:#2a2210; color:#fde68a; border-radius:10px; padding:12px 14px; margin-top:14px; }
+  .fix b { color:#fff3c4; }
+  .tag { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+  .tag.v { color: var(--good); } .tag.u { color: var(--amber); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Why the prod server runs out of memory</h1>
+  <p class="lead">Your data is tiny (24 MB). The server runs out anyway because of everything Supabase runs
+    <em>around</em> your data. Measured on the prod dashboard, Nov 15 2026, 4:20 PM, just after the restart.</p>
+
+  <div class="fix"><b>Correction:</b> I said earlier “about 1.3 GB of software on a 400 MB box”. That was
+    wrong. 1.3 GB is memory <em>promised</em> to programs, not memory they use (explained in section 3).
+    What programs actually hold is about <b>520 MB</b>, on a box with <b>406 MB</b> of RAM. It is still too
+    much, just not three times too much. I had also written “477 MB RAM” before; the dashboard's own
+    figure is 406.5 MB.</div>
+
+  <h2>1. What fits, and what doesn't</h2>
+  <p class="sub">The box has 406 MB of RAM. Programs hold about 520 MB. The roughly 345 MB that doesn't fit
+    in RAM goes to <b>swap</b>: a file on disk used as overflow memory, far slower than RAM.</p>
+  <div class="card scroll">
+    <svg viewBox="0 0 900 190" role="img" aria-label="406 MB of RAM: 175 MB used by programs, 225 MB file cache; 345 MB of program memory in swap on disk">
+      <!-- 1 MB = 1.0 px; RAM box x=20..426 -->
+      <rect x="18" y="38" width="410" height="74" rx="10" fill="none" stroke="#9aa3b2" stroke-width="2"/>
+      <text x="20" y="28">RAM: 406 MB (the fast memory)</text>
+      <rect x="22" y="42" width="175" height="66" rx="6" fill="#60a5fa"/>
+      <text x="109" y="72" text-anchor="middle" class="dark">programs</text>
+      <text x="109" y="90" text-anchor="middle" class="dark">175 MB</text>
+      <rect x="199" y="42" width="225" height="66" rx="6" fill="#a78bfa"/>
+      <text x="311" y="72" text-anchor="middle" class="dark">file cache</text>
+      <text x="311" y="90" text-anchor="middle" class="dark">225 MB</text>
+
+      <rect x="470" y="38" width="349" height="74" rx="10" fill="none" stroke="#f87171" stroke-width="2" stroke-dasharray="7 6"/>
+      <text x="472" y="28" fill="#f87171">Swap on disk (slow)</text>
+      <rect x="474" y="42" width="341" height="66" rx="6" fill="#f87171" opacity=".85"/>
+      <text x="644" y="72" text-anchor="middle" class="dark">program memory that didn't fit</text>
+      <text x="644" y="90" text-anchor="middle" class="dark">345 MB</text>
+      <path d="M430 75 L466 75" stroke="#f87171" stroke-width="2" marker-end="url(#a)"/>
+      <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="#f87171"/></marker></defs>
+
+      <line x1="22" y1="132" x2="197" y2="132" stroke="#60a5fa" stroke-width="3"/>
+      <line x1="474" y1="132" x2="815" y2="132" stroke="#f87171" stroke-width="3"/>
+      <text x="22" y="154" class="muted">programs hold 175 + 345 ≈ 520 MB in total, more than the whole 406 MB of RAM</text>
+      <text x="22" y="174" class="muted">your actual data: 24 MB, about this wide →</text>
+      <rect x="300" y="164" width="24" height="12" rx="2" fill="#4ade80"/>
+    </svg>
+    <div class="legend">
+      <span><span class="sw" style="background:#60a5fa"></span>Program memory in RAM (fast)</span>
+      <span><span class="sw" style="background:#a78bfa"></span>File cache: recently read files, given back on demand</span>
+      <span><span class="sw" style="background:#f87171"></span>Program memory pushed to disk (slow)</span>
+    </div>
+  </div>
+  <ul>
+    <li><b>Why swap hurts:</b> swapped memory is fine while nobody needs it. When a program does need it,
+      it waits for the disk. On a busy night that is a query stalling for seconds, and then the queue
+      behind it.</li>
+    <li><b>Why not use the cache space instead?</b> Linux decides that itself. It keeps recently read files
+      in RAM and pushes idle program memory out. We can't change that on Supabase.</li>
+    <li><b>A restart doesn't fix it.</b> At 1:42 PM swap was 368 MB. The 2:17 restart brought it to
+      230 MB, and it was back to 314 MB by 3:46 PM.</li>
+  </ul>
+
+  <h2>2. What is running on it</h2>
+  <p class="sub">Every Postgres connection is a separate program on the box with its own memory. These are
+    the 28 Postgres processes running on prod tonight, read from <code>pg_stat_activity</code>:</p>
+  <div class="procs">
+    <div class="proc"><div class="n">11</div><div class="t">PostgREST connections</div><div class="d">The API your app calls for every read and write. It keeps a pool open even when idle.</div></div>
+    <div class="proc"><div class="n">7</div><div class="t">Realtime connections</div><div class="d">Live updates: connect 2, subscription manager 3, access checks 1, change stream 1.</div></div>
+    <div class="proc"><div class="n">7</div><div class="t">Postgres's own workers</div><div class="d">Writer, checkpointer, archiver, autovacuum, WAL writer, replication launcher, pg_cron.</div></div>
+    <div class="proc"><div class="n">3</div><div class="t">Supabase services</div><div class="d">Metrics exporter, management API, pg_net worker.</div></div>
+  </div>
+  <p class="sub" style="margin-top:12px">Also on the box: <b>PgBouncer</b>, the connection pooler (its logs
+    show it starting there at the 4:12 PM restart). <span class="tag u">Not measured</span> How many MB each
+    one uses: the Free-plan dashboard shows only the total. Whether Auth and the API programs themselves
+    run on this box is also unclear; the dashboard doesn't say.</p>
+
+  <h2>3. The “1.3 GB” number, explained</h2>
+  <div class="grid2">
+    <div class="card">
+      <span class="tag u">Promised: 1.31 GB</span>
+      <p style="margin-top:6px">“Memory commitment” is every allocation programs have <em>asked</em>
+        for. Linux says yes to all of them and only hands out real memory when it is actually written.
+        It works like restaurant reservations: 1,310 booked, ~520 actually turned up.</p>
+      <p class="sub">Per Supabase's docs, each new Postgres connection counts Postgres's 270 MB shared
+        area again until it starts writing its own copy. 28 processes inflate the promise fast.</p>
+    </div>
+    <div class="card">
+      <span class="tag v">Actually used: ≈ 520 MB</span>
+      <p style="margin-top:6px">175 MB in RAM plus 345 MB in swap. This is what makes queries wait.
+        The promise limit is 1.4 GB, with a warning at 1.36 GB. Past the limit, Linux starts killing
+        processes, and Postgres can crash outright. Nov 15 sat at 1.24–1.31 GB, close to that line, which is
+        why the dashboard says “Severe”.</p>
+    </div>
+  </div>
+
+  <h2>4. Why so much for a 24 MB database?</h2>
+  <ul>
+    <li><b>Fixed cost, not your data.</b> Every Supabase project runs the same full stack: database, API,
+      live updates, sign-in, monitoring. That costs the same whether the data is 24 MB or 24 GB.</li>
+    <li><b>Free = the smallest box.</b> NANO has about 400 MB, roughly what the stack needs before your app
+      does anything.</li>
+    <li><b>Connections are the part we influence.</b> Each open connection is another program in memory.
+      With Postgres Changes, Realtime keeps extra connections and a constant poll for live updates.</li>
+  </ul>
+
+  <h2>5. What can bring it down</h2>
+  <div class="card">
+    <ul style="margin:0">
+      <li><b>Broadcast (built on DEV):</b> removes the constant poll, about half the database work.
+        Realtime's access-check and subscription-manager connections exist for Postgres Changes, so they
+        may close too. <span class="tag u">Measure after rollout</span></li>
+      <li><b>Fewer API connections:</b> PostgREST keeps 11 open. Whether the Free plan lets us shrink that
+        pool is unclear; worth checking.</li>
+      <li><b>More RAM (paid compute upgrade):</b> the only option that removes swap outright.</li>
+      <li><b>Not helping:</b> restarting (swap refills within about an hour) and shrinking Postgres's cache
+        (only 15.6 MB of it is used).</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>

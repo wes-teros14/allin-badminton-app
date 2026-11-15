@@ -5,6 +5,8 @@ import { Paperclip, Trash2 } from 'lucide-react'
 import { computeStatsFromResults } from '@/lib/matchResults'
 import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { supabase } from '@/lib/supabase'
+import { sessionTopic, userTopic } from '@/lib/liveChannel'
+import { listenLive } from '@/hooks/useLiveChannel'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { derivePaymentState } from '@/lib/paymentState'
 import { MAX_RECEIPTS_PER_SESSION } from '@/lib/receipts'
@@ -336,7 +338,7 @@ function ScheduleTab({
     refresh()
     refreshCourts()
   }, [refresh, refreshCourts])
-  const { status } = useRealtime(resolvedId, refreshAll, 'live-board', {
+  const { status } = useRealtime(resolvedId, refreshAll, {
     onPoll: courtsClosed ? undefined : refreshCourts,
   })
   const { phoneNumber, qrCodeUrl, isLoading: paymentSettingsLoading } = usePaymentSettings()
@@ -660,13 +662,12 @@ function LeaderboardTab({ sessionId }: { sessionId: string }) {
   loadRef.current = load
   useEffect(() => {
     const reload = createCoalescedRunner(() => loadRef.current(), () => coalesceDelay())
-    const channel = supabase
-      .channel(`session-leaderboard-rt-${sessionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_results' }, () => reload.schedule())
-      .subscribe()
+    const stopListening = listenLive(sessionTopic(sessionId), (message) => {
+      if (message.table === 'match_results') reload.schedule()
+    })
     return () => {
       reload.cancel()
-      supabase.removeChannel(channel)
+      stopListening()
     }
   }, [sessionId])
 
@@ -762,31 +763,25 @@ export function SessionPlayerDetailView() {
   }, [sessionId, user])
 
   // When an admin confirms payment, the player's card should follow without a
-  // manual reload. session_registrations is already in the realtime publication
-  // (072), and RLS scopes the event to this player's own row.
+  // manual reload. The player's private user:<id> topic carries their own
+  // registration changes (migration 089).
   useEffect(() => {
     if (!sessionId || !user) return
-    const channel = supabase
-      .channel(`my-registration:${sessionId}:${user.id}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'session_registrations',
-        filter: `session_id=eq.${sessionId}`,
-      }, () => {
-        supabase
-          .from('session_registrations')
-          .select('player_id, paid, payment_exempt')
-          .eq('session_id', sessionId)
-          .eq('player_id', user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            const r = data as { player_id: string; paid: boolean | null; payment_exempt: boolean | null } | null
-            setIsRegistered(r != null)
-            setPaid(r?.paid ?? null)
-            setExempt(r?.payment_exempt ?? null)
-          })
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return listenLive(userTopic(user.id), (message) => {
+      if (message.table !== 'session_registrations' || message.session_id !== sessionId) return
+      supabase
+        .from('session_registrations')
+        .select('player_id, paid, payment_exempt')
+        .eq('session_id', sessionId)
+        .eq('player_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          const r = data as { player_id: string; paid: boolean | null; payment_exempt: boolean | null } | null
+          setIsRegistered(r != null)
+          setPaid(r?.paid ?? null)
+          setExempt(r?.payment_exempt ?? null)
+        })
+    })
   }, [sessionId, user])
 
   async function handleRegister() {
