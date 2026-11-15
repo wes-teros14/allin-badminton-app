@@ -5,6 +5,8 @@ const ROOT = 'D:/ZZWES/wApps/Badminton_v2_app/badminton-v2'
 const tpl = fs.readFileSync(`${S}/magnet.tpl.html`, 'utf8')
 const art = tpl.slice(tpl.indexOf('/* ---------- tiny seeded random'), tpl.indexOf('/* ---------- stats card'))
 const data = JSON.parse(fs.readFileSync(`${S}/players.json`, 'utf8'))
+// Party attendees with no board placing (guest account, or under 3 sessions) get a welcome card instead of stats
+const WELCOME = ['Jeff', 'Earl', 'Ron & Cat']   // Ron and Cat share one card
 const logo = fs.readFileSync(`${ROOT}/docs/xmas2026/bunny-racket.png`).toString('base64')
 
 const html = `<!doctype html>
@@ -39,14 +41,14 @@ const html = `<!doctype html>
 <body>
 <div class="bar">
   <h1>Xmas ref magnets · 2 × 3 in</h1>
-  <p>${data.players.length} players · prod data through the ${data.asOf} session · PNG = 600 × 900 px (300 dpi), photo window transparent</p>
+  <p>${data.players.length} players + ${WELCOME.length} welcome cards · prod data through the ${data.asOf} session · PNG = 600 × 900 px (300 dpi), photo window transparent</p>
   <span class="seg" id="mode"><button data-v="hl" aria-pressed="true">Highlights</button><button data-v="full" aria-pressed="false">Full list</button></span>
-  <button class="pri" id="all">Download all PNGs (${data.players.length * 2})</button>
+  <button class="pri" id="all">Download all PNGs (${(data.players.length + WELCOME.length) * 2})</button>
 </div>
 <main id="grid"></main>
 <script>
 const LOGO = "data:image/png;base64,${logo}";
-const PLAYERS = ${JSON.stringify(data.players)};
+const PLAYERS = ${JSON.stringify([...data.players, ...WELCOME.map((name) => ({ name, welcome: true, items: [], places: 0, top3: 0, first: 0 }))])};
 const W = 600, H = 900;
 const PHOTO = {x:40, y:78, w:520, h:762, r:18};
 let HOLE = false;
@@ -93,10 +95,10 @@ function rowsFor(p){
 }
 function cardSVG(p){
   const t = tilesFor(p), HH = 80, TH = CARD.tileH, RH = 31;
-  const list = MODE === "full" ? rowsFor(p) : null;
+  const list = MODE === "full" && !p.welcome ? rowsFor(p) : null;
   const split = ({1:[1],2:[2],3:[3],4:[2,2],5:[3,2],6:[3,3]})[t.length] || [];
   const listRows = list ? Math.ceil(list.length / (list.length > 1 ? 2 : 1)) : 0;
-  const bodyH = list ? listRows*RH + 6 : split.length*TH;
+  const bodyH = p.welcome ? TH : list ? listRows*RH + 6 : split.length*TH;
   const ph = HH + bodyH, x0 = 30, y0 = H - 30 - ph, cw = 540;
   const pos = []; split.forEach((n, r) => { for (let c = 0; c < n; c++) pos.push({ r, c, w: cw / n }); });
   const medal = r => r===1 ? "#b8862b" : r===2 ? "#7d8591" : r===3 ? "#a8643a" : null;
@@ -109,6 +111,15 @@ function cardSVG(p){
       <rect x="\${x0}" y="\${y0+HH-6}" width="\${cw}" height="6" fill="url(#stripe)"/>
       <text x="\${x0+BUN.nameX}" y="\${y0+44}" font-size="\${p.name.length>9?30:36}" font-weight="700" fill="#fff">\${esc(p.name)}</text>
       <text x="\${x0+BUN.nameX+1}" y="\${y0+64}" font-size="13.5" letter-spacing="1" fill="#fff" opacity=".88">BADMINTON TAYO!</text>\`;
+  const bunny = \`<svg id="bun" x="\${x0+BUN.x}" y="\${y0+BUN.y}" width="\${(BUN.h*119/165).toFixed(1)}" height="\${BUN.h}" viewBox="49 49 119 165"><image href="\${LOGO}" width="193" height="237"/></svg>\`;
+  // Welcome card: for party guests with no leaderboard placing yet (guest account, or under 3 sessions)
+  if (p.welcome) {
+    const ty = y0 + HH, mid = x0 + cw/2;
+    s += \`<rect x="\${x0}" y="\${ty}" width="\${cw}" height="\${TH}" fill="#fbf3e2"/>
+      <text x="\${mid}" y="\${ty + TH*.47}" text-anchor="middle" font-size="\${CARD.bigFs - 4}" font-weight="700" fill="#6f3e87">Welcome to the court!</text>
+      <text x="\${mid}" y="\${ty + TH*.47 + CARD.labelFs + 8}" text-anchor="middle" font-size="\${CARD.labelFs}" fill="#1b1220">See you on court in 2027 🏸</text>\`;
+    return s + "</g>" + bunny;
+  }
   [[p.places,"PLACES","#fff"],[p.top3,"TOP 3","#fff"],[p.first,"1ST","#f3cf7a"]].forEach(([n,l,c],k)=>{
     // column width grows with the label size so PLACES never runs into TOP 3
     const colW = Math.max(56, CARD.totLabelFs * 4), cx = x0 + cw - 18 - colW/2 - (2 - k)*colW;
@@ -194,7 +205,7 @@ function png(theme, p){
 // ids inside each inline SVG must be unique on the page
 const uniq = (svg, k) => svg.replace(/id="([\\w-]+)"/g, \`id="$1-\${k}"\`).replace(/url\\(#([\\w-]+)\\)/g, \`url(#$1-\${k})\`);
 function render(){ document.getElementById("grid").innerHTML = PLAYERS.map((p, i) => \`
-  <section class="p"><h2>\${esc(p.name)} <span>\${p.places} places · \${p.top3} top 3 · \${p.first} first</span></h2>
+  <section class="p"><h2>\${esc(p.name)} <span>\${p.welcome ? "welcome card · no board placing yet" : \`\${p.places} places · \${p.top3} top 3 · \${p.first} first\`}</span></h2>
   <div class="two">\${FRAMES.map((t, j) => \`<figure>\${uniq(magnetSVG(t, p, false), i + "-" + j)}
     <figcaption>\${t.id === "candy" ? "A · Candy Cane" : "D · Snow Ticket"}<br><button data-p="\${i}" data-t="\${j}">PNG</button></figcaption></figure>\`).join("")}</div></section>\`).join(""); }
 if (!window.TUNE) render();

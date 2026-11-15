@@ -8,8 +8,11 @@
 
 import { supabase } from '@/lib/supabase'
 
-/** Completed sessions that count as "recently". */
-export const RECENT_SESSIONS_WINDOW = 4
+/**
+ * Completed sessions that count as "recently". Raised from 4 to 5 on 2026-11-15 so a regular
+ * who misses a month (Ging: 8 sessions, last 18 Oct) stays on the boards through the Xmas party.
+ */
+export const RECENT_SESSIONS_WINDOW = 5
 
 /**
  * Sessions a player must have attended to appear anywhere. On the partnership

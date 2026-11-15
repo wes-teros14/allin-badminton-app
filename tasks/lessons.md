@@ -855,3 +855,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: owner saw the live board "disconnect" after a while — each court's game number and players vanished.
 - Root cause: `useCourtState` treated a failed query as an empty one. `fetchMatches` returned `null` on error and the hook used `rows ?? []`, redrawing every court blank; the session query's `error` was never read, so a timeout looked like "No active session". Prod's NANO database still times out occasionally (9 Realtime "Too many database timeouts" on Nov 14). The 30 s safety poll (Oct 4 fix) kept the blank up for up to 30 s.
 - Fix: failures throw `CourtLoadFailed`, so no court state is overwritten; `loadFailed` is exposed; retry with backoff 5/10/20/30 s (`retryDelayAfterFailures`, `lib/realtimePolicy.ts`); live board shows a bottom-centre "Reconnecting…" badge and "Can't reach the server — retrying…" when the first load fails. Verified in browser with a patched `supabase.from` (fake game, then simulated timeouts): game stayed, retries at 0/5/15 s, badge cleared on recovery.
+
+## 2026-11-15: "A hook gave no usable answer" on every search/read
+- Symptom: Claude Code notice on Bash/Grep/Read/Glob calls; the graphify guard never ran.
+- Root cause: tracked `.claude/settings.json` hard-coded `C:/Users/MarkWesleyAncog/.local/bin/graphify.EXE` (another machine's user folder); on this machine graphify is `C:/Users/yonex/.local/bin/graphify`.
+- Fix: hooks call bare `graphify hook-guard search|read` (resolved from PATH on any machine). Tested both: exit 0 with valid hook JSON.

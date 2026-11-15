@@ -12,7 +12,7 @@
  *
  * Equal averages go to whoever was 1st more often; a tie on both shares the
  * place. Only players eligible for the boards (still active: in one of the
- * last 4 sessions) are placed. The top EARLY_BIRD_PLACES are shown.
+ * last RECENT_SESSIONS_WINDOW sessions) are placed. The top EARLY_BIRD_PLACES are shown.
  * (History: a points total from 2026-10-04, briefly over the last 8 sessions.)
  *
  * It replaced "first to register for the session with the latest date", which
