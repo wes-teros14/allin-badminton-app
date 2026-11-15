@@ -286,8 +286,8 @@ function cardSVG(p){
   if (p.welcome) {
     const ty = y0 + HH, mid = x0 + cw/2;
     s += `<rect x="${x0}" y="${ty}" width="${cw}" height="${TH}" fill="#fbf3e2"/>
-      <text x="${mid}" y="${ty + TH*.47}" text-anchor="middle" font-size="${CARD.bigFs - 4}" font-weight="700" fill="#6f3e87">Welcome to the court!</text>
-      <text x="${mid}" y="${ty + TH*.47 + CARD.labelFs + 8}" text-anchor="middle" font-size="${CARD.labelFs}" fill="#1b1220">See you on court in 2027 🏸</text>`;
+      <text x="${mid}" y="${ty + TH*.47}" text-anchor="middle" font-size="${CARD.bigFs - 4}" font-weight="700" fill="#6f3e87">Merry Christmas</text>
+      <text x="${mid}" y="${ty + TH*.47 + CARD.labelFs + 8}" text-anchor="middle" font-size="${CARD.labelFs}" fill="#1b1220">from Badminton Tayo! 🎄</text>`;
     return s + "</g>" + bunny;
   }
   [[p.places,"PLACES","#fff"],[p.top3,"TOP 3","#fff"],[p.first,"1ST","#f3cf7a"]].forEach(([n,l,c],k)=>{
