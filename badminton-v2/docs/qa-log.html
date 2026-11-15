@@ -349,6 +349,17 @@
   </div>
 
   <div class="qa">
+    <p class="q">Why was Ging dropped from the leaderboards (and the Xmas magnets) after the 15 Nov session?</p>
+    <p class="a">
+      Every all-time board and award only ranks players who pass <code>fetchEligiblePlayerIds</code>
+      (<code>lib/boardEligibility.ts</code>): 3+ sessions attended, not a guest account, and registered for at least one of the
+      last 4 finished sessions (<code>RECENT_SESSIONS_WINDOW = 4</code>). Ging’s last finished session was 18 Oct. When 15 Nov
+      was finished, the window became 25 Oct · 1 Nov · 8 Nov · 15 Nov, so 18 Oct fell out and Ging left every board at once.
+      Nothing is deleted: Ging is registered for 22 Nov, and finishing that session puts Ging straight back.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">I need dummy accounts for walk-ins whose stats count for the session only, not the all-time leaderboard. How?</p>
     <p class="a">
       Every account needs an <code>auth.users</code> row (the <code>handle_new_user</code> trigger makes the profile), so a
