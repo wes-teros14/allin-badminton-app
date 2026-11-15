@@ -4,6 +4,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { useProfileStats } from '@/hooks/useProfileStats'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
+import { userTopic } from '@/lib/liveChannel'
+import { listenLive } from '@/hooks/useLiveChannel'
 import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
 import { fetchMatchAwards } from '@/lib/matchAwardsData'
@@ -286,14 +288,9 @@ export function ProfileView() {
 
   useEffect(() => {
     if (!user?.id) return
-    const channel = supabase
-      .channel(`profile-stats-${user.id}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'player_stats',
-        filter: `player_id=eq.${user.id}`,
-      }, () => { refresh() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return listenLive(userTopic(user.id), (message) => {
+      if (message.table === 'player_stats') refresh()
+    })
   }, [user?.id, refresh])
 
   async function handleSaveNickname() {

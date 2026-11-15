@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live updates: Postgres Changes vs Broadcast</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --ink:#e7e9ee; --muted:#9aa3b2; --line:#2a2f3a;
+          --bad:#f87171; --good:#4ade80; --accent:#60a5fa; --amber:#fbbf24; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; max-width: 70ch; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .card h2 { font-size:17px; margin:0 0 4px; }
+  .tag { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+  .tag.bad { color:var(--bad); } .tag.good { color:var(--good); }
+  svg { width:100%; height:auto; display:block; margin:10px 0 6px; }
+  svg text { fill: var(--ink); font: 12px system-ui, sans-serif; }
+  svg .muted { fill: var(--muted); }
+  ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); }
+  li { margin: 4px 0; }
+  li b { color: var(--ink); }
+  .stats { display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin: 24px 0; }
+  @media (max-width: 760px) { .stats { grid-template-columns: 1fr; } }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .stat .n { font-size: 26px; font-weight: 700; }
+  .stat .l { color: var(--muted); font-size: 13px; }
+  .note { border: 1px solid rgba(251, 191, 36, .35); background: #2a2210; color: #fde68a;
+          border-radius: 10px; padding: 12px 14px; margin-top: 20px; }
+  h2.sec { font-size: 19px; margin: 32px 0 8px; }
+  h3.sub { font-size: 15px; margin: 22px 0 4px; color: var(--muted); font-weight: 600; }
+  ol.chain { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  ol.chain li { display: flex; gap: 12px; align-items: flex-start; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  ol.chain .step { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #3b1d1d;
+    color: var(--bad); font-weight: 700; display: grid; place-items: center; font-size: 13px; }
+  ol.chain b { color: var(--ink); }
+  ol.chain div { color: var(--muted); }
+  svg.timeline { min-width: 640px; }
+  .scroll { overflow-x: auto; }
+  @keyframes pulse { 0%,100% { opacity:.25 } 50% { opacity:1 } }
+  .poll { animation: pulse 0.9s infinite; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Live updates: Postgres Changes vs Broadcast</h1>
+  <p class="lead">How every phone learns that a game changed. Today the database is asked “anything new?”
+    non-stop. With Broadcast it speaks only when something actually changes. Numbers measured on prod,
+    Nov 15 2026.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="n">49%</div><div class="l">of all DB time is the change poll
+      (263 s of 539 s since the 16:12 restart)</div></div>
+    <div class="stat"><div class="n">21,627</div><div class="l">poll calls in ~4 h, 12.2 ms each,
+      even when nothing changed</div></div>
+    <div class="stat"><div class="n">15.6 MB</div><div class="l">of the 224 MB cache in use, so shrinking
+      the cache would free nothing</div></div>
+  </div>
+
+  <h2 class="sec">What is happening now</h2>
+  <p class="lead">The server is a free NANO box with 406 MB of RAM. The programs on it (Postgres and its 28
+    connections, the API, Realtime's connections, the metrics exporter) hold about 520 MB. What doesn't fit
+    sits in <b>swap</b>, which is slow disk pretending to be memory. Swap held 230–370 MB all day on Nov 15.
+    The data itself is tiny (24 MB). This is a memory problem, not a data or traffic problem. Details:
+    <code>prod-memory-explained.html</code>.</p>
+
+  <ol class="chain">
+    <li><span class="step">1</span><div><b>Most memory is in swap.</b> Idle parts of each service are pushed
+      to disk. That's harmless until something needs them back.</div></li>
+    <li><span class="step">2</span><div><b>The change poll keeps needing them.</b> Realtime asks Postgres
+      “anything new?” about 1.5× a second, all session long. The poll is 49% of all database time. Sooner or
+      later it touches a swapped page and has to wait for the disk.</div></li>
+    <li><span class="step">3</span><div><b>One slow query becomes a queue.</b> While it waits, other queries
+      pile up behind it. Every table answered in ~5.5 s at once at 16:02. Postgres starts cancelling
+      statements (<code>statement_timeout</code>), and Realtime logs “Too many database timeouts”.</div></li>
+    <li><span class="step">4</span><div><b>20 phones make it worse.</b> Every phone sees the stall at the
+      same moment. Each one refetches, reconnects and retries, so the box gets more work exactly when it
+      can least handle it.</div></li>
+    <li><span class="step">5</span><div><b>A restart doesn't clear it.</b> A restart drops swap only
+      368 → 230 MB, and it refills within about an hour. Restarting mid-session cuts everyone off, then all
+      the phones reconnect at once to a cold server.</div></li>
+  </ol>
+
+  <h3 class="sub">Nov 15 session (Manila time)</h3>
+  <div class="scroll"><svg class="timeline" viewBox="0 0 960 150" role="img" aria-label="Timeline of the Nov 15 session from 14:00 to 17:00">
+    <line x1="40" y1="70" x2="920" y2="70" stroke="#2a2f3a" stroke-width="2"/>
+    <!-- scale: 14:00 at x=40, 17:00 at x=920 → 4.889 px per minute -->
+    <g class="muted"><text x="40" y="140" text-anchor="middle">14:00</text><text x="333" y="140" text-anchor="middle">15:00</text>
+      <text x="627" y="140" text-anchor="middle">16:00</text><text x="920" y="140" text-anchor="middle">17:00</text></g>
+    <rect x="333" y="60" width="587" height="20" rx="4" fill="#1d2a1f"/>
+    <text x="626" y="54" text-anchor="middle" class="muted">session · mostly ~65 ms per request</text>
+    <circle cx="123" cy="70" r="7" fill="#fbbf24"/><text x="123" y="100" text-anchor="middle">14:17 restart</text>
+    <text x="123" y="116" text-anchor="middle" class="muted">swap 368→230 MB</text>
+    <circle cx="597" cy="70" r="6" fill="#fbbf24"/><text x="580" y="100" text-anchor="middle">15:54</text>
+    <text x="580" y="116" text-anchor="middle" class="muted">5.7 s query</text>
+    <circle cx="637" cy="70" r="6" fill="#f87171"/><text x="655" y="34" text-anchor="middle">16:02 every table ~5.5 s</text>
+    <rect x="671" y="58" width="49" height="24" rx="4" fill="#7f1d1d"/>
+    <text x="696" y="100" text-anchor="middle" fill="#f87171">16:09 restart → down</text>
+    <text x="696" y="116" text-anchor="middle" class="muted">then 30–137 s requests until 16:19</text>
+    <circle cx="822" cy="70" r="6" fill="#fbbf24"/><text x="822" y="34" text-anchor="middle">16:40 slow burst (p95 9.9 s)</text>
+  </svg></div>
+
+  <h2 class="sec">The fix: stop asking, start telling</h2>
+  <div class="grid">
+    <section class="card">
+      <span class="tag bad">Today</span>
+      <h2>Postgres Changes</h2>
+      <svg viewBox="0 0 440 230" role="img" aria-label="Realtime polls the database continuously and checks each change for every phone">
+        <rect x="10" y="80" width="120" height="70" rx="10" fill="#1f2430" stroke="#f87171"/>
+        <text x="70" y="110" text-anchor="middle">Postgres</text>
+        <text x="70" y="128" text-anchor="middle" class="muted">400 MB RAM, in swap</text>
+        <rect x="180" y="80" width="110" height="70" rx="10" fill="#1f2430" stroke="#2a2f3a"/>
+        <text x="235" y="110" text-anchor="middle">Realtime</text>
+        <text x="235" y="128" text-anchor="middle" class="muted">server</text>
+        <line x1="180" y1="100" x2="130" y2="100" stroke="#f87171" stroke-width="2" class="poll"/>
+        <text x="155" y="92" text-anchor="middle" class="muted">poll</text>
+        <line x1="130" y1="130" x2="180" y2="130" stroke="#f87171" stroke-width="2"/>
+        <text x="155" y="148" text-anchor="middle" class="muted">RLS ×20</text>
+        <g>
+          <rect x="340" y="20" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="40" text-anchor="middle">phone</text>
+          <rect x="340" y="70" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="90" text-anchor="middle">phone</text>
+          <rect x="340" y="120" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="140" text-anchor="middle">phone</text>
+          <rect x="340" y="170" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="190" text-anchor="middle">board</text>
+          <line x1="290" y1="115" x2="340" y2="35" stroke="#2a2f3a"/><line x1="290" y1="115" x2="340" y2="85" stroke="#2a2f3a"/>
+          <line x1="290" y1="115" x2="340" y2="135" stroke="#2a2f3a"/><line x1="290" y1="115" x2="340" y2="185" stroke="#2a2f3a"/>
+        </g>
+      </svg>
+      <ul>
+        <li><b>Asks continuously</b> while anyone has the app open (≈1.5×/s).</li>
+        <li><b>Checks access for every change × every phone</b> inside the database.</li>
+        <li>It keeps touching memory that is in swap, so it is the first query to stall.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <span class="tag good">Plan</span>
+      <h2>Broadcast from the database</h2>
+      <svg viewBox="0 0 440 230" role="img" aria-label="A trigger sends one message per change; Realtime fans it out to phones">
+        <rect x="10" y="80" width="120" height="70" rx="10" fill="#1f2430" stroke="#4ade80"/>
+        <text x="70" y="106" text-anchor="middle">Postgres</text>
+        <text x="70" y="124" text-anchor="middle" class="muted">trigger on write</text>
+        <text x="70" y="140" text-anchor="middle" class="muted">→ “changed”</text>
+        <rect x="180" y="80" width="110" height="70" rx="10" fill="#1f2430" stroke="#2a2f3a"/>
+        <text x="235" y="110" text-anchor="middle">Realtime</text>
+        <text x="235" y="128" text-anchor="middle" class="muted">fan-out</text>
+        <line x1="130" y1="115" x2="180" y2="115" stroke="#4ade80" stroke-width="2"/>
+        <text x="155" y="107" text-anchor="middle" class="muted">push</text>
+        <g>
+          <rect x="340" y="20" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="40" text-anchor="middle">phone</text>
+          <rect x="340" y="70" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="90" text-anchor="middle">phone</text>
+          <rect x="340" y="120" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="140" text-anchor="middle">phone</text>
+          <rect x="340" y="170" width="80" height="30" rx="7" fill="#1f2430" stroke="#2a2f3a"/><text x="380" y="190" text-anchor="middle">board</text>
+          <line x1="290" y1="115" x2="340" y2="35" stroke="#4ade80"/><line x1="290" y1="115" x2="340" y2="85" stroke="#4ade80"/>
+          <line x1="290" y1="115" x2="340" y2="135" stroke="#4ade80"/><line x1="290" y1="115" x2="340" y2="185" stroke="#4ade80"/>
+        </g>
+        <text x="380" y="220" text-anchor="middle" class="muted">each phone refetches (as today)</text>
+      </svg>
+      <ul>
+        <li><b>Silent when nothing changes</b>, so there is no poll.</li>
+        <li><b>Access checked once</b>, when a phone joins its topic.</li>
+        <li>Topics: <code>session:&lt;id&gt;</code> (games, results, roster, receipts) and
+          <code>user:&lt;id&gt;</code> (notifications, stats, my registrations).</li>
+        <li>Phones keep the same refetch, 30 s safety poll and keep-last-good board.</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="note"><b>What this will not fix:</b> the swap itself. The box still has 406 MB of RAM for about
+    520 MB of programs. It removes about half the database work and the constant poll, so stalls should be rarer. If
+    they continue, the remaining fix is a compute upgrade. Plan and steps: <code>tasks/todo.md</code>.</div>
+</main>
+</body>
+</html>

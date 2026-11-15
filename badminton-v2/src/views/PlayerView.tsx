@@ -413,7 +413,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
     refresh()
     refreshCourts()
   }, [refresh, refreshCourts])
-  const { status } = useRealtime(sessionId, refreshAll, 'live-board', {
+  const { status } = useRealtime(sessionId, refreshAll, {
     onPoll: courtsClosed ? undefined : refreshCourts,
   })
 

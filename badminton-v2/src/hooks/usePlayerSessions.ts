@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { userTopic } from '@/lib/liveChannel'
+import { listenLive } from '@/hooks/useLiveChannel'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 
 export interface SessionRegistrant {
@@ -265,18 +267,13 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
     }
 
     load()
-    const channel = supabase
-      .channel(`player-sessions:${playerId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'session_registrations', filter: `player_id=eq.${playerId}` },
-        () => { void load({ background: true }) }
-      )
-      .subscribe()
+    const stopListening = listenLive(userTopic(playerId), (message) => {
+      if (message.table === 'session_registrations') void load({ background: true })
+    })
 
     return () => {
       cancelled = true
-      supabase.removeChannel(channel)
+      stopListening()
     }
   }, [playerId])
 

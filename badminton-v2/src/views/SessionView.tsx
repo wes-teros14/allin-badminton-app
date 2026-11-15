@@ -144,7 +144,7 @@ function LiveSessionView({
 }) {
   const { courts, queued, finished, sessionId: sid, sessionName, sessionDate, subPicks, isLoading, refresh } =
     useAdminSession(sessionId)
-  const { status } = useRealtime(sid, refresh, 'session')
+  const { status } = useRealtime(sid, refresh)
 
   // Skip the mount run: useAdminSession already loads once on its own.
   const lastDetailsVersion = useRef(detailsVersion)
