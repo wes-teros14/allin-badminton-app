@@ -747,9 +747,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **`moveUp` / `moveDown` are not atomic** (`useAdminActions.ts:43-75`): three sequential updates
   using `queue_position: 9999` as a sentinel, so mid-reorder the server's own ordering is briefly
   half-written. A concurrent finish can then pick its next game from an inconsistent order.
-- **The kiosk has no connection indicator.** `LiveBoardView.tsx` still discards `useRealtime`'s
-  `status` for display (it now only drives the poll interval), so if the gym wifi drops, the tablet
-  shows a stale board with a pulsing LIVE badge and no warning.
+- **Court state keeps the last good board on a failed reload** (since 2026-11-15). `useCourtState`
+  throws `CourtLoadFailed` instead of treating an errored query as empty (that used to blank every
+  court on one DB timeout), exposes `loadFailed`, and retries with backoff 5/10/20/30 s. The live board
+  shows a bottom-centre "Reconnecting…" badge on `loadFailed` or Realtime `disconnected`. Player
+  views (`PlayerView`, `SessionPlayerDetailView`) get the keep-last-good behaviour but no badge.
 
 - **A Supabase `service_role` key for the *production* project is in git history.** It sits inside a
   permission-allowlist string in `.claude/settings.local.json`, committed in `1d72e9b` (2026-04-05)

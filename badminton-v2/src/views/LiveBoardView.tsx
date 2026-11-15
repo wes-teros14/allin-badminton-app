@@ -8,8 +8,12 @@ import { useAnnouncer } from '@/hooks/useAnnouncer'
 
 export function LiveBoardView() {
   const { sessionId: sessionIdParam } = useParams<{ sessionId?: string }>()
-  const { courts, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, isReloading, refresh } = useCourtState(sessionIdParam)
-  useRealtime(sessionId, refresh, 'live-board', { onPoll: isClosed ? undefined : refresh })
+  const { courts, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, isReloading, loadFailed, refresh } = useCourtState(sessionIdParam)
+  const { status } = useRealtime(sessionId, refresh, 'live-board', { onPoll: isClosed ? undefined : refresh })
+  // The board keeps its last good data when a reload fails, so it can be out of
+  // date without looking it — say so. Realtime's own 'reconnecting' is skipped:
+  // it is also the state before the first subscribe, and the polls cover it.
+  const showReconnecting = !isClosed && (loadFailed || status === 'disconnected')
   const announcer = useAnnouncer({ sessionId, courts, isLoading })
   const [isPortrait, setIsPortrait] = useState(false)
 
@@ -43,7 +47,21 @@ export function LiveBoardView() {
 
       {!isLoading && !hasSession && !isClosed && (
         <div className="h-full flex items-center justify-center">
-          <p className="text-muted-foreground text-lg">No active session</p>
+          <p className="text-muted-foreground text-lg">
+            {loadFailed ? 'Can’t reach the server — retrying…' : 'No active session'}
+          </p>
+        </div>
+      )}
+
+      {/* Bottom centre: the court headers (timer, LIVE) run along the top, the
+          announcer button sits bottom left. */}
+      {showReconnecting && hasSession && (
+        <div
+          role="status"
+          className="absolute bottom-3 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-400/40 bg-background/90 px-4 py-1.5 text-sm font-semibold tracking-wide text-amber-400 shadow-lg"
+        >
+          <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
+          Reconnecting… board may be out of date
         </div>
       )}
 
