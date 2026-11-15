@@ -1,4 +1,4 @@
-# Live updates: Postgres Changes → Broadcast — plan (2026-11-15, DEV done; prod not started)
+# Live updates: Postgres Changes → Broadcast — plan (2026-11-15, live on prod)
 
 Why (measured on prod, Nov 15): the box is short of memory (≈400 MB RAM, 230–370 MB in swap, commitment
 1.3 GB). The fixes we tried don't work: restarting (swap refills in about an hour) and lowering
@@ -67,7 +67,9 @@ poll, and stalls should be rarer. If stalls continue after this, the only fix le
          leftover poll was still running.
        - One device's channel errored twice at 16.5 min and rejoined within 3 s with no missed
          updates. Cause unclear.
-- [ ] 5. Prod rollout, on a day without a session: run the migration (owner runs `db push` to prod),
+- [x] 5. Prod rollout, Nov 15 ~21:40, after the session. 089 was applied via MCP apply_migration (only 089; owner asked),
+       verified with a rolled-back dry run, then main deployed. The logged-out board's private join was authorized on prod.
+       Originally planned as: run the migration (owner runs `db push` to prod),
        then deploy.
 - [ ] 6. Once every phone is on the new version, remove the tables from the `supabase_realtime`
        publication. Old cached app versions then fall back to the 30 s poll.

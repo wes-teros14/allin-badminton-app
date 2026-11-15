@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-12
+Last updated: 2026-11-15
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -105,29 +105,52 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 ## Capacity (Free plan) — read before adding polling or Realtime
 
-- **Prod runs on the Supabase Free plan, NANO compute (~0.5 GB RAM). The owner does not want to pay.**
-  Memory, not CPU or query time, is the constraint. Measured 2026-11-15: 477 MB RAM, ~340–380 MB swap
-  all day at idle, memory commitment 1.36 GB ("Severe"), `shared_buffers` 224 MB, DB only 24 MB, disk
-  ~idle. Stalls (12 s Realtime poll, statement timeouts) happen even with one user. Free plan keeps
-  only 1 day of dashboard metrics and 24 h of logs — investigate the same day.
-- **2026-10-04 outage:** ~15:40–17:05 Manila the DB stalled (statement timeouts, Realtime
-  "Too many database timeouts", gateway 522/524, no crash/restart) under ~2 req/s from ~12 phones.
-  Half the requests were the court state's fixed 5 s poll. Full analysis: `docs/qa-log.html`
-  (Supabase/outage entries) and `tasks/lessons.md`.
-- **Polling policy (since 2026-10-04):** a poll beside a Realtime channel is a safety net —
-  `useRealtime({ onPoll })` polls 30 s while subscribed, 5 s only when not
-  (`lib/realtimePolicy.ts`). Change events are coalesced (300 ms + ≤700 ms jitter). Don't add a fixed
-  short interval anywhere.
-- **Channel topics must be unique per hook instance** — `supabase.channel(topic)` returns the existing
-  channel for a reused topic, so two components on one page silently shared one.
-- **Subscribe narrowly:** filter server-side where the table allows it; subscribe only while a session
-  is live (cheers gate, Today leaderboard). `match_results` has no `session_id`, so its listeners stay
-  unfiltered — and they can't be swapped for a `matches` listener because the result row is inserted
-  *after* the match update.
-- **Free mitigations in place:** restart the project (Project Settings → General → Restart project)
-  15–30 min before a session or mid-freeze; avoid the dashboard during play; `pg_net` dropped (083).
-- **Not done, by choice:** Pro/compute upgrade (cost); moving to Realtime Broadcast (unproven benefit,
-  revisit only if the 2026-10-04 changes are not enough).
+- **Prod runs on the Supabase Free plan, NANO compute: 406.5 MB of RAM (the dashboard tooltip figure,
+  not the 477 axis tick). The owner does not want to pay.**
+  - The constraint is memory, not CPU or query time.
+  - Programs hold ~520 MB: ~175 MB in RAM plus 230–370 MB in swap, which stays high all day, even
+    before a session.
+  - The 1.24–1.31 GB "memory commitment" is memory *promised* to programs, not memory used. The limit
+    is 1.4 GB.
+  - The DB is only 24 MB. The overhead is Supabase's own stack: 28 Postgres processes (PostgREST 11,
+    Realtime 7, workers 7, other 3), and it doesn't grow with the number of phones.
+  - The Free plan keeps only 1 day of metrics and 24 h of logs, so investigate the same day.
+  - Visual: `docs/visual/prod-memory-explained.html`.
+- **Disproved fixes (2026-11-15), don't re-propose:**
+  - Restarting before a session: the dashboard restart is Postgres-only. Swap went 368 → 230 MB and
+    refilled within ~1 h.
+  - Restarting mid-session: the 16:09 restart caused 3 min down, then ~7 min of 30–137 s requests.
+  - Lowering `shared_buffers`: only 15.6 MB of 224 MB is ever filled, and there are no huge pages.
+- **2026-10-04 outage:** ~15:40–17:05 Manila the DB stalled (statement timeouts, Realtime "Too many
+  database timeouts", gateway 522/524, no crash or restart) under ~2 req/s from ~12 phones. Half the
+  requests were the court state's fixed 5 s poll. Full analysis: `docs/qa-log.html` and
+  `tasks/lessons.md`.
+- **Live updates use Realtime Broadcast (since 2026-11-15, migration 089).**
+  - Triggers send a "changed" message to private topics:
+    - `session:<id>` for matches, results, sessions, registrations and receipts;
+    - `user:<id>` for notifications (with the row), player_stats and own registrations.
+  - Access rules on `realtime.messages`:
+    - anyone, including the logged-out board, may receive `session:*`;
+    - only the owner may receive `user:<id>`;
+    - no client can send.
+  - The client shares one channel per topic per phone through `lib/liveChannel.ts`, using
+    `useLiveChannel` / `listenLive`. Never call `supabase.channel()` directly for live updates.
+  - Why: the Postgres Changes poll was 49% of DB time and the first query to stall. On DEV, a
+    20-device simulation showed −48% DB time. On prod the poll stopped right after the deploy.
+  - Realtime keeps polling ~10 min after the last Postgres Changes subscriber leaves.
+  - The tables are still in the `supabase_realtime` publication. Removing them is an optional later
+    step.
+- **Polling policy (since 2026-10-04):** a poll beside a live channel is only a safety net.
+  `useRealtime({ onPoll })` polls every 30 s while connected and every 5 s while not
+  (`lib/realtimePolicy.ts`). Changes are coalesced (300 ms + ≤700 ms jitter). Failed reloads retry at
+  5/10/20/30 s. Don't add a fixed short interval anywhere.
+- **Load test:** `scripts/loadtest/session-sim.mjs` runs N phones on DEV in `--mode changes|broadcast`.
+  It refuses to run against anything but DEV, and it restores the session afterwards.
+- **Monitoring:** Supabase Observability → Custom reports → "Session health". It has the memory, CPU,
+  Realtime-connection and request charts, plus the SQL snippet "Session health score". The snippet
+  must use `extensions.pg_stat_statements`, schema-qualified, or it fails inside a report.
+- **Remaining fixes if stalls continue:** a paid compute upgrade (owner has declined so far). Moving
+  off Supabase was judged far more work than the problem is worth.
 
 ## Branching and commits
 
