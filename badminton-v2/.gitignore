@@ -42,3 +42,6 @@ dist-ssr
 
 # Xmas 2026 magnet build: prod player data dumps
 scripts/xmas2026/*.json
+
+# load-test output
+/scripts/loadtest/results/

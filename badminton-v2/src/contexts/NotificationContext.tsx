@@ -5,6 +5,10 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
 import { formatSessionStamp } from '@/lib/sessionStamp'
 import { cheerLine, summariseCheers } from '@/lib/cheerBacklog'
+import { userTopic } from '@/lib/liveChannel'
+import { useLiveChannel } from '@/hooks/useLiveChannel'
+
+const NOTIFICATION_TABLES = ['notifications'] as const
 
 interface NotificationState {
   unreadCount: number
@@ -195,46 +199,34 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     init()
   }, [user])
 
-  // Real-time subscription for new notifications
-  useEffect(() => {
-    if (!user) return
+  // Real-time: new notifications arrive on the player's private user:<id>
+  // Broadcast topic with the row attached (migration 089).
+  useLiveChannel(user ? userTopic(user.id) : null, NOTIFICATION_TABLES, (message) => {
+    const n = message.record as unknown as NotificationRow | undefined
+    if (!n || message.op !== 'INSERT') return
+    setUnreadCount(c => c + 1)
 
-    const channel = supabase
-      .channel(`notifications-rt-${user.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
-      }, (payload) => {
-        const n = payload.new as NotificationRow
-        setUnreadCount(c => c + 1)
-
-        if (n.type === 'receipt') {
-          // The session date needs one round trip, so the toast lands a moment
-          // after the row does. Worth it: without the date, two open sessions
-          // are indistinguishable to the admin reading this.
-          void fetchSessionStamps([n.related_id]).then(stamps => {
-            showReceiptToast([n], stamps, path => navigateRef.current(path))
-          })
-        } else if (n.type === 'cheer') {
-          toast(cheerLine(n.title, n.body), { duration: 20000, closeButton: true })
-        } else if (n.type === 'award') {
-          toast(`🏆 New award: ${n.body}!`, {
-            duration: 20000,
-            closeButton: true,
-            className: 'toast-award',
-            action: {
-              label: 'View',
-              onClick: () => navigateRef.current('/leaderboard?tab=awards'),
-            },
-          })
-        }
+    if (n.type === 'receipt') {
+      // The session date needs one round trip, so the toast lands a moment
+      // after the row does. Worth it: without the date, two open sessions
+      // are indistinguishable to the admin reading this.
+      void fetchSessionStamps([n.related_id]).then(stamps => {
+        showReceiptToast([n], stamps, path => navigateRef.current(path))
       })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [user])
+    } else if (n.type === 'cheer') {
+      toast(cheerLine(n.title, n.body), { duration: 20000, closeButton: true })
+    } else if (n.type === 'award') {
+      toast(`🏆 New award: ${n.body}!`, {
+        duration: 20000,
+        closeButton: true,
+        className: 'toast-award',
+        action: {
+          label: 'View',
+          onClick: () => navigateRef.current('/leaderboard?tab=awards'),
+        },
+      })
+    }
+  })
 
   // Mark all as read
   const markAllRead = useCallback(async () => {

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { computeStatsFromResults } from '@/lib/matchResults'
 import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { supabase } from '@/lib/supabase'
+import { sessionTopic } from '@/lib/liveChannel'
+import { listenLive } from '@/hooks/useLiveChannel'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 import { NoResultsYet } from '@/components/MatchBoard'
@@ -128,13 +130,12 @@ export function TodayView() {
   useEffect(() => {
     if (!liveSessionId) return
     const reload = createCoalescedRunner(() => loadRef.current(), () => coalesceDelay())
-    const channel = supabase
-      .channel(`today-leaderboard-rt-${liveSessionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_results' }, () => reload.schedule())
-      .subscribe()
+    const stopListening = listenLive(sessionTopic(liveSessionId), (message) => {
+      if (message.table === 'match_results') reload.schedule()
+    })
     return () => {
       reload.cancel()
-      supabase.removeChannel(channel)
+      stopListening()
     }
   }, [liveSessionId])
 

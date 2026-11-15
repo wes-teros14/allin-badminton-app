@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { sessionTopic } from '@/lib/liveChannel'
+import { listenLive } from '@/hooks/useLiveChannel'
 import type { PlayerInput } from '@/lib/matchGenerator'
 
 export type { PlayerInput as RegisteredPlayer }
@@ -106,18 +108,13 @@ export function useRegisteredPlayers(sessionId: string | undefined, refreshKey?:
       }
     }
 
-    const channel = supabase
-      .channel(`registered-players:${sessionId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'session_registrations', filter: `session_id=eq.${sessionId}` },
-        () => { void fetchPlayers() }
-      )
-      .subscribe()
+    const stopListening = listenLive(sessionTopic(sessionId), (message) => {
+      if (message.table === 'session_registrations') void fetchPlayers()
+    })
 
     return () => {
       isActive = false
-      supabase.removeChannel(channel)
+      stopListening()
     }
   }, [sessionId, refreshKey])
 

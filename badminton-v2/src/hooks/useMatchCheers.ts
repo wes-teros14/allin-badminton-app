@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { sessionTopic } from '@/lib/liveChannel'
+import { listenLive } from '@/hooks/useLiveChannel'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import type { CheerType } from '@/types/app'
@@ -180,19 +182,14 @@ export function useMatchCheers(sessionIds: string[], liveSessionIds: string[] = 
   // update in the database, from every session, on every player's phone.
   useEffect(() => {
     if (!liveKey) return
-    const channel = supabase
-      .channel(`match-cheers-rt-${liveKey}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'matches',
-        filter: `session_id=in.(${liveKey.split('|').join(',')})`,
-      }, (payload) => {
-        const row = payload.new as { status?: string }
-        if (row.status === 'complete') loadRef.current()
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    const stops = liveKey.split('|').map((sid) =>
+      listenLive(sessionTopic(sid), (message) => {
+        if (message.table === 'matches' && message.op === 'UPDATE' && message.status === 'complete') {
+          loadRef.current()
+        }
+      }),
+    )
+    return () => { for (const stop of stops) stop() }
   }, [liveKey])
 
   const pendingMatches = useMemo<PendingMatchCheer[]>(() => {

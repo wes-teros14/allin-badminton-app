@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Broadcast Simulation Results</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --ink:#e7e9ee; --muted:#9aa3b2; --line:#2a2f3a;
+          --old:#f87171; --new:#4ade80; --grey:#6b7280; --amber:#fbbf24; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui, sans-serif; }
+  main { max-width: 1000px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  h2 { font-size: 18px; margin: 34px 0 6px; }
+  p.lead, p.sub { color: var(--muted); margin: 0 0 16px; max-width: 72ch; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .setup { display:flex; flex-wrap:wrap; gap:8px; margin: 14px 0 6px; }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:4px 12px; color:var(--muted); font-size:13px; }
+  .tiles { display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-top: 18px; }
+  @media (max-width: 760px) { .tiles { grid-template-columns: 1fr 1fr; } }
+  .tile { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; }
+  .tile .n { font-size: 26px; font-weight: 700; }
+  .tile .n.good { color: var(--new); }
+  .tile .l { color: var(--muted); font-size: 13px; }
+  svg { width:100%; height:auto; display:block; }
+  svg text { fill: var(--ink); font: 13px system-ui, sans-serif; }
+  svg .muted { fill: var(--muted); font-size: 12px; }
+  .scroll { overflow-x: auto; }
+  .scroll svg { min-width: 620px; }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; color:var(--muted); font-size:13px; margin-top:8px; }
+  .sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:6px; }
+  table { width:100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align:left; padding: 9px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  td.good { color: var(--new); font-weight: 600; }
+  td.warn { color: var(--amber); }
+  .note { border: 1px solid rgba(251, 191, 36, .35); background: #2a2210; color: #fde68a;
+          border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+  .note b { color: #fff3c4; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Did Broadcast help? Simulation results</h1>
+  <p class="lead">We ran the same fake badminton session twice on the DEV server: once with the old way
+    phones learn about changes (Postgres Changes) and once with the new way (Broadcast). Same phones, same
+    games, same length.</p>
+  <div class="setup">
+    <span class="chip">20 phones</span><span class="chip">20 minutes each run</span>
+    <span class="chip">2 courts, a game finishes every 2 min</span><span class="chip">30 s safety refresh on every phone</span>
+    <span class="chip">DEV server, Nov 15 2026</span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="n good">−48%</div><div class="l">database work for the same session</div></div>
+    <div class="tile"><div class="n good">0</div><div class="l">“anything new?” polls once the old method was gone (was 2,210)</div></div>
+    <div class="tile"><div class="n good">100%</div><div class="l">of game changes reached every phone, in both runs</div></div>
+    <div class="tile"><div class="n good">0.3 s</div><div class="l">typical time for a change to reach a phone (was 0.7 s)</div></div>
+  </div>
+
+  <h2>1. How hard the database worked</h2>
+  <p class="sub">Seconds the database spent busy during each 20-minute run. Red is the “anything new?” poll,
+    the part that stalls first on prod. The new run's grey part is the old poll still running for ~10 min
+    after the old-method phones had left. Realtime only stops it once it notices nobody uses it.</p>
+  <div class="card">
+    <svg viewBox="0 0 720 210" role="img" aria-label="Database seconds: old 37.0 of which poll 18.3; new 28.5 of which 9.4 leftover poll, 19.1 real work">
+      <!-- scale: 1 s = 15 px, bars start x=150 -->
+      <text x="0" y="62">Old way</text>
+      <rect x="150" y="40" width="274.5" height="36" fill="#f87171" rx="4"/>
+      <rect x="424.5" y="40" width="280.5" height="36" fill="#60a5fa" rx="4"/>
+      <text x="287" y="63" text-anchor="middle" fill="#1b0b0b">poll 18.3 s</text>
+      <text x="565" y="63" text-anchor="middle" fill="#0b1220">loading the board 18.7 s</text>
+      <text x="150" y="96" class="muted">total 37.0 s</text>
+
+      <text x="0" y="152">New way</text>
+      <rect x="150" y="130" width="286.5" height="36" fill="#4ade80" rx="4"/>
+      <rect x="436.5" y="130" width="141" height="36" fill="#6b7280" rx="4"/>
+      <text x="293" y="153" text-anchor="middle" fill="#06210f">loading the board 19.1 s</text>
+      <text x="507" y="153" text-anchor="middle" fill="#111">leftover poll 9.4 s</text>
+      <text x="150" y="186" class="muted">19.1 s once the leftover poll stopped (28.5 s with it)</text>
+    </svg>
+    <div class="legend">
+      <span><span class="sw" style="background:#f87171"></span>“Anything new?” poll</span>
+      <span><span class="sw" style="background:#60a5fa"></span>Phones loading the board (old run)</span>
+      <span><span class="sw" style="background:#4ade80"></span>Phones loading the board (new run)</span>
+      <span><span class="sw" style="background:#6b7280"></span>Leftover poll from the old run</span>
+    </div>
+  </div>
+
+  <h2>2. Did the server stall?</h2>
+  <p class="sub">The slowest 5% of requests in each minute. The dashed line is 1 second: above it, people
+    notice. Old way: 4 of 19 minutes over the line. New way, after the leftover poll stopped: 1 of 11 minutes.
+    The new run's big spike at minutes 1–2 happened while the leftover poll was still running.</p>
+  <div class="card scroll">
+    <svg id="stalls" viewBox="0 0 760 300" role="img" aria-label="Per-minute slowest-5% response time for both runs"></svg>
+    <div class="legend">
+      <span><span class="sw" style="background:#f87171"></span>Old way</span>
+      <span><span class="sw" style="background:#4ade80"></span>New way</span>
+      <span><span class="sw" style="background:#2a2f3a"></span>Leftover old poll still running</span>
+    </div>
+  </div>
+
+  <h2>3. What phones experienced</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th></th><th>Old way</th><th>New way</th></tr></thead>
+      <tbody>
+        <tr><td>Game changes that reached all 20 phones</td><td>12 of 12*</td><td class="good">12 of 12</td></tr>
+        <tr><td>Typical time for a change to reach a phone</td><td>0.73 s</td><td class="good">0.30 s</td></tr>
+        <tr><td>Slowest 5% of changes reaching a phone</td><td>1.0 s</td><td class="warn">1.7 s</td></tr>
+        <tr><td>Requests that failed</td><td>0 of 2,615</td><td>0 of 2,708</td></tr>
+        <tr><td>Phones that briefly lost their live connection</td><td>0</td><td class="warn">1 (back in 3 s, missed nothing)</td></tr>
+      </tbody>
+    </table>
+    <p class="sub" style="margin:10px 0 0">*The old run's first change was counted as part of the second,
+      because both courts started at the same moment. It is a counting quirk, not a missed update.</p>
+  </div>
+
+  <div class="note">
+    <p style="margin:0 0 8px"><b>What this proves:</b> the new way removes the poll entirely, so the
+      database does about half the work for the same session, and every phone still gets every update.</p>
+    <p style="margin:0 0 8px"><b>What it doesn't prove:</b> the DEV server is not short of memory the way
+      prod is, so this cannot show prod's stalls disappearing. The first real session after the rollout will
+      tell.</p>
+    <p style="margin:0"><b>Still unexplained:</b> one phone dropped its connection briefly. Watch for the
+      “Reconnecting…” badge on the live board.</p>
+  </div>
+</main>
+<script>
+  // Per-minute slowest-5% response time (ms), from DEV API logs.
+  const oldRun = [146, 278, 993, 1878, 604, 4955, 135, 138, 241, 216, 176, 362, 1042, 708, 661, 1084, 717, 329, 149]
+  const newRun = [219, 5124, 2982, 262, 299, 247, 166, 506, 165, 123, 194, 222, 200, 117, 209, 1151, 140, 664, 281, 117]
+  const leftoverUntil = 9.3 // minute the leftover poll stopped in the new run (12:59:16)
+  const svg = document.getElementById('stalls')
+  const NS = 'http://www.w3.org/2000/svg'
+  const L = 60, R = 740, T = 20, B = 250, MAX = 5500, MINUTES = 20
+  const x = (m) => L + (m / (MINUTES - 1)) * (R - L)
+  const y = (ms) => B - (Math.min(ms, MAX) / MAX) * (B - T)
+  function el(name, attrs, text) {
+    const e = document.createElementNS(NS, name)
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v)
+    if (text != null) e.textContent = text
+    svg.appendChild(e)
+    return e
+  }
+  el('rect', { x: x(0), y: T, width: x(leftoverUntil) - x(0), height: B - T, fill: '#1c2029' })
+  el('text', { x: x(leftoverUntil / 2), y: T + 16, 'text-anchor': 'middle', class: 'muted' }, 'leftover old poll (new run)')
+  for (const ms of [0, 1000, 2000, 3000, 4000, 5000]) {
+    el('line', { x1: L, x2: R, y1: y(ms), y2: y(ms), stroke: '#2a2f3a' })
+    el('text', { x: L - 8, y: y(ms) + 4, 'text-anchor': 'end', class: 'muted' }, `${ms / 1000} s`)
+  }
+  el('line', { x1: L, x2: R, y1: y(1000), y2: y(1000), stroke: '#fbbf24', 'stroke-dasharray': '6 5' })
+  el('text', { x: R, y: y(1000) - 6, 'text-anchor': 'end', fill: '#fbbf24' }, 'people notice')
+  for (let m = 0; m < MINUTES; m += 2) el('text', { x: x(m), y: B + 20, 'text-anchor': 'middle', class: 'muted' }, `${m}`)
+  el('text', { x: (L + R) / 2, y: B + 42, 'text-anchor': 'middle', class: 'muted' }, 'minute of the run')
+  function series(data, color) {
+    el('polyline', { points: data.map((v, i) => `${x(i)},${y(v)}`).join(' '), fill: 'none', stroke: color, 'stroke-width': 2.5, 'stroke-linejoin': 'round' })
+    data.forEach((v, i) => el('circle', { cx: x(i), cy: y(v), r: v > 1000 ? 5 : 3, fill: color }))
+  }
+  series(oldRun, '#f87171')
+  series(newRun, '#4ade80')
+</script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { sessionTopic } from '@/lib/liveChannel'
+import { listenLive } from '@/hooks/useLiveChannel'
 import { RECEIPTS_BUCKET } from '@/lib/receipts'
 import { playersWithStaleLevel } from '@/lib/rosterLevels'
 import type { SessionReceipt } from '@/hooks/useSessionReceipts'
@@ -161,15 +163,11 @@ export function useRoster(sessionId: string | undefined, onChange?: () => void):
 
   useEffect(() => {
     if (!sessionId) return
-    const channel = supabase
-      .channel(`roster:${sessionId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_registrations', filter: `session_id=eq.${sessionId}` }, fetchRoster)
-      // Second listener on the SAME channel so the payment panel reflects a
-      // player's upload without a manual refresh (migration 077 adds the table
-      // to the realtime publication — without that this is silently inert).
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'session_receipts', filter: `session_id=eq.${sessionId}` }, fetchRoster)
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    // Receipts too, so the payment panel reflects a player's upload without a
+    // manual refresh.
+    return listenLive(sessionTopic(sessionId), (message) => {
+      if (message.table === 'session_registrations' || message.table === 'session_receipts') fetchRoster()
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId])
 
