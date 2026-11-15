@@ -14,6 +14,20 @@ export function pollIntervalFor(status: ConnectionStatus): number {
 }
 
 /**
+ * After a failed court reload, retry sooner than the 30 s safety poll — the
+ * board is showing old data until a reload succeeds — but back off while the
+ * failures continue. Every phone in the hall runs the same hook, so a flat
+ * 5 s retry during a database stall would be the load that caused the
+ * Oct 4 2026 outage. `failures` is how many reloads in a row have failed (1+).
+ */
+export const RETRY_BASE_MS = 5_000
+
+export function retryDelayAfterFailures(failures: number): number {
+  const n = Math.max(1, Math.trunc(failures) || 1)
+  return Math.min(RETRY_BASE_MS * 2 ** (n - 1), POLL_CONNECTED_MS)
+}
+
+/**
  * Change events arrive in bursts: finishing one match writes the match row,
  * one or two result rows and promotes the next match, and every phone in the
  * hall receives the burst at the same moment. Coalescing waits for the burst

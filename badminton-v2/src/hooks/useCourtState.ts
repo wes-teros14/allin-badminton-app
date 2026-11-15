@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { buildCourtLabels, buildCourtSlots, type CourtSlot, normalizeCourtCount } from '@/lib/courts'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { commitProfileFetch, createProfileCache, planProfileFetch } from '@/lib/profileCache'
+import { retryDelayAfterFailures } from '@/lib/realtimePolicy'
 
 export interface CourtPlayerDisplay {
   /** Player id; the court announcer keys its name clips on it. */
@@ -48,6 +49,12 @@ interface UseCourtStateResult {
    * promoting. See the comment on that fallback in `CourtCard.handleFinish`.
    */
   isReloading: boolean
+  /**
+   * True when the latest reload failed (e.g. the database timed out). The
+   * courts then still hold the last good data rather than being cleared, so
+   * the screen is possibly out of date, not empty. A retry is already scheduled.
+   */
+  loadFailed: boolean
   refresh: () => void
 }
 
@@ -74,14 +81,27 @@ function buildEmptyCourts(courtCount = DEFAULT_COURT_COUNT) {
   return buildCourtSlots(courtCount, buildCourtLabels(courtCount), new Map(), [])
 }
 
-async function fetchMatches(sessionId: string): Promise<MatchRow[] | null> {
+/**
+ * A reload that could not get its data. Thrown instead of returning an empty
+ * result: "the query failed" and "there are no games" are opposite findings,
+ * and treating the first as the second used to wipe every game number and
+ * player off the board whenever one request timed out.
+ */
+class CourtLoadFailed extends Error {
+  constructor(what: string, cause?: string) {
+    super(`Could not load ${what}${cause ? `: ${cause}` : ''}`)
+    this.name = 'CourtLoadFailed'
+  }
+}
+
+async function fetchMatches(sessionId: string): Promise<MatchRow[]> {
   const { data, error } = await supabase
     .from('matches')
     .select(MATCH_COLUMNS)
     .eq('session_id', sessionId)
     .order('queue_position')
 
-  if (error) return null
+  if (error) throw new CourtLoadFailed('matches', error.message)
   return (data ?? []) as MatchRow[]
 }
 
@@ -95,7 +115,11 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
   const [isClosed, setIsClosed] = useState(false)
   const [splitMatchScoring, setSplitMatchScoring] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [loadFailed, setLoadFailed] = useState(false)
   const isFirstLoad = useRef(true)
+  /** Reloads failed in a row; drives the retry backoff. */
+  const failureCount = useRef(0)
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   /**
    * Player names and avatars are static for practically the whole session, so
    * they are cached rather than re-read on every refresh. The cache
@@ -128,6 +152,10 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
       setIsReloading(false)
     }
 
+    // Any reload supersedes a pending retry.
+    clearTimeout(retryTimer.current)
+    retryTimer.current = undefined
+
     async function load() {
       if (isFirstLoad.current) setIsLoading(true)
       setIsReloading(true)
@@ -156,12 +184,14 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
             .limit(1)
             .maybeSingle()
 
-      const [{ data: session }, candidateMatches] = await Promise.all([
+      const [{ data: session, error: sessionError }, candidateMatches] = await Promise.all([
         sessionQuery,
         candidateSid ? fetchMatches(candidateSid) : Promise.resolve(null),
       ])
 
       if (cancelled) return
+      // A failed lookup is not "no session" — keep what is on screen.
+      if (sessionError) throw new CourtLoadFailed('the session', sessionError.message)
 
       if (sessionIdParam) {
         const s = session as { id: string; status: string; court_count?: number | null } | null
@@ -220,7 +250,7 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
         if (cancelled) return
       }
 
-      const matchRows = rows ?? []
+      const matchRows = rows
 
       if (matchRows.length === 0) {
         setCourts(buildCourtSlots(activeCourtCount, activeCourtLabels, new Map(), []))
@@ -251,6 +281,10 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
             plan,
             Date.now(),
           )
+        } else if (plan.ids.some((id) => !profileCache.current.entries.has(id))) {
+          // An expired-but-cached name is fine to show; a player we have never
+          // loaded would show as a raw id, so keep the last good board instead.
+          throw new CourtLoadFailed('player names', error?.message)
         }
       }
 
@@ -293,12 +327,32 @@ export function useCourtState(sessionIdParam?: string): UseCourtStateResult {
     // failed load would leave `isReloading` stuck true, silently costing every
     // later finish an extra round trip, and `isLoading` stuck true, leaving the
     // board on its skeleton for good.
+    //
+    // A failure leaves every piece of court state as it was — the last good
+    // board stays up — and schedules a retry with backoff (see
+    // retryDelayAfterFailures), rather than waiting up to 30 s for the next
+    // safety poll.
     load()
-      .catch((error) => { console.error('Failed to load court state', error) })
+      .then(() => {
+        if (cancelled) return
+        failureCount.current = 0
+        setLoadFailed(false)
+      })
+      .catch((error) => {
+        console.error('Failed to load court state', error)
+        if (cancelled) return
+        failureCount.current += 1
+        setLoadFailed(true)
+        retryTimer.current = setTimeout(refresh, retryDelayAfterFailures(failureCount.current))
+      })
       .finally(settle)
 
-    return () => { cancelled = true }
-  }, [refreshKey, sessionIdParam])
+    return () => {
+      cancelled = true
+      clearTimeout(retryTimer.current)
+      retryTimer.current = undefined
+    }
+  }, [refreshKey, sessionIdParam, refresh])
 
-  return { courts, courtCount, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, isReloading, refresh }
+  return { courts, courtCount, sessionId, isLoading, hasSession, isClosed, splitMatchScoring, isReloading, loadFailed, refresh }
 }

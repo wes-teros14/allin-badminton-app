@@ -109,6 +109,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - When an export path differs from the preview path (masks, clips, a second SVG), verify by diffing the exported pixels against the preview render over the whole affected area — sampling a few edge pixels missed a mask that clipped shuttles only in the PNG.
 - Never test in a browser tab the user may be using — open a new tab. Pressing Reset in the owner's tuner tab both wiped their work and exposed a bug they then hit.
 - A Reset that reassigns state objects (`CARD = saved.CARD`) kills every control that captured the old object. Refill in place (clear keys, `Object.assign`).
+- A retry inside a hook that every phone mounts multiplies by the device count. Back off (5/10/20/30 s), never a flat short interval — a flat 5 s retry during a DB stall recreates the Oct 4 outage load.
 
 ## .env Files
 

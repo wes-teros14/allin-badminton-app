@@ -850,3 +850,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: owner moved the Print fit sliders and the magnet preview didn't change.
 - Root cause: tuner Reset reassigned `BUN`/`CARD`/`RKT`/`TITLE`/`SHUT`/`FIT` to fresh parsed copies, while the slider table held references to the original objects — after any Reset, card, headline and fit sliders wrote to orphaned objects. Triggered by my own test clicking Reset in the owner's tab.
 - Fix: Reset now clears and refills the existing objects in place (`scripts/xmas2026/tuner.js`). Verified: sliders move the design before and after two Resets. Tests now run in a separate tab.
+
+## 2026-11-15: live board lost game numbers and players mid-session
+- Symptom: owner saw the live board "disconnect" after a while — each court's game number and players vanished.
+- Root cause: `useCourtState` treated a failed query as an empty one. `fetchMatches` returned `null` on error and the hook used `rows ?? []`, redrawing every court blank; the session query's `error` was never read, so a timeout looked like "No active session". Prod's NANO database still times out occasionally (9 Realtime "Too many database timeouts" on Nov 14). The 30 s safety poll (Oct 4 fix) kept the blank up for up to 30 s.
+- Fix: failures throw `CourtLoadFailed`, so no court state is overwritten; `loadFailed` is exposed; retry with backoff 5/10/20/30 s (`retryDelayAfterFailures`, `lib/realtimePolicy.ts`); live board shows a bottom-centre "Reconnecting…" badge and "Can't reach the server — retrying…" when the first load fails. Verified in browser with a patched `supabase.from` (fake game, then simulated timeouts): game stayed, retries at 0/5/15 s, badge cleared on recovery.
