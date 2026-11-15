@@ -2071,6 +2071,20 @@
   </div>
 
   <div class="qa">
+    <p class="q">Will phones still on the old version break the next session?</p>
+    <p class="a">
+      No. The app has no service worker (nothing in <code>src/</code>, <code>public/</code> or
+      <code>vite.config</code>), so a phone loads the current version every time it opens the site.
+      “Old version” only means a tab left open since before the deploy (Nov 15 21:40); it keeps running
+      old code until it reloads.
+    </p>
+    <p class="a">
+      Even that keeps working: prod still delivers the old Postgres Changes events, and the old code still
+      listens for them. Reload the live-board tablet before the session so it uses Broadcast.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Can we redesign the app so it doesn't use 520 MB?</p>
     <p class="a">
       No. The 520 MB is Supabase's own software, and it barely depends on the app. The evidence: swap was
