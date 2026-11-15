@@ -2014,6 +2014,28 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Why is the live board disconnecting after some time — the # and the players' game details just disappear?</p>
+    <p class="a">
+      Not the live connection itself: a <strong>failed reload was drawn as "no games"</strong>. Prod's
+      Free-plan database still times out now and then (Realtime logged "Too many database timeouts" 9×
+      on Nov 14 with almost no traffic). When the court reload hit one of those, <code>fetchMatches</code>
+      returned <code>null</code>, <code>useCourtState</code> turned it into an empty list and redrew every
+      court blank; a failed session lookup was ignored and read as "No active session". The board then
+      stayed blank until a reload succeeded — up to 30 s, since the Oct 4 fix slowed the safety poll.
+      The slower poll made the blank last longer; it did not cause it.
+    </p>
+    <p class="a">
+      Fixed (Nov 15, branch <code>091-liveboard-keep-last-good</code>): a failed reload now throws
+      <code>CourtLoadFailed</code> and leaves the last good board on screen, the live board shows
+      "Reconnecting… board may be out of date" at the bottom centre, and the hook retries after 5 s,
+      10 s, 20 s, then every 30 s (<code>retryDelayAfterFailures</code>). The retry backs off because
+      every phone runs the same hook — a flat 5 s retry during a stall is the Oct 4 load again.
+      Verified in the browser with simulated timeouts: Game 7 stayed up, retries at 0 / 5 / 15 s, badge
+      cleared on recovery.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">
