@@ -5,6 +5,7 @@ import {
   fetchCheerLeaderboard,
   fetchPairLeaderboard,
   MIN_GAMES_TOGETHER,
+  MIN_SESSIONS_INDIVIDUAL,
 } from '@/lib/leaderboardData'
 import type {
   CheerLeaderboardEntry,
@@ -92,7 +93,7 @@ function WinsLeaderboard() {
   ) : (
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground text-center pb-1">
-        Ranked by win rate · min. {MIN_SESSIONS_PLAYED} sessions played · must be active in the last {RECENT_SESSIONS_WINDOW}
+        Ranked by win rate · min. {MIN_SESSIONS_INDIVIDUAL} sessions played · must be active in the last {RECENT_SESSIONS_WINDOW}
       </p>
       <RankedBoard
         entries={entries}
