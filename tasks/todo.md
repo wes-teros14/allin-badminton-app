@@ -276,7 +276,19 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
   - **For `liveChannel.ts`:** the initial `rows` snapshot holds up to 10 min of old messages — ignore it, act on
     `changes` only, and only `upsert` (the purge arrives as `remove` changes: 7 seen). One event can carry
     several rows (G2). Subscribing wakes the database, so close on hidden tabs as planned.
-- [ ] Client: `src/lib/supabase.ts` (split data vs auth/storage), D1 RPC call.
+- [x] **Data client switch — built 2026-11-16, dormant until env set.** Owner chose option A (one-file router) over
+  rewriting ~230 call sites. `src/lib/dataRouter.ts` (`routeDataCalls`: from/rpc/schema → Neon client, auth/storage/
+  channel → Supabase; 7 tests) + `src/lib/supabase.ts`: when `VITE_NEON_DATA_API_URL` and `VITE_NEON_ANON_JWT` are set,
+  data goes to the Neon Data API with the player's Supabase token, or the anonymous token when signed out, through
+  `singleObjectFetch`. Otherwise the plain Supabase client, unchanged. Suite 551/551, build ok.
+  - Parity anonymous key: G3's `neon-anon-parity-1` private key was lost (G3 session temp files). New ES256 key
+    `neon-anon-parity-2` added to `parity-jwks/jwks.json` (DEV key + both anon kids); private key and 10-year token
+    in the scratchpad only. The Data API picked up the new kid without a restart. Prod key location still open.
+  - **Browser on parity** (data + realtime on Neon, sign-in on Supabase DEV; launcher in scratchpad, not committed):
+    admin `/admin` 41 Neon REST calls, `/leaderboard` 16, `/sessions` 9 — 0 to Supabase REST, 0 failures; signed-out
+    `/live-board/<parity S1>` 7 Neon calls with the anonymous token + 1 seal, renders both courts. No writes from
+    the UI tested (G3 covered writes at the API level).
+- [ ] D1 RPC call (open due registrations).
 - [x] **Live channel on Neon Realtime — built 2026-11-16, dormant until env set.**
   - `src/lib/neonLiveChannel.ts`: same `listen(topic, onMessage, onStatus)` as the Supabase registry. First
     result = baseline (ignored); only `upsert` changes delivered, once, in id order; several per event. Renew

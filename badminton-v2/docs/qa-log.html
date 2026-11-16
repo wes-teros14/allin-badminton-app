@@ -2292,6 +2292,19 @@
   </div>
 
   <div class="qa">
+    <p class="q">How does the app send data to Neon while sign-in stays on Supabase?</p>
+    <p class="a">
+      <code>src/lib/supabase.ts</code> still exports one <code>supabase</code> object. When
+      <code>VITE_NEON_DATA_API_URL</code> and <code>VITE_NEON_ANON_JWT</code> are set,
+      <code>src/lib/dataRouter.ts</code> routes its <code>.from()</code>/<code>.rpc()</code> to the Neon Data API, while
+      <code>.auth</code> and <code>.storage</code> stay on Supabase. So none of the ~230 data calls had to change (owner's
+      choice, 2026-11-16). Requests carry the player's Supabase token, or a long-lived anonymous token when signed
+      out, because Neon rejects requests with no token. On parity, admin pages made 41 calls to Neon and 0 to Supabase,
+      and the signed-out live board worked with the anonymous token.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check
