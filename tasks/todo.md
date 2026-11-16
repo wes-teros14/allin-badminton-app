@@ -241,7 +241,11 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
 
 - [ ] `scripts/neon/`, reading secrets from `.env*` at runtime and never printing them:
   - [ ] `export-supabase.mjs` (read-only)
-  - [ ] `transform.sql` (FK repoint from `pg_constraint`, `anon` → `anonymous`, `rt_*` → `live_messages`,
+  - **G3 scripts now on `dev` (2026-11-16)** in `badminton-v2/scripts/neon/` (copied from the G3 worktree; that branch had
+  no commits of its own). Known gap: the repo migrations make 56 policies, prod has 60, so `apply.mjs` on the
+  migrations path stops at `verify.sql` (expects 60); parity got the 4 by hand. The Phase 2 path (pg_dump of prod)
+  has all 60 and is the one that counts.
+- [ ] `transform.sql` (FK repoint from `pg_constraint`, `anon` → `anonymous`, `rt_*` → `live_messages`,
     drop `auth.users` trigger / `ensure_rls` / `pg_cron` / `realtime.*` / `storage.*` references)
   - [ ] `grants.sql`
   - [ ] `import-neon.mjs`
