@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-15
+Last updated: 2026-11-16
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -149,8 +149,45 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Monitoring:** Supabase Observability → Custom reports → "Session health". It has the memory, CPU,
   Realtime-connection and request charts, plus the SQL snippet "Session health score". The snippet
   must use `extensions.pg_stat_statements`, schema-qualified, or it fails inside a report.
-- **Remaining fixes if stalls continue:** a paid compute upgrade (owner has declined so far). Moving
-  off Supabase was judged far more work than the problem is worth.
+- **Remaining fixes if stalls continue:** a paid compute upgrade (owner has declined). The owner then
+  chose (2026-11-16) to plan a move to Neon Free instead — see "Neon migration" below.
+
+## Neon migration (planned, Phase 0 spike in progress)
+
+- **Goal:** more memory at $0. Hard constraints from the owner: absolutely no cost (Free tiers only);
+  the app must work exactly as before; players must not have to re-register.
+- **Shape chosen: H1 hybrid.** Postgres + Data API (PostgREST) + Realtime move to Neon; Supabase keeps
+  Auth (Google) and Storage (CDN). Plan: `tasks/todo.md`; review: `tasks/neon-migration-review.md`;
+  visual: `badminton-v2/docs/visual/supabase-to-neon-migration.html`.
+- **Rejected: full Neon (Neon Auth).** Users report Managed Neon Auth polls `neon_auth` every ≤274 s,
+  so compute never sleeps (~182 CU-h vs the 100 CU-h Free cap → app suspended mid-month). Also no
+  UUID-preserving user import. GitHub neondatabase/neon#12909.
+- **Rejected: Cloudflare (D1/Hyperdrive).** Neon is the closer fit (real Postgres, RLS, PostgREST).
+- **Neon project:** `lucky-heart-02739020` ("my-first-project"), org `org-jolly-pine-36146147`,
+  aws-ap-southeast-1 (Singapore). `badminton-v2/.neon` links it; connection strings are in
+  `badminton-v2/.env.local` (gitignored). Realtime is enabled → project `wal_level=logical` (permanent).
+- **Neon Free limits (verified 2026-11-16, neon.com/pricing):** 100 CU-h/project/month (all branches
+  share it), 1 GB Postgres, 5 GB egress, scale-to-zero after 5 min (can't disable). Hitting a cap suspends compute until next
+  month, no charge. Pin compute at 0.25 CU (1 GB RAM).
+- **G0 findings (verified on Neon, 2026-11-16) — don't re-derive:**
+  - Supabase DEV and prod already sign JWTs with ES256 (JWKS has an EC key). No Supabase change needed.
+  - Neon's own `auth` schema (pg_session_jwt) is unusable with an external IdP: owned by `cloud_admin`,
+    grants are no-ops, `auth.uid()` returns NULL. Create the Data API with `--skip-auth-schema` and
+    define our own `auth.uid()/role()/jwt()/email()` with Supabase's bodies (read
+    `request.jwt.claims`). Policies then migrate verbatim.
+  - Neon's API role for logged-out is `anonymous`, not `anon`, and a request with **no** token gets 401
+    PGRST302. The app's `sb_publishable_…` key isn't a JWT. Fix: Neon's JWKS URL points at a merged key
+    set (Supabase key + our own ES256 key); logged-out clients send a long-lived anon JWT
+    `{role:"anonymous", aud:"authenticated"}`.
+  - `neon data-api update` can't change the JWKS URL; it needs `delete` + `create`.
+  - Neon Realtime delivered every row: 3 inserts → 3 events (110–260 ms); a 2-row transaction → 1 event
+    with both rows.
+- **Supabase pause rule (G6):** Free projects pause after 7 days of low "user database activity";
+  whether Auth/Storage requests count is undocumented → H1 needs a daily keep-alive read on Supabase.
+- **Tooling:** Neon CLI (`neon`, v9.5) is installed and signed in; project-level Neon skills (7) and the
+  Neon MCP (OAuth, `.mcp.json`) are installed. The user-level Neon plugin was deliberately not
+  installed — it would duplicate the project skills and MCP. `neon init -y` would install it; don't run
+  it. `@neon/config` + `@neon/env` were added to `badminton-v2` with a starter `neon.ts` (`auth: false`).
 
 ## Branching and commits
 

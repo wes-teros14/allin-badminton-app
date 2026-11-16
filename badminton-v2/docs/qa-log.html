@@ -2186,6 +2186,50 @@
     </ul>
   </div>
 
+  <div class="qa">
+    <p class="q">To get more memory than Supabase nano (~400 MB), is Cloudflare better than Neon?</p>
+    <p class="a">
+      For this app, Neon is the better fit. Neon is Postgres, so the 22 tables, 60 RLS policies,
+      22 functions and 15 triggers move over almost as they are. The one systematic change is swapping
+      <code>auth.uid()</code>. Cloudflare's free database (D1) is SQLite: it has no RLS and no plpgsql,
+      so every access rule and trigger would have to be rewritten as Worker code. Cloudflare doesn't
+      host Postgres.
+    </p>
+    <p class="a">
+      Neither one replaces all of Supabase. Auth (124 users, all Google), Storage (14 MB in 4 buckets)
+      and Realtime Broadcast have to stay on Supabase or move somewhere else. Cloudflare's real strength
+      is its edge pieces, Workers and Durable Objects for WebSockets, not the database. Measured on
+      2026-11-15 on prod: DB 24 MB, peak about 5.7k requests per hour during a session.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Neither one replaces all of Supabase. Auth, Storage and Realtime have to stay on Supabase or move somewhere else.”</p>
+    <p>
+      Wrong for Neon, and I said it from memory before reading the docs (2026-11-16). Neon's Free plan now
+      has Neon Auth (Managed Better Auth, 60k MAU), Object Storage (5 GB), Functions (with cron triggers)
+      and Realtime (beta, live SQL). A full move is possible on paper. The catches: Realtime can't read tables
+      that have RLS and has no publish-from-trigger, Storage has no per-user policy layer (the rules move into
+      a Function), and there's no documented import that keeps user UUIDs. On Free, the 100 CU-hours and the
+      shared 5 GB egress are hard caps: running out suspends the database until next month. Plan and gates:
+      <code>tasks/todo.md</code>; visual: <code>docs/visual/supabase-to-neon-migration.html</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does the Neon plan keep sign-in and files on Supabase instead of moving everything?</p>
+    <p class="a">
+      Because Managed Neon Auth appears to stop the database ever sleeping. Users report it polls its tables
+      every ≤ 274 s (GitHub neondatabase/neon#12909, unanswered by Neon), which is under the 5-minute sleep
+      threshold. Awake 24/7 at 0.25 CU is ~182 CU-hours against a 100 cap, so the app would go down around
+      day 17. Keeping Supabase Auth also means nobody has to sign in again and user IDs don't change. Keeping
+      Storage keeps the CDN (668 of 722 file requests on Nov 15 were CDN hits) and keeps that traffic off
+      Neon's 5 GB. Supabase is left with ~170 auth requests a day, while the 17.4k REST requests move to Neon.
+      Neon accepting Supabase's tokens is undocumented: gate G0 in <code>tasks/todo.md</code>.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">

@@ -112,6 +112,8 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - A retry inside a hook that every phone mounts multiplies by the device count. Back off (5/10/20/30 s), never a flat short interval — a flat 5 s retry during a DB stall recreates the Oct 4 outage load.
 - Never recommend a mitigation (e.g. "restart clears swap") from reasoning alone. Measure it once first: a Supabase dashboard restart restarts Postgres, not the VM, and swap refilled within an hour.
 - Never quote a cloud free-tier limit from memory, even flagged as unchecked — search it first. I said Oracle gives 24 GB; it was halved to 12 GB in June 2026.
+- Count schema objects (FKs, policies, grants) with a `count(*)` query, never by eyeballing a listed result. I reported 22 FKs to `auth.users`; there were 24, plus 2 to `profiles`.
+- A migration plan using `pg_restore --no-acl` must re-create grants explicitly. Dropping ACLs re-grants EXECUTE to PUBLIC on SECURITY DEFINER functions whose PUBLIC access was revoked.
 - Memory commitment (Committed_AS) is memory promised, not used. Report usage as RAM used + swap, and read chart totals from the tooltip, never from an axis tick.
 
 ## .env Files
