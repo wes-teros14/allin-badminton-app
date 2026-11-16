@@ -865,3 +865,9 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: all 4 `matches` on Neon branch `parity` updated (court 9) then deleted.
 - Root cause: I tested whether Neon honours `Prefer: handling=strict, max-affected=1` with a multi-row PATCH and DELETE. Neon ignores the header, so both committed.
 - Fix: `neon branches restore parity ^self@2026-11-16T10:32:00Z --preserve-under-name parity-before-restore`; verified 4 matches back, court numbers null, Data API still active. Rule added to CLAUDE.md: test a guard with a harmless write first.
+
+## 2026-11-16: Any signed-in player could delete any session (prod)
+- Symptom: none reported; found while reading prod's `sessions` policies for D1. Policy `sessions: admin delete` was FOR DELETE TO authenticated USING (true), and `authenticated` holds DELETE on `sessions`. A delete cascades to games, results and registrations.
+- Root cause: the policy was created on prod outside the migrations (no repo migration contains it) — part of the 56-vs-60 policy drift G3 found. Its name said admin; its condition checked nothing.
+- Fix: migration `090_sessions_delete_staff_only.sql` replaces it with `sessions: staff delete` (admin or moderator; moderators see the Delete button via AdminRoute, owner chose to keep them). Proven on Neon parity with rolled-back deletes (player 1 row before, 0 after; moderator and admin 1). Owner ran the SQL on prod (my `apply_migration` was declined twice by the connector); verified via read-only query: 60 policies, staff delete present, open one gone.
+- Still open by design: `match_results: kiosk insert` (anon, WITH CHECK true) lets anyone insert a result for any match — the logged-out live board needs it.
