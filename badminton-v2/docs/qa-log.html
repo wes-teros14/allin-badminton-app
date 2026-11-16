@@ -2243,12 +2243,61 @@
   </div>
 
   <div class="qa">
+    <p class="q">An open live-update connection doesn't keep the database awake. What does that mean?</p>
+    <p class="a">
+      The plan's biggest cost risk is gone. Neon's docs disagreed on whether an open Realtime subscription stops
+      the database sleeping; if it did, any phone left on the app would burn ~182 CU-hours a month against the
+      free 100. On parity (2026-11-16) the database slept ~5 min after the last real query while two channels
+      stayed connected and renewed 42 passes. A later write woke it in 1.2 s, and the open subscription still got
+      the change 3 ms after commit. So compute is used only while someone actually reads or writes. The only
+      visible cost is ~1.5 s on the first action after a quiet spell. Closing hidden tabs is kept to save
+      <code>seal</code> calls, not compute.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Will Neon's 5 GB monthly egress be enough?</p>
     <p class="a">
       Yes, about 10× headroom. Supabase logs leave out response sizes for chunked REST replies, so the estimate
       is rows returned (<code>Content-Range</code>) × measured JSON row size. The 24 h around the Nov 15 session
       (16 players, 20 games) came to ~207k rows ≈ 50 MB, so roughly 0.5 GB a month. The heaviest are the history
       queries: every past match (42k rows) and every cheer by giver (36k rows).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What is the <code>seal</code> endpoint, and why does it run as a Neon Function?</p>
+    <p class="a">
+      Neon Realtime has no sign-in of its own. A phone can only subscribe with a "sealed query": a signed,
+      60-second pass for one exact SQL query. <code>functions/seal</code> hands these out. Anyone gets
+      <code>session:&lt;id&gt;</code>, only the signed-in owner gets <code>user:&lt;id&gt;</code>, the same rules as
+      Supabase today. Each open channel renews about once a minute, roughly 40k calls a month. It runs on Neon
+      because Functions have their own free quota (1M calls a month) and hitting it would only stop live updates,
+      while going over Vercel Hobby's limit pauses the whole site. On parity a pass takes 50–130 ms and doesn't
+      wake the database.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How do live updates work on Neon, and how does the app switch over?</p>
+    <p class="a">
+      <code>src/lib/neonLiveChannel.ts</code> has the same <code>listen(topic, …)</code> API as the Supabase version,
+      so no screen changes. Each topic is one live query on <code>live_messages</code>. The first result is old news
+      and ignored; each new row is one message, delivered once and in order (3 cheers = 3 toasts). Passes renew
+      15 s before they expire, failures back off 5/10/20/30 s, and a tab hidden for over 60 s disconnects so the
+      database can sleep. <code>useLiveChannel</code> uses Neon only when <code>VITE_NEON_REALTIME_URL</code> and
+      <code>VITE_NEON_SEAL_URL</code> are set. On parity a cheer toast arrived through it and a two-game change gave
+      2 messages, 15 ms after commit.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What's <code>jose</code>?</p>
+    <p class="a">
+      A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check
+      a player's Supabase sign-in token: it fetches Supabase's public keys (JWKS), checks the signature, the
+      issuer and the <code>authenticated</code> audience, then reads the player id (<code>sub</code>). It refetches
+      the keys by itself if Supabase rotates them.
     </p>
   </div>
 

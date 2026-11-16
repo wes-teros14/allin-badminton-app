@@ -138,6 +138,20 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     counters last updated 07:44 UTC. Endpoint `last_active` still 00:38:00, state `idle` — nothing has woken
     it since. The 1236 s is the G0/setup work before 00:38 (start counters were lag-zero). **Looks like a
     pass;** confirm with one more read on/after 2026-11-17 00:31 UTC — pass if still 1236 (or within a few s).
+  - **Tab runs 2026-11-16 on `parity` — PASS, and R1 resolved.** App with `neonLiveChannel` (localhost, DEV
+    sign-in s1-alex, 2 channels: `session:` + `user:`), control-plane watch every 30 s.
+    - **Visible 11:36–11:51 UTC:** both channels `connected` throughout, 42 pass renewals, yet the endpoint went
+      `idle` at ~11:39 (last real query 11:33) and stayed idle. **An open Realtime subscription does not keep
+      compute awake** — the Realtime FAQ was right, the logical-replication page does not apply.
+    - **Delivery after sleep:** a write at 11:52 woke the database (connect 1.2 s); the open subscription got
+      both changes 0–3 ms after commit. Sleeping loses nothing.
+    - **Hidden 11:52:47–12:07:50** (simulated: the browser pane keeps every tab `visible`, so
+      `document.visibilityState` was overridden and `visibilitychange` fired — real phone throttling not
+      covered): channels closed at +60 s (11:53:47.7); two renewals already in flight finished 0.2 s later and
+      were discarded; then **no seal calls for 14 min**. Endpoint idle from 11:57:46 (5 min after the 11:52 write).
+    - Visible again → `connected` in ~2.3 s (includes waking the database).
+    - Consequence: the hidden-tab close is no longer needed for compute; keep it to save seal calls
+      (Function quota 1M/month). Compute ≈ time with real queries only.
   - Side result (part of G2): `neon realtime subscribe` on `live_messages WHERE topic=… AND id > n`:
     3 separate inserts → 3 change events (111/209/258 ms after the first write); a 2-row transaction →
     1 event carrying both rows. `live_messages` has no grants for `anonymous`/`authenticated`.
@@ -233,12 +247,49 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
   - [ ] `import-neon.mjs`
   - [ ] `verify.mjs`: row counts, FK integrity, an RLS-on check, and a privilege diff for
     `anonymous`/`authenticated` vs Supabase `anon`/`authenticated`.
-- [ ] `seal` Neon Function (verifies Supabase JWT via JWKS with `jose`).
-- [ ] Client: `src/lib/supabase.ts` (split data vs auth/storage), `src/lib/liveChannel.ts` (Neon
-  Realtime, same `LiveMessage` API), visibility close/reopen, D1 RPC call.
+- [x] `seal` Neon Function (verifies Supabase JWT via JWKS with `jose`). **Built + deployed to `parity` 2026-11-16.**
+  - Owner decisions (2026-11-16): host = **Neon Function** (own free quota: 1M invocations, 10 active
+    capacity-hours/month, separate from 100 CU-h; a limit hit stops only live updates — a Vercel over-limit
+    pauses the whole site 30 days). **Session channels open to anyone** (logged-out live board), user channels
+    owner-only (same as migration 089). **Realtime origins: prod + localhost only** (Neon takes exact origins
+    or `*`; previews fall back to the 30 s refresh).
+  - Code: `functions/seal/handler.ts` (logic, 18 tests in `handler.test.ts`), `functions/seal/index.ts`
+    (SDK + `jose` wiring), `neon.ts` `functions.seal` (env REALTIME_SECRET, SUPABASE_URL, ALLOWED_ORIGINS),
+    `tsconfig.functions.json` (build type-checks it), vitest includes `functions/**`. `@neon/realtime` 0.2.1 and
+    `jose` 6.2.1 pinned exact. Suite 524/524, build passes.
+  - API: `POST {topic}` (+ `Authorization: Bearer <supabase jwt>` for `user:`). Seals
+    `SELECT id, msg FROM public.live_messages WHERE topic = $1` — fixed params, so renewal = same call.
+    400 bad topic, 401 no/invalid token on user:, 403 someone else's user: or another website, no-store.
+  - Deploy: `neon config plan` first (showed only `+ function seal`), then
+    `neon deploy --branch parity --no-env-pull --env <file>` (file = `neon env pull -s realtime` for that branch
+    + `SEAL_SUPABASE_URL`). `--no-env-pull` matters: otherwise it rewrites `.env.local` for that branch.
+    URL: `https://br-gentle-wildflower-ao7c6whw-seal.compute.c-2.ap-southeast-1.aws.neon.tech/`.
+  - **Live result on parity:** seal 347 ms cold / 50–130 ms warm; database stayed asleep through seal calls.
+    Browser (localhost, DEV sign-in `s1-alex`, `@neon/realtime/client` raw mode): own user pass 200, other
+    user 403; subscribe → `live` in ~2.3 s (wakes the database); notification on `user:` 13 ms after commit,
+    match change on `session:` ~1 ms; `renew()` 105–173 ms, stays live; a pass for another topic is refused
+    as a renewal ("must be for the same query").
+  - **For `liveChannel.ts`:** the initial `rows` snapshot holds up to 10 min of old messages — ignore it, act on
+    `changes` only, and only `upsert` (the purge arrives as `remove` changes: 7 seen). One event can carry
+    several rows (G2). Subscribing wakes the database, so close on hidden tabs as planned.
+- [ ] Client: `src/lib/supabase.ts` (split data vs auth/storage), D1 RPC call.
+- [x] **Live channel on Neon Realtime — built 2026-11-16, dormant until env set.**
+  - `src/lib/neonLiveChannel.ts`: same `listen(topic, onMessage, onStatus)` as the Supabase registry. First
+    result = baseline (ignored); only `upsert` changes delivered, once, in id order; several per event. Renew
+    15 s before expiry; failures back off 5/10/20/30 s; `error` → resubscribe with a new pass; rows missed in a
+    gap come from the next snapshot (within the 10-min purge window). Hidden > 60 s closes subscriptions and the
+    client so the database can sleep; visible reopens (reconnecting → connected → screens' catch-up).
+  - `src/hooks/useLiveChannel.ts` picks Neon when `VITE_NEON_REALTIME_URL` and `VITE_NEON_SEAL_URL` are both
+    set, else Supabase Broadcast. SDK lazy-loaded; with the vars unset the build has no Neon code. No screen
+    changed. `.env.example` documents both. `.claude/launch.json` has `badminton-v2-neon-live` (parity URLs).
+  - Tests: `src/__tests__/neonLiveChannel.test.ts`, 20 cases (fake client + fake timers). Suite 544/544, build ok.
+  - **Browser on parity (DEV sign-in s1-alex, the app's own hook path):** connected in ~2.6 s; the app opened
+    `user:<alex>` by itself (NotificationContext); a parity notification insert showed the real cheer toast;
+    `complete` + `playing` in one transaction → 2 messages, 15 ms after commit.
+  - Not tested in a browser: the 60 s hidden-tab close (unit-tested only), and G1's 15-minute hidden/visible
+    compute runs — next.
 - [ ] Tests:
-  - [ ] Unit: `liveChannel.test.ts` with a fake Realtime client, covering per-message delivery and
-    `last_seen`.
+  - [x] Unit: `neonLiveChannel.test.ts` (20) — see above.
   - [ ] Build: `npm run build` (`tsc -b`).
   - [ ] e2e: the 8 specs using `supabase.auth.admin` keep working because auth stays on Supabase DEV.
     Point their data calls at Neon `dev`.

@@ -4,8 +4,32 @@
     {
       "name": "badminton-v2-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "badminton-v2"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "badminton-v2"
+      ],
       "port": 5173
+    },
+    {
+      "name": "badminton-v2-neon-live",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "badminton-v2",
+        "--",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
+      "port": 5173,
+      "env": {
+        "VITE_NEON_REALTIME_URL": "wss://ep-blue-recipe-aodxyifb.rt.c-2.ap-southeast-1.aws.neon.tech/",
+        "VITE_NEON_SEAL_URL": "https://br-gentle-wildflower-ao7c6whw-seal.compute.c-2.ap-southeast-1.aws.neon.tech/"
+      }
     }
   ]
 }
