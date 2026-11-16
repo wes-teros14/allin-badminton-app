@@ -236,6 +236,18 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     Dashboard → Resume project (up to 1 year). **Phase 1 item:** a tiny daily PostgREST read on Supabase
     (e.g. from a Neon Function schedule trigger, which fires while Neon sleeps) so H1 never depends on the
     undefined rule. The app's weekly sessions likely suffice anyway, but don't rely on it.
+  - **Keep-alive built 2026-11-16.** Owner: run it as a **Neon Function** (not GitHub Actions) calling a **ping
+    function** (not an app table). Migration `091_keepalive_ping.sql`: `keepalive_ping()` returns now(), EXECUTE to
+    `anon` only; owner ran it on prod, verified read-only. `functions/keepalive` (7 tests) answers only Neon trigger
+    deliveries (`x-neon-trigger-invocation-id` = body `invocation_id`; the proxy strips forged `x-neon-*`, so a
+    forged call got 401) and POSTs `/rest/v1/rpc/keepalive_ping` with the publishable key. `neon.ts`: function
+    `keepalive` (env KEEPALIVE_SUPABASE_URL/KEY in the deploy file — always prod) + trigger `supabase-keepalive`
+    `0 19 * * *` (03:00 Manila). `transform.sql` drops `keepalive_ping` on Neon.
+  - **Verified:** deployed to `parity`; trigger set to every minute for 3 min → prod edge logs show
+    `POST /rest/v1/rpc/keepalive_ping` 200 at 13:49, 13:50, 13:51 UTC (colo SIN); parity's database stayed idle.
+    Trigger back to daily (next 19:00 UTC). It now pings prod daily from parity until that branch expires 2026-11-23.
+  - **Cutover item:** deploy `keepalive` (and its trigger) on the Neon `production` branch. Not needed before then:
+    prod Supabase still serves all data traffic.
 
 ## Phase 1 — Build (branch `094-neon-migration` off `dev`; Neon branch `dev`)
 

@@ -16,6 +16,22 @@ export default defineConfig({
         ALLOWED_ORIGINS: "https://badmintontayo.mrkws.com,http://localhost:5173",
       },
     },
+    // Once a day, one tiny database request so the Supabase project (sign-in + files) never
+    // pauses for inactivity (functions/keepalive/handler.ts, migration 091).
+    keepalive: {
+      name: "supabase keep-alive",
+      source: "functions/keepalive/index.ts",
+      env: {
+        // The project to keep awake (prod), even when deploying a test branch. The key is the
+        // public publishable key the app already ships.
+        SUPABASE_URL: { value: process.env.KEEPALIVE_SUPABASE_URL, required: true },
+        SUPABASE_PUBLISHABLE_KEY: { value: process.env.KEEPALIVE_SUPABASE_KEY, required: true },
+      },
+    },
+  },
+  triggers: {
+    // 19:00 UTC = 03:00 Manila, away from sessions.
+    "supabase-keepalive": { type: "schedule", function: "keepalive", cron: "0 19 * * *" },
   },
   // Branch policy: per-branch tuning
   branch: (branch) => {

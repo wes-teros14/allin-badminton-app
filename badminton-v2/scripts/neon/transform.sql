@@ -190,6 +190,9 @@ as $fn$
 $fn$;
 drop table if exists auth.users;
 
+-- Supabase-only keep-alive target (migration 091); the keepalive Function calls it on Supabase, never here.
+drop function if exists public.keepalive_ping();
+
 -- ---------------------------------------------------------------------------
 -- 6. Shim roles. DROP OWNED revokes every privilege granted to them.
 -- ---------------------------------------------------------------------------

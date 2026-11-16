@@ -2317,6 +2317,18 @@
   </div>
 
   <div class="qa">
+    <p class="q">How do we stop Supabase pausing once data lives on Neon?</p>
+    <p class="a">
+      A free Supabase project pauses after 7 days without "sufficient user database activity". After the move it only
+      serves sign-in and files, and the docs don't say whether those count. A paused project means nobody can sign in.
+      So a Neon Function, <code>functions/keepalive</code>, runs daily at 19:00 UTC on a schedule trigger and calls
+      <code>keepalive_ping()</code> on Supabase (migration 091, returns <code>now()</code>, reads no app data). It only
+      answers Neon's own trigger calls, and it doesn't wake Neon's database. Verified: 3 pings landed on prod with
+      status 200 while parity's database stayed asleep.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check
