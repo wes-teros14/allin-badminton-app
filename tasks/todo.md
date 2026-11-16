@@ -129,19 +129,66 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     `neon branches get spike --project-id lucky-heart-02739020 -o json` → `active_time_seconds`.
     Pass = active time ≈ only the setup minutes (well under 1 h); fail = it climbs with no clients.
     Hidden/visible-tab runs come after the idle result.
+  - **Early result 2026-11-16 (control-plane watch, `neon api /projects/…/endpoints`, doesn't wake
+    compute): sleeps.** `spike` (Data API + Realtime on) and `production` both showed `last_active 00:38:00`,
+    went `idle` by 00:46 and stayed idle through 00:58 with no clients. Unclear why `last_active` is 00:38
+    on both when the last known connection was ~00:31 — possibly a Neon-side event; the 24 h
+    `active_time_seconds` read confirms whether anything wakes it later.
+  - **Read 2026-11-16 10:10 UTC (~9.6 h in):** `active_time_seconds 1236` (~21 min), `compute_time_seconds 312`,
+    counters last updated 07:44 UTC. Endpoint `last_active` still 00:38:00, state `idle` — nothing has woken
+    it since. The 1236 s is the G0/setup work before 00:38 (start counters were lag-zero). **Looks like a
+    pass;** confirm with one more read on/after 2026-11-17 00:31 UTC — pass if still 1236 (or within a few s).
   - Side result (part of G2): `neon realtime subscribe` on `live_messages WHERE topic=… AND id > n`:
     3 separate inserts → 3 change events (111/209/258 ms after the first write); a 2-row transaction →
     1 event carrying both rows. `live_messages` has no grants for `anonymous`/`authenticated`.
-- [ ] **G2 Realtime delivery:** trigger inserts reach subscribers. 3 notifications to one user within
+- [x] **G2 Realtime delivery:** trigger inserts reach subscribers. 3 notifications to one user within
   500 ms → 3 messages; `complete` + `in_progress` in one transaction → 2 messages. Measure latency.
   `anonymous`/`authenticated` can't read `live_messages`.
+  - **Result 2026-11-16: PASS** (branch `parity`, real `rt_*` triggers from G3 `transform.sql`, Realtime enabled on
+    `parity` without waking `spike`; script `scratchpad/pgtest/g2run.mjs`, `neon realtime subscribe --changes`).
+    - 3 notifications, separate transactions 150 ms apart → 3 rows, **3 events** (ids 115–117).
+    - `complete` + `playing` in one transaction → **2 rows, delivered as 1 event** carrying both (ids 118–119).
+      The app status is `playing`, not `in_progress` (enum `match_status`: queued, playing, complete).
+      `liveChannel.ts` must handle every row in a change event, not just the first.
+    - 3 rows set to `queued` in one transaction → **1 row** (dedupe kept).
+    - Latency: event reached the subscriber 1–29 ms after the client saw the commit (both in Singapore
+      from the Philippines, so excludes the one-way trip to the writer).
+    - `anonymous` / `authenticated` `select` on `live_messages` → 42501.
+    - Subscriber startup on a sleeping branch: ~15 s (CLI + compute wake) — the app's first subscribe after a
+      sleep needs a test in Phase 1 (seal Function + SDK, not the CLI).
+    - Not tested here: the browser SDK path and the seal. Test data deleted; match statuses restored.
 - [ ] **G3 Query parity:** the app's real queries (embeds, `count`, `upsert`/`onConflict`, `single()`,
   `maybeSingle()`, `unfinish_match`, `get_session_finance`), logged in and logged out, with all 60
   policies and `grants.sql`. Error codes `23505` and `42501` still come back.
-- [ ] **G4 New user:** a brand-new Google sign-in gets a profile through `ensureProfile`, with the correct
+- [x] **G4 New user:** a brand-new Google sign-in gets a profile through `ensureProfile`, with the correct
   slug and display name.
+  - **Result 2026-11-16: PASS** (branch `parity`, Data API `ep-blue-recipe-aodxyifb`). Real Supabase DEV sign-ins on
+    localhost; the app's own `ensureProfile` ran with `supabase.from` pointed at Neon (page-only patch, no code change).
+    - Fresh user (`s1-jamie`, no profile on parity) → row created: `s1-jamie-lee`, role `player`, email, level 5,
+      active, not guest. Same slug the prod trigger `handle_new_user` would give.
+    - Slug taken (seeded `s1-sam-wong`) → Neon returns 23505 `profiles_name_slug_key` → retry gives
+      `s1-sam-wong-533e52`. Second call is a no-op.
+    - Race path: duplicate id → 23505 `profiles_pkey` (message contains `pkey`, so the early return works).
+      Inserting a profile for another id → 42501 (RLS).
+    - Differences from the trigger (accepted, already true for healed prod users): collision suffix is
+      `-<id6>` not `-2`; name falls back to `full_name` then email local part, where the trigger used `user`.
+    - Without the trigger, a failed first `ensureProfile` (network) leaves no profile until the next app load
+      or Retry — `AuthContext` runs it on every load with a user, inside the loading window.
+    - Test rows deleted; parity back to 9 profiles.
 - [ ] **G5 Cold start and egress:** first-request latency after a sleep, from the Philippines; response
   bytes for one simulated session.
+  - **Latency result 2026-11-16 (8 cycles, Philippines → Singapore, empty schema):** first Data API request
+    after sleep ~1.5 s median (1118–1615 ms, incl. ~150 ms TLS); next request 125–497 ms; then ~45 ms.
+    Direct `pg` cold connect + query ~1.1 s. Sleep after ~5 min (300 s default). Test cost 0.093 CU-h.
+    Egress still to measure on the real schema.
+- **G3 result 2026-11-16: PASS with one serious break** (session `neon-g3-parity`, branch
+  `claude/practical-chandrasekhar-7fc37a`, scripts in `badminton-v2/scripts/neon/` there, not merged).
+  62/63 checks pass incl. 14 with real Supabase DEV tokens. **Break:** Neon's Data API `.single()` returns
+  200 `null` on 0 rows (no PGRST116) and the first row on 2+; a PATCH `.single()` hitting 2 rows commits
+  both. Phase 1: custom `fetch` in `src/lib/supabase.ts` that returns PGRST116 when the count ≠ 1.
+  Also found: repo migrations drift from prod (56 vs 60 policies, `cheers` differs); prod lets anyone,
+  even logged-out, run `unfinish_match` / `reverse_session_stats`; the kiosk `matches` update policy
+  can't work on prod (no UPDATE grant for `anon`).
 - [ ] **G6 Supabase pause rule:** read Supabase's current docs on when Free projects pause. If an
   auth-and-storage-only project can pause, H1 needs a keep-alive plan or is off.
   - **Result 2026-11-16: RISK, not a blocker.** supabase.com/docs/guides/platform/free-project-pausing:
