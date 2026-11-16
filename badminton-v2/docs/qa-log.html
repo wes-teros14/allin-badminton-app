@@ -2329,6 +2329,16 @@
   </div>
 
   <div class="qa">
+    <p class="q">Can logged-out visitors write anything in the app?</p>
+    <p class="a">
+      No. The live board shows the courts to anyone, but only admins and moderators can finish a game
+      (<code>CourtCard.tsx:29</code>, <code>isAdmin = role === 'admin' || role === 'moderator'</code>). Found during the
+      2026-11-16 write tests on Neon. So the database rule <code>match_results: kiosk insert</code>, which lets logged-out
+      callers add a result to any match, isn't used by the app and only leaves results open to tampering.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check

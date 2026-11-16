@@ -304,6 +304,22 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     admin `/admin` 41 Neon REST calls, `/leaderboard` 16, `/sessions` 9 — 0 to Supabase REST, 0 failures; signed-out
     `/live-board/<parity S1>` 7 Neon calls with the anonymous token + 1 seal, renders both courts. No writes from
     the UI tested (G3 covered writes at the API level).
+- [x] **Write tests through the app's own screens — PASS 2026-11-16** (parity: data + realtime on Neon, sign-in on
+  Supabase DEV, localhost; clicks in the browser pane). 0 failed requests in every step.
+  - Player: new DEV user s1-jamie → profile created on first load; registered for Parity S2 (201); nickname edit
+    (204). Players have no cancel-registration button (by design).
+  - Admin: Create Session (201) → edit name/price/opening time + Confirm (opens registration) → Set Limit 16 →
+    add 4 players from the roster → Close Registration → generate (needed "Disable Gender Rules": test players have
+    no gender) → Save & Lock (20 games inserted in one write, `schedule_locked`) → Start Session (`in_progress`,
+    2 playing) → Finish Game 1 "Jamie Neon & Alex" (match `complete`, result pair 2, Game 3 promoted).
+    14 live messages written on the session topic across these steps.
+  - Cheer: s1-alex got the post-game cheer prompt by itself; Good Sport to P1 (201) → notification row for P1.
+  - Logged-out live board: shows live courts; **has no write path** — only admins/moderators can finish games
+    (`CourtCard.tsx:29`). So `match_results: kiosk insert` (anon) is unused by the app and can be dropped.
+  - Seen, not Neon: "0 / 16 registered" counts only self-registrations; with 4 players on 2 courts the generator puts
+    the same 4 in Games 2 and 3 at once. Admin confirm buttons need the second tap within 3 s.
+  - Cleanup: `neon branches restore parity ^self@2026-11-16T13:54:22Z --preserve-under-name parity-writetests-backup`;
+    S1/S2/9 profiles back, Data API, seal, keepalive and its trigger intact, anonymous read 200.
 - [x] **D1 — scheduled registration opening, built 2026-11-16 (dormant until data is on Neon).**
   - Owner decisions: **keep the feature** (prod: used for 5 of 41 sessions, all Mon 20:00 Manila, last 27 Apr 2026;
     the hourly `open-registration-hourly` pg_cron job has had nothing to open since) and **open on app load**, not
