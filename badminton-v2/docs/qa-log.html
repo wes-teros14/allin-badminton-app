@@ -2339,6 +2339,19 @@
   </div>
 
   <div class="qa">
+    <p class="q">Where does Neon's key list live, and how does it stay current?</p>
+    <p class="a">
+      Neon's Data API checks every token against one JWKS file. It holds Supabase's public keys (players' sign-ins)
+      plus our anonymous key (the logged-out token), and its address is fixed when the Data API is created. Owner's
+      decisions (2026-11-16): keep it in a public Neon bucket, not on the Vercel site, and refresh it daily. The
+      keep-alive Function fetches Supabase's keys, merges ours, and rewrites the file only when it differs. It never
+      writes when Supabase returns nothing, so a bad answer can't lock anyone out. The anonymous token lasts 10 years
+      and its signing key is thrown away. On parity, a deliberately stale file was repaired on the next run, and later
+      runs left it untouched.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check

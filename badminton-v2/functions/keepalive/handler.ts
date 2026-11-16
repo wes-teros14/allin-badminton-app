@@ -21,6 +21,8 @@ export type KeepaliveDeps = {
   publishableKey: string
   fetch?: typeof fetch
   log?: (message: string, detail?: unknown) => void
+  /** Optional daily JWKS refresh (jwks.ts). Runs after the ping; its failure is reported, not hidden. */
+  refreshJwks?: () => Promise<'updated' | 'unchanged'>
 }
 
 export function createKeepaliveHandler(deps: KeepaliveDeps): (req: Request) => Promise<Response> {
@@ -51,7 +53,15 @@ export function createKeepaliveHandler(deps: KeepaliveDeps): (req: Request) => P
         log('[keepalive] Supabase answered', { status: res.status, body: text.slice(0, 200) })
         return json({ ok: false, status: res.status }, 502)
       }
-      return json({ ok: true, supabaseTime: safeParse(text) }, 200)
+      const supabaseTime = safeParse(text)
+      if (!deps.refreshJwks) return json({ ok: true, supabaseTime }, 200)
+      try {
+        const jwks = await deps.refreshJwks()
+        return json({ ok: true, supabaseTime, jwks }, 200)
+      } catch (error) {
+        log('[keepalive] JWKS refresh failed', String(error))
+        return json({ ok: false, supabaseTime, jwks: 'failed' }, 502)
+      }
     } catch (error) {
       log('[keepalive] request failed', String(error))
       return json({ ok: false, error: 'request failed' }, 502)

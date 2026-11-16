@@ -26,8 +26,19 @@ export default defineConfig({
         // public publishable key the app already ships.
         SUPABASE_URL: { value: process.env.KEEPALIVE_SUPABASE_URL, required: true },
         SUPABASE_PUBLISHABLE_KEY: { value: process.env.KEEPALIVE_SUPABASE_KEY, required: true },
+        // Daily key-list refresh (functions/keepalive/jwks.ts). JWKS_SUPABASE_URL is the project whose
+        // sign-ins this branch's Data API accepts; JWKS_BUCKET is the bucket in its JWKS URL;
+        // ANON_JWKS is the anonymous token's public key(s), {"keys":[...]}. All public values.
+        JWKS_SUPABASE_URL: { value: process.env.JWKS_SUPABASE_URL, required: true },
+        JWKS_BUCKET: { value: process.env.JWKS_BUCKET, required: true },
+        ANON_JWKS: { value: process.env.ANON_JWKS, required: true },
       },
     },
+  },
+  // The Data API's key list lives here (owner decision 2026-11-16). Declaring a bucket also gives
+  // the Functions their AWS_* storage credentials.
+  buckets: {
+    jwks: { access: "public_read" },
   },
   triggers: {
     // 19:00 UTC = 03:00 Manila, away from sessions.

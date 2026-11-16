@@ -253,7 +253,25 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
 
 - [ ] `scripts/neon/`, reading secrets from `.env*` at runtime and never printing them:
   - [ ] `export-supabase.mjs` (read-only)
-  - **Prod security fix 2026-11-16 (migration 090, owner ran it on prod):** `sessions: admin delete` USING (true) let any
+  - **Prod key decisions (owner, 2026-11-16):**
+  1. **JWKS location: a `public_read` Neon bucket on the `production` branch** (as on parity), not a file on the
+     Vercel site — data must not depend on a healthy web deploy. The Data API JWKS URL is fixed at create time.
+  2. **Kept current automatically:** the daily keepalive Function also fetches the Supabase project's public keys,
+     merges the anonymous key, and rewrites the bucket file when it differs. Rotation note: create the Supabase
+     standby key a day before switching to it, so the refresh has already published it.
+  3. **Anonymous signing key: thrown away** after signing the token (nothing secret to keep; replacing = new pair).
+  4. **Anonymous token lifetime: 10 years** (like Supabase's anon key; prod's runs to 2036).
+  - **#2 built 2026-11-16:** `functions/keepalive/jwks.ts` (`mergeJwks`/`refreshJwks`, 10 tests: public fields only, anon
+    key wins a kid clash, no write on unchanged/empty/failed answers, refuses without an anon key) + handler runs it
+    after the ping (3 more tests; refresh failure → 502 logged). `index.ts` uses `@aws-sdk/client-s3` 3.1161.0
+    (`forcePathStyle`) on the bucket from `JWKS_BUCKET`; `neon.ts` declares bucket `jwks` (public_read) — this also
+    injects the AWS_* credentials — plus env JWKS_SUPABASE_URL (auth project for that branch), JWKS_BUCKET, ANON_JWKS.
+  - **Verified on parity:** uploaded a stale list without the DEV key → 14:39 run restored it (DEV + both anon kids);
+    14:40 and 14:41 runs left it untouched (same Last-Modified 14:39:02, same etag); pings to prod 200 at all three;
+    anonymous Data API read 200 afterwards. Trigger back to daily. Backup of the pre-test file in the scratchpad.
+  - Production setup at cutover: create the Data API with JWKS URL `<production storage endpoint>/jwks/jwks.json`;
+    generate the anon key pair, sign the 10-year token, put the public JWK in ANON_JWKS, destroy the private key.
+- **Prod security fix 2026-11-16 (migration 090, owner ran it on prod):** `sessions: admin delete` USING (true) let any
   signed-in player delete any session; replaced by `sessions: staff delete` (admin/moderator). Prod still 60 policies, so
   `verify.sql`'s count holds for the pg_dump path; the repo-migrations path now makes 57. Parity has the fix too. Open, by
   design: `match_results: kiosk insert` lets logged-out callers insert results for any match (decide before Phase 1).

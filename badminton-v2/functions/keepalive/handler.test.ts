@@ -70,4 +70,32 @@ describe('keepalive handler', () => {
     await handler(trigger())
     expect((fetchFn.mock.calls[0] as unknown as [string])[0]).toBe(`${URL_}/rest/v1/rpc/keepalive_ping`)
   })
+
+  it('runs the JWKS refresh after a successful ping and reports it', async () => {
+    const fetchFn = vi.fn(async () => new Response('"t"', { status: 200 }))
+    const refreshJwks = vi.fn(async () => 'updated' as const)
+    const handler = createKeepaliveHandler({ supabaseUrl: URL_, publishableKey: KEY, fetch: fetchFn as unknown as typeof fetch, log: () => {}, refreshJwks })
+    const res = await handler(trigger())
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, jwks: 'updated' })
+  })
+
+  it('a failed JWKS refresh is logged and reported as 502 (the ping still happened)', async () => {
+    const fetchFn = vi.fn(async () => new Response('"t"', { status: 200 }))
+    const log = vi.fn()
+    const refreshJwks = vi.fn(async () => { throw new Error('Supabase returned no keys') })
+    const handler = createKeepaliveHandler({ supabaseUrl: URL_, publishableKey: KEY, fetch: fetchFn as unknown as typeof fetch, log, refreshJwks })
+    const res = await handler(trigger())
+    expect(res.status).toBe(502)
+    expect(fetchFn).toHaveBeenCalledTimes(1)
+    expect(log).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not refresh when the ping failed', async () => {
+    const refreshJwks = vi.fn(async () => 'updated' as const)
+    const fetchFn = vi.fn(async () => new Response('{}', { status: 500 }))
+    const handler = createKeepaliveHandler({ supabaseUrl: URL_, publishableKey: KEY, fetch: fetchFn as unknown as typeof fetch, log: () => {}, refreshJwks })
+    await handler(trigger())
+    expect(refreshJwks).not.toHaveBeenCalled()
+  })
 })
