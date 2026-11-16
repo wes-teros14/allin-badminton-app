@@ -114,6 +114,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - Never quote a cloud free-tier limit from memory, even flagged as unchecked — search it first. I said Oracle gives 24 GB; it was halved to 12 GB in June 2026.
 - Count schema objects (FKs, policies, grants) with a `count(*)` query, never by eyeballing a listed result. I reported 22 FKs to `auth.users`; there were 24, plus 2 to `profiles`.
 - A migration plan using `pg_restore --no-acl` must re-create grants explicitly. Dropping ACLs re-grants EXECUTE to PUBLIC on SECURITY DEFINER functions whose PUBLIC access was revoked.
+- Never probe whether a server-side guard works with a destructive write. Test the guard with a harmless write first (or inside a branch snapshot) — I tested Neon `max-affected` with a DELETE, the guard was ignored, and it wiped the parity fixtures.
 - Memory commitment (Committed_AS) is memory promised, not used. Report usage as RAM used + swap, and read chart totals from the tooltip, never from an axis tick.
 
 ## .env Files

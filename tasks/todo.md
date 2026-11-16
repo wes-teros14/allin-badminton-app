@@ -181,11 +181,35 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     after sleep ~1.5 s median (1118–1615 ms, incl. ~150 ms TLS); next request 125–497 ms; then ~45 ms.
     Direct `pg` cold connect + query ~1.1 s. Sleep after ~5 min (300 s default). Test cost 0.093 CU-h.
     Egress still to measure on the real schema.
+  - **Egress result 2026-11-16: fits, ~10x headroom.** Source: prod Supabase `edge_logs` (24 h window
+    2026-11-15 10:36 → 2026-11-16 10:30 UTC, covering most of the Nov 15 session: 16 players, 20 games, plus the
+    morning after). `content_length` is logged on only 817/5436 requests (REST is chunked), so bytes = rows
+    returned (`content_range`) × avg JSON row size of each query shape, measured on prod with `row_to_json`.
+    - REST GETs: 2,956 requests, ~207k rows (matches 77k, session_registrations 37k, cheers 36k, profiles 21k,
+      player_stats 13k, sessions 5.6k). Row sizes: matches 348 B (7 cols) / 511 B (with `match_results`
+      embed), cheers 104 B, registrations 52–191 B, profiles 136 B, sessions up to 1.1 KB.
+    - ≈ **50 MB uncompressed** for the window (~45 MB rows + ~3 MB headers on ~4,900 requests incl. OPTIONS).
+      Session evening (10–16 UTC) is 2/3 of it.
+    - Month: assume 80 MB per session day (window misses the session start) × 5 + ~5 MB × 25 quiet days
+      ≈ **0.5 GB/month** vs the 5 GB Free limit. Realtime messages are tiny (< 1 KB each). Storage stays on
+      Supabase. Not counted: gzip (would lower it), mid-week registration rush (unknown, small per G6 logs).
+    - Biggest consumers, if it ever needs trimming: the history queries that pull every past match / every cheer
+      by giver (`matches?session_id=in.(…)` 42k rows, `cheers?giver_id=eq.…` 36k rows).
+    - Cross-check still open: owner reads Supabase Usage → Egress for last cycle.
 - **G3 result 2026-11-16: PASS with one serious break** (session `neon-g3-parity`, branch
   `claude/practical-chandrasekhar-7fc37a`, scripts in `badminton-v2/scripts/neon/` there, not merged).
   62/63 checks pass incl. 14 with real Supabase DEV tokens. **Break:** Neon's Data API `.single()` returns
   200 `null` on 0 rows (no PGRST116) and the first row on 2+; a PATCH `.single()` hitting 2 rows commits
   both. Phase 1: custom `fetch` in `src/lib/supabase.ts` that returns PGRST116 when the count ≠ 1.
+  - **Fix built 2026-11-16 (not wired):** `src/lib/singleObjectFetch.ts` + `src/__tests__/singleObjectFetch.test.ts`
+    (11 tests, real postgrest-js). Sends object requests as array requests and rebuilds the object or the
+    PGRST116 error (details "The result contains N rows", so `maybeSingle()` still works). Live on `parity`: raw
+    client 0 rows → 200 null, 6 rows → 200 object; wrapped → 406 PGRST116 both; 1 row / maybeSingle / lists
+    unchanged. Full suite 506/506, build passes. **Phase 1:** pass it as `global.fetch` on the client that
+    talks to Neon (prod stays on Supabase until then).
+  - **Write rollback can't be restored:** Neon ignores `Prefer: handling=strict, max-affected=1` (a PATCH
+    and a DELETE on 4 rows both committed all 4). The wrapper reports PGRST116 but the write stays. All 10
+    `.single()` writes in `useSession.ts` filter by `id`, so none can match 2 rows. Keep it that way.
   Also found: repo migrations drift from prod (56 vs 60 policies, `cheers` differs); prod lets anyone,
   even logged-out, run `unfinish_match` / `reverse_session_stats`; the kiosk `matches` update policy
   can't work on prod (no UPDATE grant for `anon`).

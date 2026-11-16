@@ -2230,6 +2230,40 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">How important is the G1 sleep test? If it fails, can we not continue?</p>
+    <p class="a">
+      It's the one gate that would stop the plan. If something kept the database awake, 0.25 CU around
+      the clock is ~182 CU-hours against the free 100, so the app would go down mid-month. But it's
+      checkable at any time without waking the database: <code>neon api /projects/…/endpoints</code> shows
+      <code>last_active</code>. On 2026-11-16 the branch had been asleep since 00:38 UTC (10 h) with Data API
+      and Realtime on, and its 1236 s of active time was all setup. The next-day read only confirms it.
+      Failure would change the plan, not end it (e.g. live updates stay on Supabase), so other work goes on.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Will Neon's 5 GB monthly egress be enough?</p>
+    <p class="a">
+      Yes, about 10× headroom. Supabase logs leave out response sizes for chunked REST replies, so the estimate
+      is rows returned (<code>Content-Range</code>) × measured JSON row size. The 24 h around the Nov 15 session
+      (16 players, 20 games) came to ~207k rows ≈ 50 MB, so roughly 0.5 GB a month. The heaviest are the history
+      queries: every past match (42k rows) and every cheer by giver (36k rows).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What breaks with <code>.single()</code> on Neon, and how is it fixed?</p>
+    <p class="a">
+      Neon's Data API ignores PostgREST's "exactly one row" rule. On no match it returns 200 <code>null</code>
+      instead of the PGRST116 error, and on several matches it returns the first row. <code>src/lib/singleObjectFetch.ts</code>
+      wraps <code>fetch</code>: it asks for an array and gives back the object, or the same PGRST116 error
+      Supabase would send. It can't undo a write that hit two rows, because Neon also ignores
+      <code>max-affected</code>. Every <code>.single()</code> write in the app filters by <code>id</code>, so that
+      case can't happen today.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">

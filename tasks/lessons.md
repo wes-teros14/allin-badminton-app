@@ -860,3 +860,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: Claude Code notice on Bash/Grep/Read/Glob calls; the graphify guard never ran.
 - Root cause: tracked `.claude/settings.json` hard-coded `C:/Users/MarkWesleyAncog/.local/bin/graphify.EXE` (another machine's user folder); on this machine graphify is `C:/Users/yonex/.local/bin/graphify`.
 - Fix: hooks call bare `graphify hook-guard search|read` (resolved from PATH on any machine). Tested both: exit 0 with valid hook JSON.
+
+## 2026-11-16: Parity test fixtures wiped while probing a Neon guard
+- Symptom: all 4 `matches` on Neon branch `parity` updated (court 9) then deleted.
+- Root cause: I tested whether Neon honours `Prefer: handling=strict, max-affected=1` with a multi-row PATCH and DELETE. Neon ignores the header, so both committed.
+- Fix: `neon branches restore parity ^self@2026-11-16T10:32:00Z --preserve-under-name parity-before-restore`; verified 4 matches back, court numbers null, Data API still active. Rule added to CLAUDE.md: test a guard with a harmless write first.
