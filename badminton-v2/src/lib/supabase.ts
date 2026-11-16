@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
 import { neonDataBaseUrl, routeDataCalls } from '@/lib/dataRouter'
 import { singleObjectFetch } from '@/lib/singleObjectFetch'
+import { createOpenDueRegistrations } from '@/lib/openDueRegistrations'
 
 const authClient = createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
@@ -22,6 +23,9 @@ const NEON_ANON_JWT: string | undefined = import.meta.env.VITE_NEON_ANON_JWT
  * token). `singleObjectFetch` restores PostgREST's `.single()` contract, which
  * Neon's Data API does not keep (G3).
  */
+/** True when data goes to Neon (see below); false on plain Supabase. */
+export const usesNeonData = Boolean(NEON_DATA_API_URL && NEON_ANON_JWT)
+
 export const supabase =
   NEON_DATA_API_URL && NEON_ANON_JWT
     ? routeDataCalls(
@@ -32,3 +36,9 @@ export const supabase =
         }),
       )
     : authClient
+
+/** Opens sessions whose scheduled registration time has passed; a no-op on Supabase (pg_cron does it). */
+export const openDueRegistrations = createOpenDueRegistrations({
+  call: () => supabase.rpc('open_due_registrations' as never),
+  enabled: usesNeonData,
+})

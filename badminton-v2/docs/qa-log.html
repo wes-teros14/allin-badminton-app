@@ -2305,6 +2305,18 @@
   </div>
 
   <div class="qa">
+    <p class="q">How does "open registration at a set time" work on Neon (D1)?</p>
+    <p class="a">
+      On Supabase an hourly <code>pg_cron</code> job flips due sessions from Setup to Registration open. Neon's
+      pg_cron only runs while the database is awake, so instead the app calls <code>open_due_registrations()</code>
+      when a player loads their sessions. The first person to look after the set time opens it for everyone, and
+      live updates tell the other screens. Players can't register early either way, because the insert policy checks
+      the time (migration 034). The feature had been used for 5 of 41 sessions, the last in April 2026. The owner
+      kept it and chose this over an hourly Function, which would cost ~15–17 of the 100 free compute-hours a month.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check

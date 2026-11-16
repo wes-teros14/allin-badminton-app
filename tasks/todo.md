@@ -241,7 +241,11 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
 
 - [ ] `scripts/neon/`, reading secrets from `.env*` at runtime and never printing them:
   - [ ] `export-supabase.mjs` (read-only)
-  - **G3 scripts now on `dev` (2026-11-16)** in `badminton-v2/scripts/neon/` (copied from the G3 worktree; that branch had
+  - **Prod security fix 2026-11-16 (migration 090, owner ran it on prod):** `sessions: admin delete` USING (true) let any
+  signed-in player delete any session; replaced by `sessions: staff delete` (admin/moderator). Prod still 60 policies, so
+  `verify.sql`'s count holds for the pg_dump path; the repo-migrations path now makes 57. Parity has the fix too. Open, by
+  design: `match_results: kiosk insert` lets logged-out callers insert results for any match (decide before Phase 1).
+- **G3 scripts now on `dev` (2026-11-16)** in `badminton-v2/scripts/neon/` (copied from the G3 worktree; that branch had
   no commits of its own). Known gap: the repo migrations make 56 policies, prod has 60, so `apply.mjs` on the
   migrations path stops at `verify.sql` (expects 60); parity got the 4 by hand. The Phase 2 path (pg_dump of prod)
   has all 60 and is the one that counts.
@@ -288,7 +292,20 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     admin `/admin` 41 Neon REST calls, `/leaderboard` 16, `/sessions` 9 — 0 to Supabase REST, 0 failures; signed-out
     `/live-board/<parity S1>` 7 Neon calls with the anonymous token + 1 seal, renders both courts. No writes from
     the UI tested (G3 covered writes at the API level).
-- [ ] D1 RPC call (open due registrations).
+- [x] **D1 — scheduled registration opening, built 2026-11-16 (dormant until data is on Neon).**
+  - Owner decisions: **keep the feature** (prod: used for 5 of 41 sessions, all Mon 20:00 Manila, last 27 Apr 2026;
+    the hourly `open-registration-hourly` pg_cron job has had nothing to open since) and **open on app load**, not
+    an hourly Function (~15–17 CU-h/month).
+  - Players never fetch `setup` sessions, so the app cannot spot a due one; it asks the database instead.
+    `open_due_registrations()` (SECURITY DEFINER, one idempotent UPDATE, returns the count) added to
+    `scripts/neon/transform.sql`; EXECUTE to `anonymous`/`authenticated` in `grants.sql`; whitelisted in `verify.sql`.
+    Not added to Supabase — pg_cron keeps doing it there until cutover.
+  - `src/lib/openDueRegistrations.ts` (6 tests): only when `usesNeonData`, at most once a minute per tab, shared
+    request, failures logged and never block loading. Called before loading in `usePlayerSessions` and
+    `SessionPlayerDetailView`. Suite 557/557, build ok.
+  - **Parity:** S2 set to setup with opening time 1 min ago → loading /sessions as s1-alex called the RPC once
+    (200, 114 ms) → S2 `registration_open` + live message on its session topic. Future time → 0 opened, stays
+    setup (run as `anonymous`). S2 restored.
 - [x] **Live channel on Neon Realtime — built 2026-11-16, dormant until env set.**
   - `src/lib/neonLiveChannel.ts`: same `listen(topic, onMessage, onStatus)` as the Supabase registry. First
     result = baseline (ignored); only `upsert` changes delivered, once, in id order; several per event. Renew

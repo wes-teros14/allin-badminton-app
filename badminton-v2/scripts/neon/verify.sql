@@ -36,7 +36,7 @@ begin
   from pg_proc p
   where p.pronamespace = 'public'::regnamespace
     and (p.prosecdef or p.prorettype = 'trigger'::regtype)
-    and p.proname not in ('unfinish_match', 'reverse_session_stats')
+    and p.proname not in ('unfinish_match', 'reverse_session_stats', 'open_due_registrations')
     and (has_function_privilege('anonymous', p.oid, 'execute')
          or has_function_privilege('authenticated', p.oid, 'execute'));
   if bad is not null then raise exception 'verify: API role can execute %', bad; end if;

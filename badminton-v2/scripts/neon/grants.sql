@@ -82,3 +82,6 @@ $$;
 grant execute on function public.unfinish_match(uuid)        to authenticated;
 grant execute on function public.get_session_finance(uuid)   to authenticated;
 grant execute on function public.reverse_session_stats(uuid) to authenticated;
+-- Scheduled registration opening (transform.sql, D1): any visitor's app may trigger it, as the hourly
+-- job did; it only opens sessions whose admin-set time has passed.
+grant execute on function public.open_due_registrations()    to anonymous, authenticated;

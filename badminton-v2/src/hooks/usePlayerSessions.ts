@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { openDueRegistrations, supabase } from '@/lib/supabase'
 import { userTopic } from '@/lib/liveChannel'
 import { listenLive } from '@/hooks/useLiveChannel'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
@@ -145,6 +145,10 @@ export function usePlayerSessions(playerId: string | null): UsePlayerSessionsRes
       if (!options?.background) {
         setIsLoading(true)
       }
+
+      // 0. Open any session whose scheduled time has passed, so it appears as open (D1).
+      await openDueRegistrations()
+      if (cancelled) return
 
       // 1. Fetch registered session IDs + all registration_open/registration_closed sessions in parallel
       const [registrationsRes, openSessionsRes, receiptsRes] = await Promise.all([

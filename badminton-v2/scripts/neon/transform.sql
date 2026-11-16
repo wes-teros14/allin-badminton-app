@@ -167,6 +167,27 @@ drop table if exists public.app_config;
 drop schema if exists realtime cascade;
 drop schema if exists storage cascade;
 drop schema if exists cron cascade;
+
+-- Scheduled registration opening (D1, owner 2026-11-16). Supabase ran pg_cron hourly
+-- (migration 032); pg_cron only runs while a Neon compute is awake, so the app calls this
+-- instead whenever a player loads their sessions (src/lib/openDueRegistrations.ts).
+-- Idempotent, one UPDATE; the rt_* trigger on sessions tells open screens.
+create or replace function public.open_due_registrations()
+returns integer
+language sql
+security definer
+set search_path = ''
+as $fn$
+  with opened as (
+    update public.sessions
+    set status = 'registration_open'
+    where status = 'setup'
+      and registration_opens_at is not null
+      and registration_opens_at <= now()
+    returning 1
+  )
+  select count(*)::integer from opened;
+$fn$;
 drop table if exists auth.users;
 
 -- ---------------------------------------------------------------------------

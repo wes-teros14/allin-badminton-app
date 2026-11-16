@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import { Paperclip, Trash2 } from 'lucide-react'
 import { computeStatsFromResults } from '@/lib/matchResults'
 import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
-import { supabase } from '@/lib/supabase'
+import { openDueRegistrations, supabase } from '@/lib/supabase'
 import { sessionTopic, userTopic } from '@/lib/liveChannel'
 import { listenLive } from '@/hooks/useLiveChannel'
 import { formatDisplayName } from '@/lib/formatDisplayName'
@@ -746,10 +746,11 @@ export function SessionPlayerDetailView() {
   // Fetch registration status + session info
   useEffect(() => {
     if (!sessionId || !user) return
-    Promise.all([
+    // A session whose scheduled opening time has passed opens before we read its status (D1).
+    openDueRegistrations().then(() => Promise.all([
       supabase.from('sessions').select('status, price, session_notes, registration_opens_at').eq('id', sessionId).maybeSingle(),
       supabase.from('session_registrations').select('player_id, paid, payment_exempt').eq('session_id', sessionId).eq('player_id', user.id).maybeSingle(),
-    ]).then(([sessionRes, regRes]) => {
+    ])).then(([sessionRes, regRes]) => {
       const s = sessionRes.data as { status: string; price: number | null; session_notes: string | null; registration_opens_at: string | null } | null
       const r = regRes.data as { player_id: string; paid: boolean | null; payment_exempt: boolean | null } | null
       setSessionStatus(s?.status ?? null)
