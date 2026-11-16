@@ -253,7 +253,30 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
 
 - [ ] `scripts/neon/`, reading secrets from `.env*` at runtime and never printing them:
   - [ ] `export-supabase.mjs` (read-only)
-  - **Prod key decisions (owner, 2026-11-16):**
+  - **Dress rehearsal, part 1 — 2026-11-16: PASS (owner OK'd copying prod data to Neon).**
+  - Getting the data out: `supabase db dump --remote` fails for this account (login-role endpoint 403); Neon's Import
+    Data Assistant does not support Supabase; logical replication needs Supabase's paid IPv4 add-on. Used pg_dump:
+    PostgreSQL 17.12 binaries zip from get.enterprisedb.com unpacked into the scratchpad (winget installer was cancelled
+    at UAC); the owner ran `pg_dump -Fc --schema=public --no-owner --no-acl` against the session pooler
+    (aws-1-ap-southeast-1, IPv4) and typed the password — never seen by Claude. Dump 806 KB.
+  - **Version gap:** Neon project is **Postgres 18.7**, prod is 17.6. The 17 dump restored into 18 with no errors.
+  - Branch `rehearsal` (`br-lively-waterfall-aolnrtw4`, ep-late-river-aozehmpq, 0.25 CU, expires 2026-11-30), from
+    the empty `production` branch. Order: bucket `jwks` (`--access-level public_read`; `--access` is silently ignored
+    and gives a private bucket) with prod Supabase key + new `neon-anon-rehearsal-1` (non-extractable, never saved;
+    10-year token kept) → Data API (external, Supabase, aud authenticated, --skip-auth-schema, anon role `anonymous`)
+    → `apply.mjs pre` → pg_restore pre-data + data (`--single-transaction --exit-on-error`, list without the
+    `SCHEMA public` entry) → shim `auth.users` filled from profiles (102) → pg_restore post-data → transform (24 FKs
+    repointed) + grants + verify (all checks passed). Prod had 0 orphan user ids. Triggers are post-data, so loading
+    data fired none.
+  - **All 22 tables identical to prod**: row counts and md5 content hashes per table (UTC), e.g. cheers 6168,
+    notifications 6349, player_pair_stats 1184, matches 563, registrations 537, profiles 102, sessions 41.
+  - Realtime (prod + localhost origins), `seal` (prod sign-in) and `keepalive` (+ daily trigger, JWKS refresh from
+    prod) deployed to rehearsal. Signed-out live board for the Nov 15 session loads from rehearsal (4 Neon calls, 0
+    Supabase, 0 failed).
+  - **Part 2 (next):** owner signs in with Google on localhost (app pointed at prod auth + rehearsal data; launcher
+    `scratchpad/rehearsal/launch.mjs`) — check prod allows localhost as a redirect — then compare leaderboards,
+    history and finance with the live site, and measure egress per page.
+- **Prod key decisions (owner, 2026-11-16):**
   1. **JWKS location: a `public_read` Neon bucket on the `production` branch** (as on parity), not a file on the
      Vercel site — data must not depend on a healthy web deploy. The Data API JWKS URL is fixed at create time.
   2. **Kept current automatically:** the daily keepalive Function also fetches the Supabase project's public keys,

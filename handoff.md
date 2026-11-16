@@ -1,37 +1,42 @@
 # Handoff — current snapshot
 
-Updated: 2026-11-16 ~09:00 Manila. Overwrite this file on every update; it is never a running history.
+Updated: 2026-11-16 ~23:45 Manila. Overwrite this file on every update; it is never a running history.
 
 ## Done this session
-- **Neon migration plan v2** (H1 hybrid) in `tasks/todo.md`, reviewed by a separate session
-  (`tasks/neon-migration-review.md`); visual `badminton-v2/docs/visual/supabase-to-neon-migration.html`.
-- **Neon setup:** CLI signed in; project `lucky-heart-02739020` linked (`badminton-v2/.neon`); connection
-  strings in `badminton-v2/.env.local`; project-level Neon skills + MCP; `neon.ts` + `@neon/config`,
-  `@neon/env` (bumped `zod` 4.3.6 → 4.6.7, `jiti`; build + 495 tests pass).
-- **G0 PASS** on Neon branch `spike` (two design changes, recorded in `tasks/todo.md` and memory).
-- **Realtime enabled** on `spike` (project `wal_level=logical`, permanent); delivery check passed.
-- **G6:** risk, not a blocker → daily Supabase keep-alive in Phase 1.
+- **Phase 0 gates:** G0, G2, G3, G4, G5, G6 pass; G1 early reads pass (spike asleep since 00:38 UTC; open
+  Realtime subscriptions don't keep compute awake). Egress ≈ 0.5 GB/month.
+- **Phase 1 built, all dormant behind env vars (prod unchanged):** `.single()` fix, data router, Neon live
+  channel, `seal` + `keepalive` Functions (daily Supabase ping + JWKS refresh), D1 registration opening.
+  App writes through real screens pass on parity.
+- **Prod changes (owner ran SQL):** migration 090 (only admins/moderators delete sessions — security fix),
+  091 (`keepalive_ping()`).
+- **Key decisions (owner):** JWKS in a public Neon bucket, refreshed daily; anon signing key thrown away; anon
+  token 10 years.
+- **Dress rehearsal part 1:** prod copied into Neon branch `rehearsal` via owner-run `pg_dump`; all 22 tables
+  identical to prod (counts + content hashes); Data API, JWKS, Realtime, Functions set up there.
 
-## In progress
-- **G1 idle test** on branch `spike` since 2026-11-16 00:31 UTC. **Do not connect to `spike`** until it is
-  read. Read from 2026-11-17 00:31 UTC (~09:30 Manila, metrics lag):
-  `neon branches get spike --project-id lucky-heart-02739020 -o json` → `active_time_seconds`.
-- **Session [G3 parity](local_69317aee-1460-46c9-b76a-4eb75c608792)** (own worktree): schema + app
-  queries on Neon branch `parity`; writes `badminton-v2/scripts/neon/`. Not finished.
-- **Session [G5 cold start](local_5e8f477e-6843-4103-b5b4-6eca2f5073f3):** 8 cycles on branch
-  `coldstart`, deletes it after. Not finished.
+## Current state
+- `dev` has 11 Neon commits (latest 553c9b3), **not pushed**. Uncommitted: `tasks/todo.md`, `docs/qa-log.html`,
+  `project_memory.md`, `handoff.md` (rehearsal notes + wrap-up).
+- Neon branches: `production` (empty), `spike` (G1 idle test), `parity` (tests; expires 2026-11-23; runs
+  keepalive daily → pings prod), `rehearsal` (prod copy; expires 2026-11-30), backups `parity-before-restore`,
+  `parity-writetests-backup`.
+- Scratchpad (lost on reboot): Postgres 17 tools, prod dump, rehearsal anon token + launcher, parity anon key.
 
-## Immediate next steps
-1. Read both sessions' results; check their numbers/files; record in `tasks/todo.md` (G3, G5).
-2. Read G1. Pass → hidden/visible-tab runs, G2, G4, then Phase 1. Fail → stop, re-plan with owner.
+## Next steps
+1. **G1 final read** after 2026-11-17 00:31 UTC: `neon branches get spike --project-id lucky-heart-02739020 -o json`
+   → `active_time_seconds` should still be ~1236. Also re-read parity's counter (it lagged).
+2. **Rehearsal part 2:** owner signs in with Google on localhost (app on prod auth + `rehearsal` data; launcher
+   `scratchpad/rehearsal/launch.mjs` via a TEMP launch entry); compare leaderboards, history, finance with the live
+   site; measure egress per page.
+3. Cutover plan: window between sessions, checklist (production Data API + JWKS bucket, anon token, Functions on
+   `production`, Vercel env vars, final dump/restore), rollback = remove Neon env vars + redeploy.
 
 ## Open questions
-- Where the merged JWKS (Supabase key + our anon key) lives in prod, and where the anon private key is
-  kept (spike: public Neon bucket + scratchpad only). Unclear.
-- Egress for the last Supabase cycle (owner reads Usage → Egress). Not given yet.
-- D1 (open registration on app load vs a Function) not confirmed by owner.
-- Neon MCP shows "needs authentication" — owner authorizes via `/mcp` if wanted; CLI suffices.
-- 42 npm audit vulnerabilities (3 critical) reported after the Neon package install; not addressed.
-- Carried over: Broadcast/share/keep-last-good untested on real phones in a real session; magnet HTML
-  commit; Nov 1 session not closed; prod `service_role` key not rotated; `sessions: admin delete`
-  `qual true` unchecked; never `db push` to prod.
+- Does prod Supabase allow `http://localhost:5173` as an OAuth redirect? Unclear until tried.
+- Drop `match_results: kiosk insert` on prod? Owner said "not now".
+- Supabase Usage → Egress figure for last cycle (cross-check of the 0.5 GB estimate). Not given.
+- Housekeeping waiting: delete the 2 parity backup branches, archive G3/G5 sessions, 42 npm audit findings (3
+  critical), push `dev` (needs owner OK).
+- Carried over: Broadcast/share/keep-last-good untested on real phones; magnet HTML commit; Nov 1 session not
+  closed; prod `service_role` key not rotated; never `db push` to prod.

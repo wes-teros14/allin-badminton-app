@@ -2352,6 +2352,18 @@
   </div>
 
   <div class="qa">
+    <p class="q">How was prod copied into Neon for the dress rehearsal, and is the copy exact?</p>
+    <p class="a">
+      The Supabase CLI dump is refused for this account (403), and Neon's import tool doesn't support Supabase, so the
+      owner ran <code>pg_dump</code> (PostgreSQL 17 tools unzipped, no install) and typed the password themselves. The
+      dump was loaded into Neon branch <code>rehearsal</code> through the scripts: <code>pre.sql</code>, restore tables and
+      data, fill the stand-in <code>auth.users</code>, restore keys/triggers/policies, then transform, grants and verify.
+      All 22 tables match prod on row count and content hash. Neon runs Postgres 18.7 against prod's 17.6, and the
+      restore had no errors.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check
