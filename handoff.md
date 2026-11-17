@@ -14,8 +14,8 @@ Updated: 2026-11-17 ~10:45 Manila. Overwrite this file on every update; it is ne
 ## Current state
 - **Live:** data + live updates on Neon `production`; sign-in + files on Supabase prod. Supabase app tables FROZEN
   (backup, no drop date). Preview builds and local dev unchanged (Supabase DEV).
-- Git: `main` = 699fd37 (pushed); `dev` = 68a1d68 (pushed). Uncommitted: cutover notes in `tasks/todo.md`,
-  `tasks/lessons.md`, `project_memory.md`, `handoff.md`, CLAUDE.md lesson, Q&A entry.
+- Git: `main` = 699fd37 (pushed, live). `dev` = 294b8f6 + this handoff edit — docs only since 68a1d68, not pushed.
+  Nothing app-related is uncommitted.
 - Neon branches: `production` (live), `rehearsal` (prod copy, expires 2026-11-30), `parity` (expires 2026-11-23; its
   keepalive also pings prod daily — harmless), `spike`, backups `parity-before-restore`, `parity-writetests-backup`,
   `rehearsal-loadtest-backup`, `production-dryrun-backup`.
