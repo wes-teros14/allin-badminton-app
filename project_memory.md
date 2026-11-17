@@ -185,6 +185,8 @@ Durable knowledge only. Transient status lives in `handoff.md`.
     `--skip-auth-schema`; our `auth.uid()/role()/jwt()/email()` (Supabase bodies) are in `scripts/neon/pre.sql`.
   - A request with no token gets 401; logged-out clients send a long-lived anon JWT
     `{role: anonymous, aud: authenticated}` signed with a key in the merged JWKS.
+  - Neon's Data API **caches JWKS keys by kid**: a new key under a kid it has seen fails with PGRST301
+    "signature error". Never reuse a kid for a different key.
   - `neon data-api update` can't change the JWKS URL (delete + create). `neon buckets create` needs
     `--access-level public_read`; `--access` is silently ignored and makes a private bucket.
   - The logged-out live board has no write path (only admins/moderators finish games, `CourtCard.tsx:29`).

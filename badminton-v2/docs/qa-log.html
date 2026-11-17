@@ -2412,6 +2412,22 @@
   </div>
 
   <div class="qa">
+    <p class="q">Why does Neon use less memory than Supabase, and can we still fix it on Supabase?</p>
+    <p class="a">
+      It's not our data. The Supabase machine (406 MB) runs 28 Postgres processes: PostgREST holds 11 connections,
+      Realtime 7, workers 7, other 3. Each process keeps its own caches, and the database also carries Supabase's
+      auth, storage, Realtime and extension schemas (24 MB, against 4 MB of app tables). On Neon the machine is 1 GB
+      and carries at most 19 processes (Data API 9, Realtime none visible) and only our 12 MB. The API and Realtime
+      servers run on Neon's side. Caveat: the two dashboards may count memory slightly differently, though not by
+      enough to change the conclusion. On Supabase Free the overhead is its own managed stack, which we can't remove.
+      Already done: Broadcast replaced Postgres Changes, and the polling policy. Disproved: restarts and lowering
+      <code>shared_buffers</code>. Untested small trims, like disabling unused extensions such as GraphQL or fewer API
+      connections if Free allows it, wouldn't close the gap. The real fix there is paid compute, which the owner
+      declined.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check

@@ -16,26 +16,26 @@ Updated: 2026-11-16 ~23:45 Manila. Overwrite this file on every update; it is ne
   identical to prod (counts + content hashes); Data API, JWKS, Realtime, Functions set up there.
 
 ## Current state
-- `dev` has 12 Neon commits (latest 9d414a8), **not pushed**. Uncommitted: the G1 result in `tasks/todo.md`,
-  `project_memory.md`, `handoff.md`.
+- `dev` has 13 Neon commits (latest e11d431), **not pushed**. Uncommitted: `scripts/neon/compare-boards.ts`, TEST_KID
+  tweak in `session-sim-neon.mjs`, Phase 2–4 rewrite in `tasks/todo.md`, memory/handoff, Q&A entries.
 - Neon branches: `production` (empty), `spike` (G1 idle test), `parity` (tests; expires 2026-11-23; runs
   keepalive daily → pings prod), `rehearsal` (prod copy; expires 2026-11-30), backups `parity-before-restore`,
-  `parity-writetests-backup`.
+  `parity-writetests-backup`, `rehearsal-loadtest-backup`.
 - Scratchpad (lost on reboot): Postgres 17 tools, prod dump, rehearsal anon token + launcher, parity anon key.
 
 ## Next steps
-1. ~~G1 final read~~ **done 2026-11-17: PASS** (see tasks/todo.md).
-2. **Rehearsal part 2:** owner signs in with Google on localhost (app on prod auth + `rehearsal` data; launcher
-   `scratchpad/rehearsal/launch.mjs` via a TEMP launch entry); compare leaderboards, history, finance with the live
-   site; measure egress per page.
-3. Cutover plan: window between sessions, checklist (production Data API + JWKS bucket, anon token, Functions on
-   `production`, Vercel env vars, final dump/restore), rollback = remove Neon env vars + redeploy.
+1. ~~G1~~ PASS. ~~Load test~~ PASS (RAM peak 300 MB / 1 GB). ~~Rehearsal boards + finance~~ identical (compare-boards.ts).
+2. **Cutover:** draft in `tasks/todo.md` Phase 3. Walk the owner through decisions C1–C3 + kiosk one by one, then the
+   before-the-day setup of Neon `production` (bucket, anon key, Data API, Realtime, Functions, dry run).
+3. Still unchecked (needs owner sign-in, low risk): Google sign-in on the Neon build, receipts, share image —
+   covered by the cutover smoke test.
 
 ## Open questions
 - Does prod Supabase allow `http://localhost:5173` as an OAuth redirect? Unclear until tried.
-- Drop `match_results: kiosk insert` on prod? Owner said "not now".
+- Drop `match_results: kiosk insert` on prod? Owner: "note it until we complete the project" — decide at cutover
+  (app never uses it; see Phase 3 decisions).
 - Supabase Usage → Egress figure for last cycle (cross-check of the 0.5 GB estimate). Not given.
-- Housekeeping waiting: delete the 2 parity backup branches, archive G3/G5 sessions, 42 npm audit findings (3
+- Housekeeping waiting: delete the 3 backup branches, archive G3/G5 sessions, 42 npm audit findings (3
   critical), push `dev` (needs owner OK).
 - Carried over: Broadcast/share/keep-last-good untested on real phones; magnet HTML commit; Nov 1 session not
   closed; prod `service_role` key not rotated; never `db push` to prod.

@@ -64,7 +64,7 @@ const now = () => Date.now()
 
 async function tokenFor(sub) {
   return new SignJWT({ role: 'authenticated' })
-    .setProtectedHeader({ alg: 'ES256', kid: 'loadtest-rehearsal-1', typ: 'JWT' })
+    .setProtectedHeader({ alg: 'ES256', kid: process.env.TEST_KID ?? 'loadtest-rehearsal-1', typ: 'JWT' })
     .setSubject(sub).setAudience('authenticated').setIssuedAt().setExpirationTime('3h').sign(signingKey)
 }
 function dataClient(token) {

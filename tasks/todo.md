@@ -423,43 +423,76 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
 - [ ] Env: `.env.example` gains `VITE_NEON_DATA_API_URL`, `VITE_NEON_REALTIME_URL` and the seal Function
   URL. Vercel env vars are listed for the owner.
 
-## Phase 2 — Rehearsal (prod copy → Neon branch `rehearsal`)
+## Phase 2 — Rehearsal (prod copy → Neon branch `rehearsal`) — mostly done 2026-11-16/17
 
-- [ ] Run export → transform → grants → import → verify on a fresh prod export, and record its duration.
-- [ ] **"Works the same" checklist,** at phone width, as player, as admin and logged out:
-  - [ ] Sign in / out, staying signed in after a reload, redirects to `/`, `/register` and `/admin`.
-  - [ ] Registration:
-    - [ ] Register / unregister and the registration limit.
-    - [ ] Payment-exempt sync.
-    - [ ] Receipt upload / view / delete, and the admin notification.
-  - [ ] Admin session work:
-    - [ ] Create / edit / share a session.
-    - [ ] Generator presets and generating the schedule.
-    - [ ] Live court screen, subs, unfinish.
-    - [ ] Finish the session (stats + `sessions_attended`).
-  - [ ] **Logged-out kiosk** result entry.
-  - [ ] Results → player and pair stats, all leaderboards (active window 5), Today view.
-  - [ ] Cheers: the gate, toasts (3 cheers = 3 toasts), cheer stats.
-  - [ ] Live board logged out: updates within ~1 s, keeps last good data, "Reconnecting…" badge.
-  - [ ] Announcer clips, avatars, payment QR.
-  - [ ] Finance RPC, shuttles, notes.
-  - [ ] Scheduled registration opening (D1).
-- [ ] Load test: a 20-device simulation (`scripts/loadtest/session-sim.mjs`, adapted). Watch CU, egress
-  and the Supabase memory chart.
+- [x] Export → pre → restore → transform → grants → verify on a fresh prod export: clean, all 22 tables identical
+  (counts + md5). Owner's `pg_dump` took seconds (806 KB); restore + scripts a few minutes.
+- [x] Load test (20 phones × 15 min, `scripts/loadtest/session-sim-neon.mjs`): 0 phone errors, RAM peak 300 MB / 1 GB.
+- [x] **All leaderboards identical** — `scripts/neon/compare-boards.ts` runs the app's own fetchers (Individual,
+  Partners, 5 Awards, 6 Cheers, eligibility) against the real Neon Data API and against a PostgREST-style
+  reference over the same rows: byte-identical output (23,963 bytes), twice. One earlier run returned an empty
+  Individual board, not reproducible; it came seconds after a JWKS change (inference: requests briefly refused while
+  the Data API re-read the key list). The app shows a failed board load as "No stats recorded yet" — so never
+  change the key list during a session.
+- [x] **Finance identical:** `get_session_finance` through the Data API (admin) = the function run directly, for all
+  41 sessions, 0 failures.
+- [x] Writes through the real screens (on parity): register, profile, create/edit/close session, generate/lock,
+  start, finish, cheer. D1 opening. Logged-out live board. Kiosk entry: N/A (no logged-out write path exists).
+- [ ] Not covered without the owner's sign-in: Google sign-in/out on the Neon build, receipt upload/view (Storage
+  stays on Supabase, unchanged), session share image, announcer clips. Low risk (none of these moved), checked in
+  the cutover smoke test instead.
+- Facts learned: Neon Data API caches JWKS keys **by kid** — never reuse a kid for a different key.
 
-## Phase 3 — Cutover (a day with no session; short write freeze)
+## Phase 3 — Cutover (DRAFT, owner decisions pending)
 
-- [ ] Nobody needs to sign in again (H1). Announce a short maintenance window only.
-- [ ] Freeze writes → final export / import / verify → switch Vercel env → deploy `main` → smoke test.
-- [ ] **Rollback:** redeploy the previous Vercel production build. Supabase still has the data, and writes
-  made on Neon during the window are lost, so decide go / no-go inside the freeze window.
+**When:** a weekday evening with no session; announce a short maintenance window. Rollback is minutes.
+
+**Before the day (no impact on players):**
+1. Neon `production` branch (`br-polished-unit-aoa3nyat`, empty): confirm fixed 0.25 CU and scale-to-zero 5 min.
+2. Bucket `jwks` with `--access-level public_read`; generate the anon key (non-extractable), sign the 10-year
+   token, upload JWKS = prod Supabase key + anon key; destroy the private key.
+3. Data API on `production`: external, Supabase, aud `authenticated`, `--skip-auth-schema`, anon role
+   `anonymous`, JWKS URL `<production storage>/jwks/jwks.json`.
+4. `neon realtime enable --branch production --allowed-origin https://badmintontayo.mrkws.com
+   --allowed-origin http://localhost:5173`. (Admin ops briefly wake every branch; harmless.)
+5. Deploy `seal` + `keepalive` to `production` (`neon config plan` then `neon deploy --branch production
+   --no-env-pull --env <file>`; SEAL/KEEPALIVE/JWKS Supabase = prod, JWKS_BUCKET=jwks, ANON_JWKS = the anon key).
+6. Dry run on `production`: load yesterday's dump through the scripts, verify, fingerprints; then wipe it again
+   (or keep and reload on the day).
+7. Vercel: prepare the 4 env vars (`VITE_NEON_DATA_API_URL`, `VITE_NEON_ANON_JWT`, `VITE_NEON_REALTIME_URL`,
+   `VITE_NEON_SEAL_URL`) on the project that serves badmintontayo.mrkws.com — Production scope only. (3 Vercel
+   projects build this repo; only one serves the domain — check the name.) Merge Phase 1 to `main` first: with the
+   vars unset it changes nothing.
+
+**On the day (~30–45 min):**
+1. Freeze writes on Supabase (decision C1) → no new data lands in the old database.
+2. Owner runs `pg_dump` (same command as the rehearsal) → Claude loads it into `production` → verify +
+   fingerprints vs prod.
+3. Set the 4 Vercel env vars → redeploy production → check the bundle contains the Neon URLs.
+4. Smoke test on the live site: sign in (Google), sessions list, a session page, leaderboards, live board logged
+   out, admin pages, one registration on a test session, receipts view, avatars.
+5. Unfreeze nothing on Supabase — it is now the old copy. Watch Neon RAM/CU and the app for the evening.
+
+**Rollback (decide inside the window):** remove the 4 env vars → redeploy → the app is back on Supabase. Re-grant
+Supabase writes. Writes made on Neon in between would be lost (or copied back by hand) — so decide go/no-go before
+reopening to players.
+
+**Owner decisions needed (ask one by one when we get here):**
+- C1: how to stop open tabs (old code in memory, no service worker) writing to Supabase after the switch —
+  revoke INSERT/UPDATE/DELETE for `anon`/`authenticated` on Supabase `public` (old tabs then error → reload), or
+  rely on the timing (evening, no session).
+- C2: which evening, and who announces the window.
+- C3: what happens to the old Supabase tables afterwards (keep read-only for N weeks as a fallback, then drop).
+- Kiosk rule (`match_results: kiosk insert`, anon): drop or keep — noted, decide before the project ends.
 
 ## Phase 4 — After cutover
 
-- [ ] A daily CU-h and egress check script (Neon API) with a stop-loss threshold, since Free sends no
-  warnings. Write real numbers into `project_memory.md` (Capacity).
-- [ ] Remove the moved tables from Supabase only after the owner confirms; keep Supabase Auth/Storage.
-- [ ] Update `project_memory.md` (Stack, Environments, Capacity, Realtime) and `docs/qa-log.html`.
+- [ ] Delete the parity `keepalive` deploy (it pings prod daily until parity expires 2026-11-23); production's takes over.
+- [ ] A daily CU-h and egress check (Neon API) with a stop-loss threshold — Free sends no warnings. Real numbers
+  into `project_memory.md` (Capacity).
+- [ ] Remove the moved tables from Supabase only after the owner confirms (C3); keep Supabase Auth/Storage.
+- [ ] Remove Supabase-only code paths (Broadcast registry, pg_cron job) once Neon has run a few sessions.
+- [ ] Update `project_memory.md` and `docs/qa-log.html`.
 
 ## Owner input needed
 
