@@ -2521,6 +2521,34 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">What is the JWKS workaround (the sign-in keys file and its daily refresh)?</p>
+    <p class="a">
+      Neon’s Data API checks each request’s token against one list of public keys (a JWKS file), and only one URL can be set.
+      We need it to accept two kinds of token. Signed-in players send their Supabase token, signed by Supabase’s
+      keys. Signed-out visitors send our own long-lived anonymous token, signed by a key we made, because Neon rejects
+      requests that carry no token at all. So we keep a merged file, Supabase’s public keys plus ours, in a public Neon
+      bucket. If Supabase ever changes its signing key, players’ new tokens would no longer match the file and their
+      data calls would fail. So the daily <code>keepalive</code> Function also re-reads Supabase’s keys and rewrites the
+      file when they differ (<code>functions/keepalive/jwks.ts</code>). With Neon Auth, the Data API reads Neon’s own key list
+      directly, and none of this is needed.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Can we drop Supabase completely later? Neon also has Auth and object storage.</p>
+    <p class="a">
+      Probably, but it’s a separate project. Neon Auth is on the Free plan (up to 60k monthly users, Google
+      sign-in with our own Google credentials), and Object Storage gives 5 GB per project. The hard part is accounts:
+      Neon’s Supabase migration guide has no way to import users with their existing IDs, and our tables
+      have 24 links to <code>auth.users</code> plus 2 to <code>profiles</code>. Everyone would sign in with Google once more,
+      and a script would move each player’s data from the old ID to the new one by email. Files would be copied,
+      and their saved links rewritten. Watch out: Neon’s 5 GB of monthly transfer is shared by the database,
+      Functions and storage, so photos would count against the same budget. Checked against Neon docs 2026-11-17.
+      Not tested.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">

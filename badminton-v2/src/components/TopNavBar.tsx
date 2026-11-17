@@ -36,16 +36,18 @@ export function TopNavBar() {
       show: true,
       badge: unreadCount > 0,
     },
-  ]
-
-  const adminTabs = [
     {
+      // Always on the bar, never in the ☰ menu: moderators forgot it was there (2026-11-17).
       label: 'Admin',
       href: '/admin',
       active: isUnder(pathname, '/admin') || isUnder(pathname, '/session'),
       show: role === 'admin' || role === 'moderator',
       badge: false,
+      accent: true,
     },
+  ]
+
+  const adminTabs = [
     {
       label: 'Players',
       href: '/players',
@@ -78,16 +80,27 @@ export function TopNavBar() {
 
   const visibleAdminTabs = adminTabs.filter((tab) => tab.show)
   const hasAdminTabs = visibleAdminTabs.length > 0
+  const visiblePrimaryTabs = primaryTabs.filter((tab) => tab.show)
+  // Four tabs plus the ☰ need 389 px at the normal size. Below md the bar
+  // tightens instead (measured: 12 px fits 360 px phones, 13 px fits 375 px).
+  const compact = visiblePrimaryTabs.length > 3
 
-  const renderTab = (tab: (typeof primaryTabs)[number], onClick?: () => void) => (
+  type Tab = { label: string; href: string; active: boolean; badge: boolean; accent?: boolean }
+  const renderTab = (tab: Tab, onClick?: () => void) => (
     <Link
       key={tab.href}
       to={tab.href}
       onClick={onClick}
-      className={`relative text-sm font-medium transition-opacity shrink-0 ${
+      className={`relative font-medium transition-opacity shrink-0 ${
+        compact ? 'text-xs min-[372px]:text-[13px] md:text-sm' : 'text-sm'
+      } ${
+        // The admin tab is the brand yellow (7.6:1 on the purple bar) and never
+        // dimmed, so it stands apart from the player tabs.
+        tab.accent ? 'text-[#FEFE6A]' : ''
+      } ${
         tab.active
-          ? 'border-b-2 border-white pb-0.5'
-          : 'opacity-70 hover:opacity-100'
+          ? `border-b-2 pb-0.5 ${tab.accent ? 'border-[#FEFE6A]' : 'border-white'}`
+          : tab.accent ? 'hover:opacity-80' : 'opacity-70 hover:opacity-100'
       }`}
     >
       {tab.label}
@@ -97,7 +110,7 @@ export function TopNavBar() {
     </Link>
   )
 
-  const renderMenuItem = (tab: (typeof adminTabs)[number], onClick: () => void) => (
+  const renderMenuItem = (tab: Tab, onClick: () => void) => (
     <Link
       key={tab.href}
       to={tab.href}
@@ -114,12 +127,12 @@ export function TopNavBar() {
   )
 
   return (
-    <nav className="relative bg-primary text-primary-foreground px-4 py-3 flex items-center gap-3">
+    <nav className={`relative bg-primary text-primary-foreground px-4 py-3 flex items-center ${compact ? 'gap-2 md:gap-3' : 'gap-3'}`}>
       <Link to="/" className="shrink-0">
         <img src={appLogo} alt="Badminton Tayo home" className="w-8 h-8 rounded-full object-cover" />
       </Link>
-      <div className="flex items-center gap-6 flex-1 min-w-0">
-        {primaryTabs.filter((tab) => tab.show).map((tab) => renderTab(tab))}
+      <div className={`flex items-center flex-1 min-w-0 ${compact ? 'gap-3 md:gap-6' : 'gap-6'}`}>
+        {visiblePrimaryTabs.map((tab) => renderTab(tab))}
         {hasAdminTabs && (
           <div className="hidden md:flex items-center gap-6">
             {visibleAdminTabs.map((tab) => renderTab(tab))}
