@@ -871,3 +871,8 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Root cause: the policy was created on prod outside the migrations (no repo migration contains it) — part of the 56-vs-60 policy drift G3 found. Its name said admin; its condition checked nothing.
 - Fix: migration `090_sessions_delete_staff_only.sql` replaces it with `sessions: staff delete` (admin or moderator; moderators see the Delete button via AdminRoute, owner chose to keep them). Proven on Neon parity with rolled-back deletes (player 1 row before, 0 after; moderator and admin 1). Owner ran the SQL on prod (my `apply_migration` was declined twice by the connector); verified via read-only query: 60 policies, staff delete present, open one gone.
 - Still open by design: `match_results: kiosk insert` (anon, WITH CHECK true) lets anyone insert a result for any match — the logged-out live board needs it.
+
+## 2026-11-17: App looked down right after the Neon switch
+- Symptom: after the redeploy with the Neon env vars, the live app did not work for ~10 min.
+- Root cause: a wrong `VITE_NEON_ANON_JWT` value in Vercel (owner found it), so requests carrying it were refused by Neon. My first diagnosis ("2 of 4 vars missing") was wrong because I only searched `index-*.js`; the data client is in a shared chunk.
+- Fix: owner set the correct token and redeployed; verified all 4 values across every loaded chunk and the live board loading from Neon. Rule added to CLAUDE.md: search every chunk the page loads.

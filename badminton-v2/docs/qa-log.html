@@ -2428,6 +2428,45 @@
   </div>
 
   <div class="qa">
+    <p class="q">How did the switch to Neon go, and what is where now?</p>
+    <p class="a">
+      Done on 2026-11-17, around 10:00–10:35 Manila. The steps: freeze writes on Supabase, take the owner's final
+      <code>pg_dump</code>, load it into Neon <code>production</code> (23 s, identical to the frozen prod on all 22 tables),
+      set the 4 Vercel Production variables, redeploy, then smoke-test signed in. The live site now gets data and live
+      updates from Neon, while sign-in and photos stay on Supabase. Supabase's old app tables are frozen and kept as a
+      backup. Preview builds and local dev still use Supabase DEV. One hiccup: a wrong anon token in the first redeploy
+      made the app look down for ~10 minutes until the owner fixed it.
+    </p>
+    <div class="correction">
+      <strong>Correction:</strong> during that incident I said 2 of the 4 settings were missing from the build. That was
+      wrong: I had only searched <code>index-*.js</code>, and the data client lives in a shared chunk. Always search
+      every script the page loads.
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="q">On Neon, are live game updates still pushed to devices, not polled?</p>
+    <p class="a">
+      Yes. The same database triggers fire on a game change, but they now write a row into <code>live_messages</code>
+      instead of a Broadcast message. Neon Realtime pushes that row over each phone's open WebSocket, and the phone
+      refetches 0.3–1 s later, staggered as before. The 30 s safety refresh is unchanged. Evidence: the database slept
+      with live connections open (G1), which a poll would prevent, and the load test delivered 340 of 340 updates at a
+      median of 56 ms.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Was Supabase short on memory because both dev and main used Supabase Free?</p>
+    <p class="a">
+      No. Dev and the live site are two separate Supabase projects, DEV <code>tsvetqzkullivprbjtli</code> and prod
+      <code>ensdfitpeyreunihkqkh</code>, each with its own machine. The 28 processes behind prod's memory use were counted
+      inside prod's own database: Supabase's API, Realtime and workers. Prod's swap was high all day even with no
+      development going on. Assumption, not measured side by side: each Free project has its own compute instance, as
+      Supabase describes projects.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check

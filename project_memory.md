@@ -152,7 +152,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Remaining fixes if stalls continue:** a paid compute upgrade (owner has declined). The owner then
   chose (2026-11-16) to plan a move to Neon Free instead — see "Neon migration" below.
 
-## Neon migration (Phase 0 done; Phase 1 built and dormant; rehearsal half done)
+## Neon migration — LIVE since 2026-11-17
 
 - **Goal:** more memory at $0. Owner's hard constraints: Free tiers only; the app works exactly as before;
   players never re-register. Plan and every gate result: `tasks/todo.md`; review:
@@ -190,7 +190,15 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   - `neon data-api update` can't change the JWKS URL (delete + create). `neon buckets create` needs
     `--access-level public_read`; `--access` is silently ignored and makes a private bucket.
   - The logged-out live board has no write path (only admins/moderators finish games, `CourtCard.tsx:29`).
-- **Built — all dormant until env vars are set; prod unchanged:**
+- **Live since 2026-11-17 ~10:35 Manila:** the production site (Vercel Production env) uses Neon branch `production`
+  (`br-polished-unit-aoa3nyat`, `ep-small-river-aox8dd9u`, pinned 0.25 CU) for data (Data API) and live updates
+  (Realtime + `seal`); sign-in and file storage stay on Supabase prod. Vercel Production env holds `VITE_NEON_DATA_API_URL`,
+  `VITE_NEON_ANON_JWT`, `VITE_NEON_REALTIME_URL`, `VITE_NEON_SEAL_URL`. Preview builds and local dev still use Supabase
+  (DEV) — only the live site is on Neon.
+- **Supabase prod app tables are FROZEN** (INSERT/UPDATE/DELETE revoked from anon/authenticated; `unfinish_match`,
+  `reverse_session_stats` EXECUTE revoked) and kept as a backup (owner, no drop date). Never unfreeze unless rolling
+  back (exact unfreeze SQL in `tasks/todo.md` Phase 3). Its pg_cron job still runs against the frozen copy — harmless.
+- **Built (now active on the live site):**
   - `src/lib/supabase.ts` + `dataRouter.ts`: one `supabase` object; `from/rpc` go to Neon when
     `VITE_NEON_DATA_API_URL` + `VITE_NEON_ANON_JWT` are set, auth/storage stay on Supabase (owner chose this
     one-file router over rewriting ~230 call sites).
