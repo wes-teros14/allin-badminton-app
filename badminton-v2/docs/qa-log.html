@@ -2186,6 +2186,269 @@
     </ul>
   </div>
 
+  <div class="qa">
+    <p class="q">To get more memory than Supabase nano (~400 MB), is Cloudflare better than Neon?</p>
+    <p class="a">
+      For this app, Neon is the better fit. Neon is Postgres, so the 22 tables, 60 RLS policies,
+      22 functions and 15 triggers move over almost as they are. The one systematic change is swapping
+      <code>auth.uid()</code>. Cloudflare's free database (D1) is SQLite: it has no RLS and no plpgsql,
+      so every access rule and trigger would have to be rewritten as Worker code. Cloudflare doesn't
+      host Postgres.
+    </p>
+    <p class="a">
+      Neither one replaces all of Supabase. Auth (124 users, all Google), Storage (14 MB in 4 buckets)
+      and Realtime Broadcast have to stay on Supabase or move somewhere else. Cloudflare's real strength
+      is its edge pieces, Workers and Durable Objects for WebSockets, not the database. Measured on
+      2026-11-15 on prod: DB 24 MB, peak about 5.7k requests per hour during a session.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“Neither one replaces all of Supabase. Auth, Storage and Realtime have to stay on Supabase or move somewhere else.”</p>
+    <p>
+      Wrong for Neon, and I said it from memory before reading the docs (2026-11-16). Neon's Free plan now
+      has Neon Auth (Managed Better Auth, 60k MAU), Object Storage (5 GB), Functions (with cron triggers)
+      and Realtime (beta, live SQL). A full move is possible on paper. The catches: Realtime can't read tables
+      that have RLS and has no publish-from-trigger, Storage has no per-user policy layer (the rules move into
+      a Function), and there's no documented import that keeps user UUIDs. On Free, the 100 CU-hours and the
+      shared 5 GB egress are hard caps: running out suspends the database until next month. Plan and gates:
+      <code>tasks/todo.md</code>; visual: <code>docs/visual/supabase-to-neon-migration.html</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does the Neon plan keep sign-in and files on Supabase instead of moving everything?</p>
+    <p class="a">
+      Because Managed Neon Auth appears to stop the database ever sleeping. Users report it polls its tables
+      every ≤ 274 s (GitHub neondatabase/neon#12909, unanswered by Neon), which is under the 5-minute sleep
+      threshold. Awake 24/7 at 0.25 CU is ~182 CU-hours against a 100 cap, so the app would go down around
+      day 17. Keeping Supabase Auth also means nobody has to sign in again and user IDs don't change. Keeping
+      Storage keeps the CDN (668 of 722 file requests on Nov 15 were CDN hits) and keeps that traffic off
+      Neon's 5 GB. Supabase is left with ~170 auth requests a day, while the 17.4k REST requests move to Neon.
+      Neon accepting Supabase's tokens is undocumented: gate G0 in <code>tasks/todo.md</code>.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How important is the G1 sleep test? If it fails, can we not continue?</p>
+    <p class="a">
+      It's the one gate that would stop the plan. If something kept the database awake, 0.25 CU around
+      the clock is ~182 CU-hours against the free 100, so the app would go down mid-month. But it's
+      checkable at any time without waking the database: <code>neon api /projects/…/endpoints</code> shows
+      <code>last_active</code>. On 2026-11-16 the branch had been asleep since 00:38 UTC (10 h) with Data API
+      and Realtime on, and its 1236 s of active time was all setup. The next-day read only confirms it.
+      Failure would change the plan, not end it (e.g. live updates stay on Supabase), so other work goes on.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">An open live-update connection doesn't keep the database awake. What does that mean?</p>
+    <p class="a">
+      The plan's biggest cost risk is gone. Neon's docs disagreed on whether an open Realtime subscription stops
+      the database sleeping; if it did, any phone left on the app would burn ~182 CU-hours a month against the
+      free 100. On parity (2026-11-16) the database slept ~5 min after the last real query while two channels
+      stayed connected and renewed 42 passes. A later write woke it in 1.2 s, and the open subscription still got
+      the change 3 ms after commit. So compute is used only while someone actually reads or writes. The only
+      visible cost is ~1.5 s on the first action after a quiet spell. Closing hidden tabs is kept to save
+      <code>seal</code> calls, not compute.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Will Neon's 5 GB monthly egress be enough?</p>
+    <p class="a">
+      Yes, about 10× headroom. Supabase logs leave out response sizes for chunked REST replies, so the estimate
+      is rows returned (<code>Content-Range</code>) × measured JSON row size. The 24 h around the Nov 15 session
+      (16 players, 20 games) came to ~207k rows ≈ 50 MB, so roughly 0.5 GB a month. The heaviest are the history
+      queries: every past match (42k rows) and every cheer by giver (36k rows).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What is the <code>seal</code> endpoint, and why does it run as a Neon Function?</p>
+    <p class="a">
+      Neon Realtime has no sign-in of its own. A phone can only subscribe with a "sealed query": a signed,
+      60-second pass for one exact SQL query. <code>functions/seal</code> hands these out. Anyone gets
+      <code>session:&lt;id&gt;</code>, only the signed-in owner gets <code>user:&lt;id&gt;</code>, the same rules as
+      Supabase today. Each open channel renews about once a minute, roughly 40k calls a month. It runs on Neon
+      because Functions have their own free quota (1M calls a month) and hitting it would only stop live updates,
+      while going over Vercel Hobby's limit pauses the whole site. On parity a pass takes 50–130 ms and doesn't
+      wake the database.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How do live updates work on Neon, and how does the app switch over?</p>
+    <p class="a">
+      <code>src/lib/neonLiveChannel.ts</code> has the same <code>listen(topic, …)</code> API as the Supabase version,
+      so no screen changes. Each topic is one live query on <code>live_messages</code>. The first result is old news
+      and ignored; each new row is one message, delivered once and in order (3 cheers = 3 toasts). Passes renew
+      15 s before they expire, failures back off 5/10/20/30 s, and a tab hidden for over 60 s disconnects so the
+      database can sleep. <code>useLiveChannel</code> uses Neon only when <code>VITE_NEON_REALTIME_URL</code> and
+      <code>VITE_NEON_SEAL_URL</code> are set. On parity a cheer toast arrived through it and a two-game change gave
+      2 messages, 15 ms after commit.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How does the app send data to Neon while sign-in stays on Supabase?</p>
+    <p class="a">
+      <code>src/lib/supabase.ts</code> still exports one <code>supabase</code> object. When
+      <code>VITE_NEON_DATA_API_URL</code> and <code>VITE_NEON_ANON_JWT</code> are set,
+      <code>src/lib/dataRouter.ts</code> routes its <code>.from()</code>/<code>.rpc()</code> to the Neon Data API, while
+      <code>.auth</code> and <code>.storage</code> stay on Supabase. So none of the ~230 data calls had to change (owner's
+      choice, 2026-11-16). Requests carry the player's Supabase token, or a long-lived anonymous token when signed
+      out, because Neon rejects requests with no token. On parity, admin pages made 41 calls to Neon and 0 to Supabase,
+      and the signed-out live board worked with the anonymous token.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How does "open registration at a set time" work on Neon (D1)?</p>
+    <p class="a">
+      On Supabase an hourly <code>pg_cron</code> job flips due sessions from Setup to Registration open. Neon's
+      pg_cron only runs while the database is awake, so instead the app calls <code>open_due_registrations()</code>
+      when a player loads their sessions. The first person to look after the set time opens it for everyone, and
+      live updates tell the other screens. Players can't register early either way, because the insert policy checks
+      the time (migration 034). The feature had been used for 5 of 41 sessions, the last in April 2026. The owner
+      kept it and chose this over an hourly Function, which would cost ~15–17 of the 100 free compute-hours a month.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How do we stop Supabase pausing once data lives on Neon?</p>
+    <p class="a">
+      A free Supabase project pauses after 7 days without "sufficient user database activity". After the move it only
+      serves sign-in and files, and the docs don't say whether those count. A paused project means nobody can sign in.
+      So a Neon Function, <code>functions/keepalive</code>, runs daily at 19:00 UTC on a schedule trigger and calls
+      <code>keepalive_ping()</code> on Supabase (migration 091, returns <code>now()</code>, reads no app data). It only
+      answers Neon's own trigger calls, and it doesn't wake Neon's database. Verified: 3 pings landed on prod with
+      status 200 while parity's database stayed asleep.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Can logged-out visitors write anything in the app?</p>
+    <p class="a">
+      No. The live board shows the courts to anyone, but only admins and moderators can finish a game
+      (<code>CourtCard.tsx:29</code>, <code>isAdmin = role === 'admin' || role === 'moderator'</code>). Found during the
+      2026-11-16 write tests on Neon. So the database rule <code>match_results: kiosk insert</code>, which lets logged-out
+      callers add a result to any match, isn't used by the app and only leaves results open to tampering.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Where does Neon's key list live, and how does it stay current?</p>
+    <p class="a">
+      Neon's Data API checks every token against one JWKS file. It holds Supabase's public keys (players' sign-ins)
+      plus our anonymous key (the logged-out token), and its address is fixed when the Data API is created. Owner's
+      decisions (2026-11-16): keep it in a public Neon bucket, not on the Vercel site, and refresh it daily. The
+      keep-alive Function fetches Supabase's keys, merges ours, and rewrites the file only when it differs. It never
+      writes when Supabase returns nothing, so a bad answer can't lock anyone out. The anonymous token lasts 10 years
+      and its signing key is thrown away. On parity, a deliberately stale file was repaired on the next run, and later
+      runs left it untouched.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How was prod copied into Neon for the dress rehearsal, and is the copy exact?</p>
+    <p class="a">
+      The Supabase CLI dump is refused for this account (403), and Neon's import tool doesn't support Supabase, so the
+      owner ran <code>pg_dump</code> (PostgreSQL 17 tools unzipped, no install) and typed the password themselves. The
+      dump was loaded into Neon branch <code>rehearsal</code> through the scripts: <code>pre.sql</code>, restore tables and
+      data, fill the stand-in <code>auth.users</code>, restore keys/triggers/policies, then transform, grants and verify.
+      All 22 tables match prod on row count and content hash. Neon runs Postgres 18.7 against prod's 17.6, and the
+      restore had no errors.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What did the Neon tests check, what were the results, and what's the impact on the app?</p>
+    <p class="a">
+      Nothing has moved yet: all Neon code is switched off behind env vars, and prod only got the session-delete fix
+      (090) and <code>keepalive_ping</code> (091). The tests showed that once it's switched on:
+    </p>
+    <ul class="a">
+      <li>Existing Supabase sign-ins work on Neon, so nobody re-registers (G0).</li>
+      <li>The database sleeps when unused, even with live connections open, so it stays inside the free 100
+        compute-hours (G1).</li>
+      <li>Live updates arrive in 1–30 ms, each message once (G2).</li>
+      <li>The app's queries return the same results (G3; one <code>.single()</code> difference fixed in code).</li>
+      <li>New Google users still get a profile (G4).</li>
+      <li>Egress is ~0.5 GB/month against a 5 GB limit, and a daily ping stops Supabase pausing (G6).</li>
+      <li>The real buttons work, from registration to finishing a game and cheering.</li>
+      <li>A prod copy loaded identically (22 tables).</li>
+    </ul>
+    <p class="a">
+      The only visible change is ~1.5 s on the first request after 5+ minutes of no use (G5); after that, ~45 ms.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Will Neon solve the memory issue we have on Supabase?</p>
+    <p class="a">
+      Very likely, but it's not proven yet (2026-11-17). On Supabase NANO the 406 MB machine also runs Supabase's own
+      stack: 28 Postgres processes (PostgREST 11, Realtime 7, workers 7). They hold ~520 MB, so 230–370 MB sits in swap
+      all day, while the data is only 24 MB. On Neon the database gets 1 GB (0.25 CU), and the Data API and Realtime
+      run on Neon's servers, not on the database machine. Not measured yet: Neon's memory under session load, and how
+      many connections its Data API and Realtime hold. Going to 0.5 CU would double compute-hour use and could break the
+      free limit, so the plan is to prove 1 GB with the 20-phone load test against the <code>rehearsal</code> branch
+      before switching.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How did Neon hold up under a simulated session?</p>
+    <p class="a">
+      On 2026-11-17 a load test ran on the <code>rehearsal</code> prod copy: 20 phones for 15 minutes, a game changing
+      every minute, so busier than a real session (<code>scripts/loadtest/session-sim-neon.mjs</code>). Results: 2,250
+      requests with 0 phone failures; reads at a median of ~48 ms (worst 678 ms); 340 of 340 live updates (median
+      56 ms); at most 19 database connections against 28 processes on Supabase when idle. The whole database is 12 MB
+      and fits in Postgres's 128 MB buffer, and after warm-up nothing was read from storage. <strong>Memory used peaked
+      at 300 MB of 1,024 MB (≤ 29%), and CPU stayed around 10%.</strong> Supabase NANO, by comparison, has 406 MB in
+      total and holds ~520 MB, with 230–370 MB in swap all day. So yes: Neon removes the memory squeeze.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does Neon use less memory than Supabase, and can we still fix it on Supabase?</p>
+    <p class="a">
+      It's not our data. The Supabase machine (406 MB) runs 28 Postgres processes: PostgREST holds 11 connections,
+      Realtime 7, workers 7, other 3. Each process keeps its own caches, and the database also carries Supabase's
+      auth, storage, Realtime and extension schemas (24 MB, against 4 MB of app tables). On Neon the machine is 1 GB
+      and carries at most 19 processes (Data API 9, Realtime none visible) and only our 12 MB. The API and Realtime
+      servers run on Neon's side. Caveat: the two dashboards may count memory slightly differently, though not by
+      enough to change the conclusion. On Supabase Free the overhead is its own managed stack, which we can't remove.
+      Already done: Broadcast replaced Postgres Changes, and the polling policy. Disproved: restarts and lowering
+      <code>shared_buffers</code>. Untested small trims, like disabling unused extensions such as GraphQL or fewer API
+      connections if Free allows it, wouldn't close the gap. The real fix there is paid compute, which the owner
+      declined.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What's <code>jose</code>?</p>
+    <p class="a">
+      A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check
+      a player's Supabase sign-in token: it fetches Supabase's public keys (JWKS), checks the signature, the
+      issuer and the <code>authenticated</code> audience, then reads the player id (<code>sub</code>). It refetches
+      the keys by itself if Supabase rotates them.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">What breaks with <code>.single()</code> on Neon, and how is it fixed?</p>
+    <p class="a">
+      Neon's Data API ignores PostgREST's "exactly one row" rule. On no match it returns 200 <code>null</code>
+      instead of the PGRST116 error, and on several matches it returns the first row. <code>src/lib/singleObjectFetch.ts</code>
+      wraps <code>fetch</code>: it asks for an array and gives back the object, or the same PGRST116 error
+      Supabase would send. It can't undo a write that hit two rows, because Neon also ignores
+      <code>max-affected</code>. Every <code>.single()</code> write in the app filters by <code>id</code>, so that
+      case can't happen today.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">

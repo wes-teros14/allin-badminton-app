@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-15
+Last updated: 2026-11-16
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -149,8 +149,73 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Monitoring:** Supabase Observability → Custom reports → "Session health". It has the memory, CPU,
   Realtime-connection and request charts, plus the SQL snippet "Session health score". The snippet
   must use `extensions.pg_stat_statements`, schema-qualified, or it fails inside a report.
-- **Remaining fixes if stalls continue:** a paid compute upgrade (owner has declined so far). Moving
-  off Supabase was judged far more work than the problem is worth.
+- **Remaining fixes if stalls continue:** a paid compute upgrade (owner has declined). The owner then
+  chose (2026-11-16) to plan a move to Neon Free instead — see "Neon migration" below.
+
+## Neon migration (Phase 0 done; Phase 1 built and dormant; rehearsal half done)
+
+- **Goal:** more memory at $0. Owner's hard constraints: Free tiers only; the app works exactly as before;
+  players never re-register. Plan and every gate result: `tasks/todo.md`; review:
+  `tasks/neon-migration-review.md`; visual: `badminton-v2/docs/visual/supabase-to-neon-migration.html`.
+- **Shape: H1 hybrid.** Postgres + Data API (PostgREST) + Realtime on Neon; Supabase keeps Auth (Google) and
+  Storage (CDN). Rejected: full Neon Auth (polls every ≤274 s, so compute never sleeps: ~182 CU-h vs the 100 cap;
+  GitHub neondatabase/neon#12909; no UUID-preserving import). Rejected: Cloudflare (not real Postgres/RLS/PostgREST).
+- **Neon project** `lucky-heart-02739020` (org `org-jolly-pine-36146147`), aws-ap-southeast-1, **Postgres 18.7**
+  (prod Supabase is 17.6; a 17 dump restores into 18 with no errors). `badminton-v2/.neon` links branch
+  `production` (still empty); connection strings in `badminton-v2/.env.local` (gitignored).
+  `wal_level=logical` (Realtime; permanent for the project).
+- **Free limits (verified 2026-11-16):** 100 CU-h/project/month shared by all branches, 1 GB Postgres, 5 GB
+  egress, scale-to-zero after 5 min. Functions have their own quota: 1M invocations and 10 active
+  capacity-hours a month.
+- **Measured — don't re-derive:**
+  - **An open Realtime subscription does not keep compute awake** (parity slept with 2 channels connected and
+    passes renewing); a write wakes it (~1.2 s) and open subscribers still get the change within ms. Compute is
+    used only while real queries run.
+  - **G1 passed (2026-11-17):** an idle branch with Data API + Realtime on slept ~24 h except for one 5-min wake
+    caused by a project-level admin op. Neon admin ops (Data API create, Realtime enable) briefly start **every**
+    branch's compute (~5 min each) — expect counters to move after setup work.
+  - **Memory answered (load test 2026-11-17, 20 phones × 15 min on the prod copy):** RAM used peak 300 MB of 1,024 MB
+    (≤ 29%), CPU ~10%, backends max 19 (Data API pool 9), 0 phone errors, 340/340 live updates. DB 12 MB fits in
+    128 MB shared_buffers. Script: `scripts/loadtest/session-sim-neon.mjs` (needs a test key in the branch JWKS).
+  - Cold first request ~1.5 s, then ~45 ms. Egress ≈ 0.5 GB/month (prod edge logs × measured row sizes).
+  - Neon's Data API **ignores PostgREST's `.single()` contract** (200 null / first row) and **ignores
+    `Prefer: max-affected`** (multi-row PATCH/DELETE commit). `src/lib/singleObjectFetch.ts` restores the read
+    side; every `.single()` write must filter by primary key.
+  - Neon's own `auth` schema (pg_session_jwt) is unusable with an external IdP → Data API is created with
+    `--skip-auth-schema`; our `auth.uid()/role()/jwt()/email()` (Supabase bodies) are in `scripts/neon/pre.sql`.
+  - A request with no token gets 401; logged-out clients send a long-lived anon JWT
+    `{role: anonymous, aud: authenticated}` signed with a key in the merged JWKS.
+  - Neon's Data API **caches JWKS keys by kid**: a new key under a kid it has seen fails with PGRST301
+    "signature error". Never reuse a kid for a different key.
+  - `neon data-api update` can't change the JWKS URL (delete + create). `neon buckets create` needs
+    `--access-level public_read`; `--access` is silently ignored and makes a private bucket.
+  - The logged-out live board has no write path (only admins/moderators finish games, `CourtCard.tsx:29`).
+- **Built — all dormant until env vars are set; prod unchanged:**
+  - `src/lib/supabase.ts` + `dataRouter.ts`: one `supabase` object; `from/rpc` go to Neon when
+    `VITE_NEON_DATA_API_URL` + `VITE_NEON_ANON_JWT` are set, auth/storage stay on Supabase (owner chose this
+    one-file router over rewriting ~230 call sites).
+  - `src/lib/neonLiveChannel.ts` behind `useLiveChannel` (`VITE_NEON_REALTIME_URL` + `VITE_NEON_SEAL_URL`): a live
+    query on `live_messages`; first result ignored, upserts only, renew 15 s early, backoff 5/10/20/30 s, a tab
+    hidden > 60 s disconnects.
+  - Neon Functions in `badminton-v2/neon.ts`: `seal` (60 s Realtime passes; `session:*` for anyone, `user:<id>`
+    owner only — owner's choice) and `keepalive` (daily 19:00 UTC: pings Supabase `keepalive_ping()`,
+    migration 091, so it never pauses; also rewrites the JWKS bucket file from Supabase's current keys).
+  - D1: scheduled registration opening via `open_due_registrations()`, called when a player loads sessions
+    (`src/lib/openDueRegistrations.ts`), replacing hourly pg_cron. Owner kept the feature and rejected an
+    hourly Function (~15–17 CU-h/month).
+  - `badminton-v2/scripts/neon/` (`apply.mjs`, `pre/transform/grants/verify.sql`) builds the schema on a branch.
+- **Owner key decisions:** JWKS in a `public_read` Neon bucket (not the Vercel site); refreshed daily by
+  keepalive; the anonymous signing key is thrown away after signing; the anonymous token is valid 10 years.
+- **Loading prod (rehearsal recipe):** the Supabase CLI dump is refused for this account (403) and Neon's import
+  assistant doesn't support Supabase, so the **owner** runs `pg_dump -Fc --schema=public --no-owner --no-acl`
+  through the IPv4 session pooler and types the password (Claude never sees it). Load order: `apply.mjs pre` →
+  pg_restore pre-data, data → fill the shim `auth.users` from profiles → post-data (triggers are post-data, so
+  the data load fires none) → transform, grants, verify. Check with per-table count + md5 fingerprints in UTC.
+- **Supabase pause rule (G6):** Free projects pause after 7 days of low "user database activity"; whether
+  Auth/Storage requests count is undocumented → the keepalive Function.
+- **Tooling:** Neon CLI 9.5, signed in; project-level Neon skills + MCP (OAuth). Don't run `neon init -y` (it
+  installs a duplicate user-level plugin). Deploy Functions with `neon config plan` first, then
+  `neon deploy --branch <b> --no-env-pull --env <file>` (without `--no-env-pull` it rewrites `.env.local`).
 
 ## Branching and commits
 
@@ -164,11 +229,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - Only the feature's own files get committed. Local `.claude/settings*.json` and in-progress `CLAUDE.md` edits are left out deliberately.
 
 ## Roles and access
-
 - `Role = 'admin' | 'moderator' | 'player' | null`, read from `profiles.role` by `AuthContext`.
 - `AdminRoute` (`badminton-v2/src/App.tsx:10`) admits **admin and moderator**; everything else redirects to `/`.
 - Some features are admin-only and exclude moderators (receipt viewing in `RosterPanel`, several `TopNavBar` entries). Check which of the two rules a feature needs before copying either.
 - Convention for an inline check is `const isAdmin = role === 'admin' || role === 'moderator'` — written out, no shared helper. Don't introduce one without a reason.
+- **Session delete:** only admins and moderators (`sessions: staff delete`, migration 090, 2026-11-16). Prod had a
+  hand-made `sessions: admin delete` USING (true) letting any signed-in player delete sessions. Still open by design:
+  `match_results: kiosk insert` lets logged-out callers add results; the app never uses it (owner: decide later).
 
 ## Routing gotcha
 

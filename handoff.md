@@ -1,47 +1,41 @@
 # Handoff — current snapshot
 
-Updated: 2026-11-15 ~22:30 Manila. Overwrite this file on every update; it is never a running history.
+Updated: 2026-11-16 ~23:45 Manila. Overwrite this file on every update; it is never a running history.
 
 ## Done this session
-- **Admin share image** (`090`): live on prod.
-- **Live board keeps last good data** (`091`): live on prod.
-- **Nov 15 outage investigated:** memory, not load. Restarting and lowering `shared_buffers` are both
-  disproved (see `project_memory.md` Capacity).
-- **Postgres Changes → Broadcast** (`092`, migration 089): live on prod.
-  - 089 was applied to DEV and prod via MCP, with only 089 pushed.
-  - main was deployed and the private join verified on the live site.
-  - The old poll stopped on prod: `old_poll_calls` stayed at 33,071.
-- **Supabase custom report "Session health"** and SQL snippet "Session health score" created on prod.
-- **Visuals:** `docs/visual/realtime-postgres-changes-vs-broadcast.html`,
-  `realtime-broadcast-sim-results.html` and `prod-memory-explained.html`.
+- **Phase 0 gates:** G0, G2, G3, G4, G5, G6 pass; G1 early reads pass (spike asleep since 00:38 UTC; open
+  Realtime subscriptions don't keep compute awake). Egress ≈ 0.5 GB/month.
+- **Phase 1 built, all dormant behind env vars (prod unchanged):** `.single()` fix, data router, Neon live
+  channel, `seal` + `keepalive` Functions (daily Supabase ping + JWKS refresh), D1 registration opening.
+  App writes through real screens pass on parity.
+- **Prod changes (owner ran SQL):** migration 090 (only admins/moderators delete sessions — security fix),
+  091 (`keepalive_ping()`).
+- **Key decisions (owner):** JWKS in a public Neon bucket, refreshed daily; anon signing key thrown away; anon
+  token 10 years.
+- **Dress rehearsal part 1:** prod copied into Neon branch `rehearsal` via owner-run `pg_dump`; all 22 tables
+  identical to prod (counts + content hashes); Data API, JWKS, Realtime, Functions set up there.
 
-## Not verified
-- Broadcast on real phones in a real session.
-- Share… and Copy image on a real phone.
-- Live-board keep-last-good in a real session.
+## Current state
+- `dev` has 13 Neon commits (latest e11d431), **not pushed**. Uncommitted: `scripts/neon/compare-boards.ts`, TEST_KID
+  tweak in `session-sim-neon.mjs`, Phase 2–4 rewrite in `tasks/todo.md`, memory/handoff, Q&A entries.
+- Neon branches: `production` (empty), `spike` (G1 idle test), `parity` (tests; expires 2026-11-23; runs
+  keepalive daily → pings prod), `rehearsal` (prod copy; expires 2026-11-30), backups `parity-before-restore`,
+  `parity-writetests-backup`, `rehearsal-loadtest-backup`.
+- Scratchpad (lost on reboot): Postgres 17 tools, prod dump, rehearsal anon token + launcher, parity anon key.
 
-## Immediate next steps
-- Owner tests over the next few sessions:
-  - Reload the live-board tablet before play.
-  - Watch for the "Reconnecting…" badge and note the time.
-  - Don't restart mid-session.
-- Same day as each session: open the Session health report (last 24 h), then Observability → Database
-  for swap and commitment, then pull logs and compare with Nov 15.
-- If stalls continue, the only remaining fix is a paid compute upgrade (owner's decision).
-- Optional later: remove the tables from the `supabase_realtime` publication.
+## Next steps
+1. ~~G1~~ PASS. ~~Load test~~ PASS (RAM peak 300 MB / 1 GB). ~~Rehearsal boards + finance~~ identical (compare-boards.ts).
+2. **Cutover:** draft in `tasks/todo.md` Phase 3. Walk the owner through decisions C1–C3 + kiosk one by one, then the
+   before-the-day setup of Neon `production` (bucket, anon key, Data API, Realtime, Functions, dry run).
+3. Still unchecked (needs owner sign-in, low risk): Google sign-in on the Neon build, receipts, share image —
+   covered by the cutover smoke test.
 
 ## Open questions
-- One simulated device's channel errored twice and rejoined within 3 s. Cause unclear.
-- DEV session `bce6f898-…` is Schedule Locked. Is that intentional? Unclear.
-- Carried over:
-  - Magnet HTML commit (public repo, embeds prod names).
-  - Live-session Edit untested.
-  - Nov 1 session finished but not closed.
-  - Jey's receipt image in storage.
-  - Spotify vs announcer volume.
-  - Game numbers above 9 use the computer voice.
-  - Clean Sweep parked.
-  - Never `db push` to prod without the owner asking.
-  - `temp/` at the repo root.
-  - Prod `service_role` key not rotated.
-  - `sessions: admin delete` policy `qual true`: unclear, not checked.
+- Does prod Supabase allow `http://localhost:5173` as an OAuth redirect? Unclear until tried.
+- Drop `match_results: kiosk insert` on prod? Owner: "note it until we complete the project" — decide at cutover
+  (app never uses it; see Phase 3 decisions).
+- Supabase Usage → Egress figure for last cycle (cross-check of the 0.5 GB estimate). Not given.
+- Housekeeping waiting: delete the 3 backup branches, archive G3/G5 sessions, 42 npm audit findings (3
+  critical), push `dev` (needs owner OK).
+- Carried over: Broadcast/share/keep-last-good untested on real phones; magnet HTML commit; Nov 1 session not
+  closed; prod `service_role` key not rotated; never `db push` to prod.

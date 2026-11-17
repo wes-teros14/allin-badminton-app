@@ -45,3 +45,4 @@ scripts/xmas2026/*.json
 
 # load-test output
 /scripts/loadtest/results/
+.neon

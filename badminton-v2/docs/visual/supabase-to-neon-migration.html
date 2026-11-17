@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supabase to Neon</title>
+<style>
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --text: #1d1c19; --muted: #5f5c55; --line: #dedbd2;
+    --keep: #2f6f4f; --keep-bg: #e6f2eb; --swap: #1f5f99; --swap-bg: #e5eef8;
+    --risk: #9a5b00; --risk-bg: #fbf0dc; --stop: #a3322a; --stop-bg: #f9e5e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --surface: #1d1c1a; --text: #ecebe6; --muted: #a8a59c; --line: #34322e;
+      --keep: #7fc8a0; --keep-bg: #1b2d23; --swap: #8bbcec; --swap-bg: #182637;
+      --risk: #e9b765; --risk-bg: #33280f; --stop: #ef8d84; --stop-bg: #3a1c19;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; margin: 40px 0 12px; }
+  .lede { color: var(--muted); margin: 0 0 24px; max-width: 66ch; }
+  .map { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 8px 0; align-items: stretch; }
+  .col-h { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); padding: 0 0 4px; }
+  .box { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .box b { display: block; font-size: 14px; }
+  .box span { color: var(--muted); font-size: 13px; }
+  .box.neon { border-color: var(--swap); }
+  .arrow { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 18px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 99px;
+    margin-left: 6px; vertical-align: 1px; font-style: normal; }
+  .t-keep { color: var(--keep); background: var(--keep-bg); }
+  .t-swap { color: var(--swap); background: var(--swap-bg); }
+  .t-risk { color: var(--risk); background: var(--risk-bg); }
+  .why { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+  .why div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+  .why b { display: block; }
+  .phases { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .phase { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .phase .n { font-size: 12px; color: var(--muted); }
+  .phase b { display: block; margin: 2px 0 6px; }
+  .phase p { margin: 0; font-size: 13px; color: var(--muted); }
+  .gates { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+  .gate { border-radius: 10px; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); }
+  .gate.hi { border-color: var(--stop); background: var(--stop-bg); }
+  .gate.md { border-color: var(--risk); background: var(--risk-bg); }
+  .gate b { display: block; font-size: 14px; }
+  .gate span { font-size: 13px; color: var(--muted); }
+  .bars { display: grid; gap: 10px; }
+  .bar-row { display: grid; grid-template-columns: 170px 1fr 170px; gap: 10px; align-items: center; font-size: 13px; }
+  .track { height: 12px; background: var(--line); border-radius: 99px; overflow: hidden; position: relative; }
+  .fill { height: 100%; border-radius: 99px; }
+  .range { position: absolute; top: 0; height: 100%; border-radius: 99px; }
+  .val { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  @media (max-width: 640px) {
+    .map { grid-template-columns: 1fr 24px 1fr; }
+    .phases { grid-template-columns: 1fr 1fr; }
+    .bar-row { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Supabase → Neon (plan v2, hybrid)</h1>
+  <p class="lede">The database and live updates move to Neon’s Free plan. Sign-in and files stay on Supabase.
+  Plan: <code>tasks/todo.md</code>. Review: <code>tasks/neon-migration-review.md</code>. Nothing is built yet:
+  Phase 0 first proves the parts that could break the $0 budget.</p>
+
+  <h2>What moves where</h2>
+  <div class="map">
+    <div class="col-h">Today · Supabase Free (nano, ~400 MB)</div><div></div><div class="col-h">After · H1 hybrid</div>
+
+    <div class="box"><b>Postgres</b><span>24 MB, 22 tables, 60 policies</span></div><div class="arrow">→</div>
+    <div class="box neon"><b>Neon Postgres <i class="tag t-swap">moves</i></b><span>Singapore, pinned 0.25 CU = 1 GB RAM, sleeps after 5 min</span></div>
+
+    <div class="box"><b>REST (from / rpc)</b><span>17.4k of ~18.7k requests a day</span></div><div class="arrow">→</div>
+    <div class="box neon"><b>Neon Data API <i class="tag t-swap">moves</i></b><span>same queries · one client file changes</span></div>
+
+    <div class="box"><b>Realtime Broadcast</b><span>rt_* triggers → realtime.send</span></div><div class="arrow">→</div>
+    <div class="box neon"><b>Neon Realtime (beta) <i class="tag t-risk">gate G1</i></b><span>triggers append to live_messages · every message still arrives</span></div>
+
+    <div class="box"><b>pg_cron, hourly</b><span>opens registration</span></div><div class="arrow">→</div>
+    <div class="box neon"><b>Open on app load <i class="tag t-swap">decision D1</i></b><span>no extra compute</span></div>
+
+    <div class="box"><b>Auth (Google)</b><span>108 real users</span></div><div class="arrow">→</div>
+    <div class="box"><b>Stays on Supabase <i class="tag t-keep">no re-login</i></b><span>Neon checks Supabase tokens (gate G0)</span></div>
+
+    <div class="box"><b>Storage</b><span>117 files, 14 MB, behind a CDN</span></div><div class="arrow">→</div>
+    <div class="box"><b>Stays on Supabase <i class="tag t-keep">keeps CDN</i></b><span>file traffic stays off Neon’s 5 GB</span></div>
+  </div>
+
+  <h2>Why the hybrid, not a full move</h2>
+  <div class="why">
+    <div><b>Neon Auth never lets the database sleep</b>Users report it polls every ≤ 274 s, so compute runs 24/7: ~182 CU-hours against a 100 cap, and the app is down around day 17.</div>
+    <div><b>Accounts stay exactly as they are</b>No account migration, no changed IDs, nobody has to sign in again.</div>
+    <div><b>Supabase keeps only light work</b>About 170 sign-in requests a day plus file lookups, mostly served from the CDN.</div>
+  </div>
+
+  <h2>Free-plan budget (100 CU-hours · 5 GB egress per month)</h2>
+  <div class="bars">
+    <div class="bar-row"><span>Postgres 1 GB</span>
+      <div class="track"><div class="fill" style="width:2.4%;background:var(--keep)"></div></div><span class="val">24 MB · fine</span></div>
+    <div class="bar-row"><span>CU-hours (estimate)</span>
+      <div class="track"><div class="range" style="left:30%;width:40%;background:var(--risk)"></div></div><span class="val">30–70 · unproven</span></div>
+    <div class="bar-row"><span>If anything keeps it awake</span>
+      <div class="track"><div class="fill" style="width:100%;background:var(--stop)"></div></div><span class="val">~182 · app down mid-month</span></div>
+    <div class="bar-row"><span>Egress 5 GB</span>
+      <div class="track"></div><span class="val">unknown · owner checks</span></div>
+  </div>
+  <p class="note">Hitting a limit on Free costs nothing, but it suspends the database until next month, with no warning.</p>
+
+  <h2>Phases</h2>
+  <div class="phases">
+    <div class="phase"><div class="n">Phase 0</div><b>Spike</b><p>Throwaway Neon project. Prove gates G0–G6.</p></div>
+    <div class="phase"><div class="n">Phase 1</div><b>Build</b><p>Migration scripts, a seal Function, 2 client modules, tests.</p></div>
+    <div class="phase"><div class="n">Phase 2</div><b>Rehearse</b><p>A prod copy, the “works the same” checklist, a 20-phone load test.</p></div>
+    <div class="phase"><div class="n">Phase 3</div><b>Cutover</b><p>A day with no session. No re-login. Rollback = previous build.</p></div>
+    <div class="phase"><div class="n">Phase 4</div><b>Watch</b><p>A daily CU and egress check with a stop-loss.</p></div>
+  </div>
+
+  <h2>Gates that decide go or no-go</h2>
+  <div class="gates">
+    <div class="gate hi"><b>G0 · Supabase tokens on Neon</b><span>Does Neon accept Supabase sign-ins? If not, stop and re-plan.</span></div>
+    <div class="gate hi"><b>G1 · Database can sleep</b><span>24 h idle, plus a hidden tab: does compute still sleep? If not, the budget breaks.</span></div>
+    <div class="gate md"><b>G2 · Every message arrives</b><span>3 cheers = 3 toasts; trigger rows reach phones fast.</span></div>
+    <div class="gate"><b>G3 · Query parity</b><span>The app’s real queries and RPCs, logged in and logged out.</span></div>
+    <div class="gate"><b>G4 · New player</b><span>A first Google sign-in still creates a profile.</span></div>
+    <div class="gate"><b>G5 · Cold start + egress</b><span>First request after a sleep; bytes per session.</span></div>
+    <div class="gate"><b>G6 · Supabase pause rule</b><span>Can an auth-only Supabase project be paused?</span></div>
+  </div>
+</main>
+</body>
+</html>
