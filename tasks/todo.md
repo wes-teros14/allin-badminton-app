@@ -443,7 +443,21 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
   the cutover smoke test instead.
 - Facts learned: Neon Data API caches JWKS keys **by kid** — never reuse a kid for a different key.
 
-## Phase 3 — Cutover — **scheduled 2026-11-17, 9 pm Manila** (owner decisions made)
+## Phase 3 — Cutover — **DONE 2026-11-17 ~10:00–10:35 Manila (moved up from 9 pm at the owner's request)**
+
+**Result: the live site runs on Neon.** Freeze on Supabase verified (0 write grants left, writing RPCs blocked, reads +
+keepalive_ping fine) → owner's final `pg_dump` (806 KB) → `load-dump.sh` into `production` in 23 s, verify passed →
+`fingerprint.sql` identical to frozen prod on all 22 tables (incl. that morning's 9 new cheers/notifications) → owner set
+the 4 Vercel vars (Production) and redeployed → logged-out live board served from Neon (200s, 0 Supabase REST) →
+owner's signed-in smoke test (sessions, session page, leaderboards, profile, admin, a save) all good.
+- **Incident during the switch:** the first redeploy had a wrong `VITE_NEON_ANON_JWT` value, so logged-out data calls
+  failed and the app looked down (~10 min). Owner found and fixed it. My mid-incident diagnosis ("2 of 4 vars missing")
+  was wrong: I searched only `index-*.js`; the data client lives in a shared chunk (`jsx-runtime-*.js`). Rule added to
+  CLAUDE.md.
+- Supabase stays frozen as the backup (C3). Rollback, if ever needed: remove the 4 Vercel vars → redeploy → run the
+  unfreeze SQL below (writes made on Neon since the switch would need copying back).
+
+### Original plan (kept for reference)
 
 **When:** a weekday evening with no session; announce a short maintenance window. Rollback is minutes.
 

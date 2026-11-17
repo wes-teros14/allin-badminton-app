@@ -115,6 +115,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - Count schema objects (FKs, policies, grants) with a `count(*)` query, never by eyeballing a listed result. I reported 22 FKs to `auth.users`; there were 24, plus 2 to `profiles`.
 - A migration plan using `pg_restore --no-acl` must re-create grants explicitly. Dropping ACLs re-grants EXECUTE to PUBLIC on SECURITY DEFINER functions whose PUBLIC access was revoked.
 - Never probe whether a server-side guard works with a destructive write. Test the guard with a harmless write first (or inside a branch snapshot) — I tested Neon `max-affected` with a DELETE, the guard was ignored, and it wiped the parity fixtures.
+- When checking a deployed Vite bundle for a value (env var, URL), search every script the page loads, not just `index-*.js` — shared code (e.g. `supabase.ts`) lands in other chunks. Checking only the index file, I told the owner 2 of 4 Neon settings were missing mid-cutover; the real fault was a wrong token value.
 - Memory commitment (Committed_AS) is memory promised, not used. Report usage as RAM used + swap, and read chart totals from the tooltip, never from an axis tick.
 
 ## .env Files
