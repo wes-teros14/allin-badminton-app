@@ -292,6 +292,27 @@
   </div>
 
   <div class="qa">
+    <p class="q">For Against the Odds, how do we get the win rate of the 2 people in a team?</p>
+    <p class="a">
+      Each player’s own win rate first: games won ÷ games played, over every game before this one (all
+      sessions, each game counted, so a 1–1 match is 1 win and 1 loss). The team’s rate is the plain average of
+      the two. Example: A has won 12 of 20 (60%) and B 4 of 20 (20%), so the team is 40%. Against a team at 70% and
+      50% (60%), they’re 20 points weaker, so they’re the underdog. Games played together don’t matter, and
+      a player with fewer than 4 earlier games means the whole game isn’t counted (<code>lib/giantSlayer.ts</code>).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Is Against the Odds’ gap 20+ points or 20+ percent?</p>
+    <p class="a">
+      Points. The code subtracts the two pair rates (<code>strength2 - strength1 &gt;= 0.2</code> in
+      <code>lib/giantSlayer.ts</code>), so 40% vs 60% qualifies. “20% lower” would mean 20% <em>of</em> the
+      stronger rate: against 60% that’s only 48%, a 12-point gap, which is too small to call an upset. The text
+      says “points” on purpose, and the example (40% vs 60%) shows what it means.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Do all the leaderboard places get the bunny (celebration) card?</p>
     <p class="a">
       Since 2026-10-06, yes: all 13 boards. That’s Individual, Partners, the six Cheers categories and the five awards

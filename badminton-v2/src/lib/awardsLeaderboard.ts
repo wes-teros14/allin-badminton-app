@@ -151,7 +151,8 @@ export async function fetchAwardsLeaderboard(): Promise<AwardEntry[]> {
     },
     {
       ...awardBoard('giant-slayer'),
-      rule: `Games won as the pair ${Math.round(GIANT_SLAYER_GAP * 100)}+ points weaker on win rate going in · min. ${GIANT_SLAYER_MIN_UNDERDOG_GAMES} such games`,
+      // Example pair: the stronger side at 50% plus half the gap, against 50% minus it (60% vs 40% at 20 points).
+      rule: `Upsets: games won against a pair whose win rate was ${Math.round(GIANT_SLAYER_GAP * 100)}+ points higher than yours (e.g. ${Math.round(50 + GIANT_SLAYER_GAP * 50)}% vs your ${Math.round(50 - GIANT_SLAYER_GAP * 50)}%). Shown as a % of all such games · min. ${GIANT_SLAYER_MIN_UNDERDOG_GAMES}`,
       unit: () => '',
       format: (pct) => `${pct}%`,
       rows: giantSlayers.map((e) => ({
