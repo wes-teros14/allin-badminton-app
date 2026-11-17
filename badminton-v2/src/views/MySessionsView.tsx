@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { Calendar, ChevronDown, Clock, FileText, MapPin, PhilippinePeso, SlidersVertical, Timer, WalletCards } from 'lucide-react'
+import { Calendar, ChevronDown, Clock, FileText, MapPin, PhilippinePeso, SlidersVertical, Timer, Wallet, WalletCards } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePlayerSessions } from '@/hooks/usePlayerSessions'
 import type { SessionPickerItem, SessionRegistrant } from '@/hooks/usePlayerSessions'
@@ -43,7 +43,8 @@ export function registrantsCountLabel(count: number, maxPlayers: number | null |
  *
  * It sits inside the card but outside the card's <Link> — a button inside an
  * anchor would navigate on every tap. `aside` is the admin shortcut, placed
- * level with this row so it does not move when the list opens.
+ * level with this row so it does not move when the list opens; `asideGutter`
+ * is the right padding that keeps the row clear of it.
  */
 function RegistrantsRow({
   registrants,
@@ -51,6 +52,7 @@ function RegistrantsRow({
   closed,
   currentUserId,
   aside,
+  asideGutter,
 }: {
   registrants: SessionRegistrant[] | null
   maxPlayers: number | null | undefined
@@ -58,6 +60,7 @@ function RegistrantsRow({
   closed: boolean
   currentUserId: string | null
   aside: ReactNode
+  asideGutter: string
 }) {
   const [open, setOpen] = useState(false)
   const listId = useId()
@@ -136,7 +139,7 @@ function RegistrantsRow({
   }
 
   return (
-    <div className={`relative pb-2.5 pl-5 ${aside ? 'pr-16' : 'pr-4'}`}>
+    <div className={`relative pb-2.5 pl-5 ${aside ? asideGutter : 'pr-4'}`}>
       {aside}
       {row}
     </div>
@@ -247,7 +250,20 @@ export function isUpcomingForPlayer(s: Pick<SessionPickerItem, 'status' | 'close
   return s.status === 'complete' && s.closed_at == null
 }
 
-function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem; index: number; isAdmin: boolean; currentUserId: string | null }) {
+function SessionRow({
+  s,
+  index,
+  isAdmin,
+  canSeeFinance,
+  currentUserId,
+}: {
+  s: SessionPickerItem
+  index: number
+  isAdmin: boolean
+  /** Admins only — the same rule as the Finance tab in TopNavBar. */
+  canSeeFinance: boolean
+  currentUserId: string | null
+}) {
   const badge = statusBadge(s)
   const isActive = isUpcomingForPlayer(s)
   const showRegisteredPill = s.isRegistered && SHOW_REGISTERED_PILL_STATUSES.has(s.status)
@@ -270,15 +286,35 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
     : paymentState === 'exempt' ? 'text-muted-foreground'
     : 'text-destructive'
   const showRegistrants = (s.status === 'registration_open' || s.status === 'registration_closed') && s.registrants !== undefined
+  const shortcutClassName =
+    'grid h-11 w-11 place-items-center rounded-xl border border-primary bg-primary-subtle text-primary transition-[background-color,color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+  const showFinance = isAdmin && canSeeFinance
+  // Right padding that keeps card text clear of the shortcuts: one 44 px button
+  // or two with an 8 px gap, plus the 10 px inset. `reclaim` lets the name row
+  // take that space back, since the buttons only sit in the bottom corner.
+  const gutter = showFinance ? 'pr-28' : 'pr-16'
+  const reclaim = showFinance ? '-mr-24' : '-mr-12'
   const adminShortcut = (position: string) => isAdmin && (
-    <Link
-      to={`/session/${s.id}`}
-      aria-label={`Manage ${s.name} (admin)`}
-      title="Manage session"
-      className={`absolute ${position} right-2.5 grid h-11 w-11 place-items-center rounded-xl border border-primary bg-primary-subtle text-primary transition-[background-color,color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
-    >
-      <SlidersVertical className="h-5 w-5" aria-hidden="true" />
-    </Link>
+    <div className={`absolute ${position} right-2.5 flex gap-2`}>
+      {showFinance && (
+        <Link
+          to={`/finance/${s.id}`}
+          aria-label={`Finance for ${s.name} (admin)`}
+          title="Session finance"
+          className={shortcutClassName}
+        >
+          <Wallet className="h-5 w-5" aria-hidden="true" />
+        </Link>
+      )}
+      <Link
+        to={`/session/${s.id}`}
+        aria-label={`Manage ${s.name} (admin)`}
+        title="Manage session"
+        className={shortcutClassName}
+      >
+        <SlidersVertical className="h-5 w-5" aria-hidden="true" />
+      </Link>
+    </div>
   )
 
   return (
@@ -301,7 +337,7 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
         className={`relative flex w-full flex-col rounded-2xl py-4 pl-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
           // Reserve a gutter for the admin button so long venue or note text
           // cannot run underneath it.
-          isAdmin ? 'pr-16' : 'pr-4'
+          isAdmin ? gutter : 'pr-4'
         } ${showRegistrants ? 'pb-1' : ''}`}
       >
 
@@ -309,7 +345,7 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
           {/* The admin gutter is reserved on the whole card, but the button
               only occupies the bottom corner — so the name and status pills
               reclaim it and keep the width they have without the shortcut. */}
-          <div className={`flex items-start justify-between gap-3 ${isAdmin ? '-mr-12' : ''}`}>
+          <div className={`flex items-start justify-between gap-3 ${isAdmin ? reclaim : ''}`}>
             <p className="text-base font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
               {s.name}
             </p>
@@ -395,6 +431,7 @@ function SessionRow({ s, index, isAdmin, currentUserId }: { s: SessionPickerItem
           closed={s.status === 'registration_closed'}
           currentUserId={currentUserId}
           aside={adminShortcut('top-0')}
+          asideGutter={gutter}
         />
       )}
     </div>
@@ -408,6 +445,7 @@ export function MySessionsView() {
 
   // Same two roles AdminRoute admits, so the shortcut is never a dead end.
   const isAdmin = role === 'admin' || role === 'moderator'
+  const canSeeFinance = role === 'admin'
 
   const loading = authLoading || isLoading
 
@@ -438,7 +476,7 @@ export function MySessionsView() {
         <p className="text-sm text-muted-foreground">You're not registered in any sessions yet.</p>
       ) : (
         <div className="flex flex-col gap-3">
-          {activeSessions.map((s, i) => <SessionRow key={s.id} s={s} index={i} isAdmin={isAdmin} currentUserId={user?.id ?? null} />)}
+          {activeSessions.map((s, i) => <SessionRow key={s.id} s={s} index={i} isAdmin={isAdmin} canSeeFinance={canSeeFinance} currentUserId={user?.id ?? null} />)}
 
           {pastSessions.length > 0 && (
             <div className="space-y-3 pt-2">
@@ -448,7 +486,7 @@ export function MySessionsView() {
               >
                 {showPast ? 'Hide' : 'Show'} Past Sessions ({pastSessions.length})
               </button>
-              {showPast && pastSessions.map((s, i) => <SessionRow key={s.id} s={s} index={activeSessions.length + i} isAdmin={isAdmin} currentUserId={user?.id ?? null} />)}
+              {showPast && pastSessions.map((s, i) => <SessionRow key={s.id} s={s} index={activeSessions.length + i} isAdmin={isAdmin} canSeeFinance={canSeeFinance} currentUserId={user?.id ?? null} />)}
             </div>
           )}
         </div>
