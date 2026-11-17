@@ -2456,6 +2456,18 @@
   </div>
 
   <div class="qa">
+    <p class="q">On Neon, does the live board stall or disconnect after some amount of time?</p>
+    <p class="a">
+      There is no built-in time limit. Each subscription runs on a 60 s pass that the phone renews 15 s before
+      it expires, so a board left open stays connected (<code>src/lib/neonLiveChannel.ts</code>). Two things
+      still close it: the tab being hidden or the phone locked for 60 s (on purpose, so the database can sleep),
+      and a network drop, which retries after 5/10/20/30 s. Both reconnect and catch up on missed updates within
+      10 minutes, plus the 30 s safety refresh. Tested: 15 min × 20 phones, 340/340 updates, 0 errors.
+      Not yet tested: a full session of several hours on real phones (first one is Sun Nov 22).
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Was Supabase short on memory because both dev and main used Supabase Free?</p>
     <p class="a">
       No. Dev and the live site are two separate Supabase projects, DEV <code>tsvetqzkullivprbjtli</code> and prod
