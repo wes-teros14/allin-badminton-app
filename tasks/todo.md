@@ -443,9 +443,59 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
   the cutover smoke test instead.
 - Facts learned: Neon Data API caches JWKS keys **by kid** — never reuse a kid for a different key.
 
-## Phase 3 — Cutover (DRAFT, owner decisions pending)
+## Phase 3 — Cutover — **scheduled 2026-11-17, 9 pm Manila** (owner decisions made)
 
 **When:** a weekday evening with no session; announce a short maintenance window. Rollback is minutes.
+
+### Tonight's runbook (2026-11-17, 9 pm Manila)
+
+**Ready (done 2026-11-17 morning):** Neon `production` (`br-polished-unit-aoa3nyat`, `ep-small-river-aox8dd9u`) pinned
+0.25 CU; bucket `jwks` (public_read) with prod Supabase key + `neon-anon-prod-1`; Data API (external/Supabase,
+aud authenticated, `--skip-auth-schema`, anon role `anonymous`); Realtime (prod site + localhost); `seal` +
+`keepalive` + daily trigger deployed; seal answers the prod origin. **Dry run:** `scripts/neon/load-dump.sh` loaded
+yesterday's dump in 27 s, verify passed, `scripts/neon/fingerprint.sql` identical to prod; then reset to empty
+(backup `production-dryrun-backup`), setup intact.
+
+**This afternoon:** push `dev`, merge `dev` → `main`, push (owner OK). Vercel builds with the Neon vars unset → app
+unchanged. **Do not add the Vercel vars before tonight** — any deploy with them set switches to Neon.
+
+**Values for Vercel (Production scope, the project serving badmintontayo.mrkws.com) — set only at step 5:**
+- `VITE_NEON_DATA_API_URL` = `https://ep-small-river-aox8dd9u.apirest.c-2.ap-southeast-1.aws.neon.tech/neondb/rest/v1`
+- `VITE_NEON_REALTIME_URL` = `wss://ep-small-river-aox8dd9u.rt.c-2.ap-southeast-1.aws.neon.tech/`
+- `VITE_NEON_SEAL_URL` = `https://br-polished-unit-aoa3nyat-seal.compute.c-2.ap-southeast-1.aws.neon.tech/`
+- `VITE_NEON_ANON_JWT` = the 10-year logged-out token (public, like the anon key; Claude gives it at step 5)
+
+**Steps:**
+1. ~20:45 Owner posts the notice in the players' chat.
+2. 21:00 **Freeze** — owner runs in Supabase SQL editor (prod):
+   ```sql
+   revoke insert, update, delete on all tables in schema public from anon, authenticated;
+   revoke execute on function public.unfinish_match(uuid), public.reverse_session_stats(uuid) from public, anon, authenticated;
+   ```
+   Claude verifies (read-only): no INSERT/UPDATE/DELETE left for anon/authenticated; `keepalive_ping` still callable.
+3. Owner runs `pg_dump` (rehearsal command, file `rehearsal/prod-public-final.dump`).
+4. Claude: `scripts/neon/load-dump.sh` into `production` → `fingerprint.sql` on prod (MCP) and production (psql)
+   → must match line for line. Mismatch → stop, unfreeze, retry another day.
+5. Owner adds the 4 Vercel vars → redeploys production. Claude checks the live bundle contains `apirest`.
+6. Smoke test: owner signs in (Google) on the live site — Sessions, a session page, Leaderboard, Profile, Admin,
+   a registration on a future session; Claude checks the logged-out live board and network (data from Neon, no
+   Supabase REST). Then announce done.
+7. Supabase stays frozen (C1/C3: old copy kept as backup).
+
+**Rollback (any time before announcing done):** owner removes the 4 Vercel vars → redeploys → runs the **unfreeze**:
+```sql
+grant insert on public.match_results to anon;
+grant insert on public.announcer_clips, public.cheer_later_players, public.cheers, public.generator_presets, public.match_results, public.matches, public.payment_exempt_players, public.profiles, public.session_finance_notes, public.session_invitations, public.session_receipts, public.session_registrations, public.sessions, public.shuttle_batches, public.shuttle_usage to authenticated;
+grant update on public.announcements, public.announcer_clips, public.generator_presets, public.matches, public.notifications, public.payment_settings, public.profiles, public.session_finance_notes, public.session_invitations, public.session_receipts, public.session_registrations, public.sessions, public.shuttle_batches, public.shuttle_usage to authenticated;
+grant delete on public.announcer_clips, public.cheer_later_players, public.generator_presets, public.matches, public.payment_exempt_players, public.session_finance_notes, public.session_receipts, public.session_registrations, public.sessions, public.shuttle_batches, public.shuttle_usage to authenticated;
+grant execute on function public.unfinish_match(uuid), public.reverse_session_stats(uuid) to public, anon, authenticated;
+```
+(Exactly the prod grants read on 2026-11-17 before the freeze.) Writes made on Neon in between would be lost.
+
+**Notice draft (owner posts):**
+> Heads-up: the app is getting a speed upgrade tonight from 9:00 pm for about 45 minutes. You can still open it,
+> but saving (registering, cheers, edits) is paused until we're done. If it says it can't save afterwards, just
+> refresh the page. Thanks!
 
 **Before the day (no impact on players):**
 1. Neon `production` branch (`br-polished-unit-aoa3nyat`, empty): confirm fixed 0.25 CU and scale-to-zero 5 min.
@@ -477,7 +527,11 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
 Supabase writes. Writes made on Neon in between would be lost (or copied back by hand) — so decide go/no-go before
 reopening to players.
 
-**Owner decisions needed (ask one by one when we get here):**
+**Owner decisions (2026-11-17):** C1 **freeze Supabase writes** at the start of the window. C2 **tonight, 9 pm
+Manila** (Sun sessions; tonight still leaves 5 days before Nov 22; fallback Tue Nov 24 if the dry run fails). C3
+**keep the old Supabase tables frozen as a backup for now** — no drop date. Kiosk rule: decide at project end.
+
+**Original options (kept for reference):**
 - C1: how to stop open tabs (old code in memory, no service worker) writing to Supabase after the switch —
   revoke INSERT/UPDATE/DELETE for `anon`/`authenticated` on Supabase `public` (old tabs then error → reload), or
   rely on the timing (evening, no session).
