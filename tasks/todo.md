@@ -120,7 +120,7 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     - **New design items for Phase 1:** where the merged JWKS lives in prod (spike used a Neon
       `public_read` bucket; it must be refreshed if Supabase rotates keys), and the anon private key is kept
       out of the repo. Data API `update` cannot change the JWKS URL — it needs `delete` + `create`.
-- [ ] **G1 Idle and sleep:** a 24 h idle run with Data API + Realtime enabled and no clients. Then 15 min
+- [x] **G1 Idle and sleep:** a 24 h idle run with Data API + Realtime enabled and no clients. Then 15 min
   with one **hidden** tab renewing its seal, and 15 min with a visible one. Read compute active time and
   CU-h. **Fail →** stop.
   - **Started 2026-11-16 00:31 UTC** on branch `spike` (`ep-sparkling-scene-ao4aq7i4`, 0.25 CU fixed).
@@ -152,6 +152,11 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
     - Visible again → `connected` in ~2.3 s (includes waking the database).
     - Consequence: the hidden-tab close is no longer needed for compute; keep it to save seal calls
       (Function quota 1M/month). Compute ≈ time with real queries only.
+  - **FINAL 2026-11-17 00:35 UTC: PASS.** spike `active_time_seconds` 1236 → 1544 (+308 s, one ~5 min wake). Neon
+    operations log: at 15:18:18 UTC an `apply_config` ran on **all four branches** (production, spike, parity,
+    rehearsal) right after I created rehearsal's Data API; all suspended at 15:23:31. Otherwise spike slept 00:38 →
+    15:18 (~14.7 h) and 15:23 → 00:35 (~9.2 h). So no wake came from idle Data API/Realtime; project-level admin
+    ops (Data API create, Realtime enable) briefly start every compute (same cause as the 00:38 wake on day 1).
   - Side result (part of G2): `neon realtime subscribe` on `live_messages WHERE topic=… AND id > n`:
     3 separate inserts → 3 change events (111/209/258 ms after the first write); a 2-row transaction →
     1 event carrying both rows. `live_messages` has no grants for `anonymous`/`authenticated`.
@@ -276,6 +281,26 @@ Each gate is pass/fail. **G0 and G1 run first; if either fails, stop and report 
   - **Part 2 (next):** owner signs in with Google on localhost (app pointed at prod auth + rehearsal data; launcher
     `scratchpad/rehearsal/launch.mjs`) — check prod allows localhost as a redirect — then compare leaderboards,
     history and finance with the live site, and measure egress per page.
+- **Load test on rehearsal (prod copy) — 2026-11-17 00:47–01:02 UTC: PASS — memory issue answered.**
+  - `scripts/loadtest/session-sim-neon.mjs` (new): 20 phones (the Nov 15 session's 16 real players, tokens signed with
+    a temporary test key added to rehearsal's JWKS only — removed after, private key deleted), each with its own
+    Realtime connection and 2 live queries (`session:` + `user:`), app-style refetch (300–1000 ms coalesce, 30 s poll,
+    60 s name cache); admin finishes/starts a game every 60 s through the Data API (triggers fire). Guarded to the
+    named endpoint, never Supabase. Busier than a real session.
+  - **2,250 requests (150/min), 0 failed for the phones.** Reads p50 ~48 ms, p95 ~300 ms, max 678 ms. Live updates
+    **340/340 delivered**, p50 56 ms, p95 368 ms. Admin writes p50 ~45 ms, max 315 ms.
+  - **Backends 12 → max 19** (Data API `authenticator` pool 9; Realtime shows none) of max_connections 112 — vs 28
+    Postgres processes on Supabase NANO idle.
+  - **Memory fit:** database 12 MB vs `shared_buffers` 128 MB (1 GB RAM, 0.25 CU). LFC: 1,393 misses (first loads,
+    344 pages ≈ 2.7 MB), 0 hits — everything after warm-up came from shared buffers. (`CREATE EXTENSION neon` on
+    rehearsal only.)
+  - 16 failures were the test admin only: no DELETE on `match_results` for `authenticated` (same on prod), so old
+    results stayed and new inserts hit the unique key. Not a Neon difference.
+  - **RAM (Neon console, endpoint stats API, 1-min points): used 232 MB at start, peak 300 MB, settled 272–288 MB, of
+    1,024 MB provisioned (≤ 29%).** OS page cache another ~270–290 MB (reclaimable). CPU 0.02–0.03 of 0.25 vCPU (~10%).
+    Compare Supabase NANO: 406 MB total with ~520 MB held, 230–370 MB in swap all day.
+  - Rehearsal restored to 2026-11-17T00:45:29Z (backup `rehearsal-loadtest-backup`); fingerprints identical to prod again;
+    the `neon` extension is gone; anonymous read 200.
 - **Prod key decisions (owner, 2026-11-16):**
   1. **JWKS location: a `public_read` Neon bucket on the `production` branch** (as on parity), not a file on the
      Vercel site — data must not depend on a healthy web deploy. The Data API JWKS URL is fixed at create time.

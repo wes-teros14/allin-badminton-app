@@ -171,6 +171,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   - **An open Realtime subscription does not keep compute awake** (parity slept with 2 channels connected and
     passes renewing); a write wakes it (~1.2 s) and open subscribers still get the change within ms. Compute is
     used only while real queries run.
+  - **G1 passed (2026-11-17):** an idle branch with Data API + Realtime on slept ~24 h except for one 5-min wake
+    caused by a project-level admin op. Neon admin ops (Data API create, Realtime enable) briefly start **every**
+    branch's compute (~5 min each) — expect counters to move after setup work.
+  - **Memory answered (load test 2026-11-17, 20 phones × 15 min on the prod copy):** RAM used peak 300 MB of 1,024 MB
+    (≤ 29%), CPU ~10%, backends max 19 (Data API pool 9), 0 phone errors, 340/340 live updates. DB 12 MB fits in
+    128 MB shared_buffers. Script: `scripts/loadtest/session-sim-neon.mjs` (needs a test key in the branch JWKS).
   - Cold first request ~1.5 s, then ~45 ms. Egress ≈ 0.5 GB/month (prod edge logs × measured row sizes).
   - Neon's Data API **ignores PostgREST's `.single()` contract** (200 null / first row) and **ignores
     `Prefer: max-affected`** (multi-row PATCH/DELETE commit). `src/lib/singleObjectFetch.ts` restores the read

@@ -2364,6 +2364,54 @@
   </div>
 
   <div class="qa">
+    <p class="q">What did the Neon tests check, what were the results, and what's the impact on the app?</p>
+    <p class="a">
+      Nothing has moved yet: all Neon code is switched off behind env vars, and prod only got the session-delete fix
+      (090) and <code>keepalive_ping</code> (091). The tests showed that once it's switched on:
+    </p>
+    <ul class="a">
+      <li>Existing Supabase sign-ins work on Neon, so nobody re-registers (G0).</li>
+      <li>The database sleeps when unused, even with live connections open, so it stays inside the free 100
+        compute-hours (G1).</li>
+      <li>Live updates arrive in 1–30 ms, each message once (G2).</li>
+      <li>The app's queries return the same results (G3; one <code>.single()</code> difference fixed in code).</li>
+      <li>New Google users still get a profile (G4).</li>
+      <li>Egress is ~0.5 GB/month against a 5 GB limit, and a daily ping stops Supabase pausing (G6).</li>
+      <li>The real buttons work, from registration to finishing a game and cheering.</li>
+      <li>A prod copy loaded identically (22 tables).</li>
+    </ul>
+    <p class="a">
+      The only visible change is ~1.5 s on the first request after 5+ minutes of no use (G5); after that, ~45 ms.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Will Neon solve the memory issue we have on Supabase?</p>
+    <p class="a">
+      Very likely, but it's not proven yet (2026-11-17). On Supabase NANO the 406 MB machine also runs Supabase's own
+      stack: 28 Postgres processes (PostgREST 11, Realtime 7, workers 7). They hold ~520 MB, so 230–370 MB sits in swap
+      all day, while the data is only 24 MB. On Neon the database gets 1 GB (0.25 CU), and the Data API and Realtime
+      run on Neon's servers, not on the database machine. Not measured yet: Neon's memory under session load, and how
+      many connections its Data API and Realtime hold. Going to 0.5 CU would double compute-hour use and could break the
+      free limit, so the plan is to prove 1 GB with the 20-phone load test against the <code>rehearsal</code> branch
+      before switching.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">How did Neon hold up under a simulated session?</p>
+    <p class="a">
+      On 2026-11-17 a load test ran on the <code>rehearsal</code> prod copy: 20 phones for 15 minutes, a game changing
+      every minute, so busier than a real session (<code>scripts/loadtest/session-sim-neon.mjs</code>). Results: 2,250
+      requests with 0 phone failures; reads at a median of ~48 ms (worst 678 ms); 340 of 340 live updates (median
+      56 ms); at most 19 database connections against 28 processes on Supabase when idle. The whole database is 12 MB
+      and fits in Postgres's 128 MB buffer, and after warm-up nothing was read from storage. <strong>Memory used peaked
+      at 300 MB of 1,024 MB (≤ 29%), and CPU stayed around 10%.</strong> Supabase NANO, by comparison, has 406 MB in
+      total and holds ~520 MB, with 230–370 MB in swap all day. So yes: Neon removes the memory squeeze.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">What's <code>jose</code>?</p>
     <p class="a">
       A small, widely used JavaScript library for JSON Web Tokens. The <code>seal</code> Function uses it to check

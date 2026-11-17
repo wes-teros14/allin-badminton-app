@@ -16,16 +16,15 @@ Updated: 2026-11-16 ~23:45 Manila. Overwrite this file on every update; it is ne
   identical to prod (counts + content hashes); Data API, JWKS, Realtime, Functions set up there.
 
 ## Current state
-- `dev` has 11 Neon commits (latest 553c9b3), **not pushed**. Uncommitted: `tasks/todo.md`, `docs/qa-log.html`,
-  `project_memory.md`, `handoff.md` (rehearsal notes + wrap-up).
+- `dev` has 12 Neon commits (latest 9d414a8), **not pushed**. Uncommitted: the G1 result in `tasks/todo.md`,
+  `project_memory.md`, `handoff.md`.
 - Neon branches: `production` (empty), `spike` (G1 idle test), `parity` (tests; expires 2026-11-23; runs
   keepalive daily → pings prod), `rehearsal` (prod copy; expires 2026-11-30), backups `parity-before-restore`,
   `parity-writetests-backup`.
 - Scratchpad (lost on reboot): Postgres 17 tools, prod dump, rehearsal anon token + launcher, parity anon key.
 
 ## Next steps
-1. **G1 final read** after 2026-11-17 00:31 UTC: `neon branches get spike --project-id lucky-heart-02739020 -o json`
-   → `active_time_seconds` should still be ~1236. Also re-read parity's counter (it lagged).
+1. ~~G1 final read~~ **done 2026-11-17: PASS** (see tasks/todo.md).
 2. **Rehearsal part 2:** owner signs in with Google on localhost (app on prod auth + `rehearsal` data; launcher
    `scratchpad/rehearsal/launch.mjs` via a TEMP launch entry); compare leaderboards, history, finance with the live
    site; measure egress per page.
