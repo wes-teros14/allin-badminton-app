@@ -581,6 +581,36 @@
   </div>
 
   <h2 class="topic" id="leaderboard">Leaderboard</h2>
+  <div class="qa">
+    <p class="q">If we make the cheers leaderboard need at least 5 sessions instead of 4, what changes? (Nov 18)</p>
+    <p class="a">
+      The cheers board actually needs <strong>3</strong> sessions today (<code>MIN_SESSIONS_PLAYED</code> in
+      <code>lib/boardEligibility.ts</code>). The Wins board is the one at 4 (<code>MIN_SESSIONS_INDIVIDUAL</code>).
+      Measured on prod data, Nov 18:
+    </p>
+    <ul>
+      <li><strong>3 → 4:</strong> only Gella (3 sessions) drops off. Technique #1 goes to Anthony, and Len enters at #5.</li>
+      <li><strong>4 → 5:</strong> Nics, Theo and Saul (4 sessions each) drop off.
+        <ul>
+          <li>Movement #1 goes to Jerome.</li>
+          <li>Solid Effort #1 becomes Aian and Kurt, tied.</li>
+          <li>Good Sport loses its #3.</li>
+          <li>Defense loses a tied #2.</li>
+          <li>Offense doesn't change.</li>
+        </ul>
+      </li>
+    </ul>
+    <p class="a">
+      <code>MIN_SESSIONS_PLAYED</code> is shared with Partners and Awards, so changing only the cheers board
+      needs its own constant, like the Wins board has.
+    </p>
+    <p class="a">
+      <strong>Done Nov 18: 4.</strong> The new constant <code>MIN_SESSIONS_CHEERS = 4</code> is used by the
+      Cheers tab, its caption, the profile's cheer badges and the celebration standings. Partners and
+      Awards stay at 3.
+    </p>
+  </div>
+
 
   <div class="qa">
     <p class="q">Why is it hard to see each rank on the Partners board?</p>
