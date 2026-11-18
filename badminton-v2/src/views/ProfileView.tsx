@@ -6,7 +6,7 @@ import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { userTopic } from '@/lib/liveChannel'
 import { listenLive } from '@/hooks/useLiveChannel'
-import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
+import { ATTENDANCE_AWARD_EXCLUDED, MIN_SESSIONS_CHEERS, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { fetchEarlyBirds } from '@/lib/earlyBirdData'
 import { fetchMatchAwards } from '@/lib/matchAwardsData'
 import { cheerSharePct, rankCheerShares } from '@/lib/cheerShare'
@@ -206,10 +206,12 @@ async function fetchAwards(userId: string): Promise<Award[]> {
   // badge here always matches a holder there. One deliberate exception: the six
   // cheer badges stay here although the Awards tab dropped those cards on
   // 2026-10-06 (the owner's call) — the Cheers tab still ranks every category.
-  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
-    .filter(c => eligibleIds.has(c.player_id))
   const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
     .filter(s => eligibleIds.has(s.player_id))
+  // The Cheers board's stricter attendance floor, so a cheer badge matches its board.
+  const attendedEnoughForCheers = new Set(stats.filter(s => s.sessions_attended >= MIN_SESSIONS_CHEERS).map(s => s.player_id))
+  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
+    .filter(c => attendedEnoughForCheers.has(c.player_id))
 
   /** Sole holder of the highest share in one category, or nobody if it is tied. */
   function topShare(getCount: (c: typeof cheers[number]) => number): string | null {

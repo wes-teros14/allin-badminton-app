@@ -11,7 +11,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
-import { fetchEligiblePlayerIds } from '@/lib/boardEligibility'
+import { MIN_SESSIONS_CHEERS, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
 import type { PairTallyMatch } from '@/lib/pairStats'
@@ -118,11 +118,15 @@ export async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
 }
 
 export async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
-  const [statsRes, profilesRes, eligibleIds] = await Promise.all([
+  const [statsRes, profilesRes, eligibleIds, attendanceRes] = await Promise.all([
     supabase.from('player_cheer_stats').select('*').gt('cheers_received', 0),
     supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
     fetchEligiblePlayerIds(),
+    supabase.from('player_stats').select('player_id').gte('sessions_attended', MIN_SESSIONS_CHEERS),
   ])
+  // A failed read must not turn into an empty board.
+  if (attendanceRes.error) throw attendanceRes.error
+  const attendedEnough = new Set(((attendanceRes.data ?? []) as Array<{ player_id: string }>).map((s) => s.player_id))
 
   const nameMap = new Map(
     ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
@@ -130,7 +134,7 @@ export async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> 
   )
 
   return ((statsRes.data ?? []) as CheerStatsRow[])
-    .filter(s => nameMap.has(s.player_id) && eligibleIds.has(s.player_id))
+    .filter(s => nameMap.has(s.player_id) && eligibleIds.has(s.player_id) && attendedEnough.has(s.player_id))
     .map(s => ({
       ...s,
       displayName: nameMap.get(s.player_id)!,
