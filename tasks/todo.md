@@ -1,3 +1,14 @@
+# Current: Season reset and year in review (2026-11-19, plan written, awaiting owner review)
+
+- Design (approved): `specs/009-season-reset/design.md`
+- Plan: `specs/009-season-reset/plan.md` — 12 tasks
+- [ ] 1 Seasons module  - [ ] 2 Windowed reads  - [ ] 3 Tallies  - [ ] 4 Eligibility as of
+- [ ] 5 Wins/Partners/Cheers per season  - [ ] 6 Awards per season  - [ ] 7 Badges + hold
+- [ ] 8 Celebration rollover  - [ ] 9 Leaderboard switcher  - [ ] 10 Profile + Your 2026 page
+- [ ] 11 Today view, last counter reads  - [ ] 12 Parity on prod copy + docs
+
+---
+
 # Supabase → Neon migration — plan v2 (2026-11-16, NOT STARTED, awaiting owner go for Phase 0)
 
 v1 was reviewed by a separate session (`tasks/neon-migration-review.md`) and its findings are folded in.

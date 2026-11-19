@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Season reset &mdash; A vs B</title>
+<style>
+  :root{
+    --bg:#0F0A18; --fg:#FFFFFF; --card:#1A1025; --border:#2D1A40;
+    --muted:#B39DBB; --primary:#C9A6DC; --gold:#FFB200;
+    --stop:#DC595E; --go:#22C55E; --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;padding:28px 20px 70px;background:var(--bg);color:var(--fg);
+    font-family:'Geist Variable',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    line-height:1.55;font-feature-settings:"kern" 1;text-rendering:optimizeLegibility;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:-.01em}
+  .lede{margin:0 0 26px;font-size:13.5px;color:var(--muted);max-width:78ch}
+  .lede b{color:var(--fg)}
+  h2{font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--primary);margin:34px 0 12px}
+  code{font-family:var(--mono);font-size:.9em;background:#2D1A4055;padding:1px 5px;border-radius:4px}
+
+  /* today: where numbers come from */
+  .sources{display:flex;flex-wrap:wrap;gap:10px}
+  .src{flex:1 1 300px;border:1px solid var(--border);border-radius:13px;background:var(--card);padding:14px 16px}
+  .src.blocked{border-color:#DC595E55}
+  .src h3{margin:0 0 4px;font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .src p{margin:6px 0 0;font-size:12px;color:var(--muted)}
+  .src .cond{margin:8px 0 0}
+  .pill{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:2px 8px;border:1px solid}
+  .pill.gold{color:var(--gold);border-color:#FFB20055;background:#FFB20012}
+  .pill.go{color:var(--go);border-color:#22C55E55;background:#22C55E12}
+  .pill.stop{color:var(--stop);border-color:#DC595E55;background:#DC595E12}
+  .pill.plain{color:var(--muted);border-color:var(--border);background:#ffffff08}
+  .cond{font-family:var(--mono);font-size:11.5px;color:#D8C7E6;background:#0F0A18;border:1px solid var(--border);border-radius:8px;padding:7px 10px;overflow-x:auto;white-space:nowrap}
+
+  /* toggle */
+  .toggle{display:inline-flex;border:1px solid var(--border);border-radius:11px;overflow:hidden;margin:0 0 16px}
+  .toggle button{
+    font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);background:#150E20;
+    border:0;border-right:1px solid var(--border);padding:9px 18px;cursor:pointer;
+  }
+  .toggle button:last-child{border-right:0}
+  .toggle button[aria-pressed="true"]{background:var(--primary);color:#1A1025}
+
+  /* pipeline */
+  .pipe{border:1px solid var(--border);border-radius:14px;background:var(--card);padding:18px 16px}
+  .lane{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .node{
+    flex:1 1 116px;min-width:104px;border:1px solid var(--border);border-radius:11px;
+    background:#150E20;padding:11px 13px;
+  }
+  .node h4{margin:0 0 3px;font-size:12.5px;font-weight:800}
+  .node p{margin:0;font-size:11px;color:var(--muted)}
+  .arrow{align-self:center;color:var(--border);font-size:18px;flex:0 0 18px;text-align:center}
+  .stamp{
+    flex:0 1 auto;align-self:center;border:1px dashed var(--gold);border-radius:10px;
+    background:#FFB2000F;padding:8px 10px;margin:0 3px;min-width:126px;
+  }
+  .stamp .val{overflow-x:auto}
+  .stamp .lab{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+  .stamp .val{font-family:var(--mono);font-size:11px;color:#FFD98A;white-space:nowrap;margin-top:3px}
+  .stamp.ghost{border-color:var(--border);background:transparent;opacity:.34}
+  .stamp.ghost .lab{color:var(--muted)}
+  .stamp.ghost .val{color:var(--muted)}
+  .caption{margin:14px 0 0;font-size:12.5px;color:var(--muted)}
+  .caption b{color:var(--fg)}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;font-size:12.5px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:#150E20;font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+  td.mono{font-family:var(--mono);font-size:11.5px;color:#D8C7E6}
+  .yes{color:var(--go);font-weight:700}
+  .no{color:var(--stop);font-weight:700}
+
+  .note{border-left:3px solid var(--primary);padding:2px 0 2px 14px;margin:14px 0;font-size:12.5px;color:var(--muted)}
+  .note b{color:var(--fg)}
+  .note.warn{border-left-color:var(--gold)}
+  footer{margin-top:40px;font-size:11.5px;color:#6E5F7A}
+  @media (max-width:640px){
+    .arrow{flex-basis:100%;transform:rotate(90deg);padding:2px 0}
+    .stamp{margin:6px 0;width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Season reset &mdash; the two ways to build it</h1>
+  <p class="lede">
+    Both approaches give the same result to a player: the boards show the current season, last year is still
+    reachable, and every profile gets a year card. They differ in <b>one thing only</b> &mdash; whether a row&rsquo;s
+    season is decided when the board is <b>read</b> (A) or when the row is <b>written</b> (B).
+  </p>
+
+  <h2>Today &mdash; where each board&rsquo;s numbers come from</h2>
+  <div class="sources">
+    <div class="src">
+      <h3>Partners &middot; the four Awards <span class="pill go">season&#8209;ready</span></h3>
+      <p>
+        Already computed from raw <code>matches</code> and <code>match_results</code>, joined to
+        <code>sessions</code>, which carries the date. Nothing stands in the way of a season window.
+      </p>
+      <div class="cond">matches &rarr; sessions!inner(id) &nbsp;&larr; the embed is already there</div>
+    </div>
+    <div class="src blocked">
+      <h3>Individual &middot; Cheers <span class="pill stop">the blocker</span></h3>
+      <p>
+        Read <code>player_stats</code> and <code>player_cheer_stats</code> &mdash; running totals kept by triggers,
+        with <b>no date column</b>. A total cannot be sliced by year. These two are the entire problem.
+      </p>
+      <div class="cond">player_stats(games_played, wins) &nbsp;&larr; lifetime, undated</div>
+    </div>
+  </div>
+
+  <div class="note warn">
+    <b>Why not simply zero those totals?</b> Eligibility also reads them &mdash;
+    <code>sessions_attended</code>, 3 for most boards and 4 for Individual. Zero the counters on 1&nbsp;January and
+    nobody qualifies for anything until the 4th session of the new year, so every board sits empty for about a
+    month and Attendance Streak drops to 1 for everyone. <b>Both A and B avoid this the same way:</b> the counters
+    stay lifetime and keep feeding the gate &mdash; only the <em>ranked number</em> becomes season&#8209;scoped.
+  </div>
+
+  <h2>The difference, in one diagram</h2>
+  <div class="toggle" role="group" aria-label="Choose approach">
+    <button type="button" data-mode="a" aria-pressed="true">A &mdash; filter at read time</button>
+    <button type="button" data-mode="b" aria-pressed="false">B &mdash; stamp at write time</button>
+  </div>
+
+  <div class="pipe">
+    <div class="lane">
+      <div class="node">
+        <h4>Session is played</h4>
+        <p>Matches finish, cheers are given.</p>
+      </div>
+      <div class="arrow">&rarr;</div>
+
+      <div class="stamp ghost" id="stampWrite">
+        <div class="lab">Season decided here</div>
+        <div class="val" id="stampWriteVal">&mdash;</div>
+      </div>
+
+      <div class="arrow">&rarr;</div>
+      <div class="node">
+        <h4>Rows stored</h4>
+        <p id="rowsNote">matches, match_results, cheers &mdash; exactly as today.</p>
+      </div>
+      <div class="arrow">&rarr;</div>
+
+      <div class="stamp" id="stampRead">
+        <div class="lab">Season decided here</div>
+        <div class="val" id="stampReadVal">&mdash;</div>
+      </div>
+
+      <div class="arrow">&rarr;</div>
+      <div class="node">
+        <h4>Board</h4>
+        <p>Individual, Partners, Cheers, Awards &mdash; for the chosen year.</p>
+      </div>
+    </div>
+    <p class="caption" id="pipeCaption"></p>
+  </div>
+
+  <h2>What each one costs you</h2>
+  <table>
+    <thead>
+      <tr><th>&nbsp;</th><th>A &mdash; read&#8209;time filter</th><th>B &mdash; write&#8209;time season column</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Database migration</td>
+        <td class="yes">None</td>
+        <td class="no">Add <code>season</code> to <code>matches</code> and <code>cheers</code>, plus a backfill</td>
+      </tr>
+      <tr>
+        <td>What changes</td>
+        <td>Code only. Individual and Cheers switch from counters to raw rows; every board takes a date window.</td>
+        <td>Code, schema, and session creation &mdash; the season has to be written correctly on create <em>and</em> on edit.</td>
+      </tr>
+      <tr>
+        <td>Cost per board load</td>
+        <td>545 matches and 6,177 cheers today. Partners already pulls the matches, so Individual shares that fetch; Cheers is the one new read.</td>
+        <td>Same rows, but filtered server&#8209;side by an indexed column &mdash; the smallest read of the two.</td>
+      </tr>
+      <tr>
+        <td>Can you view any year?</td>
+        <td class="yes">Yes &mdash; any window, including ones you haven&rsquo;t played yet</td>
+        <td class="yes">Yes &mdash; any stamped season</td>
+      </tr>
+      <tr>
+        <td>Fixing a result later</td>
+        <td class="yes">Just works. The board recomputes.</td>
+        <td class="yes">Works, as long as the row&rsquo;s season was right to begin with.</td>
+      </tr>
+      <tr>
+        <td>Main risk</td>
+        <td>Depends on Neon&rsquo;s Data&nbsp;API filtering an <em>embedded</em> table the way PostgREST does. Unverified.</td>
+        <td>A row with the wrong season is invisible and silent. Needs care on session edit.</td>
+      </tr>
+      <tr>
+        <td>Season boundary</td>
+        <td class="yes">A date. Change your mind, change the constant.</td>
+        <td class="no">Baked into rows. Moving the boundary means a re&#8209;backfill.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>The check that decides it</h2>
+  <p class="lede" style="margin-bottom:12px">
+    A is the lighter build and the one that can never lose data, but it rests on a single unverified assumption.
+    Ten minutes against Neon dev settles it:
+  </p>
+  <div class="cond">matches.select('&hellip;, sessions!inner(date)').gte('sessions.date', '2027-01-01')</div>
+  <div class="note">
+    <b>If that filters correctly</b> &mdash; build A, with no migration at all.<br>
+    <b>If it doesn&rsquo;t</b> &mdash; fall back to B, and the season column earns its migration.
+  </div>
+
+  <h2>What players actually see, either way</h2>
+  <div class="sources">
+    <div class="src">
+      <h3>On the leaderboard</h3>
+      <p>
+        A year switcher above the existing tabs. It opens on the current season, so the first night of the new year
+        genuinely starts from nothing &mdash; but the boards are never empty, because who qualifies still comes from
+        lifetime attendance.
+      </p>
+    </div>
+    <div class="src">
+      <h3>On My Profile</h3>
+      <p>
+        A &ldquo;Your 2026&rdquo; card, sitting with the Cheered&#8209;for and Awards cards. Games, win rate, best
+        partner, signature cheer, any award held at year end &mdash; computed live, never a frozen copy.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    Measured on production, 19&nbsp;November&nbsp;2026: 41 sessions since 22&nbsp;March, 545 completed matches,
+    6,177 cheers. Source of the board logic: <code>src/lib/leaderboardData.ts</code>,
+    <code>src/lib/boardEligibility.ts</code>.
+  </footer>
+
+</div>
+<script>
+  (function () {
+    var copy = {
+      a: {
+        writeLab: 'Not decided here',
+        writeVal: 'nothing is written',
+        readLab: 'Season decided here',
+        readVal: "WHERE sessions.date >= '2027-01-01'",
+        rows: 'matches, match_results, cheers — exactly as today, untouched.',
+        caption: '<b>A — the rows never change.</b> Every row stays as it is, dated only through the session it ' +
+                 'belongs to. The season is a window applied on the way out, so any year can be asked for at any ' +
+                 'time, and changing where the year starts is a one-line change.'
+      },
+      b: {
+        writeLab: 'Season decided here',
+        writeVal: "season = 2027  → written onto each row",
+        readLab: 'Already on the row',
+        readVal: "WHERE season = 2027",
+        rows: 'matches, match_results, cheers — each now carries its own season.',
+        caption: '<b>B — the rows carry their season.</b> Each row is stamped when it is created, so the board ' +
+                 'filters a plain indexed column and never touches an embed. The cost is that the stamp must be ' +
+                 'right on create and on edit, and moving the year boundary later means rewriting every row.'
+      }
+    };
+
+    var btns = document.querySelectorAll('.toggle button');
+    var stampWrite = document.getElementById('stampWrite');
+    var stampRead = document.getElementById('stampRead');
+    var writeLab = stampWrite.querySelector('.lab');
+    var readLab = stampRead.querySelector('.lab');
+    var writeVal = document.getElementById('stampWriteVal');
+    var readVal = document.getElementById('stampReadVal');
+    var rowsNote = document.getElementById('rowsNote');
+    var caption = document.getElementById('pipeCaption');
+
+    function apply(mode) {
+      var c = copy[mode];
+      writeLab.textContent = c.writeLab;
+      writeVal.textContent = c.writeVal;
+      readLab.textContent = c.readLab;
+      readVal.textContent = c.readVal;
+      rowsNote.textContent = c.rows;
+      caption.innerHTML = c.caption;
+      stampWrite.className = 'stamp' + (mode === 'b' ? '' : ' ghost');
+      stampRead.className = 'stamp' + (mode === 'a' ? '' : ' ghost');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].setAttribute('aria-pressed', btns[i].getAttribute('data-mode') === mode ? 'true' : 'false');
+      }
+    }
+
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', function (ev) {
+        apply(ev.currentTarget.getAttribute('data-mode'));
+      });
+    }
+
+    apply('a');
+  })();
+</script>
+</body>
+</html>
