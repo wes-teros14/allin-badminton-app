@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-16
+Last updated: 2026-11-19
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -193,8 +193,17 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Live since 2026-11-17 ~10:35 Manila:** the production site (Vercel Production env) uses Neon branch `production`
   (`br-polished-unit-aoa3nyat`, `ep-small-river-aox8dd9u`, pinned 0.25 CU) for data (Data API) and live updates
   (Realtime + `seal`); sign-in and file storage stay on Supabase prod. Vercel Production env holds `VITE_NEON_DATA_API_URL`,
-  `VITE_NEON_ANON_JWT`, `VITE_NEON_REALTIME_URL`, `VITE_NEON_SEAL_URL`. Preview builds and local dev still use Supabase
-  (DEV) — only the live site is on Neon.
+  `VITE_NEON_ANON_JWT`, `VITE_NEON_REALTIME_URL`, `VITE_NEON_SEAL_URL`.
+- **Dev on Neon since 2026-11-19:** local dev uses Neon branch `dev` (ex-`parity`: `br-gentle-wildflower-ao7c6whw`,
+  `ep-blue-recipe-aodxyifb`, 0.25 CU, no expiry) for data + live updates; sign-in stays on **Supabase DEV**, so Dev Login
+  works. It shares production's 100 CU-h/month (sleeps when idle). Its Data API trusts `parity-jwks/jwks.json`
+  (DEV key + anon kids `neon-anon-parity-1/2`, `neon-anon-dev-1`); dev's 10-year anon token is in `.claude/launch.json`.
+  Its `keepalive` pings **prod** (by design), so nothing keeps Supabase DEV awake — unpause it in the dashboard if
+  Dev Login fails after a quiet week. Preview builds: not switched yet (they have no Supabase URL compiled in, so they
+  reach no database at all) — needs the owner's Vercel Preview vars.
+- **Schema changes are Neon-only (owner, 2026-11-19):** write the SQL once, run it on Neon `dev`, test, then on Neon
+  `production` (production SQL still run or approved by the owner per change). Supabase DEV keeps only sign-in; Supabase
+  prod is the frozen backup. `dev` and `production` schemas were identical on 2026-11-19 (catalog comparison).
 - **Supabase prod app tables are FROZEN** (INSERT/UPDATE/DELETE revoked from anon/authenticated; `unfinish_match`,
   `reverse_session_stats` EXECUTE revoked) and kept as a backup (owner, no drop date). Never unfreeze unless rolling
   back (exact unfreeze SQL in `tasks/todo.md` Phase 3). Its pg_cron job still runs against the frozen copy — harmless.
@@ -495,8 +504,13 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 
 ## Local development
 
-- `npm run dev` in `badminton-v2/`, serves on `localhost:5173`.
-- A dev-only login panel (`DevLoginPanel`) sits in the lower-right corner with one-click sign-in for seeded accounts — admin is `admin@test.local`, password `Test1234!`. Seed with `npm run seed`.
+- Start the `badminton-v2-dev` launcher (`.claude/launch.json`): `localhost:5173` against Neon `dev`. The
+  `badminton-v2-supabase-dev` launcher is the old all-Supabase-DEV path (fallback only). Plain `npm run dev` without the
+  launcher's env also falls back to Supabase DEV.
+- A dev-only login panel (`DevLoginPanel`) sits in the lower-right corner with one-click sign-in — admin is
+  `admin@test.local`, password `Test1234!`; Multiple John is a **moderator**. Reset Neon dev's data with
+  `NEON_DATABASE_URL="$(neon cs dev)" node scripts/neon/run-dev.mjs scripts/neon/seed-dev.sql` (needs `pg` on NODE_PATH;
+  the runner refuses any endpoint but dev's). `npm run seed` is the old Supabase DEV seed.
 - `curl` is blocked in this environment's bash; use PowerShell `Invoke-WebRequest` to probe a local port.
 
 ## Leaderboards

@@ -35,6 +35,7 @@ at `specs/008-podium-celebration/plan.md`.
 
 ## Testing on localhost
 - there is dev only button at the lower right where you can login as admin
+- Start the `badminton-v2-dev` launcher: data and live updates come from Neon branch `dev`, sign-in from Supabase DEV. Reset dev's data with `scripts/neon/seed-dev.sql` via `scripts/neon/run-dev.mjs`, which only runs against dev. Schema changes go to Neon only: dev first, then production with my OK.
 
 ## graphify
 

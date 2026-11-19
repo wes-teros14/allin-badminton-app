@@ -562,6 +562,90 @@ Manila** (Sun sessions; tonight still leaves 5 days before Nov 22; fallback Tue 
 - [ ] Remove Supabase-only code paths (Broadcast registry, pg_cron job) once Neon has run a few sessions.
 - [ ] Update `project_memory.md` and `docs/qa-log.html`.
 
+## Phase 5 — Dev on Neon — **DONE 2026-11-19 except step 7 (owner: Preview vars)**
+
+**Result 2026-11-19:**
+- [x] 1. `parity` renamed `dev` (`br-gentle-wildflower-ao7c6whw`, `ep-blue-recipe-aodxyifb`), expiry removed, 0.25 CU fixed,
+  default suspend. URLs unchanged (endpoint and branch ids, not names, are in them).
+- [x] 2. Schema: catalog comparison (tables, columns, functions with comments/whitespace stripped, triggers, policies,
+  RLS, indexes, constraints, grants, views) — **identical to production** except one NOT NULL constraint name on
+  `shuttle_usage` (`…tubes_used…` vs `…shuttles_used…`, cosmetic, left as is). `neon branches schema-diff` alone is
+  unusable here: hundreds of lines of formatting and column-order noise.
+- [x] 3. `scripts/neon/seed-dev.sql` (+ guarded runner `scripts/neon/run-dev.mjs`): 12 Dev Login profiles (Admin = admin,
+  John = **moderator**, rest players), 4 finished sessions × 10 games, 1 in-progress (4 done, 2 on court, 6 queued).
+  Stats come from the real triggers. Refuses if any profile has a non-test email.
+- [x] 4. New signed-out key `neon-anon-dev-1` (ES256, private key discarded) added to `parity-jwks/jwks.json`; the 10-year
+  token is in `.claude/launch.json`. `seal` + `keepalive` redeployed on `dev` (`neon deploy --branch dev --no-env-pull`).
+  **Changed from the plan:** keepalive still pings **prod** (its design: "always prod"; Supabase DEV may not have
+  `keepalive_ping`, and a failed ping skips the JWKS refresh). So Supabase DEV is not kept awake: if Dev Login stops
+  working after a quiet week, unpause DEV in the Supabase dashboard. ANON_JWKS now has parity-1, parity-2, dev-1, so
+  the daily refresh keeps the new key. First run: 2026-11-19 19:00 UTC — not yet observed.
+- [x] 5. `.claude/launch.json`: `badminton-v2-dev` = Neon dev (4 public `VITE_NEON_*`, no `.env` touched);
+  `badminton-v2-supabase-dev` = old Supabase-only path; `badminton-v2-neon-live` removed (same as the new default).
+- [x] 6. Verified on localhost: `/admin` 48 Neon calls, 0 Supabase data calls; finished Game 5 as admin → second tab's
+  live board refetched 2.4 s after the commit (push, before its 30 s check); Leaderboard (min 4 sessions) shows 10
+  players; finance page loads; offline backup data + HTML build (12 games, 7 subs panels); signed-out live board on
+  the anonymous token + seal, all 200. Seed re-run afterwards to reset.
+- [ ] 7. OWNER: Preview vars (below).
+- [ ] 8. Docs — done in this session (project_memory, CLAUDE.md, handoff).
+
+### Original plan (kept for reference)
+
+**Goal:** local dev (and later Preview builds) read data, live updates and the seal pass from a Neon branch `dev`,
+exactly like the live site; sign-in stays on Supabase DEV, so the Dev Login button keeps working. Dev is used only
+for testing.
+
+**Owner decisions (2026-11-19):** fresh seed (no copy of Supabase DEV data) · reuse branch `parity`, renamed `dev` ·
+the owner pastes the Preview env vars · future schema changes go to **Neon only** (dev first, then production).
+
+**Budget:** `dev` shares the project's 100 CU-h/month with production. Pinned 0.25 CU, it costs ≈ hours used × 0.25
+(estimate). No load tests on `dev` near month end.
+
+### Steps (autonomous unless marked OWNER)
+
+1. **Keep the branch.** `neon branches rename parity dev`; remove the 2026-11-23 expiry (`set-expiration`); pin the
+   endpoint to 0.25 CU, scale-to-zero on. Check: `neon branches get dev` shows no expiry, endpoint unchanged
+   (`ep-blue-recipe-aodxyifb`), so no URL changes.
+2. **Schema = production.** `neon branches schema-diff production dev`; apply what `dev` lacks (expected: migrations
+   090, 091 and anything since; G3 left it 4 objects behind on the repo-migrations path). Done when the diff is empty
+   apart from data-only differences. Script the fix as `scripts/neon/sync-dev-schema.sql` if it's more than a few lines.
+3. **Fresh seed** — `scripts/neon/seed-dev.sql`, idempotent, committed:
+   - Wipe app data on `dev` (never on production: the script refuses unless `current_database()` + endpoint id match
+     `dev`; check with a harmless SELECT first).
+   - The 12 Dev Login accounts: get each Supabase DEV user id by signing in once on localhost (the JWT `sub`; ids
+     only, no secrets), insert into the shim `auth.users` + `profiles` with roles (`admin@test.local` = admin; others
+     player unless Supabase DEV says otherwise — check each by signing in and reading `/profile`).
+   - Two sessions: one `complete` (finished games + results, so boards and finance have data), one `in_progress`
+     (2 courts playing, games queued) for live board, subs and backup testing.
+4. **Functions on `dev`.** Redeploy `seal` with `SUPABASE_URL` = Supabase DEV and `ALLOWED_ORIGINS` =
+   `http://localhost:5173` (+ the Preview origin from step 7). Redeploy `keepalive` with `KEEPALIVE_SUPABASE_URL` =
+   **Supabase DEV** (it pings prod today — production's own keepalive covers prod; DEV's sign-in would otherwise
+   pause after 7 idle days) and `JWKS_SUPABASE_URL` = Supabase DEV. Check: one manual run → 200, JWKS file has the DEV
+   key + the anon kids.
+5. **Local dev uses Neon by default.** `.claude/launch.json`: `badminton-v2-dev` gets the `dev` branch's 4 public
+   `VITE_NEON_*` values in its `env` block (no `.env` file touched); the old Supabase-only launcher kept as
+   `badminton-v2-supabase-dev` until step 9.
+6. **Verify on localhost, signed in through Dev Login:** Admin → sessions list, open the in-progress session, finish a
+   game, start the next; S1 player on a second tab sees the live board update without reload; Leaderboard, Awards,
+   Finance load; export the offline backup; sign out → signed-out live board loads (anonymous token). Console: 0
+   Supabase data calls, 0 failed requests. Then `neon branches get dev` → compute back asleep within ~5 min.
+7. **OWNER — Preview builds.** Today's Preview builds have *no* Supabase URL compiled in (project_memory: "Preview
+   builds are compiled without the Supabase URL"), so they can't reach any database now. Making them work needs
+   6 Preview vars, not 4: `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (Supabase DEV) and the 4 `VITE_NEON_*` for `dev`.
+   The seal Function and Realtime only accept exact origins, so the owner names the one Preview URL to allow (the
+   stable `…-git-dev-….vercel.app` alias of the project that serves the site); I add it to `seal`
+   `ALLOWED_ORIGINS` and Realtime's allowed origins. I hand over the values in one block; the owner pastes them and
+   redeploys the preview.
+8. **Docs.** `project_memory.md`: dev = Neon `dev` + Supabase DEV auth; schema changes Neon-only (dev → test →
+   production, production SQL still run/approved by the owner per change); `CLAUDE.md` local-dev note.
+   `handoff.md` updated.
+9. **Later (not in this phase):** retire the Supabase-only launcher and the app's Supabase data path once dev and
+   prod have both run on Neon for a while (Phase 4 item).
+
+### Rollback
+Local dev: pick `badminton-v2-supabase-dev` in the launcher. Branch: `neon branches restore dev
+^self@<before step 2>` (backup name kept). Supabase DEV is never written to by this phase.
+
 ## Owner input needed
 
 1. **Neon account** (free, no card), and allow the Neon MCP:
