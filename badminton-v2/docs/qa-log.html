@@ -582,6 +582,32 @@
 
   <h2 class="topic" id="leaderboard">Leaderboard</h2>
   <div class="qa">
+    <p class="q">Our year is ending — can I reset all the leaderboards and still let players see their stats for the year? (Nov 19)</p>
+    <p class="a">
+      Almost nothing needs deleting, and the reset is the destructive half of the idea.
+      <code>sessions</code>, <code>matches</code>, <code>match_results</code> and <code>cheers</code> keep every row with
+      a date, so a year view can be computed from history that already exists. Measured on prod (ref
+      <code>ensdfitpeyreunihkqkh</code>, Nov 19): <strong>41 sessions since 2026-03-22, 545 completed matches,
+      6,177 cheers</strong> — small enough that every board can be computed from raw rows, with no new rollup tables.
+    </p>
+    <ul>
+      <li><strong>Partners and the four Awards already read raw <code>matches</code>.</strong> They are season-ready today.
+        <code>lib/leaderboardData.ts</code> even carries a <code>sessions!inner(id)</code> embed that filters nothing,
+        left there deliberately so that "the planned yearly season rule is a single added filter".</li>
+      <li><strong>Individual and Cheers are the exception.</strong> They read <code>player_stats</code> and
+        <code>player_cheer_stats</code> — trigger-maintained running totals with <em>no date column</em>. Those two are
+        the only things a reset would have to zero, and zeroing them is what would destroy the year's numbers.</li>
+    </ul>
+    <p class="a">
+      <strong>The cost that isn't obvious:</strong> a hard reset doesn't just empty the boards, it empties them for
+      weeks. Eligibility reads <code>sessions_attended</code> (<code>MIN_SESSIONS_PLAYED</code> = 3,
+      <code>MIN_SESSIONS_INDIVIDUAL</code> = 4). With those counters zeroed, <em>nobody</em> is eligible until the 4th
+      session of the new year — roughly a month of empty boards — and Attendance Streak drops to 1 for everyone. The way
+      out is to let the eligibility gate keep reading lifetime attendance while only the ranked number is season-scoped.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">If we make the cheers leaderboard need at least 5 sessions instead of 4, what changes? (Nov 18)</p>
     <p class="a">
       The cheers board actually needs <strong>3</strong> sessions today (<code>MIN_SESSIONS_PLAYED</code> in
@@ -2596,6 +2622,18 @@
       ★ marks the admin’s sub picks for the night: up to 2 players starred in the app’s Subs panel
       (<code>sessions.sub_picks</code>). The backup shows the star next to their name everywhere and lists them first in
       every subs list, like the app. In the sample file, Mia was a made-up pick.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Do we need to move the dev database to Neon too? Would it use the same resources as prod?</p>
+    <p class="a">
+      Not urgently. Dev still works on Supabase DEV. The catch is that dev then only tests the Supabase path, and prod runs
+      Neon-only code (the <code>.single()</code> wrapper, <code>live_messages</code> instead of Broadcast, the
+      <code>seal</code> Function), so a change can pass on dev and break on prod. On resources: a dev <em>branch</em> in the
+      same Neon project shares prod’s 100 CU-h a month (verified 2026-11-16, “shared by all branches”). It sleeps when
+      idle, so it costs roughly hours of development × 0.25 CU. For example, 4 h a day ≈ 30 CU-h a month (an estimate, not measured).
+      Pin it to 0.25 CU and build it empty with <code>scripts/neon/apply.mjs</code>, not as a copy of prod, so real player data stays out of dev.
     </p>
   </div>
 
