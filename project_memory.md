@@ -199,8 +199,8 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   works. It shares production's 100 CU-h/month (sleeps when idle). Its Data API trusts `parity-jwks/jwks.json`
   (DEV key + anon kids `neon-anon-parity-1/2`, `neon-anon-dev-1`); dev's 10-year anon token is in `.claude/launch.json`.
   Its `keepalive` pings **prod** (by design), so nothing keeps Supabase DEV awake — unpause it in the dashboard if
-  Dev Login fails after a quiet week. Preview builds: not switched yet (they have no Supabase URL compiled in, so they
-  reach no database at all) — needs the owner's Vercel Preview vars.
+  Dev Login fails after a quiet week. Preview builds stay unswitched on purpose (owner, 2026-11-19: not needed); they have
+  no Supabase URL compiled in, so they reach no database at all.
 - **Schema changes are Neon-only (owner, 2026-11-19):** write the SQL once, run it on Neon `dev`, test, then on Neon
   `production` (production SQL still run or approved by the owner per change). Supabase DEV keeps only sign-in; Supabase
   prod is the frozen backup. `dev` and `production` schemas were identical on 2026-11-19 (catalog comparison).

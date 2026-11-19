@@ -586,7 +586,7 @@ Manila** (Sun sessions; tonight still leaves 5 days before Nov 22; fallback Tue 
   live board refetched 2.4 s after the commit (push, before its 30 s check); Leaderboard (min 4 sessions) shows 10
   players; finance page loads; offline backup data + HTML build (12 games, 7 subs panels); signed-out live board on
   the anonymous token + seal, all 200. Seed re-run afterwards to reset.
-- [ ] 7. OWNER: Preview vars (below).
+- [x] 7. Preview builds: **not wanted** (owner, 2026-11-19). They stay as they are (no database); local dev covers testing.
 - [ ] 8. Docs — done in this session (project_memory, CLAUDE.md, handoff).
 
 ### Original plan (kept for reference)
