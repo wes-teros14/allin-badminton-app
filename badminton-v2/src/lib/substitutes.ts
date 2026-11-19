@@ -1,11 +1,18 @@
 import type { AdminMatchDisplay } from '@/hooks/useAdminSession'
 
+/**
+ * The fields of a match the sub logic reads. The admin screen passes its
+ * AdminMatchDisplay; the offline backup (lib/offlineBackup.ts) passes its own
+ * games, so both rank subs the same way.
+ */
+export type SubMatch = Pick<AdminMatchDisplay, 'id' | 'gameNumber' | 't1p1Id' | 't1p2Id' | 't2p1Id' | 't2p2Id'>
+
 export interface SubCandidate {
   id: string
   displayName: string
 }
 
-function playerIds(m: AdminMatchDisplay): string[] {
+function playerIds(m: SubMatch): string[] {
   return [m.t1p1Id, m.t1p2Id, m.t2p1Id, m.t2p2Id]
 }
 
@@ -13,10 +20,10 @@ function playerIds(m: AdminMatchDisplay): string[] {
 // Start order is the queue (sorted by queue_position). A game on court has
 // already started, so the game after it is simply the first queued one —
 // NOT game N+1, which on 2 courts is usually on the other court already.
-function neighbourGames(target: AdminMatchDisplay, queued: AdminMatchDisplay[]): AdminMatchDisplay[] {
+function neighbourGames(target: SubMatch, queued: SubMatch[]): SubMatch[] {
   const idx = queued.findIndex((m) => m.id === target.id)
   if (idx === -1) return queued.slice(0, 1)
-  return [queued[idx - 1], queued[idx + 1]].filter((m): m is AdminMatchDisplay => m != null)
+  return [queued[idx - 1], queued[idx + 1]].filter((m): m is SubMatch => m != null)
 }
 
 // A player is excluded as a sub for `target` if they are: (1) on court right
@@ -24,9 +31,9 @@ function neighbourGames(target: AdminMatchDisplay, queued: AdminMatchDisplay[]):
 // (pulling them in would mean back-to-back games), or (3) one of the target's
 // own four. Everyone else in the roster is eligible.
 export function getEligibleSubstitutes(
-  target: AdminMatchDisplay,
-  onCourt: AdminMatchDisplay[],
-  queued: AdminMatchDisplay[],
+  target: SubMatch,
+  onCourt: SubMatch[],
+  queued: SubMatch[],
   players: SubCandidate[],
 ): SubCandidate[] {
   const busy = new Set<string>(playerIds(target))
@@ -49,12 +56,12 @@ export interface RankedSub extends SubCandidate {
   nextGame: number | null
 }
 
-interface RankInput {
-  target: AdminMatchDisplay
+export interface RankInput {
+  target: SubMatch
   eligible: SubCandidate[]
   /** Every match of the session: finished, on court and queued. */
-  allMatches: AdminMatchDisplay[]
-  queued: AdminMatchDisplay[]
+  allMatches: SubMatch[]
+  queued: SubMatch[]
   levels: Map<string, number | null>
   outPlayerId: string | null
   /** Admin's picks for the session, in pick order (max 2). */

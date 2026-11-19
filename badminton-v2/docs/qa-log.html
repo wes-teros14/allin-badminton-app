@@ -2549,6 +2549,26 @@
     </p>
   </div>
 
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">“The Now / Schedule / Players buttons in the backup file are in use: they jump to each section.”</p>
+    <p>
+      Wrong. I read the code (<code>href="#players"</code>) and never tapped them. Tested, the page did not move (scroll stayed 0):
+      a <code>#</code> jump link depends on the page’s address, and a file opened from Downloads doesn’t have a
+      normal one. Fixed 2026-11-19: they are now tabs, using hidden radio buttons and CSS with no script, the same trick as the
+      Who’s out? buttons. Tapping one shows only that section (<code>lib/offlineBackup.ts</code>). The Now tab was then dropped at the owner’s request: Schedule already shows which games are playing.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why does a player have a ★ in the backup file?</p>
+    <p class="a">
+      ★ marks the admin’s sub picks for the night: up to 2 players starred in the app’s Subs panel
+      (<code>sessions.sub_picks</code>). The backup shows the star next to their name everywhere and lists them first in
+      every subs list, like the app. In the sample file, Mia was a made-up pick.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">
