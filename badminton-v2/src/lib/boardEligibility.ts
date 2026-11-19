@@ -22,6 +22,14 @@ export const RECENT_SESSIONS_WINDOW = 5
 export const MIN_SESSIONS_PLAYED = 3
 
 /**
+ * The Cheers board's own attendance floor, stricter than `MIN_SESSIONS_PLAYED`
+ * (owner's call, 2026-11-18): at 3 sessions a newcomer topped Technique.
+ * The profile's cheer badges use it too, so a badge always matches the board.
+ * Applied before ranking, so a filtered player never holds a place.
+ */
+export const MIN_SESSIONS_CHEERS = 4
+
+/**
  * Accounts held back from the two *count-based* attendance awards only —
  * Most Sessions Joined and Attendance Streak — where an organiser who is at
  * every session wins by definition.

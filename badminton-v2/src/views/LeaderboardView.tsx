@@ -17,7 +17,7 @@ import { AWARD_PLACES } from '@/lib/denseRank'
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import type { CheerCategory } from '@/lib/cheerTypes'
 import type { CheerTypeSlug } from '@/types/app'
-import { MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
+import { MIN_SESSIONS_CHEERS, MIN_SESSIONS_PLAYED, RECENT_SESSIONS_WINDOW } from '@/lib/boardEligibility'
 import { fetchAwardsLeaderboard, type AwardEntry, type AwardRow } from '@/lib/awardsLeaderboard'
 import { isAwardKey } from '@/lib/awardBoards'
 import { Avatar } from '@/components/Avatar'
@@ -293,7 +293,7 @@ function CheersLeaderboard() {
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground text-center">
         Ranked by share of each player's cheers · min. {MIN_CHEERS_RECEIVED} cheers received ·
-        {' '}{MIN_SESSIONS_PLAYED}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
+        {' '}{MIN_SESSIONS_CHEERS}+ sessions played and active in the last {RECENT_SESSIONS_WINDOW}
       </p>
 
       {/*
