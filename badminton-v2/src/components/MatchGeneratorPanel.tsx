@@ -14,13 +14,25 @@ import { renderPlayerOptions } from '@/components/playerOptions'
 import type { Json } from '@/types/database'
 import {
   generateScheduleOptimized,
-  DEFAULT_WEIGHTS,
   computeMatchType,
   forcedOpeningRepeats,
   type GeneratedMatch,
   type AuditData,
   type PinnedMatch,
 } from '@/lib/matchGenerator'
+import {
+  DEFAULT_GENERATOR_SETTINGS as DEFAULTS,
+  buildGenerateOptions,
+  buildRosterVersion,
+  countPinnedPrefix,
+  effectiveNumMatches as computeEffectiveNumMatches,
+  toPresetSettings,
+  type GeneratorSettings as Settings,
+  type PresetSettings,
+} from '@/lib/generatorSettings'
+
+// Kept importable from here for existing callers; the definition lives in lib.
+export { buildRosterVersion }
 
 const MATCH_TYPE_COLOR: Record<string, string> = {
   "Men's Doubles":   'text-red-500',
@@ -36,72 +48,6 @@ interface Props {
   onLock?: (matches: GeneratedMatch[]) => Promise<boolean>
   rosterVersion?: number
   courtCount?: number
-}
-
-function countPinnedPrefix(rows: Array<MatchSlots | null> | undefined): number {
-  let n = 0
-  for (const row of rows ?? []) {
-    if (!row) break
-    n++
-  }
-  return n
-}
-
-interface Settings {
-  // Match Rules
-  numMatches: number
-  maxConsecutiveGames: number
-  maxSpreadLimit: number
-  disableGenderRules: boolean
-  // Fixed opening games: index i = game i+1; null = engine picks. Always a
-  // prefix — game 2 cannot be pinned unless game 1 is.
-  pinnedGames: Array<MatchSlots | null>
-  // Optimizer
-  numTrials: number
-  numStarts: number
-  wishlistStr: string
-  idealRestGames: number
-  earlyRestWindow: number
-  // Scoring Weights
-  streakWeight: number
-  imbalancePenalty: number
-  wishlistReward: number
-  repeatPartnerPenalty: number
-  fairnessWeight: number
-  spreadPenalty: number
-  mixedDoublesPenalty: number
-  genderSplitPenalty: number
-  unevenGenderPenalty: number
-  restSpacingPenalty: number
-  earlyRestReward: number
-  openingRepeatPenalty: number
-  disabledWeights: string[]
-}
-
-const DEFAULTS: Settings = {
-  numMatches: 20,
-  maxConsecutiveGames: 1,
-  maxSpreadLimit: 2,
-  disableGenderRules: false,
-  pinnedGames: [],
-  idealRestGames: 2,
-  earlyRestWindow: 20,
-  numTrials: 2000,
-  numStarts: 50,
-  wishlistStr: '',
-  streakWeight: DEFAULT_WEIGHTS.streakWeight,
-  imbalancePenalty: DEFAULT_WEIGHTS.imbalancePenalty,
-  wishlistReward: DEFAULT_WEIGHTS.wishlistReward,
-  repeatPartnerPenalty: DEFAULT_WEIGHTS.repeatPartnerPenalty,
-  fairnessWeight: DEFAULT_WEIGHTS.fairnessWeight,
-  spreadPenalty: DEFAULT_WEIGHTS.spreadPenalty,
-  mixedDoublesPenalty: DEFAULT_WEIGHTS.mixedDoublesPenalty,
-  genderSplitPenalty: DEFAULT_WEIGHTS.genderSplitPenalty,
-  unevenGenderPenalty: DEFAULT_WEIGHTS.unevenGenderPenalty,
-  restSpacingPenalty: DEFAULT_WEIGHTS.restSpacingPenalty,
-  earlyRestReward: DEFAULT_WEIGHTS.earlyRestReward,
-  openingRepeatPenalty: DEFAULT_WEIGHTS.openingRepeatPenalty,
-  disabledWeights: [],
 }
 
 type WeightKey = 'fairnessWeight' | 'streakWeight' | 'spreadPenalty' | 'unevenGenderPenalty'
@@ -152,28 +98,10 @@ const WEIGHT_GROUPS: Array<{ name: string; items: Array<{ key: WeightKey; label:
   },
 ]
 
-// Everything in Settings except this session's specific players: pinned
-// games name particular registrants, and the wishlist is particular pairs
-// (e.g. "wes-yelli"). A preset is a scoring philosophy, not this week's
-// roster, so saving/loading one never touches either field.
-type PresetSettings = Omit<Settings, 'pinnedGames' | 'wishlistStr'>
-
-function toPresetSettings(settings: Settings): PresetSettings {
-  const { pinnedGames: _pinnedGames, wishlistStr: _wishlistStr, ...rest } = settings
-  return rest
-}
-
 interface GeneratorPreset {
   id: string
   name: string
   settings: PresetSettings
-}
-
-export function buildRosterVersion(players: Array<{ id: string; gender: 'M' | 'F' | null; level: number | null }>): string {
-  return players
-    .map((player) => `${player.id}:${player.gender ?? ''}:${player.level ?? ''}`)
-    .sort()
-    .join('|')
 }
 
 export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVersion, courtCount = 2 }: Props) {
@@ -379,8 +307,7 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
     }
   }
 
-  const effectiveNumMatches =
-    settings.numMatches > 0 ? settings.numMatches : Math.ceil((players.length * 8) / 4)
+  const effectiveNumMatches = computeEffectiveNumMatches(settings, players.length)
   const targetGames = players.length >= 4
     ? (effectiveNumMatches * 4) / players.length
     : null
@@ -420,52 +347,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
 
     // Defer computation so React can render the loading state first
     generateTimerRef.current = setTimeout(() => {
-      // Resolve wishlist: "slug1-slug2, slug3-slug4" → ID pairs
-      const nameToId = new Map(players.map((p) => [(p.nickname ?? p.nameSlug).toLowerCase(), p.id]))
-      const wishlistPairs: [string, string][] = []
-      if (settings.wishlistStr.trim()) {
-        for (const pair of settings.wishlistStr.split(',')) {
-          const parts = pair.trim().split('-').map((s) => s.trim().toLowerCase())
-          if (parts.length === 2) {
-            const id1 = nameToId.get(parts[0])
-            const id2 = nameToId.get(parts[1])
-            if (id1 && id2) wishlistPairs.push([id1, id2])
-          }
-        }
-      }
-
-      const w = (key: string, value: number) =>
-        settings.disabledWeights.includes(key) ? 0 : value
-      const scoreWeights = {
-        streakWeight: w('streakWeight', settings.streakWeight),
-        imbalancePenalty: w('imbalancePenalty', settings.imbalancePenalty),
-        wishlistReward: w('wishlistReward', settings.wishlistReward),
-        repeatPartnerPenalty: w('repeatPartnerPenalty', settings.repeatPartnerPenalty),
-        fairnessWeight: w('fairnessWeight', settings.fairnessWeight),
-        spreadPenalty: w('spreadPenalty', settings.spreadPenalty),
-        mixedDoublesPenalty: w('mixedDoublesPenalty', settings.mixedDoublesPenalty),
-        genderSplitPenalty: w('genderSplitPenalty', settings.genderSplitPenalty),
-        unevenGenderPenalty: w('unevenGenderPenalty', settings.unevenGenderPenalty),
-        restSpacingPenalty: w('restSpacingPenalty', settings.restSpacingPenalty),
-        earlyRestReward: w('earlyRestReward', settings.earlyRestReward),
-        openingRepeatPenalty: w('openingRepeatPenalty', settings.openingRepeatPenalty),
-      }
-
       try {
-        const result = generateScheduleOptimized(players, {
-          numMatches: effectiveNumMatches,
-          courtCount,
-          maxConsecutiveGames: settings.maxConsecutiveGames,
-          maxSpreadLimit: settings.maxSpreadLimit,
-          disableGenderRules: settings.disableGenderRules,
-          wishlistPairs,
-          weights: scoreWeights,
-          numTrials: settings.numTrials,
-          numStarts: settings.numStarts,
-          idealRestGames: settings.idealRestGames,
-          earlyRestWindow: settings.earlyRestWindow,
-          pinnedMatches,
-        })
+        const result = generateScheduleOptimized(players, buildGenerateOptions(settings, players, courtCount, pinnedMatches))
         setMatches(result.matches)
         setAudit(result.audit)
         setAppliedPinCount(pinnedMatches.length)
