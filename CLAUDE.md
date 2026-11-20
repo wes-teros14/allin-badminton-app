@@ -33,6 +33,14 @@ at `specs/008-podium-celebration/plan.md`.
 <!-- SPECKIT END -->
 
 
+## Scheduling by prompt
+
+When asked to make or discuss a session's match schedule, use `npm run schedule -- ...` in `badminton-v2/`
+(usage in the header of `scripts/schedule/schedule.ts`): `sessions` → `show <session>` → `generate <session>
+[--set k=v] [--pin "A,B v C,D"] [--wish "a-b"]` → `save <session> --confirm`. Default target is Neon dev; add
+`--prod` for the live site. Always ask before any `save --prod`. Connection strings are in
+`badminton-v2/.env.schedule` — never read it.
+
 ## Testing on localhost
 - there is dev only button at the lower right where you can login as admin
 - Start the `badminton-v2-dev` launcher: data and live updates come from Neon branch `dev`, sign-in from Supabase DEV. Reset dev's data with `scripts/neon/seed-dev.sql` via `scripts/neon/run-dev.mjs`, which only runs against dev. Schema changes go to Neon only: dev first, then production with my OK.

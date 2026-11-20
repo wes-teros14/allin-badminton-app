@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-19
+Last updated: 2026-11-20
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -615,6 +615,15 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   direct but ~110 px taller) — both in `badminton-v2/docs/visual/match-edit-swap-options.html`.
 - `generateSchedule` (single-pass) is kept only for tests and API compatibility; the app calls
   `generateScheduleOptimized`.
+- **Command-line scheduler (2026-11-20):** `scripts/schedule/schedule.ts` (`npm run schedule -- sessions|show|generate|save`)
+  lets Claude make a schedule from a prompt. Why a script, not an MCP server: smallest thing to trust; owner chose it.
+  Panel defaults + settings → engine options moved to `src/lib/generatorSettings.ts` and `buildRegisteredPlayers` to
+  `src/lib/registeredPlayers.ts`, so panel and script cannot drift. Connects with `pg` straight to Neon (dev default,
+  `--prod` live) using `badminton-v2/.env.schedule` (`NEON_DEV_URL`, `NEON_PROD_URL`), endpoint-checked. `save` locks
+  the exact draft (engine is random), writes what Lock writes in one transaction, refuses on roster change / existing
+  games / status ≠ `registration_closed` / `--quick` draft. Drafts: `temporary_files/schedule-drafts/`.
+- **The engine silently drops games it cannot fill** (e.g. `maxSpreadLimit` 2 with an isolated L8 player: 11 asked,
+  10 built). The panel shows it only as Game Count Violations; the script warns explicitly. Not fixed in the engine.
 
 - **The First-on-court rule (2026-09-13).** The engine now takes `courtCount`
   (`GenerateOptions.courtCount`, **default 1** so every old caller is unchanged). Games

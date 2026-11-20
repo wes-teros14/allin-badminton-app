@@ -3044,6 +3044,30 @@
       <code>tasks/todo.md</code>.
     </p>
   </div>
+  <div class="qa">
+    <p class="q">Can Claude have access to the match engine, so I can just prompt the schedule creation and talk about the session's params?</p>
+    <p class="a">
+      Yes. The engine (<code>src/lib/matchGenerator.ts</code>) has no React or database code, so a script runs
+      it directly: <code>npm run schedule -- sessions | show | generate | save</code>
+      (<code>scripts/schedule/schedule.ts</code>). You name a session (date, id prefix or <code>next</code>);
+      Claude runs <code>generate</code> with your params (<code>--set maxSpreadLimit=3</code>,
+      <code>--pin "A,B v C,D"</code>, <code>--wish "a-b"</code>, <code>--preset</code>, <code>--from</code>) and
+      <code>save --confirm</code> locks <em>that exact draft</em> — the engine is random, so it never re-generates.
+      Defaults and the settings → options mapping live in <code>src/lib/generatorSettings.ts</code>, shared with the
+      panel, so both paths make the same schedule from the same settings. <code>save</code> writes what the Lock
+      button writes (matches, <code>schedule_locked</code>, <code>generator_settings</code>) in one transaction and
+      refuses if the roster changed, games already exist, status is not <code>registration_closed</code>, or the
+      draft was a <code>--quick</code> run. Dev by default; <code>--prod</code> for the live site. Full run: ~2 s.
+    </p>
+    <p>
+      Found while testing (2026-11-20): the engine <strong>silently drops a game</strong> it cannot fill. 11 dev
+      players, 11 games asked, <code>maxSpreadLimit</code> 2 → 10 games, and Marcus (L8) got 1 game because no
+      foursome within 2 levels of him existed. The panel shows this only as "Game Count Violations / Uneven"; the
+      script prints an explicit "asked for 11, got 10" warning. With <code>maxSpreadLimit=3</code> all 11 games
+      were built, 4 each.
+    </p>
+  </div>
+
   <h2 class="topic" id="payments">Payments &amp; the fee card</h2>
 
   <div class="qa">
