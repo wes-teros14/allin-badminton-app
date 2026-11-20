@@ -33,6 +33,14 @@ at `specs/008-podium-celebration/plan.md`.
 <!-- SPECKIT END -->
 
 
+## Scheduling by prompt
+
+When asked to make or discuss a session's match schedule, use `npm run schedule -- ...` in `badminton-v2/`
+(usage in the header of `scripts/schedule/schedule.ts`): `sessions` → `show <session>` → `generate <session>
+[--set k=v] [--pin "A,B v C,D"] [--wish "a-b"]` → `save <session> --confirm`. Default target is Neon dev; add
+`--prod` for the live site. Always ask before any `save --prod`. Connection strings are in
+`badminton-v2/.env.schedule` — never read it.
+
 ## Testing on localhost
 - there is dev only button at the lower right where you can login as admin
 - Start the `badminton-v2-dev` launcher: data and live updates come from Neon branch `dev`, sign-in from Supabase DEV. Reset dev's data with `scripts/neon/seed-dev.sql` via `scripts/neon/run-dev.mjs`, which only runs against dev. Schema changes go to Neon only: dev first, then production with my OK.
@@ -119,6 +127,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - When checking a deployed Vite bundle for a value (env var, URL), search every script the page loads, not just `index-*.js` — shared code (e.g. `supabase.ts`) lands in other chunks. Checking only the index file, I told the owner 2 of 4 Neon settings were missing mid-cutover; the real fault was a wrong token value.
 - When a feature already exists in the app (e.g. the Subs panel), a copy on another surface (backup file, kiosk) reuses the app's logic and layout. Don't invent a new format: my one-line "Cris L3 (1 played, plays next) · …" list was unreadable, and its own sub rules disagreed with the app's.
 - Never tell the user a control "is in use" or "works" from reading its markup — tap it first. I called the backup file's `#` jump links working; in a downloaded file they don't scroll at all.
+- When the user names a session, match that exact name in `schedule -- sessions` before generating. "Xmas party games placeholder" is not "🎁 Xmas Party 🎁" — I ran three drafts on the wrong session.
 - Memory commitment (Committed_AS) is memory promised, not used. Report usage as RAM used + swap, and read chart totals from the tooltip, never from an axis tick.
 
 ## .env Files
