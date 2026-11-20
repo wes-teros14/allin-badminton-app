@@ -3068,6 +3068,19 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Two players will be late. Can we keep them out of the first games without touching the engine or the app?</p>
+    <p class="a">
+      Yes, in the scheduler script only (<code>scripts/schedule/schedule.ts</code>):
+      <code>npm run schedule -- generate 2026-11-22 --prod --late "Ging,Earl=5"</code>. It runs the unchanged
+      engine 6 times, re-orders each result's whole games (players and teams untouched) so Ging and Earl have
+      nothing before game 5, scores each order with the engine's own <code>evaluateSessionScore</code>, and keeps
+      the best. Xmas Party result: Earl starts game 5, Ging game 6, both 4 games, 0 back-to-backs, 0 repeat
+      partners, score 26,000. A first version put an <code>availableFrom</code> option inside the engine; it was
+      reverted because this was a one-time need.
+    </p>
+  </div>
+
   <h2 class="topic" id="payments">Payments &amp; the fee card</h2>
 
   <div class="qa">

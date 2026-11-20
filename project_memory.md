@@ -622,6 +622,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   `--prod` live) using `badminton-v2/.env.schedule` (`NEON_DEV_URL`, `NEON_PROD_URL`), endpoint-checked. `save` locks
   the exact draft (engine is random), writes what Lock writes in one transaction, refuses on roster change / existing
   games / status ≠ `registration_closed` / `--quick` draft. Drafts: `temporary_files/schedule-drafts/`.
+- **Late arrivals are script-only (2026-11-20, owner: one-time need, don't touch the engine or app).**
+  `--late "Ging,Earl=5"` runs the unchanged engine 6 times, re-orders each result's whole games (same teams) so no
+  late player plays before their game, scored with the exported `evaluateSessionScore`, keeps the best. Rejected:
+  an `availableFrom` option inside the engine (built, then reverted at the owner's request). Limit: re-ordering
+  cannot change who plays together, so a very late player keeps their full game count only if their games fit.
 - **The engine silently drops games it cannot fill** (e.g. `maxSpreadLimit` 2 with an isolated L8 player: 11 asked,
   10 built). The panel shows it only as Game Count Violations; the script warns explicitly. Not fixed in the engine.
 

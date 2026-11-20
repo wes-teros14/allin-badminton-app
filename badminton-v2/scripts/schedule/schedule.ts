@@ -23,6 +23,10 @@
 //   --pin "A,B v C,D"         fix the next opening game (repeatable, in game order, at most court count)
 //   --wish "a-b, c-d"         wishlist pairs (nickname or slug)
 //   --no-pins / --no-wish     clear pins/wishlist inherited from --from
+//   --late "Ging,Earl=5"      these players arrive late: none of their games before game 5 (repeatable).
+//                             Done here, not in the engine: the engine runs unchanged several times and each
+//                             result's games are re-ordered (same games, same teams) to satisfy it, scored with
+//                             the engine's own evaluateSessionScore; the best wins. --late-runs N (default 6).
 //   --quick                   200 trials x 10 starts instead of the panel's 2000 x 50 (for trying ideas)
 //
 // Drafts live in <repo>/temporary_files/schedule-drafts/ (gitignored). `save` refuses when the roster changed
@@ -34,6 +38,7 @@ import pg from 'pg'
 import {
   computeMatchType,
   forcedOpeningRepeats,
+  evaluateSessionScore,
   generateScheduleOptimized,
   type AuditData,
   type GeneratedMatch,
@@ -342,7 +347,10 @@ function printRoster(players: PlayerInput[], labels: Map<string, string>): void 
   for (const p of sorted) console.log(`  ${(labels.get(p.id) ?? '').padEnd(22)} ${p.gender ?? '-'}  L${p.level ?? '?'}`)
 }
 
-function printSchedule(matches: GeneratedMatch[], players: PlayerInput[], labels: Map<string, string>, courtCount: number, pinCount: number): void {
+function printSchedule(
+  matches: GeneratedMatch[], players: PlayerInput[], labels: Map<string, string>, courtCount: number, pinCount: number,
+  late: Record<string, number> = {},
+): void {
   const n = (id: string) => labels.get(id) ?? id.slice(0, 8)
   const genderMap = new Map(players.map((p) => [p.id, p.gender ?? 'M']))
   console.log(`\nSchedule (${matches.length} games; games 1-${courtCount} start together)`)
@@ -362,7 +370,7 @@ function printSchedule(matches: GeneratedMatch[], players: PlayerInput[], labels
   for (const [id, games] of rows) {
     const gaps = games.slice(1).map((g, i) => g - games[i] - 1)
     const minRest = gaps.length ? Math.min(...gaps) : null
-    console.log(`  ${n(id).padEnd(22)} ${String(games.length).padStart(2)} games  [${games.join(', ')}]${minRest !== null ? `  rest ≥ ${minRest}` : ''}`)
+    console.log(`  ${n(id).padEnd(22)} ${String(games.length).padStart(2)} games  [${games.join(', ')}]${minRest !== null ? `  rest ≥ ${minRest}` : ''}${late[id] ? `  (late: from game ${late[id]})` : ''}`)
   }
 }
 
@@ -380,6 +388,72 @@ function printAudit(audit: AuditData, courtCount: number, playerCount: number): 
 // ---------------------------------------------------------------------------------------------------------------
 // Drafts
 // ---------------------------------------------------------------------------------------------------------------
+// ---------------------------------------------------------------------------------------------------------------
+// Late arrivals — by re-ordering whole games after the engine, so the engine itself is untouched
+// ---------------------------------------------------------------------------------------------------------------
+function parseLate(args: Args, players: PlayerInput[], labels: Map<string, string>): Record<string, number> {
+  const late: Record<string, number> = {}
+  for (const text of args.flags.get('late') ?? []) {
+    const m = text.match(/^(.+)=\s*(\d+)\s*$/)
+    if (!m || Number(m[2]) < 1) fail(`--late "${text}": write it as "Name1,Name2=5" (5 = their first game)`)
+    for (const name of m[1].split(',').map((x) => x.trim()).filter(Boolean)) late[resolvePlayer(name, players, labels)] = Number(m[2])
+  }
+  return late
+}
+
+const playersOf = (m: GeneratedMatch) => [m.team1Player1, m.team1Player2, m.team2Player1, m.team2Player2]
+
+/** First 0-based position a game may take: the latest arrival among its four players. */
+function earliestRow(m: GeneratedMatch, late: Record<string, number>): number {
+  return Math.max(0, ...playersOf(m).map((id) => (late[id] ?? 1) - 1))
+}
+
+function lateArrivalViolations(matches: GeneratedMatch[], late: Record<string, number>): number {
+  return matches.filter((m, i) => earliestRow(m, late) > i).length
+}
+
+/**
+ * Re-orders whole games (players and teams untouched) so no late player is on court before their first game,
+ * then improves the order by random swaps that keep the rule, scored by `score`. Games before `fixedRows`
+ * (pins) never move. Returns null when no valid order exists.
+ */
+function reorderForLate(
+  matches: GeneratedMatch[], late: Record<string, number>, fixedRows: number, score: (m: GeneratedMatch[]) => number,
+  iterations = 20000,
+): GeneratedMatch[] | null {
+  for (let i = 0; i < fixedRows; i++) if (earliestRow(matches[i], late) > i) return null
+  // Only lower bounds, so filling each slot with any game allowed there (in engine order) finds a valid order
+  // whenever one exists.
+  const pool = matches.slice(fixedRows)
+  let order: GeneratedMatch[] = matches.slice(0, fixedRows)
+  for (let pos = fixedRows; pos < matches.length; pos++) {
+    const k = pool.findIndex((m) => earliestRow(m, late) <= pos)
+    if (k < 0) return null
+    order.push(pool.splice(k, 1)[0])
+  }
+  const free = matches.length - fixedRows
+  if (free < 2) return order
+  let current = score(order)
+  let best = order
+  let bestScore = current
+  let temperature = 300
+  const cooling = Math.pow(1 / temperature, 1 / iterations)
+  for (let t = 0; t < iterations; t++, temperature *= cooling) {
+    const i = fixedRows + Math.floor(Math.random() * free)
+    const j = fixedRows + Math.floor(Math.random() * free)
+    if (i === j || earliestRow(order[i], late) > j || earliestRow(order[j], late) > i) continue
+    const next = order.slice()
+    ;[next[i], next[j]] = [next[j], next[i]]
+    const sc = score(next)
+    if (sc >= current || Math.random() < Math.exp((sc - current) / temperature)) {
+      order = next
+      current = sc
+      if (sc > bestScore) { best = next; bestScore = sc }
+    }
+  }
+  return best
+}
+
 interface Draft {
   target: Target
   sessionId: string
@@ -390,6 +464,7 @@ interface Draft {
   matches: GeneratedMatch[]
   audit: AuditData
   createdAt: string
+  lateArrivals?: Record<string, number>
 }
 
 const draftPath = (target: Target, sessionId: string) => join(DRAFT_DIR, `${target}-${sessionId}.json`)
@@ -407,7 +482,7 @@ async function cmdSessions(db: pg.Client, args: Args): Promise<void> {
        from sessions s order by s.date desc, s.time desc nulls last limit $1`,
     [limit],
   )).rows
-  console.log(`\n  id        date        status                players games courts  name`)
+  console.log(`\n  ${'id'.padEnd(36)}  date        ${'status'.padEnd(20)}  players games courts  name`)
   for (const r of rows) {
     console.log(`  ${r.id}  ${r.date}  ${r.status.padEnd(20)}  ${String(r.players).padStart(7)} ${String(r.games).padStart(5)} ${String(r.court_count).padStart(6)}  ${r.name}`)
   }
@@ -460,11 +535,37 @@ async function cmdGenerate(db: pg.Client, target: Target, session: SessionRow, a
   console.log(`Settings vs defaults: ${diff.length ? '' : 'all defaults'}`)
   for (const line of diff) console.log(`  ${line}`)
 
+  const late = parseLate(args, players, labels)
+  for (const [id, game] of Object.entries(late)) console.log(`  late: ${labels.get(id)} — no games before game ${game}`)
+
   const started = Date.now()
-  const result = generateScheduleOptimized(players, buildGenerateOptions(settings, players, session.court_count, pins))
+  const options = buildGenerateOptions(settings, players, session.court_count, pins)
+  let result = generateScheduleOptimized(players, options)
+  if (Object.keys(late).length > 0) {
+    // Scored exactly as the engine's final audit is, so "best" means what it means in the panel.
+    const levelMap = new Map(players.map((p) => [p.id, p.level ?? 5]))
+    const audit = (m: GeneratedMatch[]) => evaluateSessionScore(
+      m, levelMap, options.wishlistPairs ?? [], options.maxConsecutiveGames ?? 1, options.weights!,
+      options.maxSpreadLimit ?? 3, players.map((p) => p.id), options.disableGenderRules,
+      options.idealRestGames, options.earlyRestWindow, session.court_count,
+    )
+    const runs = Number(args.flags.get('late-runs')?.at(-1) ?? 6)
+    let best: { matches: GeneratedMatch[]; audit: AuditData } | null = null
+    for (let r = 0; r < runs; r++) {
+      const run = r === 0 ? result : generateScheduleOptimized(players, options)
+      const order = reorderForLate(run.matches, late, pins.length, (m) => audit(m).score)
+      if (!order) continue
+      const matches = order.map((m, i) => ({ ...m, gameNumber: i + 1 }))
+      const a = audit(matches)
+      if (!best || a.score > best.audit.score) best = { matches, audit: a }
+    }
+    if (!best) fail('no order of the games keeps the late players out of their early games — try a later --late game or fewer pins')
+    result = { ...result, ...best }
+    console.log(`(late arrivals: best of ${runs} engine runs, games re-ordered; engine itself unchanged)`)
+  }
   console.log(`(engine: ${settings.numTrials} trials x ${settings.numStarts} starts, ${((Date.now() - started) / 1000).toFixed(1)} s)`)
 
-  printSchedule(result.matches, players, labels, session.court_count, pins.length)
+  printSchedule(result.matches, players, labels, session.court_count, pins.length, late)
   printAudit(result.audit, session.court_count, players.length)
 
   // The engine drops a game it cannot fill rather than failing; the panel does not say so either.
@@ -484,6 +585,7 @@ async function cmdGenerate(db: pg.Client, target: Target, session: SessionRow, a
     matches: result.matches,
     audit: result.audit,
     createdAt: new Date().toISOString(),
+    lateArrivals: late,
   }
   mkdirSync(DRAFT_DIR, { recursive: true })
   writeFileSync(draftPath(target, session.id), JSON.stringify(draft, null, 2))
@@ -507,6 +609,7 @@ async function cmdSave(db: pg.Client, target: Target, session: SessionRow, args:
     fail(`this draft was made with fewer trials than the panel (${draft.settings.numTrials}x${draft.settings.numStarts}) — generate again without --quick`)
   }
   if (draft.courtCount !== session.court_count) fail(`court count changed (${draft.courtCount} → ${session.court_count}) — generate again`)
+  if (draft.lateArrivals && lateArrivalViolations(draft.matches, draft.lateArrivals) > 0) fail('draft breaks its own late-arrival rule')
   const valid = validateSchedulePlayers(draft.matches, (id) => labels.get(id) ?? id)
   if (!valid.ok) fail(valid.message)
 
