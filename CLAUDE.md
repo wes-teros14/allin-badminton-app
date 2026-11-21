@@ -128,6 +128,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - When a feature already exists in the app (e.g. the Subs panel), a copy on another surface (backup file, kiosk) reuses the app's logic and layout. Don't invent a new format: my one-line "Cris L3 (1 played, plays next) · …" list was unreadable, and its own sub rules disagreed with the app's.
 - Never tell the user a control "is in use" or "works" from reading its markup — tap it first. I called the backup file's `#` jump links working; in a downloaded file they don't scroll at all.
 - When the user names a session, match that exact name in `schedule -- sessions` before generating. "Xmas party games placeholder" is not "🎁 Xmas Party 🎁" — I ran three drafts on the wrong session.
+- Load a design skill (`journey` for navigation/flows, `impeccable` for visuals) before answering any UX question, not only before a mockup — and read what the affected pages already show first. My "logo + page title" top bar duplicated the H1 every page already has.
 - Memory commitment (Committed_AS) is memory promised, not used. Report usage as RAM used + swap, and read chart totals from the tooltip, never from an axis tick.
 
 ## .env Files

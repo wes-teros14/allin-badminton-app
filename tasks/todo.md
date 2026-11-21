@@ -675,3 +675,124 @@ Local dev: pick `badminton-v2-supabase-dev` in the launcher. Branch: `neon branc
   and hidden-tab close (M1), Storage kept on Supabase (M2), FK count 24 (M3), the auth wrapper and test
   harness issues removed by H1 (M4, M5), `ensure_rls` decision (M6), minors m1–m8, H1 adopted as the
   recommendation.
+
+---
+
+# Photo Gallery — plan (2026-11-20, not started)
+
+Per-session photo albums on a new **Gallery** tab, stored in **Neon Object Storage**. Status: plan agreed
+(Q1–Q6 answered 2026-11-20); next is the POC.
+
+## Owner decisions (2026-11-20)
+
+- Storage: Neon Object Storage (5 GB/project free). Rejected: Supabase Storage (1 GB org-wide, already holds
+  receipts and clips), Google Drive (direct image links unofficial, broke Jan 2024), Cloudflare R2 for now
+  (custom domain needs `mrkws.com` DNS moved off Spaceship; `r2.dev` is rate-limited).
+- Size: 1280 px long edge, about 150 KB, plus a ~30 KB thumbnail. Resized on the phone before upload;
+  originals are not kept.
+- One photo per player per session. Albums are per session.
+- **Upload:** only while the session is `in_progress`, and only by a player registered for that session.
+- **View:** signed in + at least 1 completed session (`player_stats.sessions_attended ≥ 1`). Applies to
+  viewing only — a first-timer can upload during their first session but sees the gallery once it completes.
+  Guests (`profiles.is_guest`) can't view (confirmed).
+- **Image files too:** only those viewers can open a photo, not just anyone holding its link → **private
+  bucket**, photos served by signed links (Q4).
+- **Uploader:** can replace the photo, edit the caption or delete it until the session is `complete`; then
+  it is locked.
+- **Admin:** can do everything at any time — view, edit captions, replace, delete — ignoring the upload
+  window and the lock. **No photo limit for admins** (confirmed) — one per session applies to players only.
+- Caption: uploader's name (always) + optional free text.
+- New top-bar tab **Gallery**.
+
+## Budget (estimates, not measured)
+
+- Storage: 16 photos/week × ~180 KB ≈ 12 MB/month. 5 GB lasts for decades.
+- Egress: shares Neon's **5 GB/month** with the app (~0.5 GB). About 25,000 full-photo opens a month fit.
+  **Over the cap Neon suspends compute → the whole app goes down.** Mitigations: thumbnails in the grid,
+  full photo only on tap, signed links reused for days so the phone's cache works (see Design), new object
+  key per upload, egress added to the Phase 4 daily usage check.
+- Function calls: ~1 per album opened; well inside Neon Functions' 1M invocations / 10 capacity-hours a month
+  (estimate).
+
+## Design
+
+- **Table `session_photos`** (Neon): `id uuid pk`, `session_id → sessions`, `player_id → profiles`,
+  `caption text null` (≤ 140 chars, CHECK), `version int` (0 = nothing uploaded), `width`, `height`,
+  `ready boolean default false`, `by_admin boolean`, `created_at`, `updated_at`. **Changed while building
+  (2026-11-21):** no stored keys — the Function derives them as `<session>/<id>/v<version>` and
+  `…-thumb`, so a client can never point a row at someone else's files. SQL:
+  `badminton-v2/scripts/neon/migrations/092_session_photos.sql`. One photo per player per session:
+  partial unique index `(session_id, player_id) WHERE NOT by_admin`. A BEFORE INSERT trigger sets
+  `by_admin` from the uploader's `profiles.role` (never from the client), so admins have no limit and a
+  player can't claim the flag. An index, not an RLS `NOT EXISTS` check, so two quick taps can't make two rows.
+- **RLS** (rules live in the database, not in the UI). Admin passes every policy:
+  - SELECT: `ready = true` and the caller is not a guest and has `sessions_attended ≥ 1`. The uploader always
+    sees their own row (so a first-timer sees their own upload).
+  - INSERT: `player_id = auth.uid()`, registered for that session, session `in_progress`.
+  - UPDATE (`caption`, `ready`, keys on replace): own row while the session is not `complete`.
+  - DELETE: own row while the session is not `complete`.
+- **Bucket** `gallery` in `neon.ts`, **`private`** (access level is fixed at creation).
+- **Neon Function `gallery`** (same shape as `seal`: verifies the Supabase sign-in token with `jose` + JWKS).
+  It never holds a DB password: every DB read/write goes through the Data API **with the caller's own
+  token**, so RLS stays the only gate.
+  - `list`: the rows the caller may see, with signed GET links (photo + thumb). **Changed while building:**
+    links are signed with a signing time rounded down to a 3-day step and valid 7 days (Neon's max), so every
+    call in that window returns the *same* URL and the browser cache answers — no localStorage needed.
+  - `sign {photoId}`: proves the caller may change the row (a no-op UPDATE with their token — RLS decides),
+    returns two signed PUT links (5 min) for version+1.
+  - `cleanup {photoId}`: after the client sets the new version, deletes that row's older versions.
+  - `delete {photoId}`: deletes the row with the caller's token; only if a row came back does it delete
+    the files.
+- **Upload flow (phone):** pick photo → resize to 1280 WebP + 320 thumb (`imageResize.ts`, add WebP; fall
+  back to JPEG where the browser can't encode WebP — iOS Safari support unverified) → insert row
+  (`ready=false`) → `sign` → two PUTs → update row (`version`, `ready=true`) → `cleanup`. Replace = the same
+  from `sign`. A failed upload leaves an unready row only its uploader sees, with Retry / Delete. Automatic
+  sweep of abandoned rows: deferred (needs a DB credential the Functions don't hold).
+- **Gallery tab:** sessions newest-first, each a thumbnail grid ("Nov 22 · 14 photos"). Tap → full-screen
+  viewer, swipe left/right, caption "Name — free text". "Add your photo" button on a session you can upload
+  to (in progress + registered); your own photo shows Replace / Edit caption / Delete until the session
+  completes, then a lock. Admin sees those on every photo, always. A player who can't view yet sees a plain
+  explanation ("Photos open after your first completed session"), never an empty album.
+- **Navigation (B1 + X1 + D3, owner 2026-11-21):** **no top bar.** Bottom tab bar Sessions · Leaderboard ·
+  **[rabbit, raised, labelled Home → `/`]** · Gallery · Profile (+ Admin for staff = 6 slots; at 360 px
+  nothing clips but "Sessions"/"Leaderboard" nearly touch). Home page (Welcome back + Notice Board) stays.
+  Rejected: slim bar (A), Sessions-as-home (B), rabbit by headings (C), floating top-left (D1, covers
+  headings) and bottom-right (D2, covers content, reads as "create"). Mock: `temporary_files/top-bar-options-poc.html`.
+  Profile keeps the unread-notification dot. Admin's Admin tab opens a sheet (Admin home,
+  Players, Inventory, Finance, Settings); a moderator's goes straight to `/admin`. Same bar on wide screens
+  (content is phone-width already).
+
+## Steps
+
+- [x] 0. Owner answers Q1–Q6 (2026-11-20).
+- [ ] 1. Final POC with every pick, clickable per role: `temporary_files/gallery-final-poc.html`
+      (options explored in `gallery-tab-poc.html`). Moderator = player gallery rules (owner confirmed 2026-11-21). Owner picked (2026-11-21): list layout **A — grid
+      preview per session** (6 photos, "+N" opens the album); album / viewer / upload screens approved as
+      mocked. Navigation: owner picked **B1 — bottom tab bar** (Sessions, Leaderboard, Gallery, Profile;
+      + Admin for admins/moderators; full words fit 5 slots at 360 px, measured). Admin's 4 extra pages:
+      owner picked **X1 — tapping Admin opens a menu sheet** (Admin home, Players, Inventory, Finance,
+      Settings). Moderators see only the Admin page, so their Admin tab opens it directly, no sheet.
+      Build notes for B1: `CheersReminder` is a fixed bottom bar → must sit above the tab bar; page bottom
+      padding + `env(safe-area-inset-bottom)`; `DevLoginPanel` (bottom-right, dev only) overlaps it; decide
+      the desktop (md+) layout; `/live-board` and `/register` don't mount `PlayerLayout`, so unaffected.
+- [x] 2. Migration on Neon **dev** (2026-11-21): applied; `scripts/neon/tests/gallery-rls.sql` 23/23 PASS.
+- [x] 3. `neon.ts` declares bucket + Function; on dev: bucket created + CORS (`gallery-bucket-setup.mjs`),
+      Function deployed alone via `neon functions deploy` (seal/keepalive untouched).
+- [x] 4. Client: `galleryImage.ts`, `galleryApi.ts`, `useGallery`, `GalleryView`, `PhotoViewer`, `PhotoSheet`,
+      routes `/gallery`, `/gallery/:sessionId`.
+- [x] 4b. Navigation: `BottomTabBar` (raised rabbit Home, admin sheet), `TopNavBar` removed, `--tabbar-h`.
+- [x] Verified on localhost as admin and player (upload, caption, replace + cleanup, delete, roles, 360 px,
+      both themes); unit tests 600 pass; build passes. Not yet: real iPhone (WebP), commit.
+- [ ] 5. Tests: RLS matrix on dev (player, newcomer, guest, non-registrant, admin; in progress vs complete;
+      a signed-out request to a photo URL must fail),
+      unit tests for resize sizing, e2e upload → view → delete. Verify egress per view with real files.
+- [ ] 6. Production with owner OK: SQL on Neon `production`, deploy Function + bucket to `production`.
+- [ ] 7. Lessons, `project_memory.md`, `graphify update .`.
+
+## Answers (owner, 2026-11-20)
+
+- Q1 upload window: only while `in_progress`. Q2 the "≥ 1 completed session" rule: viewing only.
+  Q3 self-delete: until `complete`. Q4 who can open a photo: signed in + ≥ 1 completed session → private
+  bucket. Q5 uploader must be registered: yes. Q6 replace / edit caption: yes, until `complete`, then
+  locked. Admin can do everything, any time.
+- Follow-ups (2026-11-20): guests can't view — yes. Admin photo limit — none.

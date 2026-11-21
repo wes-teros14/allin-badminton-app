@@ -260,7 +260,7 @@ function SessionRow({
   s: SessionPickerItem
   index: number
   isAdmin: boolean
-  /** Admins only — the same rule as the Finance tab in TopNavBar. */
+  /** Admins only — the same rule as Finance in the admin menu (BottomTabBar). */
   canSeeFinance: boolean
   currentUserId: string | null
 }) {

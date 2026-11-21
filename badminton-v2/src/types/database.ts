@@ -524,6 +524,35 @@ export type Database = {
           },
         ]
       }
+      session_photos: {
+        Row: {
+          by_admin: boolean
+          caption: string | null
+          created_at: string
+          height: number | null
+          id: string
+          player_id: string
+          ready: boolean
+          session_id: string
+          updated_at: string
+          version: number
+          width: number | null
+        }
+        Insert: {
+          caption?: string | null
+          id?: string
+          player_id: string
+          session_id: string
+        }
+        Update: {
+          caption?: string | null
+          height?: number | null
+          ready?: boolean
+          version?: number
+          width?: number | null
+        }
+        Relationships: []
+      }
       session_registrations: {
         Row: {
           gender: string | null

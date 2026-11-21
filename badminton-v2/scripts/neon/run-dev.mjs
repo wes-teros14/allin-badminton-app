@@ -10,7 +10,15 @@ import fs from 'node:fs'
 import { createRequire } from "node:module"
 const pg = createRequire(import.meta.url)("pg")
 const DEV_ENDPOINT = 'ep-blue-recipe-aodxyifb'
-const url = process.env.NEON_DATABASE_URL ?? ''
+// Without NEON_DATABASE_URL, fall back to NEON_DEV_URL from badminton-v2/.env.schedule (the scheduler's
+// file), so a PC without the Neon CLI can still run dev SQL. The value is never printed.
+function devUrlFromScheduleFile() {
+  const file = new URL('../../.env.schedule', import.meta.url)
+  if (!fs.existsSync(file)) return ''
+  const line = fs.readFileSync(file, 'utf8').split(/\r?\n/).find((l) => l.startsWith('NEON_DEV_URL='))
+  return line ? line.slice('NEON_DEV_URL='.length).trim().replace(/^["']|["']$/g, '') : ''
+}
+const url = process.env.NEON_DATABASE_URL || devUrlFromScheduleFile()
 if (!new URL(url).hostname.startsWith(DEV_ENDPOINT)) {
   console.error('refusing: not the dev endpoint')
   process.exit(2)
