@@ -46,6 +46,7 @@ const RegisterView             = lazy(() => import('@/views/RegisterView'))
 const MySessionsView           = lazy(() => import('@/views/MySessionsView'))
 const SessionPlayerDetailView  = lazy(() => import('@/views/SessionPlayerDetailView'))
 const LeaderboardView          = lazy(() => import('@/views/LeaderboardView'))
+const GalleryView              = lazy(() => import('@/views/GalleryView'))
 
 function App() {
   return (
@@ -67,6 +68,8 @@ function App() {
           <Route path="/sessions"                                            element={<MySessionsView />} />
           <Route path="/sessions/:sessionId"                                 element={<SessionPlayerDetailView />} />
           <Route path="/leaderboard"                                         element={<LeaderboardView />} />
+          <Route path="/gallery"                                             element={<GalleryView />} />
+          <Route path="/gallery/:sessionId"                                  element={<GalleryView />} />
           {/* Legacy routes — kept for internal links (AllMatchesView, etc.) */}
           <Route path="/today"                                               element={<TodayView />} />
           <Route path="/match-schedule"                                      element={<PlayerView />} />

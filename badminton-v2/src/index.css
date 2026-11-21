@@ -6,6 +6,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+    /* Height of the bottom tab bar (BottomTabBar.tsx: h-16 + the phone's safe area). Pages pad by
+       it and the "Cheer later" bar sits on it, so nothing hides behind the bar. Theme-independent. */
+    --tabbar-h: calc(4rem + env(safe-area-inset-bottom));
     --background: #FAF7FB;
     --foreground: #1B1220;
     --card: oklch(1 0 0);

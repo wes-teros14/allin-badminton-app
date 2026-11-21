@@ -16,6 +16,18 @@ export default defineConfig({
         ALLOWED_ORIGINS: "https://badmintontayo.mrkws.com,http://localhost:5173",
       },
     },
+    // Gallery photo files: signed links, upload slots, cleanup (functions/gallery/handler.ts).
+    // Holds no database password — rows go through the Data API with the caller's own token.
+    gallery: {
+      name: "gallery photos",
+      source: "functions/gallery/index.ts",
+      env: {
+        SUPABASE_URL: { value: process.env.GALLERY_SUPABASE_URL, required: true },
+        DATA_API_URL: { value: process.env.GALLERY_DATA_API_URL, required: true },
+        GALLERY_BUCKET: "gallery",
+        ALLOWED_ORIGINS: "https://badmintontayo.mrkws.com,http://localhost:5173",
+      },
+    },
     // Once a day, one tiny database request so the Supabase project (sign-in + files) never
     // pauses for inactivity (functions/keepalive/handler.ts, migration 091).
     keepalive: {
@@ -39,6 +51,8 @@ export default defineConfig({
   // the Functions their AWS_* storage credentials.
   buckets: {
     jwks: { access: "public_read" },
+    // Gallery photos (migration 092). Private: only signed links open a file (owner, 2026-11-20).
+    gallery: {},
   },
   triggers: {
     // 19:00 UTC = 03:00 Manila, away from sessions.

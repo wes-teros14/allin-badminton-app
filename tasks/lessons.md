@@ -876,3 +876,13 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: after the redeploy with the Neon env vars, the live app did not work for ~10 min.
 - Root cause: a wrong `VITE_NEON_ANON_JWT` value in Vercel (owner found it), so requests carrying it were refused by Neon. My first diagnosis ("2 of 4 vars missing") was wrong because I only searched `index-*.js`; the data client is in a shared chunk.
 - Fix: owner set the correct token and redeployed; verified all 4 values across every loaded chunk and the live board loading from Neon. Rule added to CLAUDE.md: search every chunk the page loads.
+
+## 2026-11-21: Raised Home rabbit covered the "Cheer later" bar
+- Symptom: with bottom tabs, the rabbit (raised ~1.75rem above the bar) overlapped the bottom of the Cheer later bar; the DEV button also sat on it.
+- Root cause: CheersReminder was moved to sit exactly on `--tabbar-h`, ignoring the part of the Home button that rises above the bar.
+- Fix: reminder at `bottom: calc(var(--tabbar-h) + 2rem)`, page padding `--tabbar-h + 6.5rem` while it shows, DEV panel at `+6rem`. Checked at 360 px, light and dark.
+
+## 2026-11-21: Gallery setup on a PC without the Neon CLI
+- Symptom: `neon: command not found`; first migration run was stopped mid-way by the owner.
+- Root cause: new PC; CLI never installed. `run-dev.mjs` needed `NEON_DATABASE_URL` from `neon cs`.
+- Fix: `run-dev.mjs` falls back to `NEON_DEV_URL` in `.env.schedule` (owner approved; never printed, still dev-only). Checked dev first: the stopped run had rolled back (table absent), then applied. Owner installed + signed in to Neon CLI 9.9.0. Deployed the gallery Function alone with `neon functions deploy` so seal/keepalive (whose secrets this PC lacks) were not redeployed.

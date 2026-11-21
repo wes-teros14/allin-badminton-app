@@ -19,7 +19,8 @@
         "VITE_NEON_DATA_API_URL": "https://ep-blue-recipe-aodxyifb.apirest.c-2.ap-southeast-1.aws.neon.tech/neondb/rest/v1",
         "VITE_NEON_ANON_JWT": "eyJhbGciOiJFUzI1NiIsImtpZCI6Im5lb24tYW5vbi1kZXYtMSIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbnltb3VzIiwiYXVkIjoiYXV0aGVudGljYXRlZCIsImlhdCI6MTc5NTA1NjkwNCwiZXhwIjoyMTEwNjMyOTA0fQ.lA65K-k5Ub26h2jOnnTxObXR8HNth9JdFNV4g9cNawUpyAbWoYRFAbviiH6wBn7KLVi0F3-EdPHafUYaFpeZLQ",
         "VITE_NEON_REALTIME_URL": "wss://ep-blue-recipe-aodxyifb.rt.c-2.ap-southeast-1.aws.neon.tech/",
-        "VITE_NEON_SEAL_URL": "https://br-gentle-wildflower-ao7c6whw-seal.compute.c-2.ap-southeast-1.aws.neon.tech/"
+        "VITE_NEON_SEAL_URL": "https://br-gentle-wildflower-ao7c6whw-seal.compute.c-2.ap-southeast-1.aws.neon.tech/",
+        "VITE_NEON_GALLERY_URL": "https://br-gentle-wildflower-ao7c6whw-gallery.compute.c-2.ap-southeast-1.aws.neon.tech/"
       }
     },
     {
@@ -36,6 +37,18 @@
         "--strictPort"
       ],
       "port": 5173
+    },
+    {
+      "name": "poc-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5180",
+        "--bind",
+        "127.0.0.1"
+      ],
+      "port": 5180
     }
   ]
 }
