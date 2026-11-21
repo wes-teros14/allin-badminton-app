@@ -12,7 +12,7 @@ if (window.TUNE) {
     <div id="stage" style="flex:1 1 360px;max-width:900px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;touch-action:none"></div>
     <div style="flex:0 0 330px;display:flex;flex-direction:column;gap:9px">
       <label>Player <select id="who"></select></label>
-      <label>Frame <select id="frm"><option value="1" selected>D · Snow Ticket</option><option value="0">A · Candy Cane</option></select></label>
+      <label>Frame <select id="frm"><option value="0">D · Snow Ticket</option></select></label>
       <label>Card <select id="md"><option value="hl">Highlights</option><option value="full">Full list</option></select></label>
       <label>View <select id="vw"><option value="all">Whole magnet</option><option value="card">Zoom on card</option></select></label>
       <label><input type="checkbox" id="real"> Also show at ≈ print size</label>

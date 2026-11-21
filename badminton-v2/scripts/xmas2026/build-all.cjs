@@ -28,7 +28,7 @@ const html = `<!doctype html>
   .bar .seg button{border:0;border-radius:0;padding:5px 11px}
   .bar .seg button+button{border-left:1px solid var(--line)}
   .bar .seg button[aria-pressed=true]{background:var(--pur);color:#fff}
-  main{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px;padding:18px 16px 40px}
+  main{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:22px;padding:18px 16px 40px}
   .p{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px}
   .p h2{margin:0 0 8px;font-size:15px;display:flex;gap:8px;align-items:baseline}
   .p h2 span{font-size:12px;color:var(--mut);font-weight:400}
@@ -41,9 +41,9 @@ const html = `<!doctype html>
 <body>
 <div class="bar">
   <h1>Xmas ref magnets · 2 × 3 in</h1>
-  <p>${data.players.length} players + ${WELCOME.length} welcome cards · prod data through the ${data.asOf} session · PNG = 600 × 900 px (300 dpi), photo window transparent</p>
+  <p>${data.players.length} players + ${WELCOME.length} welcome cards · prod data through the ${data.asOf} session (cheers up to ${fs.statSync(`${S}/boards.json`).mtime.toISOString().slice(0,10)}) · PNG = 600 × 900 px (300 dpi), photo window transparent</p>
   <span class="seg" id="mode"><button data-v="hl" aria-pressed="true">Highlights</button><button data-v="full" aria-pressed="false">Full list</button></span>
-  <button class="pri" id="all">Download all PNGs (${(data.players.length + WELCOME.length) * 2})</button>
+  <button class="pri" id="all">Download all PNGs (${data.players.length + WELCOME.length})</button>
 </div>
 <main id="grid"></main>
 <script>
@@ -191,7 +191,7 @@ function magnetSVG(theme, p, forExport){
     <mask id="hole" maskUnits="userSpaceOnUse" x="-100" y="-100" width="\${W+200}" height="\${H+200}"><rect x="-100" y="-100" width="\${W+200}" height="\${H+200}" fill="#fff"/><rect x="\${q.x}" y="\${q.y}" width="\${q.w}" height="\${q.h}" rx="\${q.r}" fill="#000"/></mask>
     <g mask="url(#hole)">\${under}</g>\${over}\${cardSVG(p)}\${titleSVG()}\${top}</g></svg>\`;
 }
-const FRAMES = THEMES.filter(t => t.id === "candy" || t.id === "snow");
+const FRAMES = THEMES.filter(t => t.id === "snow");   // owner chose D · Snow Ticket only (2026-11-21); A · Candy Cane kept in the template
 const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,"-");
 function png(theme, p){
   return new Promise((ok, bad) => {
@@ -205,9 +205,11 @@ function png(theme, p){
 // ids inside each inline SVG must be unique on the page
 const uniq = (svg, k) => svg.replace(/id="([\\w-]+)"/g, \`id="$1-\${k}"\`).replace(/url\\(#([\\w-]+)\\)/g, \`url(#$1-\${k})\`);
 function render(){ document.getElementById("grid").innerHTML = PLAYERS.map((p, i) => \`
-  <section class="p"><h2>\${esc(p.name)} <span>\${p.welcome ? "welcome card · no board placing yet" : \`\${p.places} places · \${p.top3} top 3 · \${p.first} first\`}</span></h2>
+  <section class="p"><h2>\${esc(p.name)} <span>\${p.family ? "family card · each person keeps their own card too" : p.welcome ? "welcome card · no board placing yet" : \`\${p.places} places · \${p.top3} top 3 · \${p.first} first\`}</span></h2>
   <div class="two">\${FRAMES.map((t, j) => \`<figure>\${uniq(magnetSVG(t, p, false), i + "-" + j)}
     <figcaption>\${t.id === "candy" ? "A · Candy Cane" : "D · Snow Ticket"}<br><button data-p="\${i}" data-t="\${j}">PNG</button></figcaption></figure>\`).join("")}</div></section>\`).join(""); }
+const PAIR_RECORDS = ${JSON.stringify(JSON.parse(fs.readFileSync(`${S}/boards.json`, 'utf8')).pairRecords || [])};
+${fs.readFileSync(`${S}/family.js`, 'utf8')}
 if (!window.TUNE) render();
 document.getElementById("mode").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
