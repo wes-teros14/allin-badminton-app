@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-20
+Last updated: 2026-11-21
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -248,7 +248,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Roles and access
 - `Role = 'admin' | 'moderator' | 'player' | null`, read from `profiles.role` by `AuthContext`.
 - `AdminRoute` (`badminton-v2/src/App.tsx:10`) admits **admin and moderator**; everything else redirects to `/`.
-- Some features are admin-only and exclude moderators (receipt viewing in `RosterPanel`, several `TopNavBar` entries). Check which of the two rules a feature needs before copying either.
+- Some features are admin-only and exclude moderators (receipt viewing in `RosterPanel`, the admin pages in `BottomTabBar`'s Admin sheet). Check which of the two rules a feature needs before copying either.
 - Convention for an inline check is `const isAdmin = role === 'admin' || role === 'moderator'` — written out, no shared helper. Don't introduce one without a reason.
 - **Session delete:** only admins and moderators (`sessions: staff delete`, migration 090, 2026-11-16). Prod had a
   hand-made `sessions: admin delete` USING (true) letting any signed-in player delete sessions. Still open by design:
@@ -263,7 +263,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   the nav bar underlined Admin on the player's own session list for as long as that clause existed.
   `isUnder(pathname, base)` in `src/lib/navMatch.ts` is the only matcher to use — it accepts `base`
   itself or anything under `base + '/'`, so a match can only end on a segment boundary. All eight
-  `TopNavBar` tabs go through it, not just the one that broke.
+  `BottomTabBar` tabs go through it, not just the one that broke.
 
 ## Session lifecycle
 
@@ -474,7 +474,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   `ThemeToggle` follows this rule so it can be moved onto the nav later without a rewrite.
 - **No hardcoded hex in `className`.** `#FEFE6A` (the live board's neon yellow) and `#FFB200` were
   written literally in 13 places and all of them vanished in light mode. They now use tokens. The
-  two survivors are the `bg-[#FEFE6A]` notification dots in `TopNavBar`, which are correct because
+  two survivors are the `bg-[#FEFE6A]` notification dot in `BottomTabBar`, which are correct because
   that bar is `bg-primary` in both themes. When auditing colours, sweep arbitrary values:
   `grep -rEo "(text|bg|border|fill|stroke|ring)-\[#[0-9A-Fa-f]{3,8}\]" src --include=*.tsx`.
 - The toggle mark is one element, `.theme-orb`: a crescent that fills into a disc and throws eight
@@ -769,6 +769,35 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Pacing:** each call is said **three times** (0.7 s apart). Words are 40 ms apart (0 ms before the court number, game number, "and" and name 2, so "Court 2", "Game 5", "name1 and name2" run together), and every clip is re-trimmed on load to 20 ms padding (saved clips keep 80 ms) — at 120 ms gaps + 80 ms padding the owner found it too slow.
 - **Fallbacks (revised 2026-10-27):** any word with no clip (name or fixed word) → computer voice for just that word; the rest still plays from clips. Consecutive unrecorded words are joined into ONE utterance (each `speak()` pays the engine's start-up lag), with commas before team 1's first name and before "versus". Whether the default system voice needs internet depends on the tablet's voice (network voices do) — unverified. Earlier rule (whole call by computer voice) dropped at owner's request. Admin can delete a recording (Delete button on Settings words and Players names); no migration needed, 088 already allows it.
 - Rejected: "Next up" calls (owner: only the game starting now); per-player self-recording (admin records all); announcing from any admin phone (the tablet is the one device on the speaker).
+
+## Gallery + bottom navigation (built 2026-11-21, branch `095-photo-gallery`; dev only so far)
+
+- **Plan, every owner decision and rejected option:** `tasks/todo.md` "Photo Gallery". Mocks:
+  `temporary_files/gallery-final-poc.html`, `temporary_files/top-bar-options-poc.html`.
+- **Navigation is a bottom tab bar** (`BottomTabBar.tsx`, replaced `TopNavBar`): Sessions · Leaderboard ·
+  raised rabbit = Home (`/`) · Gallery · Profile (+ Admin for staff). No top bar. Admin's Admin tab opens a
+  sheet (Admin home, Players, Inventory, Finance, Settings); a moderator's goes straight to `/admin`.
+  `--tabbar-h` (index.css) pads pages; the Cheer later bar sits at `--tabbar-h + 2rem` to clear the rabbit.
+- **Storage: Neon private bucket `gallery`** (not Supabase: its 1 GB is org-wide and full of receipts/clips;
+  not R2: needs `mrkws.com` DNS moved off Spaceship; not Drive: direct links unofficial). Photo traffic
+  shares Neon's **5 GB/month** with the app — over it Neon suspends compute (whole app down). Photos are
+  1280 px ~150 KB + 400 px thumb, shrunk on the phone (`galleryImage.ts`, WebP else JPEG).
+- **Rules live in the DB** (`scripts/neon/migrations/092_session_photos.sql`; test:
+  `scripts/neon/tests/gallery-rls.sql`, 23 checks, always rolls back): upload only while `in_progress` and
+  registered; one per player (partial unique index, admins exempt via trigger-set `by_admin`); edit/delete
+  own until `complete`; view needs non-guest + `sessions_attended ≥ 1` (own photo always); admin anything.
+  Moderators = player rules (owner confirmed 2026-11-21).
+- **`gallery` Neon Function** (`functions/gallery/`) holds no DB password: every row read/write uses the
+  caller's own token via the Data API, so RLS stays the only gate. File keys are derived
+  (`<session>/<id>/v<version>[-thumb]`), never stored. GET links are signed at the start of a 3-day window,
+  valid 7 days → same URL all window → phone cache works (verified: a 2-day-old signature opens; unsigned 403).
+- **Bucket setup per branch:** `neon bucket create gallery --branch <b>` then
+  `npx neon-env run --project-id lucky-heart-02739020 --branch <b> -- node scripts/neon/gallery-bucket-setup.mjs`
+  (sets CORS for the site + localhost, self-tests). Deploy the Function alone with `neon functions deploy
+  gallery --branch <b> --src functions/gallery/index.ts --env SUPABASE_URL=… --env DATA_API_URL=… --env
+  GALLERY_BUCKET=gallery --env ALLOWED_ORIGINS=…` — a full `neon deploy` also redeploys seal/keepalive and
+  needs their secrets. Client needs `VITE_NEON_GALLERY_URL`.
+- **Not built:** automatic sweep of abandoned (never-ready) uploads — the Functions hold no DB credential.
 
 ## Courts on player screens
 

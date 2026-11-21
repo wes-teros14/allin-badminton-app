@@ -63,7 +63,7 @@ function DevLoginPanelInner() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+    <div className="fixed bottom-[calc(var(--tabbar-h)+6rem)] right-4 z-50 flex flex-col items-end gap-2">
       {open && (
         <div className="bg-background border border-border rounded-xl shadow-lg p-4 w-52 space-y-3 max-h-[80vh] overflow-y-auto">
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Dev Login</p>

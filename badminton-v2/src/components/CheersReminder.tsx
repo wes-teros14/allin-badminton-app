@@ -21,7 +21,8 @@ export function CheersReminder({ label, open, onOpenChange, children }: CheersRe
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       {!open && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        // Sits above the bottom tab bar (--tabbar-h), clear of the raised Home rabbit (~1.75rem).
+        <div className="pointer-events-none fixed inset-x-0 bottom-[calc(var(--tabbar-h)+2rem)] z-40 px-3">
           <DialogPrimitive.Trigger
             className="pointer-events-auto mx-auto flex min-h-12 w-full max-w-sm items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-left text-sm text-white shadow-lg transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
