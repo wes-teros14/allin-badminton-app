@@ -28,9 +28,22 @@ const ADMIN_PAGES = [
 ] as const
 
 const tabClass = (active: boolean, accent = false) =>
-  `relative flex min-w-0 flex-1 flex-col items-center gap-0.5 pt-1.5 text-[11px] leading-tight whitespace-nowrap transition-colors ${
+  `relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-lg pt-1.5 text-[11px] leading-tight whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring ${
     active ? `font-bold ${accent ? 'text-gold-ink' : 'text-primary-ink'}` : accent ? 'font-medium text-gold-ink' : 'font-medium text-muted-foreground hover:text-foreground'
   }`
+
+/** The active tab gets a filled pill behind its icon (owner, 2026-11-21: colour alone was too subtle). */
+function TabIcon({ Icon, active, accent = false }: { Icon: typeof Trophy; active: boolean; accent?: boolean }) {
+  return (
+    <span
+      className={`flex h-7 w-14 items-center justify-center rounded-full transition-colors duration-200 ${
+        active ? (accent ? 'bg-gold/20' : 'bg-primary-subtle') : ''
+      }`}
+    >
+      <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 2} aria-hidden="true" />
+    </span>
+  )
+}
 
 export function BottomTabBar() {
   const { user, role } = useAuth()
@@ -45,9 +58,9 @@ export function BottomTabBar() {
 
   const tab = (label: string, href: string, Icon: typeof Trophy, active: boolean, badge = false) => (
     <Link to={href} className={tabClass(active)} aria-current={active ? 'page' : undefined}>
-      <Icon className="h-[22px] w-[22px]" strokeWidth={active ? 2.4 : 2} aria-hidden="true" />
+      <TabIcon Icon={Icon} active={active} />
       {label}
-      {badge && <span className="absolute top-1 left-1/2 ml-2 h-2 w-2 rounded-full bg-[#FEFE6A] ring-2 ring-card" aria-label="unread notifications" />}
+      {badge && <span className="absolute top-1 left-1/2 ml-3 h-2 w-2 rounded-full bg-[#FEFE6A] ring-2 ring-card" aria-label="unread notifications" />}
     </Link>
   )
 
@@ -67,7 +80,11 @@ export function BottomTabBar() {
             aria-current={pathname === '/' ? 'page' : undefined}
             className={`${tabClass(pathname === '/')} justify-end pb-1.5 pt-0`}
           >
-            <span className="-mt-6 mb-0.5 block h-[52px] w-[52px] overflow-hidden rounded-full border-[3px] border-card bg-primary shadow-[0_4px_12px_rgba(15,10,24,0.3)]">
+            <span
+              className={`-mt-6 mb-0.5 block h-[52px] w-[52px] overflow-hidden rounded-full border-[3px] bg-primary shadow-[0_4px_12px_rgba(15,10,24,0.3)] transition-colors ${
+                pathname === '/' ? 'border-primary-ink' : 'border-card'
+              }`}
+            >
               <img src={appLogo} alt="" className="h-full w-full object-cover" />
             </span>
             Home
@@ -85,12 +102,12 @@ export function BottomTabBar() {
                 aria-expanded={menuOpen}
                 className={tabClass(adminActive, true)}
               >
-                <Shield className="h-[22px] w-[22px]" strokeWidth={adminActive ? 2.4 : 2} aria-hidden="true" />
+                <TabIcon Icon={Shield} active={adminActive} accent />
                 Admin
               </button>
             ) : (
               <Link to="/admin" className={tabClass(adminActive, true)} aria-current={adminActive ? 'page' : undefined}>
-                <Shield className="h-[22px] w-[22px]" strokeWidth={adminActive ? 2.4 : 2} aria-hidden="true" />
+                <TabIcon Icon={Shield} active={adminActive} accent />
                 Admin
               </Link>
             ))}
