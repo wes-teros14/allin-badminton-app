@@ -204,6 +204,8 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Schema changes are Neon-only (owner, 2026-11-19):** write the SQL once, run it on Neon `dev`, test, then on Neon
   `production` (production SQL still run or approved by the owner per change). Supabase DEV keeps only sign-in; Supabase
   prod is the frozen backup. `dev` and `production` schemas were identical on 2026-11-19 (catalog comparison).
+- **Never pause Supabase prod** (owner paused it 2026-11-22, the site broke): sign-in, token refresh, avatars/receipts storage
+  and `seal`'s sign-in check all need it; a paused project's domain doesn't resolve at all. Only the data is on Neon.
 - **Supabase prod app tables are FROZEN** (INSERT/UPDATE/DELETE revoked from anon/authenticated; `unfinish_match`,
   `reverse_session_stats` EXECUTE revoked) and kept as a backup (owner, no drop date). Never unfreeze unless rolling
   back (exact unfreeze SQL in `tasks/todo.md` Phase 3). Its pg_cron job still runs against the frozen copy — harmless.
@@ -516,6 +518,31 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Leaderboards
 
 - Four tabs on `/leaderboard`: **Individual** (win rate; called *Mga Lodi* until 2026-09-05), **Partners** (partnership win rate), **Cheers**, **Awards**.
+- **Seasons (designed and planned 2026-11-19, not built; build after the Nov 22 party).** Design:
+  `specs/009-season-reset/design.md`; plan: `specs/009-season-reset/plan.md`. Decisions, so they aren't re-argued:
+  - A season is an explicit date span, **not a calendar year**. 2026 = sessions before 2026-11-16 (last: Nov 15);
+    the Nov 22 Xmas party opens 2027.
+  - **Read-time date windows on raw rows (approach A).**
+    - Rejected: a `season` column stamped on rows (migration, plus silent wrong-stamp risk).
+    - Rejected: snapshot-and-zero the counters (destructive, and it empties every board for a month because
+      eligibility reads the counters).
+  - **Minimums count sessions in the past 12 months.**
+    - Rejected: lifetime.
+    - Rejected: this season only. It kept every board closed until the 4th session, and only every-week players
+      appeared.
+  - Floors belong to the season. 2027 lowers Individual and Cheers from 4 to 3; 2026 keeps 4.
+  - Award badges are held until the season's 4th session, because night one ties everyone who came.
+  - My Profile becomes season-only (owner's choice: no career totals). There is a season switcher on the board, plus
+    a private "Your 2026 season" page.
+  - **The counter tables disagree with the rows; the rows win.**
+    - 8 players are ±1 win, from two winners corrected after recording (2026-09-06 #12, 2026-10-04 #13). The trigger is
+      `INSERT`-only.
+    - `cheers.multiplier` was **not** dropped by migration 036; it is still on prod and Neon. 37 March cheers are
+      weighted: 6,249 weighted, 6,177 rows, while `player_cheer_stats` says 6,243.
+    - The plan counts cheers weighted. That is my call; the owner hasn't objected.
+  - Cheers are linked two ways: 71 March rows have only `session_id`, every later row only `match_id`. A date filter
+    needs both paths.
+  - Neon's Data API handles range filters on embedded tables, one and two levels deep, verified on Neon dev.
 - **Off-app board snapshots (Xmas 2026 ref magnets) reuse the app's own fetchers.** `badminton-v2/scripts/xmas2026/dump-prod-boards.ts` (run with `npx vite-node`) pulls raw tables from **Neon `production`** (since 2026-11-21; it read the now-stale Supabase copy before the cutover) in a `begin read only` transaction, connection string from the Neon CLI at runtime, then patches `supabase.from` with an in-memory PostgREST-style builder, then calls `fetchAllTimeLeaderboard`/`fetchPairLeaderboard`/`fetchAwardsLeaderboard`/`fetchCheerLeaderboard` + `rankCheerShares` — so ranks can't drift from the app. Don't reimplement board logic in SQL for exports. Pipeline: dump → `per-player.cjs` → `build-all.cjs` → `docs/xmas2026/ref-magnets-all.html` (frames A Candy Cane + D Snow Ticket, 600×900 = 2×3 in @300 dpi, photo window transparent in PNGs). The `*.json` outputs hold prod player data and are gitignored.
 - **Every ranked board renders through one component.** `RankedBoard` / `RankPlace` in `components/RankedBoard.tsx` (moved out of `LeaderboardView.tsx` 2026-09-28) draw a medal podium for places 1–3 and a fixed 34 px numbered chip for every place below, with a divider naming the places actually on screen. Tied and untied places go through the *same* path deliberately — the previous code drew the rank inside the card for untied places and outside it for tied ones, so the rank column never lined up. Keeping the marker column a fixed width is the fix; don't reintroduce a second rendering path for ties. The **session Leaderboard tab** (`SessionPlayerDetailView`) uses it too since 2026-09-28, with the same order and dense-rank rule as all-time and no place cut; it previously numbered by row index, so two players on 83% got 🥇 and 🥈. `TodayView` (`/today`, linked from nowhere) still carries the old index-numbered copy.
 - **Rank arithmetic lives in `src/lib/denseRank.ts`** (`assignDenseRanks`, `cutToPlaces`, `groupByRank`) and is shared. Equal rates take the same place; the next distinct rate takes the next number (1, 1, 2 — never 1, 1, 3); and the cut counts **places, not rows**, so a board may show twelve rows across ten places. Both boards must keep using it — index-based numbering next to dense ranks contradicts itself the moment anyone ties.

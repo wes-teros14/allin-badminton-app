@@ -12,6 +12,15 @@ Updated: 2026-11-21 ~10:30 Manila. Overwrite this file on every update; it is ne
   buttons per role, admin menu, Cheer later bar above tabs, 360 px both themes. `tsc -b`, 600 unit tests, build pass.
 - Neon CLI 9.9.0 installed + signed in on this PC. `run-dev.mjs` can read `NEON_DEV_URL` from `.env.schedule`.
 
+## Season reset — designed and planned, PARKED until after the Nov 22 Xmas party (owner)
+- Design approved: `specs/009-season-reset/design.md`. Plan: `specs/009-season-reset/plan.md` (12 tasks).
+  POC: `temporary_files/season-reset-poc.html` (gitignored). Visual: `badminton-v2/docs/visual/season-reset-approaches.html`.
+- In short: 2026 season = sessions before 2026-11-16; Nov 22 opens 2027. Boards, awards and My Profile become
+  season-only, computed at read time from raw rows (no migration). Minimums = 3 sessions in the past 12 months
+  (2026 keeps its 4). Season switcher on the leaderboard + private "Your 2026 season" page.
+- No deadline: under read-time windows, Nov 22's games land in 2027 whenever this ships.
+- Not committed: design, plan, visual, qa-log entries, CLAUDE.md lessons, `tasks/todo.md` pointer.
+
 ## Current state
 - Production untouched (no SQL, no bucket, no Function, no Vercel var). Dev test data cleaned.
 
@@ -23,6 +32,8 @@ Updated: 2026-11-21 ~10:30 Manila. Overwrite this file on every update; it is ne
 3. Push `dev`, merge to `main` (ask first). Add egress to the Phase 4 daily usage check.
 
 ## Open questions
+- Season plan: cheers counted with their March `multiplier` weights (my call) — owner hasn't confirmed.
+- Season plan task 12 needs a prod-copy (or production) Data API URL + anon JWT from the owner.
 - iPhone Safari WebP encoding untested on a real phone (falls back to JPEG by design).
 - Carried over: kiosk insert rule; offline-backup phone check; Broadcast/share on phones; Nov 1 session not
   closed; prod `service_role` key not rotated; old Neon test branches cleanup.

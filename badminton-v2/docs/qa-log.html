@@ -582,6 +582,84 @@
   </div>
 
   <h2 class="topic" id="leaderboard">Leaderboard</h2>
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">&ldquo;Every minimum counts only the current season&rsquo;s sessions (rule B).&rdquo;</p>
+    <p>
+      Superseded the same day (Nov 19). <strong>Minimums count the player&rsquo;s sessions in the past 12
+      months</strong> &mdash; neither lifetime (A) nor this season only (B). And <strong>for 2027 the Individual and
+      Cheers minimums go back from 4 to 3</strong>, so every board needs 3. Floors now belong to each season in
+      <code>lib/season.ts</code>: the 2026 final standings keep the 4 they were shown with.
+    </p>
+    <p>
+      What it means in practice: the app&rsquo;s data starts 2026-03-22, so until March 2027 the 12-month window
+      covers every session ever, and <strong>regulars are on the 2027 boards from the first night</strong>, ranked on
+      that season&rsquo;s games only. B&rsquo;s closed boards never happen. Award badges are still held until the
+      season&rsquo;s 4th session, because night one ties everyone who came. The rule I offered only as A or B; the one
+      chosen was a rolling window I hadn&rsquo;t offered.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">When a new season starts, who is allowed on the boards — does last season&rsquo;s attendance count? (Nov 19)</p>
+    <p class="a">
+      <strong>No — decided Nov 19 (rule B): every minimum counts only the current season&rsquo;s sessions.</strong> On the
+      first night of a season nobody qualifies, and each board opens when players reach its floor <em>within the
+      season</em>: Individual and Cheers after 4 sessions, Partners and most awards after 3, Early Bird after 8. Until
+      then the board shows a closed card with the viewer&rsquo;s own progress (&ldquo;You: 2 of 4&rdquo;) and a link to
+      last season&rsquo;s final standings.
+    </p>
+    <p class="a">
+      The alternative (A) counted lifetime sessions toward the floor, so regulars would appear from night one, ranked on
+      that night&rsquo;s games. Rejected for being less of a fresh start. The cost of B, seen in the POC: after night 4 only
+      the players who came <em>every</em> week are on the Wins board — a regular who missed one night waits a week longer.
+    </p>
+    <p class="a">
+      Seasons are explicit date spans in <code>lib/season.ts</code>, not calendar years: <strong>2026 ended
+      2026-11-15, and the 2027 season starts with the 2026-11-22 session.</strong> Design:
+      <code>specs/009-season-reset/design.md</code>; POC: <code>temporary_files/season-reset-poc.html</code>.
+    </p>
+  </div>
+
+  <div class="correction">
+    <span class="label">Correction</span>
+    <p class="q">&ldquo;Migration 036 dropped the cheer <code>multiplier</code> column, so the March weights are gone.&rdquo;</p>
+    <p>
+      Wrong. I read it from the migration file (<code>DROP COLUMN IF EXISTS multiplier</code>) and never checked the
+      database. <strong>The column is still there, on prod and on Neon.</strong> Measured Nov 19: 37 cheers from
+      2026-03-23 to 03-30 have a multiplier above 1. All 6,177 cheers sum to <strong>6,249</strong> with their weights.
+      <code>player_cheer_stats</code> says <strong>6,243</strong>, which matches neither the weighted nor the plain
+      count. So March cheers <em>can</em> be counted the way they were given. The season design now counts them with
+      their weights. Every cheer since 036 has multiplier 1, so only March 2026 is affected.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Can the boards be computed from the raw rows instead of the stats tables — do they give the same numbers? (Nov 19)</p>
+    <p class="a">
+      Nearly. Measured on prod, Nov 19: games played agree for all 74 players, and total games agree (2,792 both ways).
+      But <strong>wins differ by exactly one for 8 players</strong>. Angelo, Saul, Steph and Kianne are one higher in
+      the raw rows; Ann, Sim, Jaz and Bogs are one lower. That is two games whose winner differs from what the counter
+      added when they were recorded: <strong>2026-09-06 game #12</strong> (one of its two sub-games) and
+      <strong>2026-10-04 game #13</strong>. The trigger that feeds <code>player_stats</code>
+      (<code>update_player_stats_on_result</code>, migration 013) fires on <code>INSERT</code> only, so a winner changed
+      afterwards never reaches the counter. No app code changes a winner, so these were most likely direct database edits.
+    </p>
+    <p class="a">
+      <strong>Cheers are linked two different ways.</strong> The first 71 (2026-03-23 to 03-30) carry only
+      <code>session_id</code>; the other 6,106 carry only <code>match_id</code> (match-scoped since migration 036). None
+      has both, none has neither. So anything filtering cheers by date must go through
+      <code>cheers → matches → sessions</code> <em>and</em> <code>cheers → sessions</code>. A filter on
+      <code>cheers.session_id</code> alone silently drops 99% of them.
+    </p>
+    <p class="a">
+      <strong>Neon handles range filters on embedded tables correctly</strong> — checked on Neon dev through the app's
+      own client, one level (<code>matches → sessions</code>) and two levels (<code>match_results → matches →
+      sessions</code>): 24 + 20 = 44 of 44, identical to the plain query, 0 rows leaking through. Design:
+      <code>specs/009-season-reset/design.md</code>.
+    </p>
+  </div>
+
   <div class="qa">
     <p class="q">Our year is ending — can I reset all the leaderboards and still let players see their stats for the year? (Nov 19)</p>
     <p class="a">
@@ -2635,6 +2713,17 @@
       same Neon project shares prod’s 100 CU-h a month (verified 2026-11-16, “shared by all branches”). It sleeps when
       idle, so it costs roughly hours of development × 0.25 CU. For example, 4 h a day ≈ 30 CU-h a month (an estimate, not measured).
       Pin it to 0.25 CU and build it empty with <code>scripts/neon/apply.mjs</code>, not as a copy of prod, so real player data stays out of dev.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why was the app unreachable when I paused the Supabase project?</p>
+    <p class="a">
+      The live site still depends on Supabase prod; only the data moved to Neon. Supabase still does sign-in (every
+      signed-in player’s token is issued and refreshed by it), photo and receipt storage, and the <code>seal</code> Function checks
+      sign-ins against Supabase’s key list. A paused project doesn’t even resolve (checked 2026-11-22: <code>ENOTFOUND</code>),
+      while the site itself (200) and Neon kept answering. Resuming fixed it. Locally, with Supabase pointed at a dead
+      address, the signed-out live board still loaded from Neon in 0.5 s, so the outage hits sign-in, not the data. Never pause it.
     </p>
   </div>
 
