@@ -47,9 +47,19 @@ export function switcherLabel(season: Season, isCurrent: boolean): string {
   return isCurrent ? `${season.id} season` : season.id
 }
 
-/** The between-seasons sentence. `nextDate` is the first upcoming session, if any. */
-export function seasonStartLine(season: Season, nextDate: string | null): string {
+/**
+ * The between-seasons sentence. `nextDate` is the first upcoming session, if any. The Leaderboard says
+ * "The 2027 season…"; My Profile says "Your 2027 season…".
+ */
+export function seasonStartLine(season: Season, nextDate: string | null, whose: 'The' | 'Your' = 'The'): string {
   return nextDate === null
-    ? `The ${season.id} season starts soon`
-    : `The ${season.id} season starts with the ${formatShortDate(nextDate)} session`
+    ? `${whose} ${season.id} season starts soon`
+    : `${whose} ${season.id} season starts with the ${formatShortDate(nextDate)} session`
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** A past season's card on My Profile: "21 sessions · 88 games". */
+export function seasonSummaryLine(sessions: number, games: number): string {
+  return `${plural(sessions, 'session')} · ${plural(games, 'game')}`
 }

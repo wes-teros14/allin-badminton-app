@@ -6,6 +6,7 @@ import {
   pendingLine,
   seasonRange,
   seasonStartLine,
+  seasonSummaryLine,
   switcherLabel,
   viewerProgress,
 } from '@/lib/seasonCopy'
@@ -64,5 +65,17 @@ describe('seasonStartLine', () => {
   it('names the first upcoming session, or says soon', () => {
     expect(seasonStartLine(s2027, '2026-11-29')).toBe('The 2027 season starts with the Nov 29 session')
     expect(seasonStartLine(s2027, null)).toBe('The 2027 season starts soon')
+  })
+
+  it('speaks to the player on My Profile', () => {
+    expect(seasonStartLine(s2027, '2026-11-29', 'Your')).toBe('Your 2027 season starts with the Nov 29 session')
+    expect(seasonStartLine(s2027, null, 'Your')).toBe('Your 2027 season starts soon')
+  })
+})
+
+describe('seasonSummaryLine', () => {
+  it('counts sessions and games, singular at one', () => {
+    expect(seasonSummaryLine(21, 88)).toBe('21 sessions · 88 games')
+    expect(seasonSummaryLine(1, 1)).toBe('1 session · 1 game')
   })
 })
