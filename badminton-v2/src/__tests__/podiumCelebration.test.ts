@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
+  baselineForSeason,
   bestPlacing,
   newPodiumPlacings,
+  WATCHED_BOARDS,
   type BestEver,
   type RankSnapshot,
 } from '@/lib/podiumCelebration'
+import { emptyState, type PlayerCelebrationState } from '@/lib/celebrationStorage'
 import { cardHeadline } from '@/lib/celebrationLabels'
 
 /** Terser assertions: the board, the kind and the rank are what matter. */
@@ -222,5 +225,47 @@ describe('cardHeadline — drop wording', () => {
   it('does not punctuate a loss like good news', () => {
     expect(cardHeadline({ board: 'wins', kind: 'drop', rank: 9, previousRank: 6 })).not.toContain('!')
     expect(cardHeadline({ board: 'wins', kind: 'climb', rank: 6, previousRank: 9 })).toContain('!')
+  })
+})
+
+describe('baselineForSeason — silent season rollover', () => {
+  const stored = (snapshot: RankSnapshot, season?: string, bestEver: BestEver = {}): PlayerCelebrationState => ({
+    ...emptyState(),
+    snapshot,
+    bestEver,
+    ...(season ? { season } : {}),
+  })
+  const run = (s: PlayerCelebrationState, current: RankSnapshot) => {
+    const baseline = baselineForSeason(s, '2027', WATCHED_BOARDS)
+    return newPodiumPlacings(baseline.snapshot, current, baseline.bestEver)
+  }
+
+  it('celebrates a podium place in the new season against the unplaced baseline', () => {
+    const placings = run(stored({ wins: 1 }, '2026', { wins: 1 }), { wins: 2 })
+    expect(placings.map(shape)).toEqual(['wins:podium:2'])
+  })
+
+  it('is silent when last season held a podium place and the new season is off it', () => {
+    expect(run(stored({ wins: 1 }, '2026', { wins: 1 }), { wins: 5 })).toEqual([])
+  })
+
+  it('announces first appearance on a board never reached before', () => {
+    const placings = run(stored({}, '2026', { wins: 4 }), { pairs: 6 })
+    expect(placings.map(shape)).toEqual(['pairs:first-appearance:6'])
+  })
+
+  it('treats a stored state without a season as 2026', () => {
+    const baseline = baselineForSeason(stored({ wins: 1 }, undefined, { wins: 1 }), '2027', ['wins'])
+    expect(baseline.snapshot).toEqual({ wins: null })
+  })
+
+  it('returns the stored values within the same season', () => {
+    const s = stored({ wins: 3 }, '2027', { wins: 2 })
+    expect(baselineForSeason(s, '2027', WATCHED_BOARDS)).toEqual({ snapshot: { wins: 3 }, bestEver: { wins: 2 } })
+  })
+
+  it('keeps bestEver across the rollover', () => {
+    const baseline = baselineForSeason(stored({ wins: 1 }, '2026', { wins: 1 }), '2027', ['wins', 'pairs'])
+    expect(baseline).toEqual({ snapshot: { wins: null, pairs: null }, bestEver: { wins: 1 } })
   })
 })

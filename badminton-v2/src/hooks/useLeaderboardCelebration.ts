@@ -14,9 +14,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { fetchLatestSessionCompletion, fetchPlayerStandings } from '@/lib/leaderboardData'
+import { boardScope, localToday } from '@/lib/season'
 import {
+  baselineForSeason,
   bestPlacing,
   newPodiumPlacings,
+  WATCHED_BOARDS,
   type NewPlacing,
   type RankSnapshot,
 } from '@/lib/podiumCelebration'
@@ -73,7 +76,10 @@ export function useLeaderboardCelebration(paused = false) {
       // completed since we last looked, so nothing can have moved.
       if (stored && stored.sentinel === sentinel) return
 
-      const standings = await fetchPlayerStandings(playerId)
+      // Only the current season ever celebrates; past-season views never do.
+      const scope = boardScope(null, localToday())
+      const seasonId = scope.season.id
+      const standings = await fetchPlayerStandings(playerId, scope)
 
       // Never evaluated before. Record and say nothing — otherwise everyone who
       // already holds a place is congratulated for it on the day this ships.
@@ -83,6 +89,7 @@ export function useLeaderboardCelebration(paused = false) {
           snapshot: standings,
           bestEver: mergeBestEver({}, standings),
           sentinel,
+          season: seasonId,
         })
         return
       }
@@ -90,7 +97,11 @@ export function useLeaderboardCelebration(paused = false) {
       // bestEver is passed as it was *before* this evaluation: comparing the new
       // standing against a record that already includes it would mean nobody ever
       // sets a personal best.
-      const placings = newPodiumPlacings(stored.snapshot, standings, stored.bestEver)
+      //
+      // On a new season the baseline replaces the stored snapshot (every board
+      // unplaced) and `season` is written below, so the rollover happens once.
+      const baseline = baselineForSeason(stored, seasonId, WATCHED_BOARDS)
+      const placings = newPodiumPlacings(baseline.snapshot, standings, baseline.bestEver)
       const best = bestPlacing(placings)
 
       // The snapshot advances whether or not anything was celebrated. Skipping
@@ -98,8 +109,9 @@ export function useLeaderboardCelebration(paused = false) {
       writeState(playerId, {
         ...stored,
         snapshot: standings,
-        bestEver: mergeBestEver(stored.bestEver, standings),
+        bestEver: mergeBestEver(baseline.bestEver, standings),
         sentinel,
+        season: seasonId,
         // Armed when the celebration is *shown*, not when the offer is accepted:
         // the player can also reach the board under their own steam, and both
         // routes must find the same debt waiting.
