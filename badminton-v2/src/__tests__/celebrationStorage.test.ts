@@ -7,6 +7,12 @@ import {
   readSweepDebt,
   writeState,
 } from '@/lib/celebrationStorage'
+import {
+  baselineForSeason,
+  newPodiumPlacings,
+  WATCHED_BOARDS,
+  type RankSnapshot,
+} from '@/lib/podiumCelebration'
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 
@@ -106,5 +112,33 @@ describe('sweep debt', () => {
   it('returns null for a player with no debt', () => {
     writeState('player-a', emptyState())
     expect(readSweepDebt('player-a', sentinel)).toBeNull()
+  })
+})
+
+describe('season survives storage', () => {
+  it('keeps season through writeState then readState', () => {
+    writeState('player-a', { ...emptyState(), season: '2027' })
+    expect(readState('player-a')?.season).toBe('2027')
+  })
+
+  it('reads a missing season as undefined (legacy 2026)', () => {
+    writeState('player-a', emptyState())
+    expect(readState('player-a')?.season).toBeUndefined()
+  })
+
+  // Mirrors the hook's evaluate(): read, baseline, compare, save. Goes through
+  // storage so a field dropped by readState cannot hide behind hand-built state.
+  it('celebrates once after rollover, then is quiet on the same ranks', () => {
+    const evaluate = (current: RankSnapshot) => {
+      const stored = readState('player-a')!
+      const baseline = baselineForSeason(stored, '2027', WATCHED_BOARDS)
+      const placings = newPodiumPlacings(baseline.snapshot, current, baseline.bestEver)
+      writeState('player-a', { ...stored, snapshot: current, bestEver: { ...baseline.bestEver, wins: 2 }, season: '2027' })
+      return placings
+    }
+    writeState('player-a', { ...emptyState(), snapshot: { wins: 1 }, bestEver: { wins: 1 }, season: '2026' })
+
+    expect(evaluate({ wins: 2 })).toHaveLength(1)
+    expect(evaluate({ wins: 2 })).toEqual([])
   })
 })

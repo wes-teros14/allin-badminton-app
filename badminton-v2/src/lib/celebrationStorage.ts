@@ -100,6 +100,7 @@ export function readState(playerId: string): PlayerCelebrationState | null {
       bestEver: parsed.bestEver ?? {},
       sentinel: parsed.sentinel ?? null,
       sweepOwed: parsed.sweepOwed ?? null,
+      season: typeof parsed.season === 'string' ? parsed.season : undefined,
     }
   } catch {
     return null
