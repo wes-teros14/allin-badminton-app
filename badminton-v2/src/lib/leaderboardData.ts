@@ -14,7 +14,7 @@ import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { MIN_SESSIONS_CHEERS, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
-import type { PairTallyMatch } from '@/lib/pairStats'
+import { fetchSeasonMatches } from '@/lib/seasonData'
 import { rankCheerShares } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import { awardBoardKey, cheersBoard } from '@/lib/podiumCelebration'
@@ -145,60 +145,10 @@ export async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> 
 
 /** Also read by the Partners board caption, which states the rule to players. */
 export const MIN_GAMES_TOGETHER = 3
-const MATCH_PAGE_SIZE = 1000
-
-/**
- * `sessions!inner(id)` carries no filter today. It is here so that the planned
- * yearly season/archive rule is a single added `.eq('sessions.…', …)` condition
- * rather than a new embed and a re-shaped row type. Do not remove it as unused.
- */
-const PAIR_MATCH_SELECT =
-  'team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index, game_number), sessions!inner(id)'
-
-/**
- * Every other query in this app is session-scoped or over a small table, so none
- * of them can reach the server's row cap. This one can — a year of play is around
- * a thousand matches — and an uncapped read would come back silently truncated,
- * producing a board that looks right and is wrong. Hence paging, plus the exact
- * count cross-check below.
- */
-async function fetchCompletedMatchesForPairs(): Promise<PairTallyMatch[]> {
-  const rows: PairTallyMatch[] = []
-
-  for (let offset = 0; ; offset += MATCH_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('matches')
-      .select(PAIR_MATCH_SELECT)
-      .eq('status', 'complete')
-      .order('id', { ascending: true })
-      .range(offset, offset + MATCH_PAGE_SIZE - 1)
-
-    if (error) throw error
-
-    const page = (data ?? []) as unknown as PairTallyMatch[]
-    rows.push(...page)
-    if (page.length < MATCH_PAGE_SIZE) break
-  }
-
-  const { count, error: countError } = await supabase
-    .from('matches')
-    .select('id, sessions!inner(id)', { count: 'exact', head: true })
-    .eq('status', 'complete')
-
-  if (countError) throw countError
-  if (typeof count === 'number' && count !== rows.length) {
-    throw new Error(
-      `Pair leaderboard read is incomplete: fetched ${rows.length} of ${count} completed matches. ` +
-        'Refusing to render a partially counted board.',
-    )
-  }
-
-  return rows
-}
 
 export async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
   const [matches, profilesRes, eligibleIds] = await Promise.all([
-    fetchCompletedMatchesForPairs(),
+    fetchSeasonMatches({ start: null, end: null }),
     supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
     fetchEligiblePlayerIds(),
   ])
