@@ -2,9 +2,10 @@
  * Gallery tab (plan: tasks/todo.md "Photo Gallery"; owner's picks 2026-11-20/21).
  *   /gallery             every album: six photos each, "+N" opens the rest (layout A)
  *   /gallery/:sessionId  one album, all photos
- * One photo per player per session, added while the session is live; editable until it
- * completes; admin can do anything. Viewing needs one completed session. The database enforces
- * all of it (migration 092) — this screen only shows the matching buttons.
+ * One photo per player per session, added and editable while the session is in progress and after
+ * Finish Session, until the admin closes it; admin can do anything. Viewing needs one completed
+ * session. The database enforces all of it (migrations 092, 093) — this screen only shows the
+ * matching buttons.
  */
 import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
@@ -90,7 +91,7 @@ export function GalleryView() {
 
   const album = sessionId ? g.albums.find((a) => a.id === sessionId) ?? null : null
   // List: albums with something to show or somewhere to add; a first-timer sees only theirs.
-  const listed = g.albums.filter((a) => a.photos.length > 0 || (a.canUpload && a.live))
+  const listed = g.albums.filter((a) => a.photos.length > 0 || (a.canUpload && a.open))
 
   const viewerAlbum = viewer ? g.albums.find((a) => a.id === viewer.sessionId) : null
 
@@ -166,13 +167,17 @@ export function GalleryView() {
     body = album ? (
       <>
         <p className="mb-3 text-sm text-muted-foreground">
-          {album.live
-            ? album.mine && !g.isAdmin ? "You've added your photo — open it to change it." : 'Session in progress'
-            : g.isAdmin ? 'Session complete — locked for players; you can still change anything.' : 'Session complete — photos are locked.'}
+          {album.open
+            ? album.mine && !g.isAdmin
+              ? "You've added your photo — open it to change it."
+              : album.live
+                ? 'Session in progress'
+                : g.isAdmin ? 'Session finished — players can add photos until you close it.' : 'Session finished — add your photo before the admin closes it.'
+            : g.isAdmin ? 'Session closed — locked for players; you can still change anything.' : 'Session closed — photos are locked.'}
         </p>
         <div className="mb-2 flex justify-between text-xs text-muted-foreground">
           <span>{album.photos.length} photo{album.photos.length === 1 ? '' : 's'}</span>
-          {album.live ? <LiveChip /> : <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" />Locked</span>}
+          {album.live ? <LiveChip /> : album.open ? <span>Open until closed</span> : <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" />Locked</span>}
         </div>
         {grid(album, null)}
       </>
@@ -190,7 +195,7 @@ export function GalleryView() {
           </div>
         )}
         {listed.length === 0 ? (
-          !ownOnly && <p className="text-sm text-muted-foreground">No photos yet. During a session, players can add one photo each.</p>
+          !ownOnly && <p className="text-sm text-muted-foreground">No photos yet. Players can add one photo each, from the start of a session until it's closed.</p>
         ) : (
           listed.map((a) => (
             <section key={a.id} className="mb-7">
@@ -249,7 +254,7 @@ export function GalleryView() {
         open={toDelete !== null}
         onOpenChange={(o) => { if (!o && !deleting) setToDelete(null) }}
         title={toDelete && toDelete.playerId === userId ? 'Delete your photo?' : `Delete ${toDelete?.nickname ?? ''}'s photo?`}
-        description={toDelete && toDelete.playerId === userId ? 'You can add a new one while the session is in progress.' : "It's removed for everyone. This can't be undone."}
+        description={toDelete && toDelete.playerId === userId ? 'You can add a new one until the session is closed.' : "It's removed for everyone. This can't be undone."}
       >
         <div className="flex gap-2">
           <button type="button" onClick={() => setToDelete(null)} disabled={deleting} className="min-h-11 flex-1 rounded-lg border border-border text-sm font-semibold text-muted-foreground">Keep it</button>

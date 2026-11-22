@@ -127,7 +127,7 @@ export function PhotoViewer({ photos, index, sessionLabel, userId, canChange, ow
               </div>
             ) : mine ? (
               <p className="flex min-h-10 items-center gap-1.5 text-xs text-[#B39DBB]">
-                <Lock className="h-3.5 w-3.5" />Your photo is locked — the session is complete.
+                <Lock className="h-3.5 w-3.5" />Your photo is locked — the session is closed.
               </p>
             ) : (
               <div className="min-h-10" />
