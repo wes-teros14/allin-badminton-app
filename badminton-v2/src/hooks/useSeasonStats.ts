@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
-import { BADGE_HOLD_SESSIONS, pastSeasons, seasonWindow, type BoardScope, type Season } from '@/lib/season'
-import { fetchAttendance, fetchCompletedSessions, fetchSeasonCheers, fetchSeasonMatches } from '@/lib/seasonData'
+import { pastSeasons, seasonWindow, type BoardScope, type Season } from '@/lib/season'
+import { fetchAttendance, fetchSeasonCheers, fetchSeasonMatches } from '@/lib/seasonData'
 import { countSessions, tallyCheers, tallyHeadToHead, tallyPlayerGames } from '@/lib/seasonTally'
 import { fetchSeasonBadges, type Badge } from '@/lib/seasonBadges'
 import {
@@ -167,13 +167,9 @@ export interface SeasonBadgesLoad {
 }
 
 export function useSeasonBadges(userId: string | undefined, scope: BoardScope): SeasonBadgesLoad {
-  const load = useKeyedLoad(userId ? `${userId}|${scopeKey(scope)}` : null, async () => {
-    if (scope.isCurrent) {
-      const played = await fetchCompletedSessions(seasonWindow(scope.season))
-      if (played.length < BADGE_HOLD_SESSIONS) return { badges: [] as Badge[], held: true }
-    }
-    return { badges: await fetchSeasonBadges(userId as string, scope), held: false }
-  })
+  const load = useKeyedLoad(userId ? `${userId}|${scopeKey(scope)}` : null, () =>
+    fetchSeasonBadges(userId as string, scope),
+  )
   return {
     badges: load.value?.badges ?? null,
     held: load.value?.held ?? false,

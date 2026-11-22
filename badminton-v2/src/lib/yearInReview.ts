@@ -4,10 +4,14 @@
  */
 
 import { pastSeasons, type Season } from '@/lib/season'
-import { rankCheerShares } from '@/lib/cheerShare'
-import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import { ordinal } from '@/lib/celebrationLabels'
-import type { CheerLeaderboardEntry, LeaderboardEntry, PairLeaderboardEntry } from '@/lib/leaderboardData'
+import {
+  bestPairEntry,
+  cheerPlaces,
+  type CheerLeaderboardEntry,
+  type LeaderboardEntry,
+  type PairLeaderboardEntry,
+} from '@/lib/leaderboardData'
 
 /** The season `id` names, only when it has ended by `today`. The current season, or no season, is null. */
 export function resolvePastSeason(id: string | undefined, today: string): Season | null {
@@ -37,27 +41,18 @@ export function whereYouFinished(
   const individual = boards.wins.find((e) => e.playerId === playerId)
   if (individual) rows.push({ board: 'Individual', detail: `${ordinal(individual.rank)} · ${individual.winRate}%` })
 
-  // Board order already puts the better of two equal places first.
-  let bestPair: PairLeaderboardEntry | null = null
-  for (const p of boards.pairs) {
-    if (!p.players.some((pl) => pl.id === playerId)) continue
-    if (!bestPair || p.rank < bestPair.rank) bestPair = p
-  }
+  const bestPair = bestPairEntry(boards.pairs, playerId)
   if (bestPair) {
     const partner = bestPair.players.find((pl) => pl.id !== playerId)
     if (partner) rows.push({ board: 'Partners', detail: `${ordinal(bestPair.rank)} with ${partner.displayName}` })
   }
 
-  // Best category: the lowest place, then the higher share; list order settles the rest.
+  // Best category: the lowest place, then the higher share; category order settles the rest.
   let bestCheer: { name: string; rank: number; sharePct: number } | null = null
-  for (const category of CHEER_CATEGORIES) {
-    const ranked = rankCheerShares(
-      boards.cheers.map((c) => ({ playerId: c.player_id, categoryCount: category.of(c), totalReceived: c.cheers_received })),
-    )
-    const mine = ranked.find((r) => r.playerId === playerId)
-    if (!mine) continue
-    if (!bestCheer || mine.rank < bestCheer.rank || (mine.rank === bestCheer.rank && mine.sharePct > bestCheer.sharePct)) {
-      bestCheer = { name: category.name, rank: mine.rank, sharePct: mine.sharePct }
+  for (const { category, place } of cheerPlaces(boards.cheers, playerId)) {
+    if (!place) continue
+    if (!bestCheer || place.rank < bestCheer.rank || (place.rank === bestCheer.rank && place.sharePct > bestCheer.sharePct)) {
+      bestCheer = { name: category.name, rank: place.rank, sharePct: place.sharePct }
     }
   }
   if (bestCheer) rows.push({ board: `Cheers · ${bestCheer.name}`, detail: `${ordinal(bestCheer.rank)} · ${bestCheer.sharePct}%` })

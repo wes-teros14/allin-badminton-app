@@ -18,8 +18,8 @@ import { rankPairs, tallyPairs } from '@/lib/pairStats'
 import { fetchSeasonCheers, fetchSeasonMatches, type SeasonMatchRow } from '@/lib/seasonData'
 import { seasonWindow, type BoardScope, type DateWindow } from '@/lib/season'
 import { tallyCheers, tallyPlayerGames } from '@/lib/seasonTally'
-import { rankCheerShares } from '@/lib/cheerShare'
-import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
+import { rankCheerShares, type CheerShareRow } from '@/lib/cheerShare'
+import { CHEER_CATEGORIES, type CheerCategory } from '@/lib/cheerTypes'
 import { awardBoardKey, cheersBoard } from '@/lib/podiumCelebration'
 import { fetchAwardsLeaderboard } from '@/lib/awardsLeaderboard'
 import type { RankSnapshot } from '@/lib/podiumCelebration'
@@ -249,6 +249,37 @@ export async function fetchLatestSessionCompletion(): Promise<string | null> {
   return (data as { completed_at: string | null } | null)?.completed_at ?? null
 }
 
+// --- One player's place on a board ------------------------------------------
+
+/**
+ * A player can appear in several pairings; their Partners standing is their best one (the lowest rank, the
+ * first such row in board order). Null when they are in no ranked pairing.
+ */
+export function bestPairEntry(
+  pairs: readonly PairLeaderboardEntry[],
+  playerId: string,
+): PairLeaderboardEntry | null {
+  let best: PairLeaderboardEntry | null = null
+  for (const p of pairs) {
+    if (!p.players.some((pl) => pl.id === playerId)) continue
+    if (!best || p.rank < best.rank) best = p
+  }
+  return best
+}
+
+/** The player's place on each cheer category's board, in category order; `place` is null when unplaced. */
+export function cheerPlaces(
+  rows: readonly CheerLeaderboardEntry[],
+  playerId: string,
+): Array<{ category: CheerCategory; place: CheerShareRow | null }> {
+  return CHEER_CATEGORIES.map((category) => {
+    const ranked = rankCheerShares(
+      rows.map((e) => ({ playerId: e.player_id, categoryCount: category.of(e), totalReceived: e.cheers_received })),
+    )
+    return { category, place: ranked.find((r) => r.playerId === playerId) ?? null }
+  })
+}
+
 // --- One player's standing across every watched board -----------------------
 
 /**
@@ -280,24 +311,12 @@ export async function fetchPlayerStandings(playerId: string, scope: BoardScope):
   }
 
   if (pairsRes.status === 'fulfilled') {
-    // A player can appear in several pairings; their standing is their best one.
-    const ranks = pairsRes.value
-      .filter((e) => e.players.some((p) => p.id === playerId))
-      .map((e) => e.rank)
-    standings.pairs = ranks.length > 0 ? Math.min(...ranks) : null
+    standings.pairs = bestPairEntry(pairsRes.value, playerId)?.rank ?? null
   }
 
   if (cheersRes.status === 'fulfilled') {
-    const rows = cheersRes.value
-    for (const category of CHEER_CATEGORIES) {
-      const ranked = rankCheerShares(
-        rows.map((e) => ({
-          playerId: e.player_id,
-          categoryCount: category.of(e),
-          totalReceived: e.cheers_received,
-        })),
-      )
-      standings[cheersBoard(category.slug)] = ranked.find((r) => r.playerId === playerId)?.rank ?? null
+    for (const { category, place } of cheerPlaces(cheersRes.value, playerId)) {
+      standings[cheersBoard(category.slug)] = place?.rank ?? null
     }
   }
 

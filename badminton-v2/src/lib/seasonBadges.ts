@@ -62,14 +62,17 @@ export function badgesFor(
 }
 
 /**
- * A player's badges for a season. In the current season they stay hidden until it has
- * BADGE_HOLD_SESSIONS played sessions; a past season is always unlocked.
+ * A player's badges for a season. In the current season they are held (none shown, `held: true`) until it
+ * has BADGE_HOLD_SESSIONS played sessions; the boards are not read while held. A past season is never held.
  */
-export async function fetchSeasonBadges(playerId: string, scope: BoardScope): Promise<Badge[]> {
+export async function fetchSeasonBadges(
+  playerId: string,
+  scope: BoardScope,
+): Promise<{ badges: Badge[]; held: boolean }> {
   if (scope.isCurrent) {
     const played = await fetchCompletedSessions(seasonWindow(scope.season))
-    if (played.length < BADGE_HOLD_SESSIONS) return []
+    if (played.length < BADGE_HOLD_SESSIONS) return { badges: [], held: true }
   }
   const [cheerRows, awards] = await Promise.all([fetchCheerLeaderboard(scope), fetchAwardsLeaderboard(scope)])
-  return badgesFor(playerId, { cheerRows, awards, unlocked: true })
+  return { badges: badgesFor(playerId, { cheerRows, awards, unlocked: true }), held: false }
 }

@@ -25,8 +25,10 @@ function YearPage({ season, today }: { season: Season; today: string }) {
   const { user, isLoading: authLoading } = useAuth()
   const scope = useMemo(() => boardScope(season.id, today), [season.id, today])
   const stats = useSeasonStats(user?.id, scope)
-  const badges = useSeasonBadges(user?.id, scope)
-  const finish = useWhereYouFinished(user?.id, scope)
+  // The board reads wait until the stats show this player played the season; otherwise the page redirects.
+  const playedId = stats.stats && stats.stats.sessionsAttended > 0 ? user?.id : undefined
+  const badges = useSeasonBadges(playedId, scope)
+  const finish = useWhereYouFinished(playedId, scope)
   const { status, retry } = useSeasonStatus(scope)
 
   if (authLoading) return <div className="p-6">Loading…</div>

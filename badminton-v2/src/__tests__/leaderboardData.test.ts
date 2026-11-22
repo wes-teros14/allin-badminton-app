@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 
-import { rankIndividual } from '@/lib/leaderboardData'
+import { bestPairEntry, cheerPlaces, rankIndividual, type PairLeaderboardEntry } from '@/lib/leaderboardData'
 
 const profile = (id: string, is_active = true) => ({
   id,
@@ -63,5 +63,54 @@ describe('rankIndividual', () => {
     expect(out.some((e) => e.playerId === 'GHOST')).toBe(false)
     expect(out[0].rank).toBe(1)
     expect(out[9].rank).toBe(10)
+  })
+})
+
+describe('bestPairEntry', () => {
+  const pair = (rank: number, a: string, b: string): PairLeaderboardEntry => ({
+    rank,
+    key: `${a}|${b}`,
+    players: [{ id: a, displayName: a, avatarUrl: null }, { id: b, displayName: b, avatarUrl: null }],
+    wins: 3,
+    losses: 1,
+    games: 4,
+    winRate: 75,
+  })
+
+  it('is the lowest-ranked pairing the player is in, first in board order on a tie', () => {
+    const pairs = [pair(1, 'x', 'y'), pair(3, 'me', 'a'), pair(3, 'b', 'me'), pair(5, 'me', 'c')]
+    expect(bestPairEntry(pairs, 'me')?.key).toBe('me|a')
+  })
+
+  it('is null when the player is in no pairing', () => {
+    expect(bestPairEntry([pair(1, 'x', 'y')], 'me')).toBeNull()
+  })
+})
+
+describe('cheerPlaces', () => {
+  const row = (id: string, offense: number, defense: number) => ({
+    player_id: id,
+    displayName: id,
+    cheers_received: 20,
+    cheers_given: 0,
+    offense_received: offense,
+    defense_received: defense,
+    technique_received: 0,
+    movement_received: 0,
+    good_sport_received: 0,
+    solid_effort_received: 0,
+  })
+
+  it('gives the place per category, null where unplaced', () => {
+    const places = cheerPlaces([row('me', 4, 10), row('x', 8, 2)], 'me')
+    expect(places.map((p) => [p.category.slug, p.place?.rank ?? null])).toEqual([
+      ['offense', 2],
+      ['defense', 1],
+      ['technique', null],
+      ['movement', null],
+      ['good_sport', null],
+      ['solid_effort', null],
+    ])
+    expect(places[1].place?.sharePct).toBe(50)
   })
 })

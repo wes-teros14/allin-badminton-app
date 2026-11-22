@@ -1,6 +1,13 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
-import { badgesFor } from '@/lib/seasonBadges'
+vi.mock('@/lib/seasonData', () => ({ fetchCompletedSessions: vi.fn() }))
+vi.mock('@/lib/leaderboardData', () => ({ fetchCheerLeaderboard: vi.fn() }))
+vi.mock('@/lib/awardsLeaderboard', () => ({ fetchAwardsLeaderboard: vi.fn() }))
+import { badgesFor, fetchSeasonBadges } from '@/lib/seasonBadges'
+import { fetchCompletedSessions } from '@/lib/seasonData'
+import { fetchCheerLeaderboard } from '@/lib/leaderboardData'
+import { fetchAwardsLeaderboard } from '@/lib/awardsLeaderboard'
+import { boardScope } from '@/lib/season'
 import { awardBoard } from '@/lib/awardBoards'
 import type { CheerLeaderboardEntry } from '@/lib/leaderboardData'
 import type { AwardEntry, AwardRow } from '@/lib/awardsLeaderboard'
@@ -75,5 +82,41 @@ describe('badgesFor', () => {
   it('ignores 2nd place', () => {
     const awards = [award('win-streak', [['b', 1], ['a', 2]])]
     expect(badgesFor('a', { cheerRows: [], awards, unlocked: true })).toEqual([])
+  })
+})
+
+describe('fetchSeasonBadges', () => {
+  const played = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `s${i}`, date: '2026-11-22' }))
+  const current = boardScope(null, '2026-12-20')
+  const past = boardScope('2026', '2026-12-20')
+
+  beforeEach(() => {
+    vi.mocked(fetchCompletedSessions).mockReset()
+    vi.mocked(fetchCheerLeaderboard).mockReset().mockResolvedValue([])
+    vi.mocked(fetchAwardsLeaderboard).mockReset().mockResolvedValue([award('win-streak', [['a', 1]])])
+  })
+
+  it('holds the current season at 3 played sessions, without reading the boards', async () => {
+    vi.mocked(fetchCompletedSessions).mockResolvedValue(played(3))
+    expect(await fetchSeasonBadges('a', current)).toEqual({ badges: [], held: true })
+    expect(fetchCheerLeaderboard).not.toHaveBeenCalled()
+    expect(fetchAwardsLeaderboard).not.toHaveBeenCalled()
+  })
+
+  it('releases the hold at 4 played sessions', async () => {
+    vi.mocked(fetchCompletedSessions).mockResolvedValue(played(4))
+    expect(await fetchSeasonBadges('a', current)).toEqual({
+      badges: [{ emoji: '⚡', label: 'Win Streak' }],
+      held: false,
+    })
+  })
+
+  it('never holds a past season', async () => {
+    vi.mocked(fetchCompletedSessions).mockResolvedValue(played(0))
+    expect(await fetchSeasonBadges('a', past)).toEqual({
+      badges: [{ emoji: '⚡', label: 'Win Streak' }],
+      held: false,
+    })
+    expect(fetchCompletedSessions).not.toHaveBeenCalled()
   })
 })

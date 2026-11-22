@@ -95,8 +95,14 @@ export function ProfileView() {
   const seasonStats = useSeasonStats(user?.id, scope)
   const badges = useSeasonBadges(user?.id, scope)
   const pastCards = usePastSeasonCards(user?.id, today)
-  const { status, retry: retryStatus } = useSeasonStatus(scope)
-  const { refresh } = seasonStats
+  const { status: liveStatus, retry: retryStatus } = useSeasonStatus(scope)
+  // A live re-read keeps the last settled status on screen, so a recorded result never flashes the Stats
+  // back to a skeleton. (Derived state, set during render: React's pattern for it.)
+  const [settledStatus, setSettledStatus] = useState(liveStatus)
+  if (liveStatus.kind !== 'loading' && liveStatus !== settledStatus) setSettledStatus(liveStatus)
+  const status = liveStatus.kind === 'loading' && settledStatus.kind === 'ready' ? settledStatus : liveStatus
+  const { refresh: refreshStats } = seasonStats
+  const { refresh: refreshBadges } = badges
   const { markAllRead } = useNotifications()
   const { theme } = useTheme()
   const [nickname, setNickname] = useState('')
@@ -122,10 +128,15 @@ export function ProfileView() {
 
   useEffect(() => {
     if (!user?.id) return
+    // A recorded result is the "something changed" signal: the stats, the "starts with" line and the badge
+    // hold can all move with it.
     return listenLive(userTopic(user.id), (message) => {
-      if (message.table === 'player_stats') refresh()
+      if (message.table !== 'player_stats') return
+      refreshStats()
+      retryStatus()
+      refreshBadges()
     })
-  }, [user?.id, refresh])
+  }, [user?.id, refreshStats, retryStatus, refreshBadges])
 
   async function handleSaveNickname() {
     if (!user) return
