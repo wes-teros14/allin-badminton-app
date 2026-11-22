@@ -2716,6 +2716,17 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Why was the app unreachable when I paused the Supabase project?</p>
+    <p class="a">
+      The live site still depends on Supabase prod; only the data moved to Neon. Supabase still does sign-in (every
+      signed-in player’s token is issued and refreshed by it), photo and receipt storage, and the <code>seal</code> Function checks
+      sign-ins against Supabase’s key list. A paused project doesn’t even resolve (checked 2026-11-22: <code>ENOTFOUND</code>),
+      while the site itself (200) and Neon kept answering. Resuming fixed it. Locally, with Supabase pointed at a dead
+      address, the signed-out live board still loaded from Neon in 0.5 s, so the outage hits sign-in, not the data. Never pause it.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">

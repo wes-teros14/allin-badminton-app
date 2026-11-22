@@ -204,6 +204,8 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Schema changes are Neon-only (owner, 2026-11-19):** write the SQL once, run it on Neon `dev`, test, then on Neon
   `production` (production SQL still run or approved by the owner per change). Supabase DEV keeps only sign-in; Supabase
   prod is the frozen backup. `dev` and `production` schemas were identical on 2026-11-19 (catalog comparison).
+- **Never pause Supabase prod** (owner paused it 2026-11-22, the site broke): sign-in, token refresh, avatars/receipts storage
+  and `seal`'s sign-in check all need it; a paused project's domain doesn't resolve at all. Only the data is on Neon.
 - **Supabase prod app tables are FROZEN** (INSERT/UPDATE/DELETE revoked from anon/authenticated; `unfinish_match`,
   `reverse_session_stats` EXECUTE revoked) and kept as a backup (owner, no drop date). Never unfreeze unless rolling
   back (exact unfreeze SQL in `tasks/todo.md` Phase 3). Its pg_cron job still runs against the frozen copy — harmless.
