@@ -125,8 +125,8 @@ export async function fetchSeasonMatches(
 /**
  * The "played" sessions in `w`, date ascending: `status = 'complete'` with at least one game result.
  *
- * The result test is an inner embed (`matches!inner(match_results!inner(id))`) limited to one match per
- * session, so the payload is a session row plus one tiny nested row, not every match.
+ * The result test is an inner embed (`matches!inner(match_results!inner(id))`). No embedded limit: correctness
+ * must not depend on how PostgREST orders a limit against the nested !inner filter. The payload is small.
  */
 export async function fetchCompletedSessions(w: DateWindow): Promise<Array<{ id: string; date: string }>> {
   const base = <B extends Windowable<B> & { eq(column: string, value: string): B }>(q: B): B =>
@@ -138,7 +138,6 @@ export async function fetchCompletedSessions(w: DateWindow): Promise<Array<{ id:
       base(supabase.from('sessions').select('id, date, matches!inner(id, match_results!inner(id))'))
         .order('date', { ascending: true })
         .order('id', { ascending: true })
-        .limit(1, { referencedTable: 'matches' })
         .range(from, to),
     () => base(supabase.from('sessions').select('id, matches!inner(match_results!inner(id))', { count: 'exact', head: true })),
   )
