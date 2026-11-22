@@ -87,7 +87,7 @@ export const MAX_PLACES = 10
  * tally the same rows, so loading both for one scope costs one paged read instead of two. Nothing is
  * cached (see `shareInFlight`), so a refresh after a new result always reads fresh rows.
  */
-function seasonMatchesOnce(w: DateWindow): Promise<SeasonMatchRow[]> {
+export function seasonMatchesOnce(w: DateWindow): Promise<SeasonMatchRow[]> {
   return shareInFlight(`matches|${w.start ?? ''}|${w.end ?? ''}`, () => fetchSeasonMatches(w))
 }
 

@@ -7,6 +7,9 @@ import { listenLive } from '@/hooks/useLiveChannel'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 import { NoResultsYet } from '@/components/MatchBoard'
+import { seasonMatchesOnce } from '@/lib/leaderboardData'
+import { currentSeason, localToday, seasonWindow } from '@/lib/season'
+import { tallyPlayerGames } from '@/lib/seasonTally'
 
 interface LeaderboardEntry {
   playerId: string
@@ -14,7 +17,7 @@ interface LeaderboardEntry {
   wins: number
   games: number
   winRate: number
-  careerWinRate?: number
+  seasonWinRate?: number
   improvement?: number
 }
 
@@ -42,9 +45,9 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
   const playerIds = ((regsRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id)
   if (playerIds.length === 0) return []
 
-  const [profilesRes, careerRes] = await Promise.all([
+  const [profilesRes, seasonMatches] = await Promise.all([
     supabase.from('profiles').select('id, nickname, name_slug').in('id', playerIds),
-    supabase.from('player_stats').select('player_id, games_played, wins').in('player_id', playerIds),
+    seasonMatchesOnce(seasonWindow(currentSeason(localToday()))),
   ])
 
   const nameMap = new Map(
@@ -52,10 +55,7 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
       .map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
 
-  const careerMap = new Map(
-    ((careerRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>)
-      .map((s) => [s.player_id, { games: s.games_played, wins: s.wins }])
-  )
+  const seasonMap = tallyPlayerGames(seasonMatches)
 
   const statsMap = new Map<string, { wins: number; games: number }>(
     playerIds.map((id) => [id, { wins: 0, games: 0 }])
@@ -74,16 +74,16 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
   for (const [playerId, s] of statsMap) {
     if (s.games === 0) continue
     const winRate = Math.round((s.wins / s.games) * 100)
-    const career = careerMap.get(playerId)
-    const careerWinRate = career && career.games > 0 ? Math.round((career.wins / career.games) * 100) : undefined
+    const season = seasonMap.get(playerId)
+    const seasonWinRate = season && season.games > 0 ? Math.round((season.wins / season.games) * 100) : undefined
     entries.push({
       playerId,
       displayName: nameMap.get(playerId) ?? playerId,
       wins: s.wins,
       games: s.games,
       winRate,
-      careerWinRate,
-      improvement: careerWinRate !== undefined ? winRate - careerWinRate : undefined,
+      seasonWinRate,
+      improvement: seasonWinRate !== undefined ? winRate - seasonWinRate : undefined,
     })
   }
 
@@ -97,6 +97,7 @@ export function TodayView() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   // Clamp selectedIndex when sessions list changes
   const safeIndex = Math.min(selectedIndex, Math.max(activeSessions.length - 1, 0))
@@ -112,6 +113,10 @@ export function TodayView() {
     try {
       const data = await fetchSessionLeaderboard(activeSession.sessionId)
       setEntries(data)
+      setLoadError(false)
+    } catch (err) {
+      console.error('Today leaderboard failed to load', err)
+      setLoadError(true)
     } finally {
       setIsLoading(false)
     }
@@ -184,7 +189,11 @@ export function TodayView() {
 
       <h1 className="text-xl font-bold text-primary-ink">🏆 {activeSession.name}</h1>
 
-      {entries.length === 0 ? (
+      {loadError ? (
+        <p className="text-sm text-destructive" role="alert">
+          Could not load today's results. Pull to refresh or try again shortly.
+        </p>
+      ) : entries.length === 0 ? (
         <NoResultsYet />
       ) : (
         <>
@@ -222,7 +231,7 @@ export function TodayView() {
                     <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-green-600">+{entry.improvement}%</p>
-                      <p className="text-xs text-muted-foreground">vs {entry.careerWinRate}% career</p>
+                      <p className="text-xs text-muted-foreground">vs {entry.seasonWinRate}% season</p>
                     </div>
                   </div>
                 ))}
