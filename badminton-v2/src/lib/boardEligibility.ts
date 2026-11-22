@@ -128,3 +128,32 @@ export async function fetchBoardPending(
     viewerSessions: viewerId !== null && waiting.has(viewerId) ? pool.sessionsInWindow(viewerId) : null,
   }
 }
+
+export interface BoardProfile {
+  id: string
+  nickname: string | null
+  name_slug: string
+  avatar_url: string | null
+  is_active: boolean
+}
+
+/**
+ * Every profile with its active flag. A past season keeps players who have since gone inactive, so the
+ * read cannot filter on `is_active`; callers apply `scope.isCurrent` themselves (see `canAppearOnBoard`).
+ */
+export async function fetchBoardProfiles(): Promise<BoardProfile[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nickname, name_slug, avatar_url, is_active')
+  if (error) throw error
+  return data as BoardProfile[]
+}
+
+/** The current season shows active players only; a past season also names players since deactivated. */
+export function canAppearOnBoard(profiles: readonly BoardProfile[], scope: BoardScope): (playerId: string) => boolean {
+  const byId = new Map(profiles.map((p) => [p.id, p]))
+  return (playerId) => {
+    const profile = byId.get(playerId)
+    return profile !== undefined && (!scope.isCurrent || profile.is_active)
+  }
+}

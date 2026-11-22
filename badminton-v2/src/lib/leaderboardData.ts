@@ -11,7 +11,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
-import { fetchEligibility } from '@/lib/boardEligibility'
+import { fetchBoardProfiles, fetchEligibility } from '@/lib/boardEligibility'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
 import { fetchSeasonCheers, fetchSeasonMatches, type SeasonMatchRow } from '@/lib/seasonData'
@@ -98,26 +98,6 @@ function seasonMatchesOnce(w: DateWindow): Promise<SeasonMatchRow[]> {
   const forget = () => { inFlightMatches.delete(key) }
   read.then(forget, forget)
   return read
-}
-
-interface BoardProfile {
-  id: string
-  nickname: string | null
-  name_slug: string
-  avatar_url: string | null
-  is_active: boolean
-}
-
-/**
- * Every profile with its active flag. A past season keeps players who have since gone inactive, so the
- * read cannot filter on `is_active`; callers apply `scope.isCurrent` themselves.
- */
-async function fetchBoardProfiles(): Promise<BoardProfile[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, nickname, name_slug, avatar_url, is_active')
-  if (error) throw error
-  return data as BoardProfile[]
 }
 
 // --- Individual board -------------------------------------------------------
@@ -301,7 +281,7 @@ export async function fetchPlayerStandings(playerId: string, scope: BoardScope):
     fetchWinsLeaderboard(scope),
     fetchPairLeaderboard(scope),
     fetchCheerLeaderboard(scope),
-    fetchAwardsLeaderboard(),
+    fetchAwardsLeaderboard(scope),
   ])
 
   if (winsRes.status === 'fulfilled') {

@@ -58,12 +58,17 @@ export interface RankEarlyBirdsOptions {
   eligible?: ReadonlySet<string>
   places?: number
   minSessions?: number
+  /**
+   * Who is established enough to be ranked. When given it replaces the `minSessions` check, so a
+   * caller can count the sessions in a window of its own (the season's floor window).
+   */
+  qualifies?: (playerId: string) => boolean
 }
 
 /** Pure scoring; see the module comment for the rules. */
 export function rankEarlyBirds(
   registrations: EarlyBirdRegistration[],
-  { excluded = new Set(), eligible, places = EARLY_BIRD_PLACES, minSessions = EARLY_BIRD_MIN_SESSIONS }: RankEarlyBirdsOptions = {},
+  { excluded = new Set(), eligible, places = EARLY_BIRD_PLACES, minSessions = EARLY_BIRD_MIN_SESSIONS, qualifies }: RankEarlyBirdsOptions = {},
 ): EarlyBirdEntry[] {
   const bySession = new Map<string, EarlyBirdRegistration[]>()
   for (const r of registrations) {
@@ -91,7 +96,7 @@ export function rankEarlyBirds(
     b.points * a.sessions - a.points * b.sessions
   const sorted = [...totals.entries()]
     .map(([playerId, t]) => ({ playerId, ...t, average: t.points / t.sessions }))
-    .filter((e) => e.points > 0 && e.sessions >= minSessions && (!eligible || eligible.has(e.playerId)))
+    .filter((e) => e.points > 0 && (qualifies ? qualifies(e.playerId) : e.sessions >= minSessions) && (!eligible || eligible.has(e.playerId)))
     .sort((a, b) => byAverage(a, b) || b.firsts - a.firsts || a.playerId.localeCompare(b.playerId))
 
   // Dense places (1, 1, 2 — never 1, 1, 3) and a cut by places, not rows, like

@@ -114,3 +114,14 @@ describe('rankEarlyBirds eligibility', () => {
     ])
   })
 })
+
+describe('rankEarlyBirds qualifies', () => {
+  it('replaces the minSessions check', () => {
+    const regs: EarlyBirdRegistration[] = [
+      { sessionId: 's1', playerId: 'a', registeredAt: '2026-01-01T10:00:00Z' },
+      { sessionId: 's1', playerId: 'b', registeredAt: '2026-01-01T10:01:00Z' },
+    ]
+    const ranked = rankEarlyBirds(regs, { qualifies: (id) => id === 'a', minSessions: 99 })
+    expect(ranked.map((e) => e.playerId)).toEqual(['a'])
+  })
+})
