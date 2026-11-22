@@ -99,17 +99,45 @@ async function readEligibility(scope: BoardScope): Promise<EligibilityPool> {
   })
 }
 
+export interface BoardPending {
+  waiting: number
+  viewerSessions: number | null
+}
+
 /**
- * Players who have played this season (>= 1 game) but do not qualify for a board with this `floor`.
- * Guests never count. For the current season inactive players are left out too, since they cannot
- * appear on a board. `viewerSessions` is the viewer's floor-window count when they are one of the
- * waiting players, otherwise null.
+ * Players who have played this season (>= 1 game) but are still below this board's `floor` in the floor
+ * window. Only the floor counts: a player who has met it but is held back by the recent-sessions rule is
+ * not "waiting to reach N sessions", and telling them "You: 3 of 3" would be wrong. Guests never count.
+ * For the current season inactive players are left out too, since they cannot appear on a board.
+ * `viewerSessions` is the viewer's floor-window count when they are one of the waiting players, otherwise null.
  */
+export function boardPending({ players, profiles, pool, floor, isCurrent, viewerId }: {
+  players: Iterable<string>
+  profiles: ReadonlyMap<string, { is_guest: boolean; is_active: boolean }>
+  pool: EligibilityPool
+  floor: number
+  isCurrent: boolean
+  viewerId: string | null
+}): BoardPending {
+  const waiting = new Set<string>()
+  for (const playerId of players) {
+    const profile = profiles.get(playerId)
+    if (!profile || profile.is_guest) continue
+    if (isCurrent && !profile.is_active) continue
+    if (pool.sessionsInWindow(playerId) < floor) waiting.add(playerId)
+  }
+  return {
+    waiting: waiting.size,
+    viewerSessions: viewerId !== null && waiting.has(viewerId) ? pool.sessionsInWindow(viewerId) : null,
+  }
+}
+
+/** `boardPending` for one board of `scope`, from the season's games. */
 export async function fetchBoardPending(
   scope: BoardScope,
   floor: number,
   viewerId: string | null,
-): Promise<{ waiting: number; viewerSessions: number | null }> {
+): Promise<BoardPending> {
   const [pool, matches, profilesRes] = await Promise.all([
     fetchEligibility(scope),
     fetchSeasonMatches(seasonWindow(scope.season)),
@@ -117,21 +145,16 @@ export async function fetchBoardPending(
   ])
   if (profilesRes.error) throw profilesRes.error
 
-  const profiles = new Map(
-    (profilesRes.data as Array<{ id: string; is_guest: boolean; is_active: boolean }>).map((p) => [p.id, p]),
-  )
-  const waiting = new Set<string>()
-  for (const playerId of tallyPlayerGames(matches).keys()) {
-    const profile = profiles.get(playerId)
-    if (!profile || profile.is_guest) continue
-    if (scope.isCurrent && !profile.is_active) continue
-    if (!pool.qualifies(playerId, floor)) waiting.add(playerId)
-  }
-
-  return {
-    waiting: waiting.size,
-    viewerSessions: viewerId !== null && waiting.has(viewerId) ? pool.sessionsInWindow(viewerId) : null,
-  }
+  return boardPending({
+    players: tallyPlayerGames(matches).keys(),
+    profiles: new Map(
+      (profilesRes.data as Array<{ id: string; is_guest: boolean; is_active: boolean }>).map((p) => [p.id, p]),
+    ),
+    pool,
+    floor,
+    isCurrent: scope.isCurrent,
+    viewerId,
+  })
 }
 
 export interface BoardProfile {

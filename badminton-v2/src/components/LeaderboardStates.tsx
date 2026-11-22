@@ -70,23 +70,25 @@ export function BetweenSeasonsCard({
   )
 }
 
-/** An empty board while the season is under way. Never a blank board. */
+/** An empty board. Never a blank board. */
 export function NobodyYetCard({
+  title,
   note,
   progress,
   pastSeason,
   onShowSeason,
 }: {
+  title: string
   /** One line under the title, e.g. "Players appear after 3 sessions in the past 12 months." */
-  note: string
+  note?: string
   /** The viewer's floor-window sessions against the floor, when the viewer is one of those waiting. */
   progress: { sessions: number; floor: number; unit: string } | null
   pastSeason: Season | null
   onShowSeason: (id: string) => void
 }) {
   return (
-    <StateCard icon="🔒" title="Nobody has reached the minimum yet">
-      <p className="mt-1.5 text-[13px] text-muted-foreground">{note}</p>
+    <StateCard icon="🔒" title={title}>
+      {note && <p className="mt-1.5 text-[13px] text-muted-foreground">{note}</p>}
       {progress && (
         <>
           <div className="mt-3 mb-1 flex justify-center gap-1.5" aria-hidden="true">

@@ -40,26 +40,30 @@ async function fetchNextSessionDate(from: string): Promise<string | null> {
  * A failure is an error state, never read as "nothing played".
  */
 export function useSeasonStatus(scope: BoardScope): { status: SeasonStatus; retry: () => void } {
-  const [status, setStatus] = useState<SeasonStatus>({ kind: 'loading' })
-  const request = useRef(0)
   const { season, isCurrent, asOf } = scope
+  const key = `${season.id}|${asOf}`
+  // Tagged with the scope it describes. On a season switch the scope changes a render before the effect
+  // runs; an untagged status would hand the new season the old season's "ready" for that render, mounting
+  // its boards (reads, and a celebration sweep collected) against the wrong status.
+  const [tagged, setTagged] = useState<{ key: string; status: SeasonStatus }>({ key, status: { kind: 'loading' } })
+  const request = useRef(0)
 
   const load = useCallback(async () => {
     const id = ++request.current
-    setStatus({ kind: 'loading' })
+    setTagged({ key, status: { kind: 'loading' } })
     try {
       const played = await fetchCompletedSessions(seasonWindow(season))
       const nextDate = isCurrent && played.length === 0
         ? await fetchNextSessionDate(season.start > asOf ? season.start : asOf)
         : null
-      if (id === request.current) setStatus({ kind: 'ready', played, nextDate })
+      if (id === request.current) setTagged({ key, status: { kind: 'ready', played, nextDate } })
     } catch (error) {
       console.error('[leaderboard] season status failed to load', error)
-      if (id === request.current) setStatus({ kind: 'error' })
+      if (id === request.current) setTagged({ key, status: { kind: 'error' } })
     }
-  }, [season, isCurrent, asOf])
+  }, [key, season, isCurrent, asOf])
 
   useEffect(() => { load() }, [load])
 
-  return { status, retry: load }
+  return { status: tagged.key === key ? tagged.status : { kind: 'loading' }, retry: load }
 }

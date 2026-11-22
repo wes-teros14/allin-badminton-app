@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/supabase', () => ({ supabase: {} }))
 
-import { buildEligibility } from '@/lib/boardEligibility'
+import { boardPending, buildEligibility } from '@/lib/boardEligibility'
 import { rankPairs, tallyPairs, type PairTallyMatch } from '@/lib/pairStats'
 
 describe('buildEligibility', () => {
@@ -58,5 +58,36 @@ describe('guest pairs on Partners', () => {
     const ids = pairs.map((p) => [p.playerA, p.playerB].sort().join('+'))
     expect(ids.some((k) => k.includes('guest'))).toBe(false)
     expect(ids).toContain('a+b')
+  })
+})
+
+describe('boardPending', () => {
+  const pool = buildEligibility({
+    sessionCounts: new Map([['below', 2], ['met-not-recent', 5], ['in', 4], ['guest', 1], ['gone', 1]]),
+    recentRegistrants: ['below', 'in', 'guest', 'gone'],
+    guests: ['guest'],
+  })
+  const profiles = new Map([
+    ['below', { is_guest: false, is_active: true }],
+    ['met-not-recent', { is_guest: false, is_active: true }],
+    ['in', { is_guest: false, is_active: true }],
+    ['guest', { is_guest: true, is_active: true }],
+    ['gone', { is_guest: false, is_active: false }],
+  ])
+  const players = ['below', 'met-not-recent', 'in', 'guest', 'gone']
+
+  it('counts only players below the floor, never one held back by the recent-sessions rule', () => {
+    expect(boardPending({ players, profiles, pool, floor: 3, isCurrent: true, viewerId: 'met-not-recent' }))
+      .toEqual({ waiting: 1, viewerSessions: null })
+  })
+
+  it('gives the viewer their count only when they are below the floor', () => {
+    expect(boardPending({ players, profiles, pool, floor: 3, isCurrent: true, viewerId: 'below' }))
+      .toEqual({ waiting: 1, viewerSessions: 2 })
+  })
+
+  it('keeps inactive players for a past season, never guests', () => {
+    expect(boardPending({ players, profiles, pool, floor: 3, isCurrent: false, viewerId: null }))
+      .toEqual({ waiting: 2, viewerSessions: null })
   })
 })

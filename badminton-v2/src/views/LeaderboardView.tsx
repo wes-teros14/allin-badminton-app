@@ -143,10 +143,26 @@ function BoardSkeleton({ height }: { height: string }) {
   )
 }
 
-/** The empty-board card, with the viewer's progress when they are one of those waiting. */
-function NobodyYet({ view, floor, pending, note }: { view: SeasonView; floor: number; pending: Pending | null; note: string }) {
+/**
+ * The empty-board card, with the viewer's progress when they are one of those waiting. `title` overrides
+ * the minimum wording for a board whose emptiness is not about the minimum (a streak nobody has yet).
+ */
+function NobodyYet({
+  view,
+  floor,
+  pending,
+  note,
+  title,
+}: {
+  view: SeasonView
+  floor: number
+  pending: Pending | null
+  note?: string
+  title?: string
+}) {
   return (
     <NobodyYetCard
+      title={title ?? (view.scope.isCurrent ? 'Nobody has reached the minimum yet' : 'Nobody reached the minimum this season')}
       note={note}
       progress={
         pending?.viewerSessions != null
@@ -167,6 +183,7 @@ function BoardFrame<T>({
   rule,
   floor,
   skeleton,
+  hideFooter = false,
   children,
 }: {
   view: SeasonView
@@ -175,6 +192,8 @@ function BoardFrame<T>({
   rule: string
   floor: number
   skeleton: string
+  /** For a board whose own floor differs from the tab's (Early Bird), where the tab's count would mislead. */
+  hideFooter?: boolean
   children: (data: T, pending: Pending | null) => ReactNode
 }) {
   return (
@@ -187,7 +206,7 @@ function BoardFrame<T>({
       ) : (
         <>
           {children(load.data, load.pending)}
-          <PendingFooter pending={load.pending} floor={floor} />
+          {!hideFooter && <PendingFooter pending={load.pending} floor={floor} />}
         </>
       )}
     </div>
@@ -392,7 +411,7 @@ function CheersLeaderboard({ view }: { view: SeasonView }) {
             view={view}
             floor={floor}
             pending={pending}
-            note={`Players appear after ${floorCount(season, floor)}.`}
+            note={`Players appear after ${MIN_CHEERS_RECEIVED} cheers received and ${floorCount(season, floor)}.`}
           />
         ) : (
           <div className="space-y-4 pt-2">
@@ -443,6 +462,9 @@ function CheersLeaderboard({ view }: { view: SeasonView }) {
  * tab. It used to be a stack of bespoke cards, the only tab that looked
  * different from the other three.
  */
+/** Awards that are empty only while nobody has reached their session minimum. */
+const MINIMUM_DRIVEN_AWARDS: ReadonlySet<string> = new Set(['joined', 'early-bird'])
+
 function AwardsLeaderboard({ view }: { view: SeasonView }) {
   const { season, isCurrent } = view.scope
   const floor = season.floors.played
@@ -460,6 +482,7 @@ function AwardsLeaderboard({ view }: { view: SeasonView }) {
       retry={retry}
       floor={floor}
       skeleton="h-14"
+      hideFooter={selectedKey === 'early-bird'}
       rule={`top ${AWARD_PLACES} · min. ${floorCount(season, floor)} · must be active in the last ${RECENT_SESSIONS_WINDOW}`}
     >
       {(awards, pending) => {
@@ -500,13 +523,18 @@ function AwardsLeaderboard({ view }: { view: SeasonView }) {
               <p className="mb-2.5 mt-0.5 text-xs text-muted-foreground">{selected.rule}</p>
 
               {selected.rows.length === 0 ? (
-                <NobodyYet
-                  view={view}
-                  floor={floor}
-                  // Early Bird's own floor is higher than the tab's; progress against the tab's would mislead.
-                  pending={selected.key === 'early-bird' ? null : pending}
-                  note={selected.emptyText}
-                />
+                MINIMUM_DRIVEN_AWARDS.has(selected.key) ? (
+                  <NobodyYet
+                    view={view}
+                    floor={floor}
+                    // Early Bird's own floor is higher than the tab's; progress against the tab's would mislead.
+                    pending={selected.key === 'early-bird' ? null : pending}
+                    note={selected.emptyText}
+                  />
+                ) : (
+                  // A streak or an upset nobody has managed yet: not a minimum, so its own words are the title.
+                  <NobodyYet view={view} floor={floor} pending={null} title={selected.emptyText} />
+                )
               ) : (
                 <RankedBoard
                   entries={selected.rows}
