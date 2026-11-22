@@ -77,13 +77,6 @@ export const PODIUM_PLACES = 3
 /** Ten *places*, not ten rows — a tie makes the two differ. */
 export const MAX_PLACES = 10
 
-/**
- * The Individual board's own attendance floor, stricter than the shared
- * `MIN_SESSIONS_PLAYED` gate the other boards use (owner's call, 2026-11-15).
- * Applied before ranking, so a filtered player never holds a place.
- */
-export const MIN_SESSIONS_INDIVIDUAL = 4
-
 export async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
   // The shared gate, not a local copy: the copy that lived here skipped the
   // guest rule (2026-10-23), and the podium celebration reads this board.
