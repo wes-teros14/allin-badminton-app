@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-21
+Last updated: 2026-11-23
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -206,6 +206,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   prod is the frozen backup. `dev` and `production` schemas were identical on 2026-11-19 (catalog comparison).
 - **Never pause Supabase prod** (owner paused it 2026-11-22, the site broke): sign-in, token refresh, avatars/receipts storage
   and `seal`'s sign-in check all need it; a paused project's domain doesn't resolve at all. Only the data is on Neon.
+  Side effect seen on resume: auth-js signs a user out when a token refresh gets a non-retryable error (500/521);
+  only 502/503/504/network errors are retried. On 2026-11-22 only the owner's open browser was signed out.
+- **Session with no wins/cheers:** press Finish Session without finishing games — no `match_results` (no wins) and
+  no completed matches (cheer prompts come only from `matches.status = 'complete'`). Completion still adds
+  `sessions_attended` +1. A "1-1 Draw" is NOT no-win: it writes 2 results (+1 win, +2 games each).
 - **Supabase prod app tables are FROZEN** (INSERT/UPDATE/DELETE revoked from anon/authenticated; `unfinish_match`,
   `reverse_session_stats` EXECUTE revoked) and kept as a backup (owner, no drop date). Never unfreeze unless rolling
   back (exact unfreeze SQL in `tasks/todo.md` Phase 3). Its pg_cron job still runs against the frozen copy — harmless.
@@ -797,7 +802,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Fallbacks (revised 2026-10-27):** any word with no clip (name or fixed word) → computer voice for just that word; the rest still plays from clips. Consecutive unrecorded words are joined into ONE utterance (each `speak()` pays the engine's start-up lag), with commas before team 1's first name and before "versus". Whether the default system voice needs internet depends on the tablet's voice (network voices do) — unverified. Earlier rule (whole call by computer voice) dropped at owner's request. Admin can delete a recording (Delete button on Settings words and Players names); no migration needed, 088 already allows it.
 - Rejected: "Next up" calls (owner: only the game starting now); per-player self-recording (admin records all); announcing from any admin phone (the tablet is the one device on the speaker).
 
-## Gallery + bottom navigation (built 2026-11-21, branch `095-photo-gallery`; dev only so far)
+## Gallery + bottom navigation (built 2026-11-21; live on production)
 
 - **Plan, every owner decision and rejected option:** `tasks/todo.md` "Photo Gallery". Mocks:
   `temporary_files/gallery-final-poc.html`, `temporary_files/top-bar-options-poc.html`.
@@ -810,9 +815,10 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   shares Neon's **5 GB/month** with the app — over it Neon suspends compute (whole app down). Photos are
   1280 px ~150 KB + 400 px thumb, shrunk on the phone (`galleryImage.ts`, WebP else JPEG).
 - **Rules live in the DB** (`scripts/neon/migrations/092_session_photos.sql`; test:
-  `scripts/neon/tests/gallery-rls.sql`, 23 checks, always rolls back): upload only while `in_progress` and
-  registered; one per player (partial unique index, admins exempt via trigger-set `by_admin`); edit/delete
-  own until `complete`; view needs non-guest + `sessions_attended ≥ 1` (own photo always); admin anything.
+  `scripts/neon/tests/gallery-rls.sql`, 23 checks, always rolls back; window changed by `093_gallery_open_until_closed.sql`):
+  upload while the session is **open** = `in_progress`, or `complete` with `closed_at` null (owner 2026-11-22:
+  photos allowed after Finish Session until Close), and registered; one per player (partial unique index, admins
+  exempt via trigger-set `by_admin`); edit/delete own while open; client mirror `isGalleryOpen()`; view needs non-guest + `sessions_attended ≥ 1` (own photo always); admin anything.
   Moderators = player rules (owner confirmed 2026-11-21).
 - **`gallery` Neon Function** (`functions/gallery/`) holds no DB password: every row read/write uses the
   caller's own token via the Data API, so RLS stays the only gate. File keys are derived
