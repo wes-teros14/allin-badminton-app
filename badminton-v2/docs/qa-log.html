@@ -2727,6 +2727,19 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">Why did resuming Supabase log me out, when the Neon migration never did?</p>
+    <p class="a">
+      Sign-in tokens last 1 hour, and the app renews them through Supabase. While the project was coming back
+      (2026-11-22 ~01:45 UTC, 9:45 Manila), Supabase’s logs show the renewals failing: 16× <code>521</code>, 1× <code>500</code>, 3× <code>503</code>.
+      The sign-in library (<code>@supabase/auth-js</code> 2.99) treats only 502/503/504 and network errors as “try again later”. Any
+      other answer, such as 521 or 500, makes it delete the saved session, so you were signed out. During the migration, Supabase
+      sign-in never went down, so every renewal got 200 and nobody was logged out.
+      Who was affected: all 20 failed renewals came from <strong>one</strong> IP and browser (01:57–01:59 UTC), the owner’s own;
+      the other 9 renewals that morning, from 4 IPs, got 200. Players whose app wasn’t open in that window stay signed in.
+    </p>
+  </div>
+
   <h2 class="topic" id="match-generator">Match generator</h2>
 
   <div class="qa">
@@ -3690,6 +3703,21 @@
       caller's own token (RLS decides who sees what) and returns signed links valid 7 days, Neon's maximum.
       The phone reuses those links until about a day before they expire, so the URL stays the same and the
       browser cache serves repeat views with no new egress. Plan: <code>tasks/todo.md</code>, "Photo Gallery".
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">I finished the session — why can't I add pictures? They should be allowed until it's closed.</p>
+    <p class="a">
+      As built, upload ends at <em>Finish Session</em>, not at Close (the 2026-11-20 plan said "only while
+      <code>in_progress</code>"). The database rule <code>can_upload</code> requires <code>status = 'in_progress'</code>
+      and players' edits lock at <code>complete</code> (<code>scripts/neon/migrations/092_session_photos.sql</code>).
+      Admins may upload any time, but the Gallery page only lists albums that have photos or are live
+      (<code>GalleryView.tsx</code> <code>listed</code>), so a finished, empty album has no Add button even for an
+      admin. Nov 22 Xmas party: finished with no photos → no album shown.
+      <strong>Changed 2026-11-22 (owner):</strong> photos now stay open until the session is closed —
+      <code>scripts/neon/migrations/093_gallery_open_until_closed.sql</code> (<code>gallery_session_open</code>) and
+      <code>isGalleryOpen</code> in <code>src/lib/galleryApi.ts</code>.
     </p>
   </div>
 

@@ -14,7 +14,15 @@ const FN_URL: string | undefined = import.meta.env.VITE_NEON_GALLERY_URL
 /** The Gallery needs Neon data and the gallery Function; without them the tab says so. */
 export const galleryEnabled = Boolean(FN_URL && usesNeonData)
 
-export type GallerySession = { id: string; name: string; date: string; status: string }
+export type GallerySession = { id: string; name: string; date: string; status: string; closed_at: string | null }
+
+/**
+ * Photos can be added and changed while the session is in progress and after Finish Session, until
+ * the admin closes it. Same rule as `gallery_session_open` (migration 093), which enforces it.
+ */
+export function isGalleryOpen(s: Pick<GallerySession, 'status' | 'closed_at'>): boolean {
+  return s.status === 'in_progress' || (s.status === 'complete' && s.closed_at == null)
+}
 
 export type GalleryPhoto = {
   id: string
@@ -69,7 +77,7 @@ type Row = {
 export async function fetchGallery(): Promise<{ sessions: GallerySession[]; photos: GalleryPhoto[] }> {
   const { data: sessionRows, error: sErr } = await supabase
     .from('sessions')
-    .select('id, name, date, status')
+    .select('id, name, date, status, closed_at')
     .in('status', ['in_progress', 'complete'])
     .order('date', { ascending: false })
     .limit(40)
@@ -121,12 +129,12 @@ export async function fetchGallery(): Promise<{ sessions: GallerySession[]; phot
 }
 
 /** What the signed-in person may do, for showing the right buttons. The database enforces it regardless. */
-export async function fetchGalleryAccess(userId: string, liveSessionIds: string[]): Promise<{ canView: boolean; registeredLive: Set<string>; myName: string }> {
+export async function fetchGalleryAccess(userId: string, openSessionIds: string[]): Promise<{ canView: boolean; registeredOpen: Set<string>; myName: string }> {
   const [profile, stats, regs] = await Promise.all([
     supabase.from('profiles').select('is_guest, role, nickname').eq('id', userId).maybeSingle(),
     supabase.from('player_stats').select('sessions_attended').eq('player_id', userId).maybeSingle(),
-    liveSessionIds.length
-      ? supabase.from('session_registrations').select('session_id').eq('player_id', userId).in('session_id', liveSessionIds)
+    openSessionIds.length
+      ? supabase.from('session_registrations').select('session_id').eq('player_id', userId).in('session_id', openSessionIds)
       : Promise.resolve({ data: [], error: null }),
   ])
   for (const r of [profile, stats, regs]) if (r.error) throw new GalleryError(r.error.message)
@@ -135,7 +143,7 @@ export async function fetchGalleryAccess(userId: string, liveSessionIds: string[
   return {
     canView: p?.role === 'admin' || (!p?.is_guest && attended >= 1),
     myName: p?.nickname ?? 'You',
-    registeredLive: new Set(((regs.data ?? []) as Array<{ session_id: string }>).map((r) => r.session_id)),
+    registeredOpen: new Set(((regs.data ?? []) as Array<{ session_id: string }>).map((r) => r.session_id)),
   }
 }
 

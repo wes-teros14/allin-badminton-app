@@ -702,14 +702,16 @@ Per-session photo albums on a new **Gallery** tab, stored in **Neon Object Stora
 - Size: 1280 px long edge, about 150 KB, plus a ~30 KB thumbnail. Resized on the phone before upload;
   originals are not kept.
 - One photo per player per session. Albums are per session.
-- **Upload:** only while the session is `in_progress`, and only by a player registered for that session.
+- **Upload:** while the session is `in_progress` and after Finish Session until the admin closes it
+  (`closed_at` set), only by a player registered for that session. (Changed 2026-11-22, migration 093;
+  was `in_progress` only.)
 - **View:** signed in + at least 1 completed session (`player_stats.sessions_attended ≥ 1`). Applies to
   viewing only — a first-timer can upload during their first session but sees the gallery once it completes.
   Guests (`profiles.is_guest`) can't view (confirmed).
 - **Image files too:** only those viewers can open a photo, not just anyone holding its link → **private
   bucket**, photos served by signed links (Q4).
-- **Uploader:** can replace the photo, edit the caption or delete it until the session is `complete`; then
-  it is locked.
+- **Uploader:** can replace the photo, edit the caption or delete it until the session is closed; then
+  it is locked. (Changed 2026-11-22; was until `complete`.)
 - **Admin:** can do everything at any time — view, edit captions, replace, delete — ignoring the upload
   window and the lock. **No photo limit for admins** (confirmed) — one per session applies to players only.
 - Caption: uploader's name (always) + optional free text.
