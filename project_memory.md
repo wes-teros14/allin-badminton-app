@@ -1,6 +1,6 @@
 # Project Memory — All-In Badminton
 
-Last updated: 2026-11-19
+Last updated: 2026-11-21
 
 Durable knowledge only. Transient status lives in `handoff.md`.
 
@@ -248,7 +248,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Roles and access
 - `Role = 'admin' | 'moderator' | 'player' | null`, read from `profiles.role` by `AuthContext`.
 - `AdminRoute` (`badminton-v2/src/App.tsx:10`) admits **admin and moderator**; everything else redirects to `/`.
-- Some features are admin-only and exclude moderators (receipt viewing in `RosterPanel`, several `TopNavBar` entries). Check which of the two rules a feature needs before copying either.
+- Some features are admin-only and exclude moderators (receipt viewing in `RosterPanel`, the admin pages in `BottomTabBar`'s Admin sheet). Check which of the two rules a feature needs before copying either.
 - Convention for an inline check is `const isAdmin = role === 'admin' || role === 'moderator'` — written out, no shared helper. Don't introduce one without a reason.
 - **Session delete:** only admins and moderators (`sessions: staff delete`, migration 090, 2026-11-16). Prod had a
   hand-made `sessions: admin delete` USING (true) letting any signed-in player delete sessions. Still open by design:
@@ -263,7 +263,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   the nav bar underlined Admin on the player's own session list for as long as that clause existed.
   `isUnder(pathname, base)` in `src/lib/navMatch.ts` is the only matcher to use — it accepts `base`
   itself or anything under `base + '/'`, so a match can only end on a segment boundary. All eight
-  `TopNavBar` tabs go through it, not just the one that broke.
+  `BottomTabBar` tabs go through it, not just the one that broke.
 
 ## Session lifecycle
 
@@ -474,7 +474,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   `ThemeToggle` follows this rule so it can be moved onto the nav later without a rewrite.
 - **No hardcoded hex in `className`.** `#FEFE6A` (the live board's neon yellow) and `#FFB200` were
   written literally in 13 places and all of them vanished in light mode. They now use tokens. The
-  two survivors are the `bg-[#FEFE6A]` notification dots in `TopNavBar`, which are correct because
+  two survivors are the `bg-[#FEFE6A]` notification dot in `BottomTabBar`, which are correct because
   that bar is `bg-primary` in both themes. When auditing colours, sweep arbitrary values:
   `grep -rEo "(text|bg|border|fill|stroke|ring)-\[#[0-9A-Fa-f]{3,8}\]" src --include=*.tsx`.
 - The toggle mark is one element, `.theme-orb`: a crescent that fills into a disc and throws eight
@@ -541,7 +541,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   - Cheers are linked two ways: 71 March rows have only `session_id`, every later row only `match_id`. A date filter
     needs both paths.
   - Neon's Data API handles range filters on embedded tables, one and two levels deep, verified on Neon dev.
-- **Off-app board snapshots (Xmas 2026 ref magnets) reuse the app's own fetchers.** `badminton-v2/scripts/xmas2026/dump-prod-boards.ts` (run with `npx vite-node`) pulls raw prod tables SELECT-only, patches `supabase.from` with an in-memory PostgREST-style builder, then calls `fetchAllTimeLeaderboard`/`fetchPairLeaderboard`/`fetchAwardsLeaderboard`/`fetchCheerLeaderboard` + `rankCheerShares` — so ranks can't drift from the app. Don't reimplement board logic in SQL for exports. Pipeline: dump → `per-player.cjs` → `build-all.cjs` → `docs/xmas2026/ref-magnets-all.html` (frames A Candy Cane + D Snow Ticket, 600×900 = 2×3 in @300 dpi, photo window transparent in PNGs). The `*.json` outputs hold prod player data and are gitignored.
+- **Off-app board snapshots (Xmas 2026 ref magnets) reuse the app's own fetchers.** `badminton-v2/scripts/xmas2026/dump-prod-boards.ts` (run with `npx vite-node`) pulls raw tables from **Neon `production`** (since 2026-11-21; it read the now-stale Supabase copy before the cutover) in a `begin read only` transaction, connection string from the Neon CLI at runtime, then patches `supabase.from` with an in-memory PostgREST-style builder, then calls `fetchAllTimeLeaderboard`/`fetchPairLeaderboard`/`fetchAwardsLeaderboard`/`fetchCheerLeaderboard` + `rankCheerShares` — so ranks can't drift from the app. Don't reimplement board logic in SQL for exports. Pipeline: dump → `per-player.cjs` → `build-all.cjs` → `docs/xmas2026/ref-magnets-all.html` (frames A Candy Cane + D Snow Ticket, 600×900 = 2×3 in @300 dpi, photo window transparent in PNGs). The `*.json` outputs hold prod player data and are gitignored.
 - **Every ranked board renders through one component.** `RankedBoard` / `RankPlace` in `components/RankedBoard.tsx` (moved out of `LeaderboardView.tsx` 2026-09-28) draw a medal podium for places 1–3 and a fixed 34 px numbered chip for every place below, with a divider naming the places actually on screen. Tied and untied places go through the *same* path deliberately — the previous code drew the rank inside the card for untied places and outside it for tied ones, so the rank column never lined up. Keeping the marker column a fixed width is the fix; don't reintroduce a second rendering path for ties. The **session Leaderboard tab** (`SessionPlayerDetailView`) uses it too since 2026-09-28, with the same order and dense-rank rule as all-time and no place cut; it previously numbered by row index, so two players on 83% got 🥇 and 🥈. `TodayView` (`/today`, linked from nowhere) still carries the old index-numbered copy.
 - **Rank arithmetic lives in `src/lib/denseRank.ts`** (`assignDenseRanks`, `cutToPlaces`, `groupByRank`) and is shared. Equal rates take the same place; the next distinct rate takes the next number (1, 1, 2 — never 1, 1, 3); and the cut counts **places, not rows**, so a board may show twelve rows across ten places. Both boards must keep using it — index-based numbering next to dense ranks contradicts itself the moment anyone ties.
 - **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligiblePlayerIds()` plus `MIN_SESSIONS_PLAYED` and `RECENT_SESSIONS_WINDOW`. Every surface asks that one function: Individual, Partners, Cheers, Awards, and the award badges on My Profile. The rules are 3+ sessions attended and registered for at least one of the last **5** completed sessions (`RECENT_SESSIONS_WINDOW`; raised from 4 on 2026-11-15 by the owner so a regular who misses a month — Ging, 8 sessions, last 18 Oct — isn't dropped). Every board caption reads the constant, so changing it needs no copy edits. **Exception (2026-11-15, owner):** Individual alone needs 4+ sessions (`MIN_SESSIONS_INDIVIDUAL` in `leaderboardData.ts`, filtered before ranking); the shared gate stays 3 for Partners, Cheers, Awards and badges. Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy. (The Wins board still had one until 2026-10-23; it now calls the gate too.)
@@ -640,6 +640,20 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   direct but ~110 px taller) — both in `badminton-v2/docs/visual/match-edit-swap-options.html`.
 - `generateSchedule` (single-pass) is kept only for tests and API compatibility; the app calls
   `generateScheduleOptimized`.
+- **Command-line scheduler (2026-11-20):** `scripts/schedule/schedule.ts` (`npm run schedule -- sessions|show|generate|save`)
+  lets Claude make a schedule from a prompt. Why a script, not an MCP server: smallest thing to trust; owner chose it.
+  Panel defaults + settings → engine options moved to `src/lib/generatorSettings.ts` and `buildRegisteredPlayers` to
+  `src/lib/registeredPlayers.ts`, so panel and script cannot drift. Connects with `pg` straight to Neon (dev default,
+  `--prod` live) using `badminton-v2/.env.schedule` (`NEON_DEV_URL`, `NEON_PROD_URL`), endpoint-checked. `save` locks
+  the exact draft (engine is random), writes what Lock writes in one transaction, refuses on roster change / existing
+  games / status ≠ `registration_closed` / `--quick` draft. Drafts: `temporary_files/schedule-drafts/`.
+- **Late arrivals are script-only (2026-11-20, owner: one-time need, don't touch the engine or app).**
+  `--late "Ging,Earl=5"` runs the unchanged engine 6 times, re-orders each result's whole games (same teams) so no
+  late player plays before their game, scored with the exported `evaluateSessionScore`, keeps the best. Rejected:
+  an `availableFrom` option inside the engine (built, then reverted at the owner's request). Limit: re-ordering
+  cannot change who plays together, so a very late player keeps their full game count only if their games fit.
+- **The engine silently drops games it cannot fill** (e.g. `maxSpreadLimit` 2 with an isolated L8 player: 11 asked,
+  10 built). The panel shows it only as Game Count Violations; the script warns explicitly. Not fixed in the engine.
 
 - **The First-on-court rule (2026-09-13).** The engine now takes `courtCount`
   (`GenerateOptions.courtCount`, **default 1** so every old caller is unchanged). Games
@@ -780,6 +794,35 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 - **Pacing:** each call is said **three times** (0.7 s apart). Words are 40 ms apart (0 ms before the court number, game number, "and" and name 2, so "Court 2", "Game 5", "name1 and name2" run together), and every clip is re-trimmed on load to 20 ms padding (saved clips keep 80 ms) — at 120 ms gaps + 80 ms padding the owner found it too slow.
 - **Fallbacks (revised 2026-10-27):** any word with no clip (name or fixed word) → computer voice for just that word; the rest still plays from clips. Consecutive unrecorded words are joined into ONE utterance (each `speak()` pays the engine's start-up lag), with commas before team 1's first name and before "versus". Whether the default system voice needs internet depends on the tablet's voice (network voices do) — unverified. Earlier rule (whole call by computer voice) dropped at owner's request. Admin can delete a recording (Delete button on Settings words and Players names); no migration needed, 088 already allows it.
 - Rejected: "Next up" calls (owner: only the game starting now); per-player self-recording (admin records all); announcing from any admin phone (the tablet is the one device on the speaker).
+
+## Gallery + bottom navigation (built 2026-11-21, branch `095-photo-gallery`; dev only so far)
+
+- **Plan, every owner decision and rejected option:** `tasks/todo.md` "Photo Gallery". Mocks:
+  `temporary_files/gallery-final-poc.html`, `temporary_files/top-bar-options-poc.html`.
+- **Navigation is a bottom tab bar** (`BottomTabBar.tsx`, replaced `TopNavBar`): Sessions · Leaderboard ·
+  raised rabbit = Home (`/`) · Gallery · Profile (+ Admin for staff). No top bar. Admin's Admin tab opens a
+  sheet (Admin home, Players, Inventory, Finance, Settings); a moderator's goes straight to `/admin`.
+  `--tabbar-h` (index.css) pads pages; the Cheer later bar sits at `--tabbar-h + 2rem` to clear the rabbit.
+- **Storage: Neon private bucket `gallery`** (not Supabase: its 1 GB is org-wide and full of receipts/clips;
+  not R2: needs `mrkws.com` DNS moved off Spaceship; not Drive: direct links unofficial). Photo traffic
+  shares Neon's **5 GB/month** with the app — over it Neon suspends compute (whole app down). Photos are
+  1280 px ~150 KB + 400 px thumb, shrunk on the phone (`galleryImage.ts`, WebP else JPEG).
+- **Rules live in the DB** (`scripts/neon/migrations/092_session_photos.sql`; test:
+  `scripts/neon/tests/gallery-rls.sql`, 23 checks, always rolls back): upload only while `in_progress` and
+  registered; one per player (partial unique index, admins exempt via trigger-set `by_admin`); edit/delete
+  own until `complete`; view needs non-guest + `sessions_attended ≥ 1` (own photo always); admin anything.
+  Moderators = player rules (owner confirmed 2026-11-21).
+- **`gallery` Neon Function** (`functions/gallery/`) holds no DB password: every row read/write uses the
+  caller's own token via the Data API, so RLS stays the only gate. File keys are derived
+  (`<session>/<id>/v<version>[-thumb]`), never stored. GET links are signed at the start of a 3-day window,
+  valid 7 days → same URL all window → phone cache works (verified: a 2-day-old signature opens; unsigned 403).
+- **Bucket setup per branch:** `neon bucket create gallery --branch <b>` then
+  `npx neon-env run --project-id lucky-heart-02739020 --branch <b> -- node scripts/neon/gallery-bucket-setup.mjs`
+  (sets CORS for the site + localhost, self-tests). Deploy the Function alone with `neon functions deploy
+  gallery --branch <b> --src functions/gallery/index.ts --env SUPABASE_URL=… --env DATA_API_URL=… --env
+  GALLERY_BUCKET=gallery --env ALLOWED_ORIGINS=…` — a full `neon deploy` also redeploys seal/keepalive and
+  needs their secrets. Client needs `VITE_NEON_GALLERY_URL`.
+- **Not built:** automatic sweep of abandoned (never-ready) uploads — the Functions hold no DB credential.
 
 ## Courts on player screens
 

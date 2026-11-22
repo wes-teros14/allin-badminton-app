@@ -4,44 +4,15 @@ import { supabase } from '@/lib/supabase'
 import { sessionTopic } from '@/lib/liveChannel'
 import { listenLive } from '@/hooks/useLiveChannel'
 import type { PlayerInput } from '@/lib/matchGenerator'
+import { buildRegisteredPlayers, type ProfileRow, type RegistrationRow } from '@/lib/registeredPlayers'
+
+export { buildRegisteredPlayers }
 
 export type { PlayerInput as RegisteredPlayer }
-
-interface RegistrationRow {
-  player_id: string
-  gender: 'M' | 'F' | null
-  level: number | null
-}
-
-interface ProfileRow {
-  id: string
-  name_slug: string
-  nickname: string | null
-  gender: 'M' | 'F' | null
-  level: number | null
-}
 
 interface RegisteredPlayersState {
   players: PlayerInput[]
   isLoading: boolean
-}
-
-export function buildRegisteredPlayers(
-  registrations: RegistrationRow[],
-  profiles: ProfileRow[]
-): PlayerInput[] {
-  const profileMap = new Map(profiles.map((p) => [p.id, p]))
-
-  return registrations.map((r) => {
-    const profile = profileMap.get(r.player_id)
-    return {
-      id: r.player_id,
-      nameSlug: profile?.name_slug ?? r.player_id,
-      nickname: profile?.nickname ?? null,
-      gender: (r.gender ?? profile?.gender ?? null) as 'M' | 'F' | null,
-      level: r.level ?? profile?.level ?? null,
-    }
-  })
 }
 
 export function useRegisteredPlayers(sessionId: string | undefined, refreshKey?: number): RegisteredPlayersState {

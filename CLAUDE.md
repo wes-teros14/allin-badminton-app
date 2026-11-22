@@ -33,6 +33,14 @@ at `specs/008-podium-celebration/plan.md`.
 <!-- SPECKIT END -->
 
 
+## Scheduling by prompt
+
+When asked to make or discuss a session's match schedule, use `npm run schedule -- ...` in `badminton-v2/`
+(usage in the header of `scripts/schedule/schedule.ts`): `sessions` → `show <session>` → `generate <session>
+[--set k=v] [--pin "A,B v C,D"] [--wish "a-b"]` → `save <session> --confirm`. Default target is Neon dev; add
+`--prod` for the live site. Always ask before any `save --prod`. Connection strings are in
+`badminton-v2/.env.schedule` — never read it.
+
 ## Testing on localhost
 - there is dev only button at the lower right where you can login as admin
 - Start the `badminton-v2-dev` launcher: data and live updates come from Neon branch `dev`, sign-in from Supabase DEV. Reset dev's data with `scripts/neon/seed-dev.sql` via `scripts/neon/run-dev.mjs`, which only runs against dev. Schema changes go to Neon only: dev first, then production with my OK.
@@ -122,6 +130,8 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - A "year" or "season" here is the owner's, not the calendar's. Ask for the last and first session of the boundary before designing around 1 January — the 2026 season ended Nov 15, not Dec 31.
 - When offering how a minimum is counted, offer a rolling window ("past 12 months") alongside lifetime and this-season. I offered only lifetime vs this season; the owner's pick was the rolling window.
 - A POC comparing two options must keep both readable at the pane's width (~440–660 px). Side-by-side phones stack or shrink to half size there; give a big A/B flip plus a one-line diff instead.
+- When the user names a session, match that exact name in `schedule -- sessions` before generating. "Xmas party games placeholder" is not "🎁 Xmas Party 🎁" — I ran three drafts on the wrong session.
+- Load a design skill (`journey` for navigation/flows, `impeccable` for visuals) before answering any UX question, not only before a mockup — and read what the affected pages already show first. My "logo + page title" top bar duplicated the H1 every page already has.
 - Memory commitment (Committed_AS) is memory promised, not used. Report usage as RAM used + swap, and read chart totals from the tooltip, never from an axis tick.
 
 ## .env Files

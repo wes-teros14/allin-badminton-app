@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Outlet, useParams } from 'react-router'
-import { TopNavBar } from '@/components/TopNavBar'
+import { BottomTabBar } from '@/components/BottomTabBar'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import { useCheersEligibleSessions } from '@/hooks/useActiveSession'
 import { useMatchCheers } from '@/hooks/useMatchCheers'
@@ -53,8 +53,8 @@ export function PlayerLayout() {
 
   return (
     <NotificationProvider>
-      <div className="min-h-screen bg-background">
-        <TopNavBar />
+      {/* Room under every page for the bottom tab bar (and the "Cheer later" bar above it). */}
+      <div className={`min-h-screen bg-background ${showReminder ? 'pb-[calc(var(--tabbar-h)+6.5rem)]' : 'pb-[var(--tabbar-h)]'}`}>
         {showGate ? (
           <CheersPanel
             cheerTypes={cheerTypes}
@@ -64,10 +64,7 @@ export function PlayerLayout() {
             submitCheer={submitCheer}
           />
         ) : (
-          // Room under the page so the bar never covers its last row.
-          <div className={showReminder ? 'pb-20' : undefined}>
-            <Outlet />
-          </div>
+          <Outlet />
         )}
 
         {showReminder && (
@@ -92,6 +89,7 @@ export function PlayerLayout() {
           navigates on its own. Held while the cheers gate is up — cheers first.
         */}
         <LeaderboardCelebration held={celebrationHeld} />
+        <BottomTabBar />
       </div>
     </NotificationProvider>
   )

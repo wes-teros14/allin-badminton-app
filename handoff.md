@@ -1,6 +1,16 @@
 # Handoff — current snapshot
 
-Updated: 2026-11-19 afternoon, Manila. Overwrite this file on every update; it is never a running history.
+Updated: 2026-11-21 ~10:30 Manila. Overwrite this file on every update; it is never a running history.
+
+## Done this session (2026-11-20 → 11-21)
+- Photo Gallery planned with the owner (all choices in `tasks/todo.md` "Photo Gallery") and built on branch
+  `095-photo-gallery` (off `dev`; **not committed, not pushed**).
+- Navigation replaced: bottom tab bar with raised rabbit Home (`BottomTabBar.tsx`); `TopNavBar.tsx` removed.
+- Neon **dev**: migration 092 applied, 23/23 rule checks pass, private `gallery` bucket + CORS, `gallery`
+  Function deployed (`https://br-gentle-wildflower-ao7c6whw-gallery.compute.c-2.ap-southeast-1.aws.neon.tech/`).
+- Verified on localhost (admin + player Raj): upload, caption, replace (old version cleaned), delete, viewer
+  buttons per role, admin menu, Cheer later bar above tabs, 360 px both themes. `tsc -b`, 600 unit tests, build pass.
+- Neon CLI 9.9.0 installed + signed in on this PC. `run-dev.mjs` can read `NEON_DEV_URL` from `.env.schedule`.
 
 ## Season reset — designed and planned, PARKED until after the Nov 22 Xmas party (owner)
 - Design approved: `specs/009-season-reset/design.md`. Plan: `specs/009-season-reset/plan.md` (12 tasks).
@@ -11,24 +21,19 @@ Updated: 2026-11-19 afternoon, Manila. Overwrite this file on every update; it i
 - No deadline: under read-time windows, Nov 22's games land in 2027 whenever this ships.
 - Not committed: design, plan, visual, qa-log entries, CLAUDE.md lessons, `tasks/todo.md` pointer.
 
-## Neon work (from the 11-17 → 11-19 session)
-- Shipped to dev + main: Finance shortcut on admin session cards; Against the Odds wording; yellow Admin tab;
-  offline backup subs panel + Schedule/Players tabs.
-- Dev on Neon: `parity` → `dev` (no expiry), schema identical to production, `badminton-v2-dev` launcher on Neon.
-- Live site: Neon `production` + Supabase prod auth/storage. Local dev: Neon `dev` + Supabase DEV auth.
-- Git: `main`/`dev` at 97e0096 (pushed per that session).
+## Current state
+- Production untouched (no SQL, no bucket, no Function, no Vercel var). Dev test data cleaned.
 
 ## Next steps
-1. Sun Nov 22: watch the session on Neon (console RAM/CU); Phase 4 daily CU-h check.
-2. After Nov 22: build the season plan — owner to pick subagent-driven (recommended) or native execution.
-3. Check dev's keepalive first run (2026-11-19 19:00 UTC): JWKS file still lists 4 kids.
-4. Housekeeping when the owner says so: delete `spike`, `rehearsal`, `rehearsal-loadtest-backup`,
-   `production-dryrun-backup`. **Keep** `parity-before-restore` and `parity-writetests-backup` (`dev`'s parents).
-   Deleting `rehearsal` is fine for the season plan: its parity task falls back to production, read-only. npm audit.
+1. Owner: review on localhost, then commit the branch (ask first).
+2. Production, only with owner OK: run 092 SQL on Neon `production`; `neon bucket create gallery --branch
+   production`; `gallery-bucket-setup.mjs` against production; `neon functions deploy gallery --branch
+   production` with prod SUPABASE_URL + prod Data API URL; add `VITE_NEON_GALLERY_URL` to Vercel Production.
+3. Push `dev`, merge to `main` (ask first). Add egress to the Phase 4 daily usage check.
 
 ## Open questions
-- Season plan: cheers counted with their March `multiplier` weights (my call) — owner hasn't confirmed or objected.
+- Season plan: cheers counted with their March `multiplier` weights (my call) — owner hasn't confirmed.
 - Season plan task 12 needs a prod-copy (or production) Data API URL + anon JWT from the owner.
-- Kiosk rule `match_results: kiosk insert` — decide at project end.
-- Real phone check of the offline backup — not done. Broadcast/share untested on phones; Nov 1 session not closed;
-  prod `service_role` key not rotated.
+- iPhone Safari WebP encoding untested on a real phone (falls back to JPEG by design).
+- Carried over: kiosk insert rule; offline-backup phone check; Broadcast/share on phones; Nov 1 session not
+  closed; prod `service_role` key not rotated; old Neon test branches cleanup.

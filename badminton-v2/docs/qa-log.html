@@ -89,6 +89,7 @@
       <li><a href="#celebrations">Leaderboard celebrations</a></li>
       <li><a href="#session-lifecycle">Session lifecycle</a></li>
       <li><a href="#tooling">Tooling &amp; the knowledge graph</a></li>
+      <li><a href="#photo-storage">Photo album storage</a></li>
     </ol>
   </nav>
 
@@ -3122,6 +3123,43 @@
       <code>tasks/todo.md</code>.
     </p>
   </div>
+  <div class="qa">
+    <p class="q">Can Claude have access to the match engine, so I can just prompt the schedule creation and talk about the session's params?</p>
+    <p class="a">
+      Yes. The engine (<code>src/lib/matchGenerator.ts</code>) has no React or database code, so a script runs
+      it directly: <code>npm run schedule -- sessions | show | generate | save</code>
+      (<code>scripts/schedule/schedule.ts</code>). You name a session (date, id prefix or <code>next</code>);
+      Claude runs <code>generate</code> with your params (<code>--set maxSpreadLimit=3</code>,
+      <code>--pin "A,B v C,D"</code>, <code>--wish "a-b"</code>, <code>--preset</code>, <code>--from</code>) and
+      <code>save --confirm</code> locks <em>that exact draft</em> — the engine is random, so it never re-generates.
+      Defaults and the settings → options mapping live in <code>src/lib/generatorSettings.ts</code>, shared with the
+      panel, so both paths make the same schedule from the same settings. <code>save</code> writes what the Lock
+      button writes (matches, <code>schedule_locked</code>, <code>generator_settings</code>) in one transaction and
+      refuses if the roster changed, games already exist, status is not <code>registration_closed</code>, or the
+      draft was a <code>--quick</code> run. Dev by default; <code>--prod</code> for the live site. Full run: ~2 s.
+    </p>
+    <p>
+      Found while testing (2026-11-20): the engine <strong>silently drops a game</strong> it cannot fill. 11 dev
+      players, 11 games asked, <code>maxSpreadLimit</code> 2 → 10 games, and Marcus (L8) got 1 game because no
+      foursome within 2 levels of him existed. The panel shows this only as "Game Count Violations / Uneven"; the
+      script prints an explicit "asked for 11, got 10" warning. With <code>maxSpreadLimit=3</code> all 11 games
+      were built, 4 each.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Two players will be late. Can we keep them out of the first games without touching the engine or the app?</p>
+    <p class="a">
+      Yes, in the scheduler script only (<code>scripts/schedule/schedule.ts</code>):
+      <code>npm run schedule -- generate 2026-11-22 --prod --late "Ging,Earl=5"</code>. It runs the unchanged
+      engine 6 times, re-orders each result's whole games (players and teams untouched) so Ging and Earl have
+      nothing before game 5, scores each order with the engine's own <code>evaluateSessionScore</code>, and keeps
+      the best. Xmas Party result: Earl starts game 5, Ging game 6, both 4 games, 0 back-to-backs, 0 repeat
+      partners, score 26,000. A first version put an <code>availableFrom</code> option inside the engine; it was
+      reverted because this was a one-time need.
+    </p>
+  </div>
+
   <h2 class="topic" id="payments">Payments &amp; the fee card</h2>
 
   <div class="qa">
@@ -3579,6 +3617,68 @@
     <p class="a">
       The cost is that a fresh clone has no graph until someone runs <code>graphify update .</code>,
       which is why <code>CLAUDE.md</code> says so.
+    </p>
+  </div>
+
+  <h2 class="topic" id="photo-storage">Photo album storage</h2>
+
+  <div class="qa">
+    <p class="q">Where should album photos be hosted for free, and can we use Google Drive?</p>
+    <p class="a">
+      Not Drive: direct image links (<code>uc?export=view</code>) broke in Jan 2024 and the
+      <code>lh3</code> workaround is unofficial. Not Supabase Storage either — its 1&nbsp;GB free quota
+      is org-wide and already holds receipts and announcer clips. Candidates (checked 2026-11-20):
+      Cloudflare R2 (10&nbsp;GB, egress free) and Neon Object Storage (5&nbsp;GB per project).
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Will players viewing photos cost us egress? How hard is Cloudflare vs Neon?</p>
+    <p class="a">
+      Neon: no per-request charge, but every download counts toward the project's shared
+      5&nbsp;GB/month transfer — the same allowance the app's Data API uses (~0.5&nbsp;GB/month). Over the
+      cap, Neon's plans FAQ says Postgres, storage and Functions are restricted and compute is
+      suspended: <strong>a popular album could take the whole app down until the next billing
+      period.</strong> Neon has no CDN of its own.
+    </p>
+    <p class="a">
+      R2: egress free, 10M reads/month free. The catch is the public URL: <code>r2.dev</code> is
+      rate-limited and "not intended for production"; a custom domain needs the domain on Cloudflare,
+      and <code>mrkws.com</code> uses Spaceship nameservers (<code>launch1/2.spaceship.net</code>).
+      The app code is almost the same for both (S3 API; the upload-signing step can be a Neon Function
+      like <code>seal</code>), so the difference is setup and the failure mode, not code.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">At 1 photo per player (16/week), resized, does Neon fit? Why would Cloudflare need a DNS change — does the site URL change?</p>
+    <p class="a">
+      Fits easily (estimate, not measured): ~300&nbsp;KB photo + ~30&nbsp;KB thumbnail ≈ 23&nbsp;MB/month
+      stored, so 5&nbsp;GB lasts ~18 years. 30 players opening all 16 each week ≈ 0.7&nbsp;GB/month
+      traffic + the app's ~0.5&nbsp;GB = ~1.2&nbsp;GB of the 5&nbsp;GB cap.
+    </p>
+    <p class="a">
+      Ceiling: 5&nbsp;GB − ~0.5&nbsp;GB app ≈ 4.5&nbsp;GB for photos ≈ <strong>~13,600 full-photo opens a
+      month</strong> (~3,100/week) at 330&nbsp;KB each, or ~150,000 thumbnail-only views. A "view" is a
+      first download per phone — with long <code>Cache-Control</code>, re-opening on the same phone is free.
+    </p>
+    <p class="a">
+      The site URL never changes. The DNS move would only be needed to give R2 photos their own
+      address such as <code>photos.mrkws.com</code>: Cloudflare connects a custom domain to a bucket only
+      when it manages that domain's DNS. Without it, R2 photos use the rate-limited <code>r2.dev</code>
+      link.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why is the gallery bucket private, and how do photos still load fast?</p>
+    <p class="a">
+      Owner rule (2026-11-20): only signed-in players with ≥ 1 completed session may open a photo — so a
+      <code>public_read</code> bucket (anyone with the link) does not qualify, and a bucket's access level
+      cannot be changed after creation. The <code>gallery</code> Neon Function lists an album with the
+      caller's own token (RLS decides who sees what) and returns signed links valid 7 days, Neon's maximum.
+      The phone reuses those links until about a day before they expire, so the URL stays the same and the
+      browser cache serves repeat views with no new egress. Plan: <code>tasks/todo.md</code>, "Photo Gallery".
     </p>
   </div>
 
