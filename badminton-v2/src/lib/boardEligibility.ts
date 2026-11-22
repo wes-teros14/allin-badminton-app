@@ -7,6 +7,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { shareInFlight } from '@/lib/inflight'
 import { floorWindow, seasonWindow, type BoardScope } from '@/lib/season'
 import { fetchAttendance, fetchCompletedSessions, fetchSeasonMatches } from '@/lib/seasonData'
 import { countSessions, tallyPlayerGames } from '@/lib/seasonTally'
@@ -68,7 +69,11 @@ export function buildEligibility({ sessionCounts, recentRegistrants, guests }: {
  * Eligibility as of `scope.asOf`: sessions attended in `floorWindow(scope)`, registration for one of
  * the last `RECENT_SESSIONS_WINDOW` played sessions dated on or before `asOf`, and guests.
  */
-export async function fetchEligibility(scope: BoardScope): Promise<EligibilityPool> {
+export function fetchEligibility(scope: BoardScope): Promise<EligibilityPool> {
+  return shareInFlight(`eligibility|${scope.season.id}|${scope.asOf}`, () => readEligibility(scope))
+}
+
+async function readEligibility(scope: BoardScope): Promise<EligibilityPool> {
   const fw = floorWindow(scope)
   // `fw.end` is asOf + 1 day, exclusive, so this is every played session dated <= asOf.
   const upToAsOf = await fetchCompletedSessions({ start: null, end: fw.end })
@@ -141,7 +146,11 @@ export interface BoardProfile {
  * Every profile with its active flag. A past season keeps players who have since gone inactive, so the
  * read cannot filter on `is_active`; callers apply `scope.isCurrent` themselves (see `canAppearOnBoard`).
  */
-export async function fetchBoardProfiles(): Promise<BoardProfile[]> {
+export function fetchBoardProfiles(): Promise<BoardProfile[]> {
+  return shareInFlight('board-profiles', readBoardProfiles)
+}
+
+async function readBoardProfiles(): Promise<BoardProfile[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('id, nickname, name_slug, avatar_url, is_active')

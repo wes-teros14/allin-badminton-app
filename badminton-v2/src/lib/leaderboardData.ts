@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { fetchBoardProfiles, fetchEligibility } from '@/lib/boardEligibility'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
+import { shareInFlight } from '@/lib/inflight'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
 import { fetchSeasonCheers, fetchSeasonMatches, type SeasonMatchRow } from '@/lib/seasonData'
 import { seasonWindow, type BoardScope, type DateWindow } from '@/lib/season'
@@ -81,23 +82,13 @@ export const MAX_PLACES = 10
 
 // --- Shared season read -----------------------------------------------------
 
-const inFlightMatches = new Map<string, Promise<SeasonMatchRow[]>>()
-
 /**
  * The season's matches, read once while a read is already under way. Individual and Partners both
- * tally the same rows, so loading both for one scope costs one paged read instead of two. The entry
- * is dropped as soon as the read settles (success or failure): nothing is cached, so a refresh after
- * a new result always reads fresh rows.
+ * tally the same rows, so loading both for one scope costs one paged read instead of two. Nothing is
+ * cached (see `shareInFlight`), so a refresh after a new result always reads fresh rows.
  */
 function seasonMatchesOnce(w: DateWindow): Promise<SeasonMatchRow[]> {
-  const key = `${w.start ?? ''}|${w.end ?? ''}`
-  const pending = inFlightMatches.get(key)
-  if (pending) return pending
-  const read = fetchSeasonMatches(w)
-  inFlightMatches.set(key, read)
-  const forget = () => { inFlightMatches.delete(key) }
-  read.then(forget, forget)
-  return read
+  return shareInFlight(`matches|${w.start ?? ''}|${w.end ?? ''}`, () => fetchSeasonMatches(w))
 }
 
 // --- Individual board -------------------------------------------------------

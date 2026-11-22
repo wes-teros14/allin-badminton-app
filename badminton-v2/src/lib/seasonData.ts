@@ -11,6 +11,7 @@
  */
 
 import { supabase } from '@/lib/supabase'
+import { shareInFlight } from '@/lib/inflight'
 import type { DateWindow } from '@/lib/season'
 import type { PairTallyMatch } from '@/lib/pairStats'
 import type { CheerTypeSlug } from '@/types/app'
@@ -48,6 +49,8 @@ interface Windowable<B> {
   gte(column: string, value: string): B
   lt(column: string, value: string): B
 }
+
+const windowKey = (w: DateWindow) => `${w.start ?? ''}|${w.end ?? ''}`
 
 /** Adds the window's bounds on `column`; a null bound adds nothing. */
 function applyWindow<B extends Windowable<B>>(query: B, column: string, w: DateWindow): B {
@@ -128,7 +131,11 @@ export async function fetchSeasonMatches(
  * The result test is an inner embed (`matches!inner(match_results!inner(id))`). No embedded limit: correctness
  * must not depend on how PostgREST orders a limit against the nested !inner filter. The payload is small.
  */
-export async function fetchCompletedSessions(w: DateWindow): Promise<Array<{ id: string; date: string }>> {
+export function fetchCompletedSessions(w: DateWindow): Promise<Array<{ id: string; date: string }>> {
+  return shareInFlight(`completed|${windowKey(w)}`, () => readCompletedSessions(w))
+}
+
+async function readCompletedSessions(w: DateWindow): Promise<Array<{ id: string; date: string }>> {
   const base = <B extends Windowable<B> & { eq(column: string, value: string): B }>(q: B): B =>
     applyWindow(q.eq('status', 'complete'), 'date', w)
 
@@ -145,7 +152,11 @@ export async function fetchCompletedSessions(w: DateWindow): Promise<Array<{ id:
 }
 
 /** Registrations in the played sessions of `w` (see `fetchCompletedSessions`). */
-export async function fetchAttendance(w: DateWindow): Promise<AttendanceRow[]> {
+export function fetchAttendance(w: DateWindow): Promise<AttendanceRow[]> {
+  return shareInFlight(`attendance|${windowKey(w)}`, () => readAttendance(w))
+}
+
+async function readAttendance(w: DateWindow): Promise<AttendanceRow[]> {
   const [played, rows] = await Promise.all([
     fetchCompletedSessions(w),
     readAll<{

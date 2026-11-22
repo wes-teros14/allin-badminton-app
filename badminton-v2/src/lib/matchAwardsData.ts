@@ -12,7 +12,7 @@ import { rankGiantSlayers, type GiantSlayerEntry, type SlayerGame } from '@/lib/
  * replays every game up to the season's end, because a player's win rate going in is measured over all
  * their earlier games; only games dated inside the season are marked `counts`.
  */
-function toHistory(rows: SeasonMatchRow[], seasonStart: string | null): { matches: WinStreakMatch[]; games: SlayerGame[] } {
+export function toHistory(rows: SeasonMatchRow[], seasonStart: string | null): { matches: WinStreakMatch[]; games: SlayerGame[] } {
   const matches: WinStreakMatch[] = []
   const games: SlayerGame[] = []
   for (const m of rows) {
