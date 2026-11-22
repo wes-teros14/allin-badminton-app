@@ -1,39 +1,31 @@
 # Handoff — current snapshot
 
-Updated: 2026-11-21 ~10:30 Manila. Overwrite this file on every update; it is never a running history.
+Updated: 2026-11-23 Manila. Overwrite this file on every update; it is never a running history.
 
-## Done this session (2026-11-20 → 11-21)
-- Photo Gallery planned with the owner (all choices in `tasks/todo.md` "Photo Gallery") and built on branch
-  `095-photo-gallery` (off `dev`; **not committed, not pushed**).
-- Navigation replaced: bottom tab bar with raised rabbit Home (`BottomTabBar.tsx`); `TopNavBar.tsx` removed.
-- Neon **dev**: migration 092 applied, 23/23 rule checks pass, private `gallery` bucket + CORS, `gallery`
-  Function deployed (`https://br-gentle-wildflower-ao7c6whw-gallery.compute.c-2.ap-southeast-1.aws.neon.tech/`).
-- Verified on localhost (admin + player Raj): upload, caption, replace (old version cleaned), delete, viewer
-  buttons per role, admin menu, Cheer later bar above tabs, 360 px both themes. `tsc -b`, 600 unit tests, build pass.
-- Neon CLI 9.9.0 installed + signed in on this PC. `run-dev.mjs` can read `NEON_DEV_URL` from `.env.schedule`.
-
-## Season reset — designed and planned, PARKED until after the Nov 22 Xmas party (owner)
-- Design approved: `specs/009-season-reset/design.md`. Plan: `specs/009-season-reset/plan.md` (12 tasks).
-  POC: `temporary_files/season-reset-poc.html` (gitignored). Visual: `badminton-v2/docs/visual/season-reset-approaches.html`.
-- In short: 2026 season = sessions before 2026-11-16; Nov 22 opens 2027. Boards, awards and My Profile become
-  season-only, computed at read time from raw rows (no migration). Minimums = 3 sessions in the past 12 months
-  (2026 keeps its 4). Season switcher on the leaderboard + private "Your 2026 season" page.
-- No deadline: under read-time windows, Nov 22's games land in 2027 whenever this ships.
-- Not committed: design, plan, visual, qa-log entries, CLAUDE.md lessons, `tasks/todo.md` pointer.
+## Done this session (2026-11-22 → 11-23)
+- Explained the Nov 22 outage (owner paused Supabase prod) and the logout on resume (auth-js drops the session on
+  non-retryable 500/521; only the owner's browser hit it — 20 failed refreshes from 1 IP, 9 others got 200).
+- Xmas Party (Nov 22) finished with Finish Session only: 18 queued + 2 playing games, 0 results, 0 cheers.
+- Gallery: photos now open until the session is **closed** (was: until Finish Session). Migration 093 applied to
+  Neon dev + production (rules verified both), app code deployed (commit `463d8e5`, main `e06b08f`).
 
 ## Current state
-- Production untouched (no SQL, no bucket, no Function, no Vercel var). Dev test data cleaned.
+- Live: Xmas Party album accepts photos until the owner closes the session.
+- Supabase DEV looks paused (hostname doesn't resolve) → Dev Login on localhost fails.
+- Neon dev: "Dev Session 4" left finished-not-closed for testing the Gallery window.
+- Unrelated untracked files left alone: `badminton-v2/5`, `badminton-v2/docs/lessons.md`, `supabase/.temp/cli-latest`.
 
 ## Next steps
-1. Owner: review on localhost, then commit the branch (ask first).
-2. Production, only with owner OK: run 092 SQL on Neon `production`; `neon bucket create gallery --branch
-   production`; `gallery-bucket-setup.mjs` against production; `neon functions deploy gallery --branch
-   production` with prod SUPABASE_URL + prod Data API URL; add `VITE_NEON_GALLERY_URL` to Vercel Production.
-3. Push `dev`, merge to `main` (ask first). Add egress to the Phase 4 daily usage check.
+1. Owner: resume Supabase DEV in the dashboard if localhost testing is needed; then check the Gallery screens
+   (finished-not-closed album shows Add + "Open until closed").
+2. Owner: close the Xmas Party session when photos are in.
+3. Season reset (parked, `specs/009-season-reset/plan.md`) — Nov 22 is the first 2027 session.
 
 ## Open questions
-- Season plan: cheers counted with their March `multiplier` weights (my call) — owner hasn't confirmed.
-- Season plan task 12 needs a prod-copy (or production) Data API URL + anon JWT from the owner.
-- iPhone Safari WebP encoding untested on a real phone (falls back to JPEG by design).
-- Carried over: kiosk insert rule; offline-backup phone check; Broadcast/share on phones; Nov 1 session not
-  closed; prod `service_role` key not rotated; old Neon test branches cleanup.
+- Offered, not decided: treat Supabase 500/52x token-refresh errors as retryable so a brief outage doesn't sign
+  players out.
+- Season plan: cheers counted with their March `multiplier` weights — owner hasn't confirmed; task 12 needs a
+  prod Data API URL + anon JWT from the owner.
+- Carried over: iPhone Safari WebP untested on a real phone; kiosk insert rule; offline-backup phone check;
+  Broadcast/share on phones; Nov 1 session not closed; prod `service_role` key not rotated; old Neon test
+  branches cleanup (owner: maybe later).
