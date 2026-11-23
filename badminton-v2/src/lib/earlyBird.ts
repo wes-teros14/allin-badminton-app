@@ -7,8 +7,9 @@
  * registered for themselves, so turning up more often no longer wins it: the
  * old points total followed attendance (r = 0.60 on prod), the average much
  * less (0.32). Admin-added registrations are not counted at all, since those
- * players had no chance to be early. At least EARLY_BIRD_MIN_SESSIONS such
- * sessions are needed, or one lucky night wins.
+ * players had no chance to be early. A minimum of such sessions is needed, or
+ * one lucky night wins: the season's `floors.earlyBird`, counted by the caller
+ * over the season's floor window (`qualifies`, see lib/earlyBirdData.ts).
  *
  * Equal averages go to whoever was 1st more often; a tie on both shares the
  * place. Only players eligible for the boards (still active: in one of the
@@ -23,8 +24,6 @@ import { AWARD_PLACES } from '@/lib/denseRank'
 
 export const EARLY_BIRD_SCORED = 5
 export const EARLY_BIRD_PLACES = AWARD_PLACES
-/** Self-registered finished sessions a player needs before they are ranked. */
-export const EARLY_BIRD_MIN_SESSIONS = 8
 
 export interface EarlyBirdRegistration {
   sessionId: string
@@ -57,13 +56,17 @@ export interface RankEarlyBirdsOptions {
    */
   eligible?: ReadonlySet<string>
   places?: number
-  minSessions?: number
+  /**
+   * Who is established enough to be ranked: the season's minimum, counted by the caller over the
+   * season's floor window. Required, so the minimum has one definition (`floors.earlyBird`).
+   */
+  qualifies: (playerId: string) => boolean
 }
 
 /** Pure scoring; see the module comment for the rules. */
 export function rankEarlyBirds(
   registrations: EarlyBirdRegistration[],
-  { excluded = new Set(), eligible, places = EARLY_BIRD_PLACES, minSessions = EARLY_BIRD_MIN_SESSIONS }: RankEarlyBirdsOptions = {},
+  { excluded = new Set(), eligible, places = EARLY_BIRD_PLACES, qualifies }: RankEarlyBirdsOptions,
 ): EarlyBirdEntry[] {
   const bySession = new Map<string, EarlyBirdRegistration[]>()
   for (const r of registrations) {
@@ -91,7 +94,7 @@ export function rankEarlyBirds(
     b.points * a.sessions - a.points * b.sessions
   const sorted = [...totals.entries()]
     .map(([playerId, t]) => ({ playerId, ...t, average: t.points / t.sessions }))
-    .filter((e) => e.points > 0 && e.sessions >= minSessions && (!eligible || eligible.has(e.playerId)))
+    .filter((e) => e.points > 0 && qualifies(e.playerId) && (!eligible || eligible.has(e.playerId)))
     .sort((a, b) => byAverage(a, b) || b.firsts - a.firsts || a.playerId.localeCompare(b.playerId))
 
   // Dense places (1, 1, 2 — never 1, 1, 3) and a cut by places, not rows, like

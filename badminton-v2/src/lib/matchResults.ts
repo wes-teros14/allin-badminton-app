@@ -37,6 +37,19 @@ export function sortMatchResults(results: MatchResultLike[] | null | undefined):
     .sort((left, right) => left.game_number - right.game_number)
 }
 
+/**
+ * Which pair took one game. Anything that is not an explicit 2 counts as team 1: the one reading of
+ * `winning_pair_index` every tally shares.
+ */
+export function gameWinner(result: Pick<MatchResultLike, 'winning_pair_index'>): 1 | 2 {
+  return result.winning_pair_index === 2 ? 2 : 1
+}
+
+/** A win rate as a whole percentage, as every board and stat prints it. No games: 0. */
+export function winRatePct(wins: number, games: number): number {
+  return games > 0 ? Math.round((wins / games) * 100) : 0
+}
+
 /** How a whole match ended, once every game inside it is counted. */
 export type MatchOutcome = 'team1' | 'team2' | 'draw'
 
@@ -52,9 +65,7 @@ export type MatchOutcome = 'team1' | 'team2' | 'draw'
 export function getMatchOutcome(results: MatchResultLike[] | null | undefined): MatchOutcome | null {
   const rows = sortMatchResults(results)
   if (rows.length === 0) return null
-  // Anything that is not an explicit 2 counts as team 1, matching how the rest
-  // of the codebase reads winning_pair_index.
-  const team1Wins = rows.filter((row) => row.winning_pair_index !== 2).length
+  const team1Wins = rows.filter((row) => gameWinner(row) === 1).length
   if (team1Wins === rows.length) return 'team1'
   if (team1Wins === 0) return 'team2'
   return 'draw'
@@ -72,7 +83,7 @@ export function computeStatsFromResults(
   }
 
   for (const result of sortMatchResults(match.match_results)) {
-    const winners = result.winning_pair_index === 2 ? team2 : team1
+    const winners = gameWinner(result) === 2 ? team2 : team1
     for (const playerId of [...team1, ...team2]) {
       const stats = statsMap.get(playerId)
       if (!stats) continue

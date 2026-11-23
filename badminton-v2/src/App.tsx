@@ -32,6 +32,7 @@ function AdminRoute() {
 
 const HomeView                 = lazy(() => import('@/views/HomeView'))
 const ProfileView              = lazy(() => import('@/views/ProfileView'))
+const YearInReviewView         = lazy(() => import('@/views/YearInReviewView'))
 const LiveBoardView            = lazy(() => import('@/views/LiveBoardView'))
 const PlayerView               = lazy(() => import('@/views/PlayerView'))
 const TodayView                = lazy(() => import('@/views/TodayView'))
@@ -65,6 +66,7 @@ function App() {
         {/* Player-facing routes — wrapped in PlayerLayout for top nav bar */}
         <Route element={<PlayerLayout />}>
           <Route path="/profile"                                             element={<ProfileView />} />
+          <Route path="/profile/season/:seasonId"                            element={<YearInReviewView />} />
           <Route path="/sessions"                                            element={<MySessionsView />} />
           <Route path="/sessions/:sessionId"                                 element={<SessionPlayerDetailView />} />
           <Route path="/leaderboard"                                         element={<LeaderboardView />} />

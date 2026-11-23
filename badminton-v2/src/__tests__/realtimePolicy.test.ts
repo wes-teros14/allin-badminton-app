@@ -4,9 +4,11 @@ import {
   JITTER_MS,
   POLL_CONNECTED_MS,
   POLL_FALLBACK_MS,
+  PROFILE_COALESCE_MS,
   coalesceDelay,
   createCoalescedRunner,
   pollIntervalFor,
+  profileRefreshDelay,
   retryDelayAfterFailures,
 } from '@/lib/realtimePolicy'
 
@@ -84,5 +86,14 @@ describe('retryDelayAfterFailures', () => {
   it('treats a bad count as the first failure', () => {
     expect(retryDelayAfterFailures(0)).toBe(5_000)
     expect(retryDelayAfterFailures(Number.NaN)).toBe(5_000)
+  })
+})
+
+describe('profileRefreshDelay', () => {
+  it('waits seconds, not the court board’s fraction of one, plus jitter', () => {
+    expect(profileRefreshDelay(() => 0)).toBe(PROFILE_COALESCE_MS)
+    expect(profileRefreshDelay(() => 0.999999)).toBeLessThan(PROFILE_COALESCE_MS + JITTER_MS)
+    expect(PROFILE_COALESCE_MS).toBeGreaterThanOrEqual(3_000)
+    expect(PROFILE_COALESCE_MS).toBeLessThanOrEqual(5_000)
   })
 })

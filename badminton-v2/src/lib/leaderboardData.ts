@@ -11,12 +11,15 @@
 
 import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
-import { MIN_SESSIONS_CHEERS, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
+import { fetchBoardProfiles, fetchEligibility } from '@/lib/boardEligibility'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
-import type { PairTallyMatch } from '@/lib/pairStats'
-import { rankCheerShares } from '@/lib/cheerShare'
-import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
+import { fetchSeasonCheers, fetchSeasonMatches } from '@/lib/seasonData'
+import { winRatePct } from '@/lib/matchResults'
+import { seasonWindow, type BoardScope } from '@/lib/season'
+import { tallyCheers, tallyPlayerGames } from '@/lib/seasonTally'
+import { rankCheerShares, type CheerShareRow } from '@/lib/cheerShare'
+import { CHEER_CATEGORIES, type CheerCategory } from '@/lib/cheerTypes'
 import { awardBoardKey, cheersBoard } from '@/lib/podiumCelebration'
 import { fetchAwardsLeaderboard } from '@/lib/awardsLeaderboard'
 import type { RankSnapshot } from '@/lib/podiumCelebration'
@@ -77,134 +80,96 @@ export const PODIUM_PLACES = 3
 /** Ten *places*, not ten rows — a tie makes the two differ. */
 export const MAX_PLACES = 10
 
+// --- Individual board -------------------------------------------------------
+
 /**
- * The Individual board's own attendance floor, stricter than the shared
- * `MIN_SESSIONS_PLAYED` gate the other boards use (owner's call, 2026-11-15).
- * Applied before ranking, so a filtered player never holds a place.
+ * Pure ranking of the Individual board: win rate, then wins, then player id; shared ranks on equal
+ * win rate; cut to `MAX_PLACES` places. `include` is applied before ranking, so a player it rejects
+ * never occupies a place. Inactive players are dropped unless `includeInactive` (a past season).
  */
-export const MIN_SESSIONS_INDIVIDUAL = 4
+export function rankIndividual(
+  tallies: ReadonlyMap<string, { games: number; wins: number }>,
+  profiles: ReadonlyArray<{ id: string; nickname: string | null; name_slug: string; avatar_url: string | null; is_active: boolean }>,
+  include: (id: string) => boolean,
+  opts: { includeInactive: boolean },
+): LeaderboardEntry[] {
+  const profileById = new Map(profiles.map((p) => [p.id, p]))
 
-export async function fetchAllTimeLeaderboard(): Promise<LeaderboardEntry[]> {
-  // The shared gate, not a local copy: the copy that lived here skipped the
-  // guest rule (2026-10-23), and the podium celebration reads this board.
-  const [statsRes, profilesRes, eligibleIds] = await Promise.all([
-    supabase.from('player_stats').select('player_id, games_played, wins, sessions_attended').gt('games_played', 0),
-    supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
-    fetchEligiblePlayerIds(),
-  ])
+  const ordered: Array<Omit<LeaderboardEntry, 'rank'>> = []
+  for (const [playerId, t] of tallies) {
+    const profile = profileById.get(playerId)
+    if (!profile || t.games === 0) continue
+    if (!opts.includeInactive && !profile.is_active) continue
+    if (!include(playerId)) continue
+    ordered.push({
+      playerId,
+      displayName: formatDisplayName(profile.nickname, profile.name_slug),
+      avatarUrl: profile.avatar_url,
+      wins: t.wins,
+      losses: t.games - t.wins,
+      winRate: winRatePct(t.wins, t.games),
+    })
+  }
+  // The player id settles what wins do not, so the sequence is a property of the data rather than
+  // of the order the rows happened to arrive in.
+  ordered.sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.playerId.localeCompare(b.playerId))
 
-  type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
-  const profileRows = (profilesRes.data ?? []) as ProfileRow[]
-  const nameMap = new Map(profileRows.map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)]))
-  const avatarMap = new Map(profileRows.map((p) => [p.id, p.avatar_url]))
-
-  const ordered = ((statsRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number; sessions_attended: number }>)
-    .filter((s) => nameMap.has(s.player_id) && eligibleIds.has(s.player_id) && s.sessions_attended >= MIN_SESSIONS_INDIVIDUAL)
-    .map((s) => ({
-      playerId: s.player_id,
-      displayName: nameMap.get(s.player_id)!,
-      avatarUrl: avatarMap.get(s.player_id) ?? null,
-      wins: s.wins,
-      losses: s.games_played - s.wins,
-      winRate: Math.round((s.wins / s.games_played) * 100),
-    }))
-    // The player id settles what wins do not, so the sequence is a property of
-    // the data rather than of the order Supabase happened to return rows in.
-    .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.playerId.localeCompare(b.playerId))
-
-  // Shared rank by win rate, matching the partnership board: two players both
-  // reading 67% take the same place, and the cut counts places not rows.
+  // Shared rank by win rate, matching the partnership board: two players both reading 67% take the
+  // same place, and the cut counts places not rows.
   return cutToPlaces(assignDenseRanks(ordered, (entry) => entry.winRate), MAX_PLACES)
 }
 
-export async function fetchCheerLeaderboard(): Promise<CheerLeaderboardEntry[]> {
-  const [statsRes, profilesRes, eligibleIds, attendanceRes] = await Promise.all([
-    supabase.from('player_cheer_stats').select('*').gt('cheers_received', 0),
-    supabase.from('profiles').select('id, nickname, name_slug').eq('is_active', true),
-    fetchEligiblePlayerIds(),
-    supabase.from('player_stats').select('player_id').gte('sessions_attended', MIN_SESSIONS_CHEERS),
+export async function fetchWinsLeaderboard(scope: BoardScope): Promise<LeaderboardEntry[]> {
+  // The shared gate, not a local copy: the copy that once lived here skipped the guest rule, and the
+  // podium celebration reads this board.
+  const [matches, profiles, eligibility] = await Promise.all([
+    fetchSeasonMatches(seasonWindow(scope.season)),
+    fetchBoardProfiles(),
+    fetchEligibility(scope),
   ])
-  // A failed read must not turn into an empty board.
-  if (attendanceRes.error) throw attendanceRes.error
-  const attendedEnough = new Set(((attendanceRes.data ?? []) as Array<{ player_id: string }>).map((s) => s.player_id))
-
-  const nameMap = new Map(
-    ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
-      .map(p => [p.id, formatDisplayName(p.nickname, p.name_slug)])
+  return rankIndividual(
+    tallyPlayerGames(matches),
+    profiles,
+    (id) => eligibility.qualifies(id, scope.season.floors.individual),
+    { includeInactive: !scope.isCurrent },
   )
+}
 
-  return ((statsRes.data ?? []) as CheerStatsRow[])
-    .filter(s => nameMap.has(s.player_id) && eligibleIds.has(s.player_id) && attendedEnough.has(s.player_id))
-    .map(s => ({
-      ...s,
-      displayName: nameMap.get(s.player_id)!,
-    }))
+// --- Cheers board -----------------------------------------------------------
+
+export async function fetchCheerLeaderboard(scope: BoardScope): Promise<CheerLeaderboardEntry[]> {
+  const [cheers, profiles, eligibility] = await Promise.all([
+    fetchSeasonCheers(seasonWindow(scope.season)),
+    fetchBoardProfiles(),
+    fetchEligibility(scope),
+  ])
+  const profileById = new Map(profiles.map((p) => [p.id, p]))
+
+  const rows: CheerLeaderboardEntry[] = []
+  for (const row of tallyCheers(cheers).values()) {
+    if (row.cheers_received <= 0) continue
+    const profile = profileById.get(row.player_id)
+    if (!profile) continue
+    if (scope.isCurrent && !profile.is_active) continue
+    if (!eligibility.qualifies(row.player_id, scope.season.floors.cheers)) continue
+    rows.push({ ...row, displayName: formatDisplayName(profile.nickname, profile.name_slug) })
+  }
+  return rows
 }
 
 // --- Partnership board -----------------------------------------------------
 
 /** Also read by the Partners board caption, which states the rule to players. */
 export const MIN_GAMES_TOGETHER = 3
-const MATCH_PAGE_SIZE = 1000
 
-/**
- * `sessions!inner(id)` carries no filter today. It is here so that the planned
- * yearly season/archive rule is a single added `.eq('sessions.…', …)` condition
- * rather than a new embed and a re-shaped row type. Do not remove it as unused.
- */
-const PAIR_MATCH_SELECT =
-  'team1_player1_id, team1_player2_id, team2_player1_id, team2_player2_id, match_results(winning_pair_index, game_number), sessions!inner(id)'
-
-/**
- * Every other query in this app is session-scoped or over a small table, so none
- * of them can reach the server's row cap. This one can — a year of play is around
- * a thousand matches — and an uncapped read would come back silently truncated,
- * producing a board that looks right and is wrong. Hence paging, plus the exact
- * count cross-check below.
- */
-async function fetchCompletedMatchesForPairs(): Promise<PairTallyMatch[]> {
-  const rows: PairTallyMatch[] = []
-
-  for (let offset = 0; ; offset += MATCH_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('matches')
-      .select(PAIR_MATCH_SELECT)
-      .eq('status', 'complete')
-      .order('id', { ascending: true })
-      .range(offset, offset + MATCH_PAGE_SIZE - 1)
-
-    if (error) throw error
-
-    const page = (data ?? []) as unknown as PairTallyMatch[]
-    rows.push(...page)
-    if (page.length < MATCH_PAGE_SIZE) break
-  }
-
-  const { count, error: countError } = await supabase
-    .from('matches')
-    .select('id, sessions!inner(id)', { count: 'exact', head: true })
-    .eq('status', 'complete')
-
-  if (countError) throw countError
-  if (typeof count === 'number' && count !== rows.length) {
-    throw new Error(
-      `Pair leaderboard read is incomplete: fetched ${rows.length} of ${count} completed matches. ` +
-        'Refusing to render a partially counted board.',
-    )
-  }
-
-  return rows
-}
-
-export async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
-  const [matches, profilesRes, eligibleIds] = await Promise.all([
-    fetchCompletedMatchesForPairs(),
-    supabase.from('profiles').select('id, nickname, name_slug, avatar_url').eq('is_active', true),
-    fetchEligiblePlayerIds(),
+export async function fetchPairLeaderboard(scope: BoardScope): Promise<PairLeaderboardEntry[]> {
+  const [matches, allProfiles, eligibility] = await Promise.all([
+    fetchSeasonMatches(seasonWindow(scope.season)),
+    fetchBoardProfiles(),
+    fetchEligibility(scope),
   ])
 
-  type ProfileRow = { id: string; nickname: string | null; name_slug: string; avatar_url: string | null }
-  const profileRows = (profilesRes.data ?? []) as ProfileRow[]
+  const profileRows = scope.isCurrent ? allProfiles.filter((p) => p.is_active) : allProfiles
   const profileById = new Map(profileRows.map((p) => [p.id, p]))
 
   // Two different players can both be nicknamed "Alexis". On a pair row that
@@ -223,7 +188,7 @@ export async function fetchPairLeaderboard(): Promise<PairLeaderboardEntry[]> {
   const ranked = rankPairs(tallyPairs(matches), {
     minGames: MIN_GAMES_TOGETHER,
     maxRank: MAX_PLACES,
-    isEligiblePlayer: (id) => profileById.has(id) && eligibleIds.has(id),
+    isEligiblePlayer: (id) => profileById.has(id) && eligibility.qualifies(id, scope.season.floors.played),
   })
 
   const toPlayer = (id: string): PairLeaderboardPlayer => ({
@@ -273,6 +238,37 @@ export async function fetchLatestSessionCompletion(): Promise<string | null> {
   return (data as { completed_at: string | null } | null)?.completed_at ?? null
 }
 
+// --- One player's place on a board ------------------------------------------
+
+/**
+ * A player can appear in several pairings; their Partners standing is their best one (the lowest rank, the
+ * first such row in board order). Null when they are in no ranked pairing.
+ */
+export function bestPairEntry(
+  pairs: readonly PairLeaderboardEntry[],
+  playerId: string,
+): PairLeaderboardEntry | null {
+  let best: PairLeaderboardEntry | null = null
+  for (const p of pairs) {
+    if (!p.players.some((pl) => pl.id === playerId)) continue
+    if (!best || p.rank < best.rank) best = p
+  }
+  return best
+}
+
+/** The player's place on each cheer category's board, in category order; `place` is null when unplaced. */
+export function cheerPlaces(
+  rows: readonly CheerLeaderboardEntry[],
+  playerId: string,
+): Array<{ category: CheerCategory; place: CheerShareRow | null }> {
+  return CHEER_CATEGORIES.map((category) => {
+    const ranked = rankCheerShares(
+      rows.map((e) => ({ playerId: e.player_id, categoryCount: category.of(e), totalReceived: e.cheers_received })),
+    )
+    return { category, place: ranked.find((r) => r.playerId === playerId) ?? null }
+  })
+}
+
 // --- One player's standing across every watched board -----------------------
 
 /**
@@ -289,14 +285,14 @@ export async function fetchLatestSessionCompletion(): Promise<string | null> {
  * treats an absent board as "not watched" and stays silent about it, rather than
  * mistaking a failed query for a player who has just arrived.
  */
-export async function fetchPlayerStandings(playerId: string): Promise<RankSnapshot> {
+export async function fetchPlayerStandings(playerId: string, scope: BoardScope): Promise<RankSnapshot> {
   const standings: RankSnapshot = {}
 
   const [winsRes, pairsRes, cheersRes, awardsRes] = await Promise.allSettled([
-    fetchAllTimeLeaderboard(),
-    fetchPairLeaderboard(),
-    fetchCheerLeaderboard(),
-    fetchAwardsLeaderboard(),
+    fetchWinsLeaderboard(scope),
+    fetchPairLeaderboard(scope),
+    fetchCheerLeaderboard(scope),
+    fetchAwardsLeaderboard(scope),
   ])
 
   if (winsRes.status === 'fulfilled') {
@@ -304,24 +300,12 @@ export async function fetchPlayerStandings(playerId: string): Promise<RankSnapsh
   }
 
   if (pairsRes.status === 'fulfilled') {
-    // A player can appear in several pairings; their standing is their best one.
-    const ranks = pairsRes.value
-      .filter((e) => e.players.some((p) => p.id === playerId))
-      .map((e) => e.rank)
-    standings.pairs = ranks.length > 0 ? Math.min(...ranks) : null
+    standings.pairs = bestPairEntry(pairsRes.value, playerId)?.rank ?? null
   }
 
   if (cheersRes.status === 'fulfilled') {
-    const rows = cheersRes.value
-    for (const category of CHEER_CATEGORIES) {
-      const ranked = rankCheerShares(
-        rows.map((e) => ({
-          playerId: e.player_id,
-          categoryCount: category.of(e),
-          totalReceived: e.cheers_received,
-        })),
-      )
-      standings[cheersBoard(category.slug)] = ranked.find((r) => r.playerId === playerId)?.rank ?? null
+    for (const { category, place } of cheerPlaces(cheersRes.value, playerId)) {
+      standings[cheersBoard(category.slug)] = place?.rank ?? null
     }
   }
 

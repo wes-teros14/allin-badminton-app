@@ -1,6 +1,6 @@
 # Season reset and year in review — design
 
-Status: final draft, awaiting owner approval · 2026-11-19 · POC: `temporary_files/season-reset-poc.html`
+Status: built 2026-11-23 on branch claude/094-season-reset-ab612d (not merged); parity check skipped (owner) · designed 2026-11-19 · POC: `temporary_files/season-reset-poc.html`
 
 ## Intent
 
@@ -254,6 +254,24 @@ The mechanism is the builder's: a season in the board key, or resetting the stor
   second layout to keep in sync.
 - **Both are the signed-in player's own.** No player id in the route, and no one else's page can be opened. *(my call:
   best partners and toughest opponents are only ever shown to the player themselves today)*
+
+## Changes during build (2026-11-23)
+
+Owner rulings made after this design was written:
+
+- **A completed session with no game results is ignored everywhere** (the Nov 22 Xmas Party was deliberately
+  game-less): not attendance, floors, the recent-5 window, streaks, Early Bird, the badge hold, or "the season has
+  started". "Played session" = status `complete` and at least one `match_results` row.
+- **The between-seasons card is keyed on played sessions**, not completed ones. It shows while the current season has
+  0 played sessions (true on prod now): "The 2027 season starts with the {date} session" plus a link to the 2026
+  final standings.
+- **The parity check (task 12) was skipped.** Evidence is unit tests plus a live check on Neon dev. The counter faults
+  listed under "Verified evidence" (8 players at one win off, March cheers 6,249 vs 6,243) were not re-measured by the
+  new code.
+
+Difference from the POC: the "Your 2026 season" card on My Profile shows "N sessions · M games" with no board place,
+so opening a profile does not load the 2026 boards. The year page `/profile/season/:seasonId` still has "Where you
+finished".
 
 ## Verification the builder must run
 

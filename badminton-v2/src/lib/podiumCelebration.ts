@@ -13,6 +13,7 @@
 import { CHEER_CATEGORIES } from '@/lib/cheerTypes'
 import { AWARD_BOARDS, type AwardKey } from '@/lib/awardBoards'
 import type { CheerTypeSlug } from '@/types/app'
+import { LEGACY_SEASON, type PlayerCelebrationState } from '@/lib/celebrationStorage'
 
 /** Places that count as a podium. Matches MEDALS in LeaderboardView. */
 export const PODIUM_PLACES = 3
@@ -245,4 +246,36 @@ export function newPodiumPlacings(
  */
 export function bestPlacing(placings: readonly NewPlacing[]): NewPlacing | null {
   return placings.length > 0 ? placings[0] : null
+}
+
+/**
+ * The snapshot and records to compare this season's standings against.
+ *
+ * Within a season that is what was stored. On a new season the old standings
+ * belong to a different race, so every watched board starts "present, unplaced"
+ * (null): a podium place this season is news, a place off the podium is not a
+ * drop. `bestEver` is kept, so a board the player has reached before is not
+ * announced as a first appearance.
+ */
+export function baselineForSeason(
+  stored: PlayerCelebrationState,
+  seasonId: string,
+  boards: readonly BoardKey[],
+): { snapshot: RankSnapshot; bestEver: BestEver } {
+  if ((stored.season ?? LEGACY_SEASON) === seasonId) {
+    return { snapshot: stored.snapshot, bestEver: stored.bestEver }
+  }
+  const snapshot: RankSnapshot = {}
+  for (const board of boards) snapshot[board] = null
+  return { snapshot, bestEver: stored.bestEver }
+}
+
+/**
+ * The snapshot to store after an evaluation: the fresh standings over the baseline they were compared
+ * against. A board whose read failed is missing from `standings`, so it keeps its baseline value (still
+ * unplaced after a rollover, its last known rank otherwise). Writing `standings` alone would drop it,
+ * and the next evaluation reads an absent board as "not watched" and stays silent about its first podium.
+ */
+export function nextSnapshot(baseline: RankSnapshot, standings: RankSnapshot): RankSnapshot {
+  return { ...baseline, ...standings }
 }

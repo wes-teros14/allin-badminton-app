@@ -17,6 +17,8 @@ const CHEERS_ELIGIBLE_STATUSES = [
 export interface ActiveSession {
   sessionId: string
   name: string
+  /** ISO date the session is played on. */
+  date: string
   status: typeof ACTIVE_STATUSES[number]
 }
 
@@ -51,17 +53,18 @@ export function useActiveSessions() {
 
       const { data } = await supabase
         .from('sessions')
-        .select('id, name, status')
+        .select('id, name, status, date')
         .in('status', ACTIVE_STATUSES)
         .in('id', registeredSessionIds)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
 
-      const rows = (data ?? []) as Array<{ id: string; name: string; status: string }>
+      const rows = (data ?? []) as Array<{ id: string; name: string; status: string; date: string }>
       setActiveSessions(
         rows.map((row) => ({
           sessionId: row.id,
           name: row.name,
+          date: row.date,
           status: row.status as ActiveSession['status'],
         }))
       )

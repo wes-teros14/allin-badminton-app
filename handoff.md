@@ -2,30 +2,28 @@
 
 Updated: 2026-11-23 Manila. Overwrite this file on every update; it is never a running history.
 
-## Done this session (2026-11-22 → 11-23)
-- Explained the Nov 22 outage (owner paused Supabase prod) and the logout on resume (auth-js drops the session on
-  non-retryable 500/521; only the owner's browser hit it — 20 failed refreshes from 1 IP, 9 others got 200).
-- Xmas Party (Nov 22) finished with Finish Session only: 18 queued + 2 playing games, 0 results, 0 cheers.
-- Gallery: photos now open until the session is **closed** (was: until Finish Session). Migration 093 applied to
-  Neon dev + production (rules verified both), app code deployed (commit `463d8e5`, main `e06b08f`).
+## Done this session
+- Season reset built on branch `claude/094-season-reset-ab612d` (commits a99010e..a2a4d10 plus docs). **Not merged, not deployed.**
+  - Seasons 2026 / 2027 in `lib/season.ts`; every board and profile number tallied at read time from raw rows.
+  - Counter tables unread (one exception: gallery access gate). Per-season floors, 12-month window.
+  - Leaderboard season switcher, between-seasons card, My Profile season-only, "Your 2026 season" page, celebration rollover, badge hold.
+  - Owner rulings: game-less completed session (Nov 22 Xmas Party) ignored everywhere; parity check skipped.
+- Docs updated: `project_memory.md` Leaderboards, `badminton-v2/docs/qa-log.html`, `specs/009-season-reset/design.md`, `tasks/lessons.md`.
 
 ## Current state
-- Live: Xmas Party album accepts photos until the owner closes the session.
-- Supabase DEV looks paused (hostname doesn't resolve) → Dev Login on localhost fails.
-- Neon dev: "Dev Session 4" left finished-not-closed for testing the Gallery window.
+- Verified: 700 unit tests passing; live check on Neon dev (2026-11-23) covering all tabs x seasons, error state, between-seasons card, light theme, My Profile + year page as test player Dana.
+- NOT verified: parity vs the old counters (8 players ±1 win; March cheers weighted 6,249 vs counter 6,243) — skipped by the owner, so the new code never re-measured them.
+- Neon dev has test cheers given as Dana; reset with `scripts/neon/seed-dev.sql` if needed.
+- Supabase DEV looked paused earlier (Dev Login fails on localhost) — unclear if still true.
 - Unrelated untracked files left alone: `badminton-v2/5`, `badminton-v2/docs/lessons.md`, `supabase/.temp/cli-latest`.
 
 ## Next steps
-1. Owner: resume Supabase DEV in the dashboard if localhost testing is needed; then check the Gallery screens
-   (finished-not-closed album shows Add + "Open until closed").
-2. Owner: close the Xmas Party session when photos are in.
-3. Season reset (parked, `specs/009-season-reset/plan.md`) — Nov 22 is the first 2027 session.
+1. Owner reviews the branch.
+2. Merge into `dev`, then deploy. On deploy the live boards switch to "The 2027 season starts with the {next} session" until the next played session.
+3. Owner: close the Xmas Party session when photos are in; resume Supabase DEV if localhost testing is needed.
 
 ## Open questions
-- Offered, not decided: treat Supabase 500/52x token-refresh errors as retryable so a brief outage doesn't sign
-  players out.
-- Season plan: cheers counted with their March `multiplier` weights — owner hasn't confirmed; task 12 needs a
-  prod Data API URL + anon JWT from the owner.
-- Carried over: iPhone Safari WebP untested on a real phone; kiosk insert rule; offline-backup phone check;
-  Broadcast/share on phones; Nov 1 session not closed; prod `service_role` key not rotated; old Neon test
-  branches cleanup (owner: maybe later).
+- Accepted as is (owner, 2026-11-23): mid-session, a profile's Games can show before that night counts as a session attended.
+- Parity check skipped (owner's call); not planned.
+- Offered, not decided: treat Supabase 500/52x token-refresh errors as retryable so a brief outage doesn't sign players out.
+- Carried over: iPhone Safari WebP untested on a real phone; kiosk insert rule; offline-backup phone check; Broadcast/share on phones; Nov 1 session not closed; prod `service_role` key not rotated; old Neon test branches cleanup (owner: maybe later).

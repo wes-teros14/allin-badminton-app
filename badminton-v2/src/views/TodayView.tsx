@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { computeStatsFromResults } from '@/lib/matchResults'
+import { computeStatsFromResults, winRatePct } from '@/lib/matchResults'
 import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { supabase } from '@/lib/supabase'
 import { sessionTopic } from '@/lib/liveChannel'
@@ -7,6 +7,9 @@ import { listenLive } from '@/hooks/useLiveChannel'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 import { NoResultsYet } from '@/components/MatchBoard'
+import { fetchSeasonMatches } from '@/lib/seasonData'
+import { seasonBefore } from '@/lib/season'
+import { tallyPlayerGames } from '@/lib/seasonTally'
 
 interface LeaderboardEntry {
   playerId: string
@@ -14,7 +17,7 @@ interface LeaderboardEntry {
   wins: number
   games: number
   winRate: number
-  careerWinRate?: number
+  seasonWinRate?: number
   improvement?: number
 }
 
@@ -26,7 +29,10 @@ type MatchRow = {
   match_results: Array<{ winning_pair_index: 1 | 2; game_number: number | null }>
 }
 
-async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> {
+async function fetchSessionLeaderboard(
+  sessionId: string,
+  seasonBaseline: () => Promise<Map<string, { games: number; wins: number }>>,
+): Promise<LeaderboardEntry[]> {
   const [regsRes, matchesRes] = await Promise.all([
     supabase
       .from('session_registrations')
@@ -39,22 +45,21 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
       .eq('status', 'complete'),
   ])
 
+  if (regsRes.error) throw regsRes.error
+  if (matchesRes.error) throw matchesRes.error
+
   const playerIds = ((regsRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id)
   if (playerIds.length === 0) return []
 
-  const [profilesRes, careerRes] = await Promise.all([
+  const [profilesRes, seasonMap] = await Promise.all([
     supabase.from('profiles').select('id, nickname, name_slug').in('id', playerIds),
-    supabase.from('player_stats').select('player_id, games_played, wins').in('player_id', playerIds),
+    seasonBaseline(),
   ])
+  if (profilesRes.error) throw profilesRes.error
 
   const nameMap = new Map(
     ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
       .map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)])
-  )
-
-  const careerMap = new Map(
-    ((careerRes.data ?? []) as Array<{ player_id: string; games_played: number; wins: number }>)
-      .map((s) => [s.player_id, { games: s.games_played, wins: s.wins }])
   )
 
   const statsMap = new Map<string, { wins: number; games: number }>(
@@ -73,17 +78,17 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
   const entries: LeaderboardEntry[] = []
   for (const [playerId, s] of statsMap) {
     if (s.games === 0) continue
-    const winRate = Math.round((s.wins / s.games) * 100)
-    const career = careerMap.get(playerId)
-    const careerWinRate = career && career.games > 0 ? Math.round((career.wins / career.games) * 100) : undefined
+    const winRate = winRatePct(s.wins, s.games)
+    const season = seasonMap.get(playerId)
+    const seasonWinRate = season && season.games > 0 ? winRatePct(season.wins, season.games) : undefined
     entries.push({
       playerId,
       displayName: nameMap.get(playerId) ?? playerId,
       wins: s.wins,
       games: s.games,
       winRate,
-      careerWinRate,
-      improvement: careerWinRate !== undefined ? winRate - careerWinRate : undefined,
+      seasonWinRate,
+      improvement: seasonWinRate !== undefined ? winRate - seasonWinRate : undefined,
     })
   }
 
@@ -97,6 +102,7 @@ export function TodayView() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   // Clamp selectedIndex when sessions list changes
   const safeIndex = Math.min(selectedIndex, Math.max(activeSessions.length - 1, 0))
@@ -106,12 +112,32 @@ export function TodayView() {
     if (selectedIndex !== safeIndex) setSelectedIndex(safeIndex)
   }, [safeIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The baseline is the season *before* this session's day, so today's games never leak into it and every
+  // phone compares against the same numbers, whenever it opened. It cannot move during the session, so it
+  // is read once per session id and reused by realtime refetches (every phone refetching a full paged read
+  // would fan out). A failed read is dropped so the next load re-reads it.
+  const baselineRef = useRef<{ sessionId: string; promise: Promise<Map<string, { games: number; wins: number }>> } | null>(null)
+  const seasonBaselineFor = useCallback((sessionId: string, sessionDate: string) => {
+    if (baselineRef.current?.sessionId === sessionId) return baselineRef.current.promise
+    const promise = fetchSeasonMatches(seasonBefore(sessionDate)).then(tallyPlayerGames)
+    const entry = { sessionId, promise }
+    baselineRef.current = entry
+    promise.catch(() => { if (baselineRef.current === entry) baselineRef.current = null })
+    return promise
+  }, [])
+
   const load = useCallback(async () => {
     if (!activeSession) { setIsLoading(false); return }
     setIsLoading(true)
     try {
-      const data = await fetchSessionLeaderboard(activeSession.sessionId)
+      const data = await fetchSessionLeaderboard(activeSession.sessionId, () =>
+        seasonBaselineFor(activeSession.sessionId, activeSession.date),
+      )
       setEntries(data)
+      setLoadError(false)
+    } catch (err) {
+      console.error('Today leaderboard failed to load', err)
+      setLoadError(true)
     } finally {
       setIsLoading(false)
     }
@@ -184,7 +210,17 @@ export function TodayView() {
 
       <h1 className="text-xl font-bold text-primary-ink">🏆 {activeSession.name}</h1>
 
-      {entries.length === 0 ? (
+      {loadError ? (
+        <div role="alert" className="space-y-2">
+          <p className="text-sm text-destructive">Could not load today’s results.</p>
+          <button
+            onClick={() => load()}
+            className="px-3 py-1.5 rounded-full text-sm font-medium bg-muted text-foreground hover:bg-muted/80"
+          >
+            Retry
+          </button>
+        </div>
+      ) : entries.length === 0 ? (
         <NoResultsYet />
       ) : (
         <>
@@ -222,7 +258,7 @@ export function TodayView() {
                     <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-green-600">+{entry.improvement}%</p>
-                      <p className="text-xs text-muted-foreground">vs {entry.careerWinRate}% career</p>
+                      <p className="text-xs text-muted-foreground">vs {entry.seasonWinRate}% season</p>
                     </div>
                   </div>
                 ))}

@@ -11,7 +11,7 @@
  */
 
 import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
-import { sortMatchResults } from '@/lib/matchResults'
+import { gameWinner, sortMatchResults, winRatePct } from '@/lib/matchResults'
 
 /**
  * The shape this module needs from a match row. Structural rather than the
@@ -104,8 +104,7 @@ export function tallyPairs(matches: readonly PairTallyMatch[]): Map<string, Pair
     if (!team1 && !team2) continue
 
     for (const result of results) {
-      // Mirrors computeStatsFromResults: anything that isn't 2 means team 1 won.
-      const team2Won = result.winning_pair_index === 2
+      const team2Won = gameWinner(result) === 2
       if (team1) record(tallies, team1, !team2Won)
       if (team2) record(tallies, team2, team2Won)
     }
@@ -185,7 +184,7 @@ export function rankPairs(
     )
     .map((tally) => ({
       ...tally,
-      winRate: tally.games > 0 ? Math.round((tally.wins / tally.games) * 100) : 0,
+      winRate: winRatePct(tally.wins, tally.games),
     }))
     .sort((a, b) => b.winRate - a.winRate || b.wins - a.wins || a.key.localeCompare(b.key))
 

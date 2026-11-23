@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { rankEarlyBirds as rankWithMinimum, type EarlyBirdRegistration, type RankEarlyBirdsOptions } from '@/lib/earlyBird'
+import { rankEarlyBirds as rankWithGate, type EarlyBirdRegistration, type RankEarlyBirdsOptions } from '@/lib/earlyBird'
 
-/** The scoring tests use small histories, so they lift the 8-session minimum unless they test it. */
-const rankEarlyBirds = (regs: EarlyBirdRegistration[], opts: RankEarlyBirdsOptions = {}) => rankWithMinimum(regs, { minSessions: 1, ...opts })
+/** The scoring tests qualify everyone unless they test the gate. */
+const rankEarlyBirds = (regs: EarlyBirdRegistration[], opts: Partial<RankEarlyBirdsOptions> = {}) =>
+  rankWithGate(regs, { qualifies: () => true, ...opts })
 
 /** Registrations for one session, in sign-up order. */
 function session(id: string, players: string[]): EarlyBirdRegistration[] {
@@ -92,13 +93,6 @@ describe('rankEarlyBirds', () => {
     expect(rankEarlyBirds(regs).find((e) => e.playerId === 'a')).toMatchObject({ points: 5, sessions: 2, average: 2.5 })
   })
 
-  it('needs 8 self-registered sessions by default', () => {
-    const seven = Array.from({ length: 7 }, (_, i) => session(`s${i}`, ['a', 'b'])).flat()
-    expect(rankWithMinimum(seven)).toEqual([])
-    const eight = [...seven, ...session('s7', ['a', 'b'])]
-    expect(rankWithMinimum(eight).map((e) => e.playerId)).toEqual(['a', 'b'])
-  })
-
   it('returns nothing without registrations', () => {
     expect(rankEarlyBirds([])).toEqual([])
   })
@@ -112,5 +106,16 @@ describe('rankEarlyBirds eligibility', () => {
       { playerId: 'a', points: 4, firsts: 0, sessions: 1, average: 4, place: 1 },
       { playerId: 'b', points: 3, firsts: 0, sessions: 1, average: 3, place: 2 },
     ])
+  })
+})
+
+describe('rankEarlyBirds qualifies', () => {
+  it('ranks only the players the gate qualifies', () => {
+    const regs: EarlyBirdRegistration[] = [
+      { sessionId: 's1', playerId: 'a', registeredAt: '2026-01-01T10:00:00Z' },
+      { sessionId: 's1', playerId: 'b', registeredAt: '2026-01-01T10:01:00Z' },
+    ]
+    const ranked = rankEarlyBirds(regs, { qualifies: (id) => id === 'a' })
+    expect(ranked.map((e) => e.playerId)).toEqual(['a'])
   })
 })

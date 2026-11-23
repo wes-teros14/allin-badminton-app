@@ -1,40 +1,48 @@
-import { supabase } from '@/lib/supabase'
-import { ATTENDANCE_AWARD_EXCLUDED, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
-import { rankEarlyBirds, type EarlyBirdEntry, type EarlyBirdRegistration } from '@/lib/earlyBird'
+import { ATTENDANCE_AWARD_EXCLUDED, canAppearOnBoard, fetchBoardProfiles, fetchEligibility } from '@/lib/boardEligibility'
+import { rankEarlyBirds, type EarlyBirdEntry } from '@/lib/earlyBird'
+import { floorWindow, inWindow, seasonWindow, type BoardScope, type DateWindow } from '@/lib/season'
+import { fetchAttendance } from '@/lib/seasonData'
+import { countSessions } from '@/lib/seasonTally'
 
-/** PostgREST caps a response at 1000 rows by default, so read in pages. */
-const PAGE = 1000
-
-/**
- * Every self-registration for every finished session, all-time. Filtered on the
- * joined session's status rather than an `in (...)` list of ids, which would
- * grow the URL by a UUID per session played.
- */
-async function fetchSelfRegistrationsForFinishedSessions(): Promise<EarlyBirdRegistration[]> {
-  const rows: EarlyBirdRegistration[] = []
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('session_registrations')
-      .select('session_id, player_id, registered_at, sessions!inner(status)')
-      .eq('source', 'self')
-      .eq('sessions.status', 'complete')
-      .order('registered_at', { ascending: true })
-      .order('player_id', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (error) throw error
-    const page = (data ?? []) as unknown as Array<{ session_id: string; player_id: string; registered_at: string }>
-    for (const r of page) {
-      rows.push({ sessionId: r.session_id, playerId: r.player_id, registeredAt: r.registered_at })
-    }
-    if (page.length < PAGE) return rows
+/** The smallest window holding both; a null bound is open and stays open. */
+function unionWindow(a: DateWindow, b: DateWindow): DateWindow {
+  return {
+    start: a.start === null || b.start === null ? null : a.start < b.start ? a.start : b.start,
+    end: a.end === null || b.end === null ? null : a.end > b.end ? a.end : b.end,
   }
 }
 
-/** All-time Early Bird ranking, placed among currently active players. */
-export async function fetchEarlyBirds(): Promise<EarlyBirdEntry[]> {
-  const [registrations, eligible] = await Promise.all([
-    fetchSelfRegistrationsForFinishedSessions(),
-    fetchEligiblePlayerIds(),
+/**
+ * 🐦 Early Bird for one season. Points come from the season's self-registrations; a player qualifies on
+ * the self-registered sessions inside the floor window, like every other floor. Admin-added registrations
+ * are not counted at all. Only played sessions are read (see `fetchAttendance`).
+ */
+export async function fetchEarlyBirds(scope: BoardScope): Promise<EarlyBirdEntry[]> {
+  const seasonW = seasonWindow(scope.season)
+  const floorW = floorWindow(scope)
+  const [attendance, profiles, pool] = await Promise.all([
+    // One read covers the season and the floor window; each is filtered locally.
+    fetchAttendance(unionWindow(seasonW, floorW)),
+    fetchBoardProfiles(),
+    fetchEligibility(scope),
   ])
-  return rankEarlyBirds(registrations, { excluded: ATTENDANCE_AWARD_EXCLUDED, eligible })
+  const self = attendance.filter((r) => r.source === 'self')
+  const floorSessions = countSessions(self, floorW)
+  const present = canAppearOnBoard(profiles, scope)
+
+  return rankEarlyBirds(
+    self
+      .filter((r) => inWindow(r.sessionDate, seasonW))
+      .map((r) => ({ sessionId: r.sessionId, playerId: r.playerId, registeredAt: r.registeredAt })),
+    {
+      excluded: ATTENDANCE_AWARD_EXCLUDED,
+      // `present` is part of the gate so a player who may not appear never occupies a place.
+      qualifies: (id) =>
+        present(id) &&
+        // Floor 0: the pool contributes only its recent-registration and guest rules; the floor is
+        // counted on self-registrations below.
+        pool.qualifies(id, 0) &&
+        (floorSessions.get(id) ?? 0) >= scope.season.floors.earlyBird,
+    },
+  )
 }

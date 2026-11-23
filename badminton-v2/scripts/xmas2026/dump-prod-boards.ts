@@ -87,18 +87,22 @@ const { supabase } = await import(`${ROOT}/src/lib/supabase`)
 ;(supabase as any).from = from
 ;(supabase as any).rpc = () => { throw new Error('rpc not mocked') }
 
-const { fetchAllTimeLeaderboard, fetchCheerLeaderboard, fetchPairLeaderboard } = await import(`${ROOT}/src/lib/leaderboardData`)
+const { fetchWinsLeaderboard, fetchCheerLeaderboard, fetchPairLeaderboard } = await import(`${ROOT}/src/lib/leaderboardData`)
 const { fetchAwardsLeaderboard } = await import(`${ROOT}/src/lib/awardsLeaderboard`)
-const { fetchEligiblePlayerIds } = await import(`${ROOT}/src/lib/boardEligibility`)
+const { fetchEligibility } = await import(`${ROOT}/src/lib/boardEligibility`)
+const { boardScope, localToday } = await import(`${ROOT}/src/lib/season`)
 const { rankCheerShares } = await import(`${ROOT}/src/lib/cheerShare`)
 const { CHEER_CATEGORIES } = await import(`${ROOT}/src/lib/cheerTypes`)
 const { formatDisplayName } = await import(`${ROOT}/src/lib/formatDisplayName`)
 
-const individual = await fetchAllTimeLeaderboard()
-const pairs = await fetchPairLeaderboard()
+// The 2026 season scope: the closest match to the old all-time boards.
+const scope = boardScope('2026', localToday())
+const individual = await fetchWinsLeaderboard(scope)
+const pairs = await fetchPairLeaderboard(scope)
 const awards = await fetchAwardsLeaderboard()
-const cheerRows = await fetchCheerLeaderboard()
-const eligible = [...(await fetchEligiblePlayerIds())]
+const cheerRows = await fetchCheerLeaderboard(scope)
+const pool = await fetchEligibility(scope)
+const eligible = T.profiles.map((p) => p.id).filter((id: string) => pool.qualifies(id, scope.season.floors.played))
 const cheers = CHEER_CATEGORIES.map((c: any) => ({
   slug: c.slug, name: c.name,
   rows: rankCheerShares(cheerRows.map((e: any) => ({ playerId: e.player_id, categoryCount: c.of(e), totalReceived: e.cheers_received }))),
