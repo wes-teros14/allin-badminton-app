@@ -240,7 +240,7 @@ function Stats({
           <RankListCard
             label="Toughest Opponents"
             items={s.toughestOpponents.map((o) => ({ nameSlug: o.nameSlug, count: o.losses }))}
-            subLabel={(l) => `Lost ${l}x`}
+            subLabel={(l) => `Lost ${l}×`}
           />
         </div>
       </>

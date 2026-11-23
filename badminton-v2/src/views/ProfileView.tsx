@@ -7,6 +7,7 @@ import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { userTopic } from '@/lib/liveChannel'
 import { listenLive } from '@/hooks/useLiveChannel'
+import { createCoalescedRunner, profileRefreshDelay } from '@/lib/realtimePolicy'
 import { boardScope, localToday } from '@/lib/season'
 import { seasonStartLine, seasonSummaryLine } from '@/lib/seasonCopy'
 import { SeasonSections, SectionError } from '@/components/profile/SeasonSections'
@@ -128,15 +129,27 @@ export function ProfileView() {
 
   useEffect(() => {
     if (!user?.id) return
-    // A recorded result is the "something changed" signal: the stats, the "starts with" line and the badge
-    // hold can all move with it.
-    return listenLive(userTopic(user.id), (message) => {
-      if (message.table !== 'player_stats') return
-      refreshStats()
-      retryStatus()
-      refreshBadges()
+    // A recorded result is the "something changed" signal for the stats and the season status (the "starts
+    // with" line). One game sends several messages, so they are coalesced into one re-read.
+    const reload = createCoalescedRunner(() => { refreshStats(); retryStatus() }, () => profileRefreshDelay())
+    const stopListening = listenLive(userTopic(user.id), (message) => {
+      if (message.table === 'player_stats') reload.schedule()
     })
-  }, [user?.id, refreshStats, retryStatus, refreshBadges])
+    return () => {
+      reload.cancel()
+      stopListening()
+    }
+  }, [user?.id, refreshStats, retryStatus])
+
+  // Badges (and their early-season hold) can only change when a session completes, which the status's
+  // played-session count shows. Re-reading them on every recorded game would be a full awards read each.
+  const playedCount = liveStatus.kind === 'ready' ? liveStatus.played.length : null
+  const lastPlayedCount = useRef<number | null>(null)
+  useEffect(() => {
+    if (playedCount === null) return
+    if (lastPlayedCount.current !== null && lastPlayedCount.current !== playedCount) refreshBadges()
+    lastPlayedCount.current = playedCount
+  }, [playedCount, refreshBadges])
 
   async function handleSaveNickname() {
     if (!user) return

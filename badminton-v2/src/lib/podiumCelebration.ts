@@ -269,3 +269,13 @@ export function baselineForSeason(
   for (const board of boards) snapshot[board] = null
   return { snapshot, bestEver: stored.bestEver }
 }
+
+/**
+ * The snapshot to store after an evaluation: the fresh standings over the baseline they were compared
+ * against. A board whose read failed is missing from `standings`, so it keeps its baseline value (still
+ * unplaced after a rollover, its last known rank otherwise). Writing `standings` alone would drop it,
+ * and the next evaluation reads an absent board as "not watched" and stays silent about its first podium.
+ */
+export function nextSnapshot(baseline: RankSnapshot, standings: RankSnapshot): RankSnapshot {
+  return { ...baseline, ...standings }
+}

@@ -1,5 +1,7 @@
 import { ATTENDANCE_AWARD_EXCLUDED, canAppearOnBoard, fetchBoardProfiles, fetchEligibility } from '@/lib/boardEligibility'
 import { seasonWindow, type BoardScope } from '@/lib/season'
+import { floorCount } from '@/lib/seasonCopy'
+import { winRatePct } from '@/lib/matchResults'
 import { fetchAttendance, fetchCompletedSessions } from '@/lib/seasonData'
 import { countSessions } from '@/lib/seasonTally'
 import { formatDisplayName } from '@/lib/formatDisplayName'
@@ -128,7 +130,7 @@ export async function fetchAwardsLeaderboard(scope: BoardScope): Promise<AwardEn
     },
     {
       ...awardBoard('early-bird'),
-      rule: `Average points per session · first 5 to register score 5-4-3-2-1 · min. ${floors.earlyBird} sessions`,
+      rule: `Average points per session · first 5 to register score 5-4-3-2-1 · min. ${floorCount(scope.season, floors.earlyBird)}`,
       unit: () => 'pts per session',
       format: (avg) => avg.toFixed(2),
       rows: earlyBirds.map((e) => ({
@@ -156,7 +158,7 @@ export async function fetchAwardsLeaderboard(scope: BoardScope): Promise<AwardEn
       rows: giantSlayers.map((e) => ({
         playerId: e.playerId,
         name: nameOf(e.playerId),
-        value: Math.round((100 * e.upsets) / e.underdogGames),
+        value: winRatePct(e.upsets, e.underdogGames),
         rank: e.place,
         detail: `${e.upsets} of ${e.underdogGames} games as underdog`,
       })),

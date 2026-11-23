@@ -27,8 +27,12 @@ function YearPage({ season, today }: { season: Season; today: string }) {
   const stats = useSeasonStats(user?.id, scope)
   // The board reads wait until the stats show this player played the season; otherwise the page redirects.
   const playedId = stats.stats && stats.stats.sessionsAttended > 0 ? user?.id : undefined
-  const badges = useSeasonBadges(playedId, scope)
-  const finish = useWhereYouFinished(playedId, scope)
+  const badgesLoad = useSeasonBadges(playedId, scope)
+  const finishLoad = useWhereYouFinished(playedId, scope)
+  // Those reads never start while the stats have failed, so they carry the stats' error and its Retry
+  // instead of a skeleton that would wait forever. Retrying the stats starts them once it succeeds.
+  const badges = stats.error ? { ...badgesLoad, error: stats.error, refresh: stats.refresh } : badgesLoad
+  const finish = stats.error ? { ...finishLoad, error: stats.error, refresh: stats.refresh } : finishLoad
   const { status, retry } = useSeasonStatus(scope)
 
   if (authLoading) return <div className="p-6">Loading…</div>

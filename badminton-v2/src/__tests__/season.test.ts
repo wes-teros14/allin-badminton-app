@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  seasonBefore,
   SEASONS,
   boardScope,
   currentSeason,
@@ -109,5 +110,19 @@ describe('unboundedScope', () => {
 describe('localToday', () => {
   it('is a YYYY-MM-DD string', () => {
     expect(localToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+})
+
+describe('seasonBefore', () => {
+  it('is the season so far, ending before the given day', () => {
+    expect(seasonBefore('2026-11-29')).toEqual({ start: '2026-11-16', end: '2026-11-29' })
+  })
+
+  it('stays inside the first season, open at the start', () => {
+    expect(seasonBefore('2026-03-22')).toEqual({ start: null, end: '2026-03-22' })
+  })
+
+  it('on a season’s first day is empty: nothing came before it', () => {
+    expect(seasonBefore('2026-11-16')).toEqual({ start: '2026-11-16', end: '2026-11-16' })
   })
 })

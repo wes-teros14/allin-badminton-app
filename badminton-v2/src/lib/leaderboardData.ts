@@ -13,10 +13,10 @@ import { supabase } from '@/lib/supabase'
 import { assignDenseRanks, cutToPlaces } from '@/lib/denseRank'
 import { fetchBoardProfiles, fetchEligibility } from '@/lib/boardEligibility'
 import { disambiguateDisplayNames, formatDisplayName } from '@/lib/formatDisplayName'
-import { shareInFlight } from '@/lib/inflight'
 import { rankPairs, tallyPairs } from '@/lib/pairStats'
-import { fetchSeasonCheers, fetchSeasonMatches, type SeasonMatchRow } from '@/lib/seasonData'
-import { seasonWindow, type BoardScope, type DateWindow } from '@/lib/season'
+import { fetchSeasonCheers, fetchSeasonMatches } from '@/lib/seasonData'
+import { winRatePct } from '@/lib/matchResults'
+import { seasonWindow, type BoardScope } from '@/lib/season'
 import { tallyCheers, tallyPlayerGames } from '@/lib/seasonTally'
 import { rankCheerShares, type CheerShareRow } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES, type CheerCategory } from '@/lib/cheerTypes'
@@ -80,17 +80,6 @@ export const PODIUM_PLACES = 3
 /** Ten *places*, not ten rows — a tie makes the two differ. */
 export const MAX_PLACES = 10
 
-// --- Shared season read -----------------------------------------------------
-
-/**
- * The season's matches, read once while a read is already under way. Individual and Partners both
- * tally the same rows, so loading both for one scope costs one paged read instead of two. Nothing is
- * cached (see `shareInFlight`), so a refresh after a new result always reads fresh rows.
- */
-export function seasonMatchesOnce(w: DateWindow): Promise<SeasonMatchRow[]> {
-  return shareInFlight(`matches|${w.start ?? ''}|${w.end ?? ''}`, () => fetchSeasonMatches(w))
-}
-
 // --- Individual board -------------------------------------------------------
 
 /**
@@ -118,7 +107,7 @@ export function rankIndividual(
       avatarUrl: profile.avatar_url,
       wins: t.wins,
       losses: t.games - t.wins,
-      winRate: Math.round((t.wins / t.games) * 100),
+      winRate: winRatePct(t.wins, t.games),
     })
   }
   // The player id settles what wins do not, so the sequence is a property of the data rather than
@@ -134,7 +123,7 @@ export async function fetchWinsLeaderboard(scope: BoardScope): Promise<Leaderboa
   // The shared gate, not a local copy: the copy that once lived here skipped the guest rule, and the
   // podium celebration reads this board.
   const [matches, profiles, eligibility] = await Promise.all([
-    seasonMatchesOnce(seasonWindow(scope.season)),
+    fetchSeasonMatches(seasonWindow(scope.season)),
     fetchBoardProfiles(),
     fetchEligibility(scope),
   ])
@@ -175,7 +164,7 @@ export const MIN_GAMES_TOGETHER = 3
 
 export async function fetchPairLeaderboard(scope: BoardScope): Promise<PairLeaderboardEntry[]> {
   const [matches, allProfiles, eligibility] = await Promise.all([
-    seasonMatchesOnce(seasonWindow(scope.season)),
+    fetchSeasonMatches(seasonWindow(scope.season)),
     fetchBoardProfiles(),
     fetchEligibility(scope),
   ])

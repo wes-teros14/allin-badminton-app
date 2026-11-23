@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { computeStatsFromResults } from '@/lib/matchResults'
+import { computeStatsFromResults, winRatePct } from '@/lib/matchResults'
 import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { supabase } from '@/lib/supabase'
 import { sessionTopic } from '@/lib/liveChannel'
@@ -7,8 +7,8 @@ import { listenLive } from '@/hooks/useLiveChannel'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 import { NoResultsYet } from '@/components/MatchBoard'
-import { seasonMatchesOnce } from '@/lib/leaderboardData'
-import { currentSeason, localToday, seasonWindow } from '@/lib/season'
+import { fetchSeasonMatches } from '@/lib/seasonData'
+import { seasonBefore } from '@/lib/season'
 import { tallyPlayerGames } from '@/lib/seasonTally'
 
 interface LeaderboardEntry {
@@ -78,9 +78,9 @@ async function fetchSessionLeaderboard(
   const entries: LeaderboardEntry[] = []
   for (const [playerId, s] of statsMap) {
     if (s.games === 0) continue
-    const winRate = Math.round((s.wins / s.games) * 100)
+    const winRate = winRatePct(s.wins, s.games)
     const season = seasonMap.get(playerId)
-    const seasonWinRate = season && season.games > 0 ? Math.round((season.wins / season.games) * 100) : undefined
+    const seasonWinRate = season && season.games > 0 ? winRatePct(season.wins, season.games) : undefined
     entries.push({
       playerId,
       displayName: nameMap.get(playerId) ?? playerId,
@@ -112,13 +112,14 @@ export function TodayView() {
     if (selectedIndex !== safeIndex) setSelectedIndex(safeIndex)
   }, [safeIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The season baseline moves only when a session completes, so it is read once per session id and
-  // reused by realtime refetches (every phone refetching a full paged read would fan out). A failed
-  // read is dropped so the next load re-reads it.
+  // The baseline is the season *before* this session's day, so today's games never leak into it and every
+  // phone compares against the same numbers, whenever it opened. It cannot move during the session, so it
+  // is read once per session id and reused by realtime refetches (every phone refetching a full paged read
+  // would fan out). A failed read is dropped so the next load re-reads it.
   const baselineRef = useRef<{ sessionId: string; promise: Promise<Map<string, { games: number; wins: number }>> } | null>(null)
-  const seasonBaselineFor = useCallback((sessionId: string) => {
+  const seasonBaselineFor = useCallback((sessionId: string, sessionDate: string) => {
     if (baselineRef.current?.sessionId === sessionId) return baselineRef.current.promise
-    const promise = seasonMatchesOnce(seasonWindow(currentSeason(localToday()))).then(tallyPlayerGames)
+    const promise = fetchSeasonMatches(seasonBefore(sessionDate)).then(tallyPlayerGames)
     const entry = { sessionId, promise }
     baselineRef.current = entry
     promise.catch(() => { if (baselineRef.current === entry) baselineRef.current = null })
@@ -129,7 +130,9 @@ export function TodayView() {
     if (!activeSession) { setIsLoading(false); return }
     setIsLoading(true)
     try {
-      const data = await fetchSessionLeaderboard(activeSession.sessionId, () => seasonBaselineFor(activeSession.sessionId))
+      const data = await fetchSessionLeaderboard(activeSession.sessionId, () =>
+        seasonBaselineFor(activeSession.sessionId, activeSession.date),
+      )
       setEntries(data)
       setLoadError(false)
     } catch (err) {
@@ -209,7 +212,7 @@ export function TodayView() {
 
       {loadError ? (
         <div role="alert" className="space-y-2">
-          <p className="text-sm text-destructive">Could not load today's results.</p>
+          <p className="text-sm text-destructive">Could not load today’s results.</p>
           <button
             onClick={() => load()}
             className="px-3 py-1.5 rounded-full text-sm font-medium bg-muted text-foreground hover:bg-muted/80"

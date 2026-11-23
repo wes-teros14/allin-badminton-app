@@ -8,7 +8,7 @@
  */
 
 import { inWindow, type DateWindow } from '@/lib/season'
-import { computeStatsFromResults, sortMatchResults } from '@/lib/matchResults'
+import { computeStatsFromResults, gameWinner, sortMatchResults } from '@/lib/matchResults'
 import type { CheerStatsRow } from '@/lib/leaderboardData'
 import type { AttendanceRow, CheerRow, SeasonMatchRow } from '@/lib/seasonData'
 
@@ -107,8 +107,7 @@ export function tallyHeadToHead(
     if (!mine) continue
 
     for (const result of sortMatchResults(match.match_results)) {
-      // Anything that is not 2 means team 1 won, as in computeStatsFromResults.
-      const winners = result.winning_pair_index === 2 ? team2 : team1
+      const winners = gameWinner(result) === 2 ? team2 : team1
       if (winners === mine) {
         for (const id of mine) if (id !== playerId) bump(partners, id)
       } else {

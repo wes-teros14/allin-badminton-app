@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { pastSeasons, seasonWindow, type BoardScope, type Season } from '@/lib/season'
 import { fetchAttendance, fetchSeasonCheers, fetchSeasonMatches } from '@/lib/seasonData'
+import { winRatePct } from '@/lib/matchResults'
 import { countSessions, tallyCheers, tallyHeadToHead, tallyPlayerGames } from '@/lib/seasonTally'
 import { fetchSeasonBadges, type Badge } from '@/lib/seasonBadges'
 import {
@@ -125,7 +126,7 @@ async function fetchSeasonStats(
       sessionsAttended: countSessions(attendance, w).get(userId) ?? 0,
       gamesPlayed: games.games,
       wins: games.wins,
-      winRate: games.games > 0 ? Math.round((games.wins / games.games) * 100) : 0,
+      winRate: winRatePct(games.wins, games.games),
       bestPartners: topThree(partners, names).map(({ nameSlug, count }) => ({ nameSlug, wins: count })),
       toughestOpponents: topThree(opponents, names).map(({ nameSlug, count }) => ({ nameSlug, losses: count })),
     },

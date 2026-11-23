@@ -1,5 +1,5 @@
 import { canAppearOnBoard, fetchBoardProfiles, fetchEligibility } from '@/lib/boardEligibility'
-import { getMatchOutcome } from '@/lib/matchResults'
+import { gameWinner, getMatchOutcome } from '@/lib/matchResults'
 import { seasonWindow, type BoardScope } from '@/lib/season'
 import { fetchSeasonMatches, type SeasonMatchRow } from '@/lib/seasonData'
 import { rankWinStreaks, type WinStreakEntry, type WinStreakMatch } from '@/lib/winStreak'
@@ -38,8 +38,7 @@ export function toHistory(rows: SeasonMatchRow[], seasonStart: string | null): {
         gameNumber: r.game_number ?? 1,
         team1,
         team2,
-        // Anything that is not an explicit 2 counts as team 1, as getMatchOutcome reads it.
-        winner: r.winning_pair_index === 2 ? 2 : 1,
+        winner: gameWinner(r),
         counts: inSeason,
       })
     }

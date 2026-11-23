@@ -105,10 +105,22 @@ const MATCH_SELECT =
  *
  * Each caller keeps its own rule, unchanged: by default `matches.status = 'complete'` (the Partners
  * board's rule); with `finishedSessionsOnly`, `sessions.status = 'complete'` (the awards' rule).
+ *
+ * Concurrent identical reads share one paged read (Individual, Partners, the pending footer, the
+ * profile and Today all ask for the same season at once). Nothing is cached (see `shareInFlight`),
+ * so a refresh after a new result always reads fresh rows.
  */
-export async function fetchSeasonMatches(
+export function fetchSeasonMatches(
   w: DateWindow,
   opts: { finishedSessionsOnly?: boolean } = {},
+): Promise<SeasonMatchRow[]> {
+  const rule = opts.finishedSessionsOnly ? 'finished-sessions' : 'complete-matches'
+  return shareInFlight(`matches|${rule}|${windowKey(w)}`, () => readSeasonMatches(w, opts))
+}
+
+async function readSeasonMatches(
+  w: DateWindow,
+  opts: { finishedSessionsOnly?: boolean },
 ): Promise<SeasonMatchRow[]> {
   const scoped = <B extends Windowable<B> & { eq(column: string, value: string): B }>(q: B): B => {
     const rule = opts.finishedSessionsOnly ? q.eq('sessions.status', 'complete') : q.eq('status', 'complete')

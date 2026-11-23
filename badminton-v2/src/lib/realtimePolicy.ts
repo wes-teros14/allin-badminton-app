@@ -61,3 +61,14 @@ export function createCoalescedRunner(run: () => void, delay: () => number) {
     },
   }
 }
+
+/**
+ * My Profile re-reads the whole season (paged matches, attendance, cheers) on a "your stats changed"
+ * message, and a recorded game sends several. Waiting longer than the court board's coalesce lets one
+ * game's messages, and a quick run of games, collapse into one re-read; the jitter spreads the phones.
+ */
+export const PROFILE_COALESCE_MS = 4_000
+
+export function profileRefreshDelay(random: () => number = Math.random): number {
+  return PROFILE_COALESCE_MS + random() * JITTER_MS
+}

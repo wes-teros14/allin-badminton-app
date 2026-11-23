@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
 import { Paperclip, Trash2 } from 'lucide-react'
-import { computeStatsFromResults } from '@/lib/matchResults'
+import { computeStatsFromResults, winRatePct } from '@/lib/matchResults'
 import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { openDueRegistrations, supabase } from '@/lib/supabase'
 import { sessionTopic, userTopic } from '@/lib/liveChannel'
@@ -183,7 +183,7 @@ async function fetchLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> 
   const entries: Omit<LeaderboardEntry, 'rank'>[] = []
   for (const [playerId, s] of statsMap) {
     if (s.games === 0) continue
-    const winRate = Math.round((s.wins / s.games) * 100)
+    const winRate = winRatePct(s.wins, s.games)
     entries.push({
       playerId,
       displayName: nameMap.get(playerId) ?? playerId,

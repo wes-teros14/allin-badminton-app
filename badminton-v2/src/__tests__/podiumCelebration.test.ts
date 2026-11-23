@@ -3,6 +3,7 @@ import {
   baselineForSeason,
   bestPlacing,
   newPodiumPlacings,
+  nextSnapshot,
   WATCHED_BOARDS,
   type BestEver,
   type RankSnapshot,
@@ -267,5 +268,28 @@ describe('baselineForSeason — silent season rollover', () => {
   it('keeps bestEver across the rollover', () => {
     const baseline = baselineForSeason(stored({ wins: 1 }, '2026', { wins: 1 }), '2027', ['wins', 'pairs'])
     expect(baseline).toEqual({ snapshot: { wins: null, pairs: null }, bestEver: { wins: 1 } })
+  })
+})
+
+describe('nextSnapshot — a failed board read', () => {
+  it('keeps a board that failed at the rollover unplaced, so its first podium still celebrates', () => {
+    // 2026 → 2027 rollover; the Partners read failed, so `standings` has no `pairs`.
+    const stored: PlayerCelebrationState = { ...emptyState(), snapshot: { wins: 1, pairs: 2 }, bestEver: { wins: 1, pairs: 2 }, season: '2026' }
+    const baseline = baselineForSeason(stored, '2027', WATCHED_BOARDS)
+    const written = nextSnapshot(baseline.snapshot, { wins: 5 })
+    expect(written.pairs).toBeNull()
+    expect(written.wins).toBe(5)
+
+    // Next evaluation, same season: Partners now reads 2nd. Against the stored snapshot it is news.
+    const placings = newPodiumPlacings(written, { wins: 5, pairs: 2 }, baseline.bestEver)
+    expect(placings.map(shape)).toContain('pairs:podium:2')
+  })
+
+  it('keeps the last known rank of a board that failed mid-season', () => {
+    expect(nextSnapshot({ wins: 4, pairs: 6 }, { wins: 3 })).toEqual({ wins: 3, pairs: 6 })
+  })
+
+  it('takes a fresh null over an older rank: unplaced now is unplaced', () => {
+    expect(nextSnapshot({ wins: 2 }, { wins: null })).toEqual({ wins: null })
   })
 })

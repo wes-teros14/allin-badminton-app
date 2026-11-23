@@ -97,6 +97,15 @@ export function seasonWindow(season: Season): DateWindow {
   return { start: idx <= 0 ? null : season.start, end: nextSeasonStart(season) }
 }
 
+/**
+ * The part of `date`'s season before `date`: the season's window, ended (exclusive) at `date`. A comparison
+ * against "the season so far" uses it so the day's own games never leak into the baseline.
+ */
+export function seasonBefore(date: string): DateWindow {
+  const w = seasonWindow(seasonForDate(date))
+  return { start: w.start, end: w.end !== null && w.end < date ? w.end : date }
+}
+
 /** `null` or an unknown id means the current season. */
 export function boardScope(seasonId: string | null, today: string): BoardScope {
   const cur = currentSeason(today)

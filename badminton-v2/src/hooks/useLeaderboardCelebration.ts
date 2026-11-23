@@ -19,6 +19,7 @@ import {
   baselineForSeason,
   bestPlacing,
   newPodiumPlacings,
+  nextSnapshot,
   WATCHED_BOARDS,
   type NewPlacing,
   type RankSnapshot,
@@ -108,7 +109,7 @@ export function useLeaderboardCelebration(paused = false) {
       // it on a quiet evaluation would let the same news be found again later.
       writeState(playerId, {
         ...stored,
-        snapshot: standings,
+        snapshot: nextSnapshot(baseline.snapshot, standings),
         bestEver: mergeBestEver(baseline.bestEver, standings),
         sentinel,
         season: seasonId,
