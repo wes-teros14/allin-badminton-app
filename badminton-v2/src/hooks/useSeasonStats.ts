@@ -188,14 +188,38 @@ export interface PastSeasonCard {
   games: number
 }
 
+interface PastSeasonTotals {
+  sessions: ReadonlyMap<string, number>
+  games: ReadonlyMap<string, { games: number; wins: number }>
+}
+
+const pastSeasonTotalsCache = new Map<string, Promise<PastSeasonTotals>>()
+
+/**
+ * Every player's sessions and games for one ended season, read once per page visit. An ended season
+ * barely changes, so re-reading all of it on every profile open only costs requests; a reload picks up
+ * a corrected old result. A failed read is dropped, so the next open retries it.
+ */
+export function pastSeasonTotals(season: Season): Promise<PastSeasonTotals> {
+  const cached = pastSeasonTotalsCache.get(season.id)
+  if (cached) return cached
+  const w = seasonWindow(season)
+  const read = Promise.all([fetchAttendance(w), fetchSeasonMatches(w)]).then(([attendance, matches]) => ({
+    sessions: countSessions(attendance, w),
+    games: tallyPlayerGames(matches),
+  }))
+  pastSeasonTotalsCache.set(season.id, read)
+  read.catch(() => { if (pastSeasonTotalsCache.get(season.id) === read) pastSeasonTotalsCache.delete(season.id) })
+  return read
+}
+
 /** "21 sessions · 88 games" for one ended season. No board place: that would mean a full board read per open. */
 async function fetchPastSeasonCard(userId: string, season: Season): Promise<PastSeasonCard> {
-  const w = seasonWindow(season)
-  const [attendance, matches] = await Promise.all([fetchAttendance(w), fetchSeasonMatches(w)])
+  const totals = await pastSeasonTotals(season)
   return {
     season,
-    sessions: countSessions(attendance, w).get(userId) ?? 0,
-    games: tallyPlayerGames(matches).get(userId)?.games ?? 0,
+    sessions: totals.sessions.get(userId) ?? 0,
+    games: totals.games.get(userId)?.games ?? 0,
   }
 }
 

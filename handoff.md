@@ -23,7 +23,7 @@ Updated: 2026-11-23 Manila. Overwrite this file on every update; it is never a r
 3. Owner: close the Xmas Party session when photos are in; resume Supabase DEV if localhost testing is needed.
 
 ## Open questions
-- Parked from the build: the 2026 card reads the 2026 window on every profile open; mid-session games show before the session counts as attended; TodayView season baseline is not refreshed live; Early Bird caption doesn't say "past 12 months".
-- Run the parity check after all? Owner's call.
+- Accepted as is (owner, 2026-11-23): mid-session, a profile's Games can show before that night counts as a session attended.
+- Parity check skipped (owner's call); not planned.
 - Offered, not decided: treat Supabase 500/52x token-refresh errors as retryable so a brief outage doesn't sign players out.
 - Carried over: iPhone Safari WebP untested on a real phone; kiosk insert rule; offline-backup phone check; Broadcast/share on phones; Nov 1 session not closed; prod `service_role` key not rotated; old Neon test branches cleanup (owner: maybe later).
