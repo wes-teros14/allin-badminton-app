@@ -1,16 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { Link } from 'react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { useProfileStats } from '@/hooks/useProfileStats'
+import { usePastSeasonCards, useSeasonBadges, useSeasonStats, type PastSeasonCard, type SeasonStatsLoad } from '@/hooks/useSeasonStats'
+import { useSeasonStatus } from '@/hooks/useSeasonStatus'
 import { useNotifications } from '@/contexts/NotificationContext'
 import { supabase } from '@/lib/supabase'
 import { userTopic } from '@/lib/liveChannel'
 import { listenLive } from '@/hooks/useLiveChannel'
-import { ATTENDANCE_AWARD_EXCLUDED, MIN_SESSIONS_CHEERS, fetchEligiblePlayerIds } from '@/lib/boardEligibility'
-import { fetchEarlyBirds } from '@/lib/earlyBirdData'
-import { fetchMatchAwards } from '@/lib/matchAwardsData'
-import { cheerSharePct, rankCheerShares } from '@/lib/cheerShare'
-import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
+import { createCoalescedRunner, profileRefreshDelay } from '@/lib/realtimePolicy'
+import { boardScope, localToday } from '@/lib/season'
+import { seasonStartLine, seasonSummaryLine } from '@/lib/seasonCopy'
+import { SeasonSections, SectionError } from '@/components/profile/SeasonSections'
 import { resizeImageFile } from '@/lib/imageResize'
 import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
@@ -48,142 +48,6 @@ function BuildStamp() {
   )
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <Card>
-      <CardContent className="pt-5 pb-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-2xl font-bold text-primary">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-      </CardContent>
-    </Card>
-  )
-}
-
-/**
- * What this player is cheered for: their strongest cheer type, and a bar
- * showing how their received cheers split across all six.
- *
- * A share rather than a count, for the same reason the boards are — cheering
- * is compulsory after every game, so a raw total only says how many matches
- * someone played. The segments add to 100% by construction: the trigger in
- * migration 036 increments `cheers_received` and exactly one category per row.
- */
-function CheerSignature({ stats }: { stats: CheerStats | null }) {
-  if (!stats || stats.cheers_received <= 0) return null
-
-  const signature = signatureCheer(stats)
-  if (!signature) return null
-
-  return (
-    <div>
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-        Cheered for
-      </h2>
-      <Card>
-        <CardContent className="pt-4 pb-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl leading-none" aria-hidden="true">{signature.emoji}</span>
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-[15px] font-semibold leading-tight">{signature.name}</p>
-              <p className="text-xs text-muted-foreground tabular-nums">
-                of {stats.cheers_received} cheers received
-              </p>
-            </div>
-            <span className="shrink-0 text-[17px] font-bold text-primary tabular-nums">
-              {cheerSharePct(signature.of(stats), stats.cheers_received)}%
-            </span>
-          </div>
-
-          <div
-            className="flex h-2.5 overflow-hidden rounded-full bg-secondary"
-            role="img"
-            aria-label={CHEER_CATEGORIES
-              .filter((c) => c.of(stats) > 0)
-              .map((c) => `${c.name} ${cheerSharePct(c.of(stats), stats.cheers_received)} percent`)
-              .join(', ')}
-          >
-            {CHEER_CATEGORIES.map((category) => {
-              const pct = cheerSharePct(category.of(stats), stats.cheers_received)
-              if (pct <= 0) return null
-              return (
-                <span
-                  key={category.slug}
-                  style={{ width: `${pct}%`, backgroundColor: category.color }}
-                  className="h-full"
-                />
-              )
-            })}
-          </div>
-
-          <div className="flex flex-wrap gap-x-3 gap-y-1.5">
-            {CHEER_CATEGORIES.filter((c) => c.of(stats) > 0).map((category) => (
-              <span key={category.slug} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-[2px]"
-                  style={{ backgroundColor: category.color }}
-                  aria-hidden="true"
-                />
-                {category.emoji} {category.name}
-                <span className="font-semibold text-foreground tabular-nums">
-                  {cheerSharePct(category.of(stats), stats.cheers_received)}%
-                </span>
-              </span>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-const RANK_LABELS = ['🥇', '🥈', '🥉']
-
-function RankListCard({ label, items, subLabel }: {
-  label: string
-  items: Array<{ nameSlug: string; count: number }>
-  subLabel: (count: number) => string
-}) {
-  return (
-    <Card className="col-span-2">
-      <CardContent className="pt-5 pb-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">{label}</p>
-        {items.length === 0 ? (
-          <p className="text-2xl font-bold text-primary">—</p>
-        ) : (
-          <ul className="space-y-2">
-            {items.map((item, i) => (
-              <li key={i} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <span className="text-base">{RANK_LABELS[i]}</span>
-                  <span className="font-semibold text-sm">{item.nameSlug}</span>
-                </span>
-                <span className="text-xs text-muted-foreground shrink-0">{subLabel(item.count)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-interface CheerStats {
-  cheers_received: number
-  cheers_given: number
-  offense_received: number
-  defense_received: number
-  technique_received: number
-  movement_received: number
-  good_sport_received: number
-  solid_effort_received: number
-}
-
-interface Award {
-  emoji: string
-  label: string
-}
-
 interface NicknameRow {
   nickname: string | null
   avatar_url: string | null
@@ -193,69 +57,53 @@ const MAX_AVATAR_DIM = 1024
 const MAX_AVATAR_BYTES = 1 * 1024 * 1024 // enforced after client-side resize/compression below
 const MAX_AVATAR_INPUT_BYTES = 20 * 1024 * 1024 // reject absurdly large originals before we even try to process them
 
-async function fetchAwards(userId: string): Promise<Award[]> {
-  const [cheerRes, statsRes, earlyBirds, { winStreaks, giantSlayers }, eligibleIds] = await Promise.all([
-    supabase.from('player_cheer_stats').select('player_id, cheers_received, offense_received, defense_received, technique_received, movement_received, good_sport_received, solid_effort_received'),
-    supabase.from('player_stats').select('player_id, sessions_attended'),
-    fetchEarlyBirds(),
-    fetchMatchAwards(),
-    fetchEligiblePlayerIds(),
-  ])
+/**
+ * "Your 2026 season · 21 sessions · 88 games", opening that season's page. No board place: computing it
+ * would mean a full past-season board read on every profile open; the place lives on the year page.
+ */
+function PastSeasonLink({ card }: { card: PastSeasonCard }) {
+  return (
+    <Link
+      to={`/profile/season/${card.season.id}`}
+      className="flex min-h-11 w-full items-center gap-3 rounded-[14px] border border-gold/35 bg-gold/[0.06] px-3.5 py-3 text-left transition-colors hover:bg-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="text-[22px] leading-none" aria-hidden="true">🏆</span>
+      <span className="min-w-0 flex-1">
+        <b className="block text-sm font-bold text-foreground">Your {card.season.id} season</b>
+        <span className="text-xs text-muted-foreground tabular-nums">{seasonSummaryLine(card.sessions, card.games)}</span>
+      </span>
+      <span className="text-xl leading-none text-gold-ink" aria-hidden="true">›</span>
+    </Link>
+  )
+}
 
-  // These badges use the same eligibility and rankings as the Awards tab, so a
-  // badge here always matches a holder there. One deliberate exception: the six
-  // cheer badges stay here although the Awards tab dropped those cards on
-  // 2026-10-06 (the owner's call) — the Cheers tab still ranks every category.
-  const stats = ((statsRes.data ?? []) as Array<{ player_id: string; sessions_attended: number }>)
-    .filter(s => eligibleIds.has(s.player_id))
-  // The Cheers board's stricter attendance floor, so a cheer badge matches its board.
-  const attendedEnoughForCheers = new Set(stats.filter(s => s.sessions_attended >= MIN_SESSIONS_CHEERS).map(s => s.player_id))
-  const cheers = ((cheerRes.data ?? []) as Array<{ player_id: string; cheers_received: number; offense_received: number; defense_received: number; technique_received: number; movement_received: number; good_sport_received: number; solid_effort_received: number }>)
-    .filter(c => attendedEnoughForCheers.has(c.player_id))
-
-  /** Sole holder of the highest share in one category, or nobody if it is tied. */
-  function topShare(getCount: (c: typeof cheers[number]) => number): string | null {
-    const ranked = rankCheerShares(
-      cheers.map(c => ({ playerId: c.player_id, categoryCount: getCount(c), totalReceived: c.cheers_received })),
-      { maxPlaces: 1 },
-    )
-    return ranked.length === 1 ? ranked[0].playerId : null
-  }
-
-  const awards: Award[] = []
-
-  if (topShare(c => c.offense_received) === userId)
-    awards.push({ emoji: '⚔️', label: 'Top Offense' })
-  if (topShare(c => c.defense_received) === userId)
-    awards.push({ emoji: '🛡️', label: 'Top Defense' })
-  if (topShare(c => c.technique_received) === userId)
-    awards.push({ emoji: '🎯', label: 'Top Technique' })
-  if (topShare(c => c.movement_received) === userId)
-    awards.push({ emoji: '💨', label: 'Top Movement' })
-  if (topShare(c => c.good_sport_received) === userId)
-    awards.push({ emoji: '🤝', label: 'Top Good Sport' })
-  if (topShare(c => c.solid_effort_received) === userId)
-    awards.push({ emoji: '💪', label: 'Top Solid Effort' })
-  // Same carve-out the Awards tab applies: this one award is still a raw count.
-  // Badge for 1st place, shared on a tie, as the Awards card's top 3 shows it.
-  const joined = stats.filter(s => !ATTENDANCE_AWARD_EXCLUDED.has(s.player_id))
-  const mostJoined = Math.max(0, ...joined.map(s => s.sessions_attended))
-  if (mostJoined > 0 && joined.some(s => s.player_id === userId && s.sessions_attended === mostJoined))
-    awards.push({ emoji: '📅', label: 'Most Sessions Joined' })
-  // Badge for 1st place only (shared on a full tie), as the Awards card shows.
-  if (earlyBirds.some(e => e.place === 1 && e.playerId === userId))
-    awards.push({ emoji: '🐦', label: 'Registration Early Bird' })
-  if (winStreaks.some(e => e.place === 1 && e.playerId === userId))
-    awards.push({ emoji: '⚡', label: 'Win Streak' })
-  if (giantSlayers.some(e => e.place === 1 && e.playerId === userId))
-    awards.push({ emoji: '🎲', label: 'Against the Odds' })
-
-  return awards
+function PastSeasons({ load }: { load: ReturnType<typeof usePastSeasonCards> }) {
+  if (load.error) return <SectionError what="your past seasons" onRetry={load.refresh} />
+  if (load.cards === null) return <div className="h-16 rounded-[14px] bg-muted animate-pulse" />
+  if (load.cards.length === 0) return null
+  return (
+    <div className="space-y-2">
+      {load.cards.map((card) => <PastSeasonLink key={card.season.id} card={card} />)}
+    </div>
+  )
 }
 
 export function ProfileView() {
   const { user, isLoading: authLoading } = useAuth()
-  const { stats, isLoading: statsLoading, refresh } = useProfileStats(user?.id)
+  // My Profile shows the current season only; past seasons open their own page.
+  const [today] = useState(localToday)
+  const scope = useMemo(() => boardScope(null, today), [today])
+  const seasonStats = useSeasonStats(user?.id, scope)
+  const badges = useSeasonBadges(user?.id, scope)
+  const pastCards = usePastSeasonCards(user?.id, today)
+  const { status: liveStatus, retry: retryStatus } = useSeasonStatus(scope)
+  // A live re-read keeps the last settled status on screen, so a recorded result never flashes the Stats
+  // back to a skeleton. (Derived state, set during render: React's pattern for it.)
+  const [settledStatus, setSettledStatus] = useState(liveStatus)
+  if (liveStatus.kind !== 'loading' && liveStatus !== settledStatus) setSettledStatus(liveStatus)
+  const status = liveStatus.kind === 'loading' && settledStatus.kind === 'ready' ? settledStatus : liveStatus
+  const { refresh: refreshStats } = seasonStats
+  const { refresh: refreshBadges } = badges
   const { markAllRead } = useNotifications()
   const { theme } = useTheme()
   const [nickname, setNickname] = useState('')
@@ -264,8 +112,6 @@ export function ProfileView() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const [cheerStats, setCheerStats] = useState<CheerStats | null>(null)
-  const [awards, setAwards] = useState<Award[]>([])
 
   // Mark notifications as read when visiting profile
   useEffect(() => { markAllRead() }, [markAllRead])
@@ -283,17 +129,27 @@ export function ProfileView() {
 
   useEffect(() => {
     if (!user?.id) return
-    supabase.from('player_cheer_stats').select('*').eq('player_id', user.id).maybeSingle()
-      .then(({ data }) => { if (data) setCheerStats(data as CheerStats) })
-    fetchAwards(user.id).then(setAwards)
-  }, [user?.id])
-
-  useEffect(() => {
-    if (!user?.id) return
-    return listenLive(userTopic(user.id), (message) => {
-      if (message.table === 'player_stats') refresh()
+    // A recorded result is the "something changed" signal for the stats and the season status (the "starts
+    // with" line). One game sends several messages, so they are coalesced into one re-read.
+    const reload = createCoalescedRunner(() => { refreshStats(); retryStatus() }, () => profileRefreshDelay())
+    const stopListening = listenLive(userTopic(user.id), (message) => {
+      if (message.table === 'player_stats') reload.schedule()
     })
-  }, [user?.id, refresh])
+    return () => {
+      reload.cancel()
+      stopListening()
+    }
+  }, [user?.id, refreshStats, retryStatus])
+
+  // Badges (and their early-season hold) can only change when a session completes, which the status's
+  // played-session count shows. Re-reading them on every recorded game would be a full awards read each.
+  const playedCount = liveStatus.kind === 'ready' ? liveStatus.played.length : null
+  const lastPlayedCount = useRef<number | null>(null)
+  useEffect(() => {
+    if (playedCount === null) return
+    if (lastPlayedCount.current !== null && lastPlayedCount.current !== playedCount) refreshBadges()
+    lastPlayedCount.current = playedCount
+  }, [playedCount, refreshBadges])
 
   async function handleSaveNickname() {
     if (!user) return
@@ -357,6 +213,19 @@ export function ProfileView() {
   }
 
   const displayName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'Player'
+
+  // The Stats wait for the season status too: with nothing played yet they sit under "Your 2027 season starts
+  // with the Nov 22 session", and a failed status read is an error, not zeros without that line.
+  const stats: SeasonStatsLoad =
+    status.kind === 'error'
+      ? { ...seasonStats, error: seasonStats.error ?? new Error('season status failed to load'), refresh: () => { retryStatus(); seasonStats.refresh() } }
+      : status.kind === 'loading'
+        ? { ...seasonStats, stats: null, cheers: null, isLoading: true }
+        : seasonStats
+  const lead =
+    status.kind === 'ready' && scope.isCurrent && status.played.length === 0
+      ? seasonStartLine(scope.season, status.nextDate, 'Your')
+      : null
 
   return (
     <div className="p-6 max-w-lg mx-auto space-y-6">
@@ -443,65 +312,10 @@ export function ProfileView() {
         Sign out
       </button>
 
-      {/* What you're cheered for */}
-      <CheerSignature stats={cheerStats} />
+      {/* One card per past season played, above this season's sections */}
+      <PastSeasons load={pastCards} />
 
-      {/* Awards */}
-      <div>
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Awards</h2>
-        {awards.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {awards.map(a => (
-              <div key={a.label} className="flex items-center gap-1.5 bg-gold/10 border border-gold/40 rounded-full px-3 py-1.5">
-                <span className="text-base">{a.emoji}</span>
-                <span className="text-xs font-semibold text-gold-ink">{a.label}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No awards yet — keep playing!</p>
-        )}
-      </div>
-
-      {/* Stats */}
-      <div>
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Stats</h2>
-        {statsLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />
-            ))}
-            <div className="col-span-2 h-24 bg-muted rounded-xl animate-pulse" />
-            <div className="col-span-2 h-24 bg-muted rounded-xl animate-pulse" />
-          </div>
-        ) : stats ? (
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              label="Sessions Attended"
-              value={String(stats.sessionsAttended)}
-            />
-            <StatCard
-              label="Games Played"
-              value={String(stats.gamesPlayed)}
-            />
-            <StatCard
-              label="Win Rate"
-              value={stats.gamesPlayed > 0 ? `${stats.wins}W ${stats.gamesPlayed - stats.wins}L` : '—'}
-              sub={stats.gamesPlayed > 0 && stats.winRate > 0 ? `${stats.winRate}% win rate` : 'No recorded games'}
-            />
-            <RankListCard
-              label="Best Partners"
-              items={stats.bestPartners.map(p => ({ nameSlug: p.nameSlug, count: p.wins }))}
-              subLabel={(w) => `${w} win${w !== 1 ? 's' : ''} together`}
-            />
-            <RankListCard
-              label="Toughest Opponents"
-              items={stats.toughestOpponents.map(o => ({ nameSlug: o.nameSlug, count: o.losses }))}
-              subLabel={(l) => `Lost ${l}x`}
-            />
-          </div>
-        ) : null}
-      </div>
+      <SeasonSections scope={scope} stats={stats} badges={badges} lead={lead} />
 
       <BuildStamp />
 

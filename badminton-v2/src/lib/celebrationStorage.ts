@@ -40,7 +40,16 @@ export interface PlayerCelebrationState {
   /** Latest session completion seen at the last evaluation. */
   sentinel: string | null
   sweepOwed: SweepDebt | null
+  /**
+   * The season the snapshot was taken in. Absent on state written before seasons
+   * existed, which reads as `LEGACY_SEASON`. No version bump: an old reader just
+   * ignores the field, and a missing one has a safe meaning.
+   */
+  season?: string
 }
+
+/** The only season that existed before the field was written. */
+export const LEGACY_SEASON = '2026'
 
 const KEY_PREFIX = 'badminton-celebration:'
 
@@ -91,6 +100,7 @@ export function readState(playerId: string): PlayerCelebrationState | null {
       bestEver: parsed.bestEver ?? {},
       sentinel: parsed.sentinel ?? null,
       sweepOwed: parsed.sweepOwed ?? null,
+      season: typeof parsed.season === 'string' ? parsed.season : undefined,
     }
   } catch {
     return null

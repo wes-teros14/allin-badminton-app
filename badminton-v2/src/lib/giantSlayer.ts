@@ -38,6 +38,12 @@ export interface SlayerGame {
   team2: readonly [string, string]
   /** The pair that won this game. */
   winner: 1 | 2
+  /**
+   * Whether the game is tallied. A game with `false` still moves the going-in records (every earlier game,
+   * across seasons, judges a player's strength) but is never counted as an upset or an underdog game.
+   * Default true.
+   */
+  counts?: boolean
 }
 
 export interface GiantSlayerEntry {
@@ -79,7 +85,7 @@ export function tallyUpsets(
       const strength1 = (rate(g.team1[0]) + rate(g.team1[1])) / 2
       const strength2 = (rate(g.team2[0]) + rate(g.team2[1])) / 2
       const underdog = strength2 - strength1 >= gap - EPSILON ? 1 : strength1 - strength2 >= gap - EPSILON ? 2 : null
-      if (underdog) {
+      if (underdog && g.counts !== false) {
         const upset = g.winner === underdog
         for (const id of underdog === 1 ? g.team1 : g.team2) {
           const t = tally.get(id) ?? { upsets: 0, underdogGames: 0 }

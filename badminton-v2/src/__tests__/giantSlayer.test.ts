@@ -107,3 +107,20 @@ describe('rankGiantSlayers', () => {
     expect(ranked.map((e) => e.playerId)).toEqual(['B'])
   })
 })
+
+describe('tallyUpsets counts flag', () => {
+  const prior = () => [...history(['A', 'B'], 1, 3), ...history(['C', 'D'], 3, 1)]
+
+  it('replays games marked counts:false for the record but never tallies them', () => {
+    const games: SlayerGame[] = [
+      ...prior().map((g) => ({ ...g, counts: false })),
+      { ...game(['A', 'B'], ['C', 'D'], 1), counts: true },
+    ]
+    expect(tallyUpsets(games, opts).get('A')).toEqual({ upsets: 1, underdogGames: 1 })
+  })
+
+  it('gives no entry when every game is marked counts:false', () => {
+    const games: SlayerGame[] = [...prior(), game(['A', 'B'], ['C', 'D'], 1)].map((g) => ({ ...g, counts: false }))
+    expect(tallyUpsets(games, opts).size).toBe(0)
+  })
+})

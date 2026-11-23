@@ -124,17 +124,21 @@ if (mode === 'reference') {
   ;(supabase as any).rpc = neon.rpc.bind(neon)
 }
 
-const { fetchAllTimeLeaderboard, fetchCheerLeaderboard, fetchPairLeaderboard } = await import('@/lib/leaderboardData')
+const { fetchWinsLeaderboard, fetchCheerLeaderboard, fetchPairLeaderboard } = await import('@/lib/leaderboardData')
 const { fetchAwardsLeaderboard } = await import('@/lib/awardsLeaderboard')
-const { fetchEligiblePlayerIds } = await import('@/lib/boardEligibility')
+const { fetchEligibility } = await import('@/lib/boardEligibility')
+const { boardScope, localToday } = await import('@/lib/season')
 const { rankCheerShares } = await import('@/lib/cheerShare')
 const { CHEER_CATEGORIES } = await import('@/lib/cheerTypes')
 
-const individual = await fetchAllTimeLeaderboard()
-const pairs = await fetchPairLeaderboard()
+// The 2026 season scope: the closest match to the old all-time boards.
+const scope = boardScope('2026', localToday())
+const individual = await fetchWinsLeaderboard(scope)
+const pairs = await fetchPairLeaderboard(scope)
 const awards = await fetchAwardsLeaderboard()
-const cheerRows = await fetchCheerLeaderboard()
-const eligible = [...(await fetchEligiblePlayerIds())].sort()
+const cheerRows = await fetchCheerLeaderboard(scope)
+const pool = await fetchEligibility(scope)
+const eligible = (await supabase.from('profiles').select('id')).data!.map((p: any) => p.id).filter((id: string) => pool.qualifies(id, scope.season.floors.played)).sort()
 const cheers = CHEER_CATEGORIES.map((c: any) => ({
   slug: c.slug,
   rows: rankCheerShares(cheerRows.map((e: any) => ({ playerId: e.player_id, categoryCount: c.of(e), totalReceived: e.cheers_received }))),

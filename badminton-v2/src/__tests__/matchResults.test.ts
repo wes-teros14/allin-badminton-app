@@ -1,6 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import {
   computeStatsFromResults,
+  gameWinner,
+  winRatePct,
   getMatchOutcome,
   isSplitMatchScoringEnabled,
   normalizeMatchResult,
@@ -171,5 +173,25 @@ describe('submitSplitResult', () => {
       { match_id: 'match-1', winning_pair_index: 1, game_number: 1 },
       { match_id: 'match-1', winning_pair_index: 2, game_number: 2 },
     ])
+  })
+})
+
+describe('gameWinner', () => {
+  it('reads an explicit 2 as team 2 and anything else as team 1', () => {
+    expect(gameWinner({ winning_pair_index: 2 })).toBe(2)
+    expect(gameWinner({ winning_pair_index: 1 })).toBe(1)
+    expect(gameWinner({ winning_pair_index: 0 })).toBe(1)
+  })
+})
+
+describe('winRatePct', () => {
+  it('rounds to a whole percentage', () => {
+    expect(winRatePct(2, 3)).toBe(67)
+    expect(winRatePct(1, 3)).toBe(33)
+    expect(winRatePct(5, 5)).toBe(100)
+  })
+
+  it('is 0 with no games, never NaN', () => {
+    expect(winRatePct(0, 0)).toBe(0)
   })
 })
