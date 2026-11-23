@@ -886,3 +886,23 @@ guards, and `replace` navigations. "The URL lacks a param" is evidence, not a co
 - Symptom: `neon: command not found`; first migration run was stopped mid-way by the owner.
 - Root cause: new PC; CLI never installed. `run-dev.mjs` needed `NEON_DATABASE_URL` from `neon cs`.
 - Fix: `run-dev.mjs` falls back to `NEON_DEV_URL` in `.env.schedule` (owner approved; never printed, still dev-only). Checked dev first: the stopped run had rolled back (table absent), then applied. Owner installed + signed in to Neon CLI 9.9.0. Deployed the gallery Function alone with `neon functions deploy` so seal/keepalive (whose secrets this PC lacks) were not redeployed.
+
+## 2026-11-23: Season reset, celebration rollover would have re-fired on every load
+- Symptom: (caught in review, never shipped) every celebration evaluation looked like a new season, so the rollover baseline would have replaced the stored snapshot each load.
+- Root cause: `celebrationStorage.readState` rebuilt the stored object without the new `season` field, so the stored season always read back as the legacy '2026'.
+- Fix: `readState` reads `season` back; added a storage round-trip test.
+
+## 2026-11-23: Season reset, switching the leaderboard season paired the new scope with the old season's status
+- Symptom: after switching season, boards briefly mounted, fired reads and unmounted; the throwaway mount consumed the celebration sweep debt.
+- Root cause: the season status (has the season started, played-session count) was not tagged with the season it was computed for, so the new scope was used with the previous season's status.
+- Fix: tag the season status with its season id; a mismatch is treated as loading.
+
+## 2026-11-23: Season reset, Awards board made ~35-40 requests per load
+- Symptom: opening the Awards tab fired about 35-40 requests; eligibility, profiles and sessions were each read 3-8 times.
+- Root cause: each award fetcher read its own copy of the shared data in parallel.
+- Fix: `shareInFlight` (`lib/inflight.ts`) dedupes concurrent identical reads (no caching).
+
+## 2026-11-23: Season reset, TodayView re-read the whole season on every realtime refetch
+- Symptom: (caught in review) every realtime refetch on every phone would have re-read the full season for the "season rate" figure.
+- Root cause: the season baseline was fetched inside the refetch path.
+- Fix: read the baseline once per session id.

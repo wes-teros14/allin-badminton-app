@@ -523,36 +523,56 @@ Durable knowledge only. Transient status lives in `handoff.md`.
 ## Leaderboards
 
 - Four tabs on `/leaderboard`: **Individual** (win rate; called *Mga Lodi* until 2026-09-05), **Partners** (partnership win rate), **Cheers**, **Awards**.
-- **Seasons (designed and planned 2026-11-19, not built; build after the Nov 22 party).** Design:
+- **Seasons (built 2026-11-23 on branch `claude/094-season-reset-ab612d`, not merged, not deployed).** Design:
   `specs/009-season-reset/design.md`; plan: `specs/009-season-reset/plan.md`. Decisions, so they aren't re-argued:
-  - A season is an explicit date span, **not a calendar year**. 2026 = sessions before 2026-11-16 (last: Nov 15);
-    the Nov 22 Xmas party opens 2027.
-  - **Read-time date windows on raw rows (approach A).**
+  - **A season is an explicit date span, not a calendar year.** `lib/season.ts` `SEASONS`: 2026 = sessions before
+    2026-11-16 (floors: played 3, Individual 4, Cheers 4, Early Bird 8; lifetime window); 2027 = from 2026-11-16
+    (floors 3/3/3/8; 365-day window up to `asOf`). `BoardScope {season, asOf, isCurrent}`; a past season's `asOf` is
+    the day before the next season starts. **A new season is one line in `SEASONS` plus a deploy.**
+  - **Read-time date windows on raw rows (approach A).** Every board and profile number is tallied from `matches`,
+    `match_results`, `session_registrations` and `cheers`, filtered by session date through PostgREST embeds
+    (`lib/seasonData.ts` reads, `lib/seasonTally.ts` tallies). Paged reads with an exact-count cross-check that throws.
+    `lib/inflight.ts` (`shareInFlight`) dedupes concurrent identical reads, no caching.
     - Rejected: a `season` column stamped on rows (migration, plus silent wrong-stamp risk).
-    - Rejected: snapshot-and-zero the counters (destructive, and it empties every board for a month because
-      eligibility reads the counters).
-  - **Minimums count sessions in the past 12 months.**
-    - Rejected: lifetime.
-    - Rejected: this season only. It kept every board closed until the 4th session, and only every-week players
-      appeared.
-  - Floors belong to the season. 2027 lowers Individual and Cheers from 4 to 3; 2026 keeps 4.
-  - Award badges are held until the season's 4th session, because night one ties everyone who came.
-  - My Profile becomes season-only (owner's choice: no career totals). There is a season switcher on the board, plus
-    a private "Your 2026 season" page.
-  - **The counter tables disagree with the rows; the rows win.**
-    - 8 players are ±1 win, from two winners corrected after recording (2026-09-06 #12, 2026-10-04 #13). The trigger is
-      `INSERT`-only.
-    - `cheers.multiplier` was **not** dropped by migration 036; it is still on prod and Neon. 37 March cheers are
-      weighted: 6,249 weighted, 6,177 rows, while `player_cheer_stats` says 6,243.
-    - The plan counts cheers weighted. That is my call; the owner hasn't objected.
-  - Cheers are linked two ways: 71 March rows have only `session_id`, every later row only `match_id`. A date filter
-    needs both paths.
+    - Rejected: snapshot-and-zero the counters (destructive, and it empties every board for a month).
+  - **Counter tables are unread.** `player_stats`, `player_pair_stats`, `player_cheer_stats` are still maintained by
+    triggers but no number comes from them. **One exception, by ruling:** the gallery access gate in `galleryApi.ts`
+    (`sessions_attended >= 1`). The ProfileView live refresh still listens for `player_stats` broadcast messages as a
+    "something changed" signal only.
+  - **Floors belong to the season; minimums count sessions in the past 12 months** (rolling window, not lifetime and
+    not this-season-only: that kept every board closed until the 4th session). 2027 lowers Individual and Cheers from
+    4 to 3; the 2026 final standings keep 4. `MIN_CHEERS_RECEIVED` (15) is unchanged.
+  - **Owner ruling 2026-11-23: a completed session with no game results is ignored everywhere.** The Nov 22 Xmas
+    Party was deliberately game-less (Finish Session only). "Played session" = status `complete` AND at least one
+    `match_results` row (`fetchCompletedSessions`). It does not count as attendance, floors, the recent-5 window,
+    streaks, Early Bird, the badge hold, or "the season has started".
+  - **Eligibility (`fetchEligibility(scope)`):** sessions in the floor window >= floor, registered in one of the last 5
+    played sessions up to `asOf`, not a guest. A past season keeps players since deactivated; the current season is
+    active players only.
+  - **Cheers are weighted by `cheers.multiplier`** (plan decision; the owner did not object). Only March 2026 has
+    multiplier > 1: 6,249 weighted vs 6,177 rows; `player_cheer_stats` said 6,243. Cheers are linked two ways (71 March
+    rows have only `session_id`, later rows only `match_id`), so the date filter needs both paths.
+  - **Against the Odds:** a player's win rate going in uses all earlier games across seasons; only the season's
+    upsets count.
+  - **Badge hold:** no award badge on a current-season profile until `BADGE_HOLD_SESSIONS` (4) played sessions (Nov 22
+    doesn't count). Past seasons are never held.
+  - **Celebration rollover:** `celebrationStorage` stores `season`. A season change replaces the snapshot with an
+    all-unplaced baseline and keeps `bestEver`, so the rollover is silent, a first 2027 podium celebrates, and
+    past-season views never celebrate.
+  - **UI:** Leaderboard title "Leaderboard", switcher "2027 season | 2026", `?season=`. While the current season has 0
+    played sessions (true on prod until the next session), a between-seasons card says "The 2027 season starts with
+    the {date} session" with a link to the 2026 final standings. My Profile is season-only; "Your 2026 season" card
+    ("N sessions · M games", no board place) links to `/profile/season/:seasonId`. TodayView shows the current-season
+    rate, baseline read once per session id.
+  - **Parity check was NOT run (owner ruling 2026-11-23).** Evidence is unit tests plus a live check on Neon dev. The
+    known counter faults were therefore not re-measured by the new code: 8 players ±1 win (two winners corrected after
+    recording, 2026-09-06 #12 and 2026-10-04 #13; the trigger is `INSERT`-only), and the March cheer total.
   - Neon's Data API handles range filters on embedded tables, one and two levels deep, verified on Neon dev.
-- **Off-app board snapshots (Xmas 2026 ref magnets) reuse the app's own fetchers.** `badminton-v2/scripts/xmas2026/dump-prod-boards.ts` (run with `npx vite-node`) pulls raw tables from **Neon `production`** (since 2026-11-21; it read the now-stale Supabase copy before the cutover) in a `begin read only` transaction, connection string from the Neon CLI at runtime, then patches `supabase.from` with an in-memory PostgREST-style builder, then calls `fetchAllTimeLeaderboard`/`fetchPairLeaderboard`/`fetchAwardsLeaderboard`/`fetchCheerLeaderboard` + `rankCheerShares` — so ranks can't drift from the app. Don't reimplement board logic in SQL for exports. Pipeline: dump → `per-player.cjs` → `build-all.cjs` → `docs/xmas2026/ref-magnets-all.html` (frames A Candy Cane + D Snow Ticket, 600×900 = 2×3 in @300 dpi, photo window transparent in PNGs). The `*.json` outputs hold prod player data and are gitignored.
+- **Off-app board snapshots (Xmas 2026 ref magnets) reuse the app's own fetchers.** `badminton-v2/scripts/xmas2026/dump-prod-boards.ts` (run with `npx vite-node`) pulls raw tables from **Neon `production`** (since 2026-11-21; it read the now-stale Supabase copy before the cutover) in a `begin read only` transaction, connection string from the Neon CLI at runtime, then patches `supabase.from` with an in-memory PostgREST-style builder, then calls `fetchWinsLeaderboard`/`fetchPairLeaderboard`/`fetchAwardsLeaderboard`/`fetchCheerLeaderboard`/`fetchEligibility` + `rankCheerShares` (season-aware since 2026-11-23; check the script's scope argument before reusing it) — so ranks can't drift from the app. Don't reimplement board logic in SQL for exports. Pipeline: dump → `per-player.cjs` → `build-all.cjs` → `docs/xmas2026/ref-magnets-all.html` (frames A Candy Cane + D Snow Ticket, 600×900 = 2×3 in @300 dpi, photo window transparent in PNGs). The `*.json` outputs hold prod player data and are gitignored.
 - **Every ranked board renders through one component.** `RankedBoard` / `RankPlace` in `components/RankedBoard.tsx` (moved out of `LeaderboardView.tsx` 2026-09-28) draw a medal podium for places 1–3 and a fixed 34 px numbered chip for every place below, with a divider naming the places actually on screen. Tied and untied places go through the *same* path deliberately — the previous code drew the rank inside the card for untied places and outside it for tied ones, so the rank column never lined up. Keeping the marker column a fixed width is the fix; don't reintroduce a second rendering path for ties. The **session Leaderboard tab** (`SessionPlayerDetailView`) uses it too since 2026-09-28, with the same order and dense-rank rule as all-time and no place cut; it previously numbered by row index, so two players on 83% got 🥇 and 🥈. `TodayView` (`/today`, linked from nowhere) still carries the old index-numbered copy.
 - **Rank arithmetic lives in `src/lib/denseRank.ts`** (`assignDenseRanks`, `cutToPlaces`, `groupByRank`) and is shared. Equal rates take the same place; the next distinct rate takes the next number (1, 1, 2 — never 1, 1, 3); and the cut counts **places, not rows**, so a board may show twelve rows across ten places. Both boards must keep using it — index-based numbering next to dense ranks contradicts itself the moment anyone ties.
-- **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligiblePlayerIds()` plus `MIN_SESSIONS_PLAYED` and `RECENT_SESSIONS_WINDOW`. Every surface asks that one function: Individual, Partners, Cheers, Awards, and the award badges on My Profile. The rules are 3+ sessions attended and registered for at least one of the last **5** completed sessions (`RECENT_SESSIONS_WINDOW`; raised from 4 on 2026-11-15 by the owner so a regular who misses a month — Ging, 8 sessions, last 18 Oct — isn't dropped). Every board caption reads the constant, so changing it needs no copy edits. **Exception (2026-11-15, owner):** Individual alone needs 4+ sessions (`MIN_SESSIONS_INDIVIDUAL` in `leaderboardData.ts`, filtered before ranking); the shared gate stays 3 for Partners, Cheers, Awards and badges. Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy. (The Wins board still had one until 2026-10-23; it now calls the gate too.)
-- **Guest accounts (2026-10-23, migration 087).** `profiles.is_guest` marks a shared login walk-ins play on (first one: `workislife99@gmail.com`). Admins toggle it on the Players page (Guest / Not guest, next to Active). `fetchEligiblePlayerIds` drops guests, so they never appear on an all-time board, award, badge or podium; session views still show them. Decided: real players' games with or against a guest still count in their own all-time stats (`player_stats` unchanged); pairs with a guest drop off Partners via the both-partners rule. A guest can still appear in another player's Best partners / Toughest opponents on My Profile (not asked to hide).
+- **Eligibility lives in `src/lib/boardEligibility.ts`** — `fetchEligibility(scope)` (rewritten 2026-11-23; `fetchEligiblePlayerIds`, `MIN_SESSIONS_PLAYED` and `MIN_SESSIONS_INDIVIDUAL` are gone, floors now live per season in `lib/season.ts`). Every surface asks that one function: Individual, Partners, Cheers, Awards, and the award badges on My Profile. Rules: sessions in the scope's floor window >= the board's floor, and registered for at least one of the last **5** played sessions (`RECENT_SESSIONS_WINDOW`; raised from 4 on 2026-11-15 by the owner so a regular who misses a month isn't dropped), not a guest. Counts come from raw rows, not `player_stats.sessions_attended`. Every board caption reads the constants, so changing one needs no copy edits. Individual has its own floor (4 in 2026, 3 in 2027); Partners additionally needs 3 games together and applies the player rules to *both* partners (FR-014a). It was previously inlined four times and the copies had drifted — do not reintroduce a local copy.
+- **Guest accounts (2026-10-23, migration 087).** `profiles.is_guest` marks a shared login walk-ins play on (first one: `workislife99@gmail.com`). Admins toggle it on the Players page (Guest / Not guest, next to Active). `fetchEligibility` drops guests, so they never appear on an all-time board, award, badge or podium; session views still show them. Decided: real players' games with or against a guest still count in their own all-time stats (counted from raw rows, so unchanged); pairs with a guest drop off Partners via the both-partners rule. A guest can still appear in another player's Best partners / Toughest opponents on My Profile (not asked to hide).
 - **`ATTENDANCE_AWARD_EXCLUDED` (was `BOARD_EXCLUDED`) gates three awards** — 📅 Most Sessions Joined, 🔥 Attendance Streak and (since 2026-10-04) 🐦 Registration Early Bird — because those are counts an organiser who attends everything would hold permanently. It deliberately does **not** touch any ranked board: every board scores a rate (win rate, or a cheer share of the player's own total), and a rate cannot be won by turning up more often. It was briefly moved inside `fetchEligiblePlayerIds`, which silently excluded those accounts from Individual and Partners — boards that had never excluded anyone. Do not put it back there.
 
 - **🐦 Registration Early Bird = average points per session (revised 2026-10-11, owner chose option A).** In every
@@ -565,7 +585,7 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   Rejected: B "% of sessions in the first 5" (r = 0.42, treats 1st like 5th) and a 5-session minimum (Jerome led on 6
   sessions). History: a points total from 2026-10-04 (briefly last-8-sessions), before that "first to register for the
   latest-dated session". Logic `lib/earlyBird.ts` (pure, tested), data `lib/earlyBirdData.ts`.
-- **My Profile computes its own award badges.** It has to agree with the Awards tab, so it calls the same `fetchEligiblePlayerIds` and `rankCheerShares(..., { maxPlaces: 1 })`, resolving a tie to nobody the same way. The two files diverged once already, showing badges on profiles that the leaderboard did not award. Change one, check the other. **One deliberate exception since 2026-10-06:** the six cheer awards ("Top Fierce Offense" etc.) were removed from the Awards tab because the Cheers tab already ranks every category, but the owner chose to keep their badges on My Profile. Do not "fix" that mismatch.
+- **My Profile computes its own award badges.** It has to agree with the Awards tab, so it calls the same `fetchEligibility` (season scope; held until 4 played sessions in the current season) and `rankCheerShares(..., { maxPlaces: 1 })`, resolving a tie to nobody the same way. The two files diverged once already, showing badges on profiles that the leaderboard did not award. Change one, check the other. **One deliberate exception since 2026-10-06:** the six cheer awards ("Top Fierce Offense" etc.) were removed from the Awards tab because the Cheers tab already ranks every category, but the owner chose to keep their badges on My Profile. Do not "fix" that mismatch.
 - **Awards boards show a top 5 (`AWARD_PLACES` in `lib/denseRank.ts`, 2026-10-06),** matching Cheers (Individual and Partners show 10). Early Bird and Win Streak read the same constant, so the awards can't drift apart.
 - **The Awards tab looks like the Cheers tab (2026-10-06).** One award at a time behind a four-way switcher (📅 Joined, 🔥 Streak, 🐦 Early, ⚡ Wins), then the award's name, its rule, and a top 3 drawn through `RankedBoard`, the same medal podium every tab uses (dense places, ties share a place). It replaced a stack of bespoke cards, the only tab that looked different. Award rows carry `playerId/name/value/rank` plus a unit ("sessions", "in a row", "points", "wins in a row"). Most Sessions Joined and Attendance Streak became top 3 the same day; Attendance Streak still means the longest run of consecutive finished sessions ever. The profile's 📅 badge follows 1st place and is shared on a tie.
 - **⚡ Win Streak = best run ever (revised 2026-10-11, owner).** Longest run of consecutive *match* wins a player has

@@ -968,6 +968,45 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">How do seasons work now, and why read-time windows instead of resetting the counters? (Nov 23)</p>
+    <p class="a">
+      A season is an explicit date span in <code>lib/season.ts</code> (2026 = before 2026-11-16, 2027 = from it) with
+      its own floors and window. <strong>Every board and profile number is tallied at read time from the raw rows</strong>
+      (<code>matches</code>, <code>match_results</code>, <code>session_registrations</code>, <code>cheers</code>), filtered
+      by session date (<code>lib/seasonData.ts</code>, <code>lib/seasonTally.ts</code>). Nothing is reset, so a past season
+      stays correct forever and fixing an old result fixes it too. Resetting the counters (<code>player_stats</code> and
+      friends) was rejected: it is destructive and would empty every board for weeks. The counter tables are now unread;
+      the only exception is the gallery access gate in <code>galleryApi.ts</code> (<code>sessions_attended &gt;= 1</code>).
+      A new season is one line in <code>SEASONS</code> plus a deploy.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Why doesn&rsquo;t the Nov 22 Xmas Party count anywhere? (Nov 23)</p>
+    <p class="a">
+      Owner ruling, Nov 23: <strong>a completed session with no game results is ignored everywhere</strong>. The party
+      was finished with Finish Session only (18 queued games, 0 results, 0 cheers). A &ldquo;played session&rdquo; is
+      status <code>complete</code> <em>and</em> at least one <code>match_results</code> row
+      (<code>fetchCompletedSessions</code> in <code>lib/seasonData.ts</code>). So it is not attendance, not a floor
+      session, not in the recent-5 window, not a streak day, not Early Bird, not toward the 4-session badge hold, and
+      not &ldquo;the season has started&rdquo;. Result: the current 2027 season still has 0 played sessions, so
+      the Leaderboard shows the between-seasons card until the next real session.
+    </p>
+  </div>
+
+  <div class="qa">
+    <p class="q">Was the parity check against the old counter numbers run? (Nov 23)</p>
+    <p class="a">
+      <strong>No &mdash; skipped, the owner&rsquo;s call.</strong> Evidence instead: 700 unit tests passing and a live
+      check on Neon dev (window halves 20 + 24 = 44 of 44 matches; all board tabs, both seasons, error state,
+      between-seasons card, light theme, profile and year page as a test player). <strong>Not measured by the new
+      code:</strong> the 8 players off by one win in the counters, and the March cheers (weighted 6,249 vs counter
+      6,243). Those were measured with SQL on Nov 19 (see above), not re-run through the new fetchers. The planned
+      dev-only <code>seasonParity.ts</code> module was therefore never written.
+    </p>
+  </div>
+
   <h2 class="topic" id="theming">Theming &amp; light mode</h2>
 
   <div class="qa">
