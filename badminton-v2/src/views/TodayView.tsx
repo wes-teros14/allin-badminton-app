@@ -29,7 +29,10 @@ type MatchRow = {
   match_results: Array<{ winning_pair_index: 1 | 2; game_number: number | null }>
 }
 
-async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEntry[]> {
+async function fetchSessionLeaderboard(
+  sessionId: string,
+  seasonBaseline: () => Promise<Map<string, { games: number; wins: number }>>,
+): Promise<LeaderboardEntry[]> {
   const [regsRes, matchesRes] = await Promise.all([
     supabase
       .from('session_registrations')
@@ -42,20 +45,22 @@ async function fetchSessionLeaderboard(sessionId: string): Promise<LeaderboardEn
       .eq('status', 'complete'),
   ])
 
+  if (regsRes.error) throw regsRes.error
+  if (matchesRes.error) throw matchesRes.error
+
   const playerIds = ((regsRes.data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id)
   if (playerIds.length === 0) return []
 
-  const [profilesRes, seasonMatches] = await Promise.all([
+  const [profilesRes, seasonMap] = await Promise.all([
     supabase.from('profiles').select('id, nickname, name_slug').in('id', playerIds),
-    seasonMatchesOnce(seasonWindow(currentSeason(localToday()))),
+    seasonBaseline(),
   ])
+  if (profilesRes.error) throw profilesRes.error
 
   const nameMap = new Map(
     ((profilesRes.data ?? []) as Array<{ id: string; nickname: string | null; name_slug: string }>)
       .map((p) => [p.id, formatDisplayName(p.nickname, p.name_slug)])
   )
-
-  const seasonMap = tallyPlayerGames(seasonMatches)
 
   const statsMap = new Map<string, { wins: number; games: number }>(
     playerIds.map((id) => [id, { wins: 0, games: 0 }])
@@ -107,11 +112,24 @@ export function TodayView() {
     if (selectedIndex !== safeIndex) setSelectedIndex(safeIndex)
   }, [safeIndex]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The season baseline moves only when a session completes, so it is read once per session id and
+  // reused by realtime refetches (every phone refetching a full paged read would fan out). A failed
+  // read is dropped so the next load re-reads it.
+  const baselineRef = useRef<{ sessionId: string; promise: Promise<Map<string, { games: number; wins: number }>> } | null>(null)
+  const seasonBaselineFor = useCallback((sessionId: string) => {
+    if (baselineRef.current?.sessionId === sessionId) return baselineRef.current.promise
+    const promise = seasonMatchesOnce(seasonWindow(currentSeason(localToday()))).then(tallyPlayerGames)
+    const entry = { sessionId, promise }
+    baselineRef.current = entry
+    promise.catch(() => { if (baselineRef.current === entry) baselineRef.current = null })
+    return promise
+  }, [])
+
   const load = useCallback(async () => {
     if (!activeSession) { setIsLoading(false); return }
     setIsLoading(true)
     try {
-      const data = await fetchSessionLeaderboard(activeSession.sessionId)
+      const data = await fetchSessionLeaderboard(activeSession.sessionId, () => seasonBaselineFor(activeSession.sessionId))
       setEntries(data)
       setLoadError(false)
     } catch (err) {
@@ -190,9 +208,15 @@ export function TodayView() {
       <h1 className="text-xl font-bold text-primary-ink">🏆 {activeSession.name}</h1>
 
       {loadError ? (
-        <p className="text-sm text-destructive" role="alert">
-          Could not load today's results. Pull to refresh or try again shortly.
-        </p>
+        <div role="alert" className="space-y-2">
+          <p className="text-sm text-destructive">Could not load today's results.</p>
+          <button
+            onClick={() => load()}
+            className="px-3 py-1.5 rounded-full text-sm font-medium bg-muted text-foreground hover:bg-muted/80"
+          >
+            Retry
+          </button>
+        </div>
       ) : entries.length === 0 ? (
         <NoResultsYet />
       ) : (
