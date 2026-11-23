@@ -519,11 +519,15 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   `NEON_DATABASE_URL="$(neon cs dev)" node scripts/neon/run-dev.mjs scripts/neon/seed-dev.sql` (needs `pg` on NODE_PATH;
   the runner refuses any endpoint but dev's). `npm run seed` is the old Supabase DEV seed.
 - `curl` is blocked in this environment's bash; use PowerShell `Invoke-WebRequest` to probe a local port.
+- A Claude worktree has no `badminton-v2/.env*` (gitignored), so its dev server dies with "supabaseUrl is
+  required". Copy `.env`, `.env.development`, `.env.local` from the main checkout with `cp` (never read them).
+- Every dev test player is registered in the in-progress "Dev Live Session", so their screens open on the
+  compulsory cheer gate; give the cheers through the UI (dev only) or use Admin.
 
 ## Leaderboards
 
 - Four tabs on `/leaderboard`: **Individual** (win rate; called *Mga Lodi* until 2026-09-05), **Partners** (partnership win rate), **Cheers**, **Awards**.
-- **Seasons (built 2026-11-23 on branch `claude/094-season-reset-ab612d`, not merged, not deployed).** Design:
+- **Seasons (built and LIVE 2026-11-23; main 416df4b).** Design:
   `specs/009-season-reset/design.md`; plan: `specs/009-season-reset/plan.md`. Decisions, so they aren't re-argued:
   - **A season is an explicit date span, not a calendar year.** `lib/season.ts` `SEASONS`: 2026 = sessions before
     2026-11-16 (floors: played 3, Individual 4, Cheers 4, Early Bird 8; lifetime window); 2027 = from 2026-11-16
@@ -563,7 +567,12 @@ Durable knowledge only. Transient status lives in `handoff.md`.
     played sessions (true on prod until the next session), a between-seasons card says "The 2027 season starts with
     the {date} session" with a link to the 2026 final standings. My Profile is season-only; "Your 2026 season" card
     ("N sessions · M games", no board place) links to `/profile/season/:seasonId`. TodayView shows the current-season
-    rate, baseline read once per session id.
+    rate against the season *before* the session's date (same on every phone), read once per session id.
+  - **Read load:** concurrent identical reads share one request (`lib/inflight.ts` `shareInFlight`, nothing cached);
+    `fetchSeasonMatches` shares itself. An ended season's profile-card totals are read once per page visit
+    (`pastSeasonTotals`). My Profile coalesces `player_stats` messages (~4 s) and reloads badges only when the
+    season's played-session count changes.
+  - **Accepted (owner):** mid-session, a profile's Games count before that night counts as a session attended.
   - **Parity check was NOT run (owner ruling 2026-11-23).** Evidence is unit tests plus a live check on Neon dev. The
     known counter faults were therefore not re-measured by the new code: 8 players ±1 win (two winners corrected after
     recording, 2026-09-06 #12 and 2026-10-04 #13; the trigger is `INSERT`-only), and the March cheer total.

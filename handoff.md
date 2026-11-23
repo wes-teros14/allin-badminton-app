@@ -25,7 +25,6 @@ Updated: 2026-11-23 Manila. Overwrite this file on every update; it is never a r
 3. Owner: close the Xmas Party session when photos are in.
 
 ## Open questions
-- Accepted as is (owner, 2026-11-23): mid-session, a profile's Games can show before that night counts as a session attended.
-- Parity check skipped (owner's call); not planned.
+- Worktree branch `claude/094-season-reset-ab612d` is fully merged; it can be deleted when the session is archived.
 - Offered, not decided: treat Supabase 500/52x token-refresh errors as retryable so a brief outage doesn't sign players out.
 - Carried over: iPhone Safari WebP untested on a real phone; kiosk insert rule; offline-backup phone check; Broadcast/share on phones; Nov 1 session not closed; prod `service_role` key not rotated; old Neon test branches cleanup (owner: maybe later).
