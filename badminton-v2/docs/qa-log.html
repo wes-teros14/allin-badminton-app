@@ -1007,6 +1007,19 @@
     </p>
   </div>
 
+  <div class="qa">
+    <p class="q">What are the two &ldquo;still open&rdquo; season items: the 2026 card read, and games before the session counts? (Nov 23)</p>
+    <p class="a">
+      <strong>2026 card:</strong> to show &ldquo;21 sessions &middot; 88 games&rdquo;, My Profile reads all of 2026&rsquo;s
+      matches and registrations (~545 matches, about one page each) every time a profile opens, though 2026 never
+      changes. A few extra small requests per open; fixable later by remembering it for the visit
+      (<code>useSeasonStats.ts</code>). <strong>Mid-session:</strong> Games and W&ndash;L count a game once its match is
+      complete; Sessions Attended counts a session only once the admin finishes it and it has results
+      (<code>fetchCompletedSessions</code>). So during the first 2027 night a profile can read &ldquo;Sessions 0 &middot;
+      Games 3&rdquo; until Finish Session. It matches how the old counters behaved. Owner: both fine as is.
+    </p>
+  </div>
+
   <h2 class="topic" id="theming">Theming &amp; light mode</h2>
 
   <div class="qa">
