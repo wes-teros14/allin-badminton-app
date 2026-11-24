@@ -33,7 +33,7 @@ export function PlayerScheduleHeader({ nameSlug, avatarUrl, sessionName, session
     : ''
   // Joined rather than conditionally rendered: every part is nullable, and a
   // separator only belongs between two parts that both exist.
-  const whenLine = [formattedDate, sessionTime, sessionDuration ? `${sessionDuration} hrs` : null]
+  const whenLine = [formattedDate, sessionTime, sessionDuration ? `${sessionDuration} hrs` : null, `${gameCount} ${gameCount === 1 ? 'game' : 'games'}`]
     .filter(Boolean)
     .join(' · ')
 
@@ -48,12 +48,7 @@ export function PlayerScheduleHeader({ nameSlug, avatarUrl, sessionName, session
         <span className="text-xs font-semibold opacity-90">{nameSlug}</span>
       </div>
 
-      <div className="flex items-start gap-2.5">
-        <p className="min-w-0 flex-1 text-[23px] font-bold leading-[1.2] tracking-[-0.02em]">{sessionName}</p>
-        <span className="shrink-0 whitespace-nowrap rounded-[7px] bg-primary-foreground/15 px-2 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em]">
-          {gameCount} {gameCount === 1 ? 'game' : 'games'}
-        </span>
-      </div>
+      <p className="text-[23px] font-bold leading-[1.2] tracking-[-0.02em]">{sessionName}</p>
 
       {whenLine && <p className="mt-2 text-[13.5px] font-medium opacity-90">{whenLine}</p>}
       {sessionVenue && <p className="mt-0.5 text-[12.5px] opacity-75">{sessionVenue}</p>}

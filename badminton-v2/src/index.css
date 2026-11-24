@@ -302,3 +302,10 @@ html:not(.dark) .theme-orb {
     100% { transform: none; }
 }
 @utility animate-celebration-lift { animation: celebration-lift 0.6s cubic-bezier(0.17, 0.89, 0.32, 1.28); }
+
+/* Cheer and award icons (GlyphIcon.tsx). --glyph is the category colour, tuned on
+   the dark card; the light theme darkens it so yellow and teal hold 3:1 on white. */
+.glyph-ink { color: color-mix(in oklab, var(--glyph) 62%, black); }
+.dark .glyph-ink { color: var(--glyph); }
+.glyph-swatch { background: color-mix(in oklab, var(--glyph) 14%, transparent); }
+.dark .glyph-swatch { background: color-mix(in oklab, var(--glyph) 16%, transparent); }

@@ -9,7 +9,7 @@ import { derivePaymentState, PAYMENT_STATE_LABEL } from '@/lib/paymentState'
 
 const ACTIVE_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_open', 'registration_closed'])
 const SHOW_REGISTERED_PILL_STATUSES = new Set(['in_progress', 'schedule_locked', 'registration_closed'])
-const REGISTERED_BADGE_CLASS = 'border-green-500/30 bg-green-500/10 text-green-700'
+const REGISTERED_BADGE_CLASS = 'text-green-700 dark:text-green-500'
 
 function DetailItem({
   icon: Icon,
@@ -171,8 +171,8 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'in_progress') {
     return {
       label: 'Live',
-      className: 'border-destructive/50 bg-destructive text-white',
-      accentClassName: 'bg-destructive',
+      className: 'text-destructive',
+      dotClassName: 'bg-destructive',
       isActive: true,
     }
   }
@@ -192,8 +192,8 @@ function statusBadge(s: SessionPickerItem) {
 
     return {
       label,
-      className: 'border-primary bg-primary text-primary-foreground',
-      accentClassName: 'bg-primary',
+      className: 'text-primary-ink',
+      dotClassName: 'bg-primary',
       isActive: true,
     }
   }
@@ -202,7 +202,7 @@ function statusBadge(s: SessionPickerItem) {
     return {
       label: 'Registered',
       className: REGISTERED_BADGE_CLASS,
-      accentClassName: 'bg-green-500',
+      dotClassName: 'bg-green-500',
       isActive: true,
     }
   }
@@ -210,8 +210,8 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'registration_closed') {
     return {
       label: 'Closed',
-      className: 'border-border bg-secondary text-muted-foreground',
-      accentClassName: 'bg-muted-foreground/50',
+      className: 'text-muted-foreground',
+      dotClassName: 'bg-muted-foreground/50',
       isActive: true,
     }
   }
@@ -219,8 +219,8 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'schedule_locked') {
     return {
       label: 'Schedule Ready',
-      className: 'border-gold/40 bg-gold/10 text-gold-ink',
-      accentClassName: 'bg-gold',
+      className: 'text-gold-ink',
+      dotClassName: 'bg-gold',
       isActive: true,
     }
   }
@@ -230,16 +230,16 @@ function statusBadge(s: SessionPickerItem) {
   if (s.status === 'complete' && s.closed_at == null) {
     return {
       label: 'Finished',
-      className: 'border-court2/40 bg-court2/10 text-court2',
-      accentClassName: 'bg-court2/70',
+      className: 'text-court2',
+      dotClassName: 'bg-court2/70',
       isActive: true,
     }
   }
 
   return {
     label: 'Ended',
-    className: 'border-border bg-secondary/60 text-muted-foreground',
-    accentClassName: 'bg-border',
+    className: 'text-muted-foreground',
+    dotClassName: 'bg-border',
     isActive: false,
   }
 }
@@ -287,7 +287,7 @@ function SessionRow({
     : 'text-destructive'
   const showRegistrants = (s.status === 'registration_open' || s.status === 'registration_closed') && s.registrants !== undefined
   const shortcutClassName =
-    'grid h-11 w-11 place-items-center rounded-xl border border-primary bg-primary-subtle text-primary transition-[background-color,color,transform] hover:bg-primary hover:text-primary-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+    'grid h-11 w-11 place-items-center rounded-lg text-muted-foreground transition-[background-color,color,transform] hover:bg-muted hover:text-foreground active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
   const showFinance = isAdmin && canSeeFinance
   // Right padding that keeps card text clear of the shortcuts: one 44 px button
   // or two with an 8 px gap, plus the 10 px inset. `reclaim` lets the name row
@@ -326,15 +326,14 @@ function SessionRow({
       style={{ animationDelay: `${index * 60}ms` }}
       className={`animate-card-fade-up group relative overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 ${
         isActive
-          ? 'border-primary/30 hover:border-primary/50 hover:shadow-[0_8px_24px_-4px_rgba(111,62,135,0.15)]'
+          ? 'border-primary/30 hover:border-primary/50 hover:shadow-md'
           : 'border-border hover:shadow-md'
       }`}
     >
-      <div className={`absolute inset-y-0 left-0 w-1 ${badge.accentClassName}`} />
       <div className="relative">
       <Link
         to={`/sessions/${s.id}`}
-        className={`relative flex w-full flex-col rounded-2xl py-4 pl-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+        className={`relative flex w-full flex-col rounded-2xl py-4 pl-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
           // Reserve a gutter for the admin button so long venue or note text
           // cannot run underneath it.
           isAdmin ? gutter : 'pr-4'
@@ -351,11 +350,12 @@ function SessionRow({
             </p>
 
             <div className="flex shrink-0 flex-nowrap justify-end gap-1.5">
-              <span className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
+              <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold ${badge.className}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${badge.dotClassName}${s.status === 'in_progress' ? ' animate-pulse' : ''}`} aria-hidden="true" />
                 {badge.label}
               </span>
               {showRegisteredPill && (
-                <span className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${REGISTERED_BADGE_CLASS}`}>
+                <span className={`whitespace-nowrap text-xs font-semibold ${REGISTERED_BADGE_CLASS}`}>
                   Registered
                 </span>
               )}

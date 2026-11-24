@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import type { CheerType } from '@/types/app'
 import type { PendingMatchCheer } from '@/hooks/useMatchCheers'
+import { GlyphIcon } from '@/components/GlyphIcon'
 
 interface CheersPanelProps {
   cheerTypes: CheerType[]
@@ -72,51 +73,42 @@ export function CheersPanel({
   }
 
   return (
-    <div className="max-w-sm mx-auto px-4 pt-6 pb-10 space-y-4">
-      {/* Header */}
-      <div className="text-center space-y-0.5">
-        <p className="text-sm font-semibold">🎉 Game {pendingMatch.gameNumber} complete!</p>
-        {remainingCount > 1 && (
-          <p className="text-xs text-muted-foreground">
-            {remainingCount} game{remainingCount !== 1 ? 's' : ''} to cheer
-          </p>
-        )}
-      </div>
-
-      {/* Progress */}
-      <p className="text-xs text-muted-foreground text-center">
-        {cheeredCount + 1} of {totalPlayers}
+    <div className="max-w-sm mx-auto px-4 pt-6 pb-10">
+      {/* Header: where you are, then the question. No card — the rows are the content. */}
+      <p className="text-xs text-muted-foreground tabular-nums">
+        Game {pendingMatch.gameNumber} done · cheer {cheeredCount + 1} of {totalPlayers}
       </p>
+      <h2 className="mt-1 mb-4 text-[22px] font-bold leading-tight tracking-[-0.02em] text-balance">
+        What did {current.displayName} do well?
+      </h2>
 
-      {/* Player card */}
-      <div className="bg-card border border-border rounded-xl px-4 py-5 space-y-4">
-        <div className="text-center">
-          <p className="text-xs text-muted-foreground mb-0.5">Give a cheer to</p>
-          <p className="font-semibold text-base">{current.displayName}</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-2">
-          {cheerTypes.map(ct => (
-            <button
-              key={ct.id}
-              disabled={submitting}
-              onClick={() => handleCheer(ct.id)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border hover:bg-muted hover:border-primary/30 transition-colors disabled:opacity-50 text-left"
-            >
-              <span className="text-xl shrink-0">{ct.emoji}</span>
-              <span className="font-medium text-sm">{ct.name}</span>
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={handleSkip}
-          disabled={submitting}
-          className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
-        >
-          Skip →
-        </button>
+      <div className="border-t border-border">
+        {cheerTypes.map(ct => (
+          <button
+            key={ct.id}
+            disabled={submitting}
+            onClick={() => handleCheer(ct.id)}
+            className="flex w-full items-center gap-3.5 border-b border-border px-0.5 py-3 text-left text-[15px] font-medium transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:opacity-50"
+          >
+            <GlyphIcon emoji={ct.emoji} swatch />
+            {ct.name}
+          </button>
+        ))}
       </div>
+
+      <button
+        onClick={handleSkip}
+        disabled={submitting}
+        className="mt-1 min-h-11 text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground disabled:opacity-50"
+      >
+        Skip {current.displayName}
+      </button>
+
+      {remainingCount > 1 && (
+        <p className="mt-2 text-xs text-muted-foreground tabular-nums">
+          {remainingCount} games still to cheer
+        </p>
+      )}
     </div>
   )
 }

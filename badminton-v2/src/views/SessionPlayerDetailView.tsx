@@ -816,8 +816,8 @@ export function SessionPlayerDetailView() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Tab bar */}
-      <div className="flex justify-center items-center gap-1 px-4 py-3 border-b border-border">
-        <div className="flex gap-1" role="tablist" aria-label="Session sections">
+      <div className="flex justify-center items-center px-4 border-b border-border">
+        <div className="flex gap-6" role="tablist" aria-label="Session sections">
           {(['schedule', 'allmatches', 'leaderboard'] as Tab[]).map((t) => (
             <button
               key={t}
@@ -826,9 +826,9 @@ export function SessionPlayerDetailView() {
               aria-selected={tab === t}
               aria-controls={`tabpanel-${t}`}
               onClick={() => setTab(t)}
-              className={`relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={`relative min-h-11 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 tab === t
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'text-foreground shadow-[inset_0_-2px_0_var(--primary-ink)]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >

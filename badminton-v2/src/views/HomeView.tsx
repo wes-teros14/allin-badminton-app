@@ -66,15 +66,15 @@ function BulletinBoard({ isAdmin }: { isAdmin: boolean }) {
   }
 
   return (
-    <div className="w-full max-w-sm sm:max-w-md md:max-w-lg bg-card border border-border rounded-xl px-4 py-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">📌 Notice Board</p>
+    <div className="w-full max-w-sm sm:max-w-md md:max-w-lg space-y-3 text-left">
+      <div className="flex items-baseline justify-between border-b border-border pb-2">
+        <h2 className="text-[17px] font-bold tracking-[-0.01em]">Notice board</h2>
         {isAdmin && !editing && (
           <button
             onClick={handleEdit}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="min-h-11 -my-3 text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
           >
-            {content ? 'Edit' : '+ Add'}
+            {content ? 'Edit notice' : 'Add notice'}
           </button>
         )}
       </div>
@@ -114,7 +114,7 @@ function BulletinBoard({ isAdmin }: { isAdmin: boolean }) {
           )}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">No announcements.</p>
+        <p className="text-sm text-muted-foreground">No notices yet.</p>
       )}
     </div>
   )

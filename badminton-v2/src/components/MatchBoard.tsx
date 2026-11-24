@@ -229,7 +229,7 @@ export function PaymentBanner({
         href={`/sessions/${sessionId}`}
         className="mt-2.5 flex min-h-11 w-full items-center justify-center rounded-[10px] bg-primary text-[13.5px] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
       >
-        Pay &amp; upload receipt →
+        Pay &amp; upload receipt
       </a>
     </div>
   )
@@ -327,15 +327,14 @@ export function NoScheduleYet({
   ]
 
   return (
-    <div className="mt-5 rounded-2xl border border-dashed border-border p-6 text-center">
-      <div className="text-[26px] leading-none" aria-hidden="true">🏸</div>
-      <h2 className="mt-3 text-[15px] font-semibold tracking-[-0.01em]">Matches aren&apos;t created yet</h2>
-      <p className="mx-auto mt-1.5 max-w-[30ch] text-[12.5px] leading-relaxed text-muted-foreground">
+    <div className="mt-6">
+      <h2 className="text-[17px] font-bold tracking-[-0.01em]">Matches aren&apos;t created yet</h2>
+      <p className="mt-1 max-w-[40ch] text-sm leading-relaxed text-muted-foreground">
         The schedule is generated once registration closes. Every game will show up here.
       </p>
-      <div className="mt-4 border-t border-border pt-3.5 text-left">
+      <div className="mt-3 border-t border-border pt-2">
         {steps.map((s) => (
-          <div key={s.label} className={`flex items-start gap-2.5 py-1.5 text-xs ${s.done ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+          <div key={s.label} className={`flex items-start gap-2.5 py-1.5 text-sm ${s.done ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
             <span className={`mt-px grid h-4 w-4 shrink-0 place-items-center rounded-full font-mono text-[9px] font-bold ${s.done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
               {s.done ? '✓' : steps.indexOf(s) + 1}
             </span>
@@ -357,10 +356,9 @@ export function NoScheduleYet({
  */
 export function NoResultsYet() {
   return (
-    <div className="mt-5 rounded-2xl border border-dashed border-border p-6 text-center">
-      <div className="text-[26px] leading-none" aria-hidden="true">🏸</div>
-      <h2 className="mt-3 text-[15px] font-semibold tracking-[-0.01em]">No results yet</h2>
-      <p className="mx-auto mt-1.5 max-w-[30ch] text-[12.5px] leading-relaxed text-muted-foreground">
+    <div className="mt-6">
+      <h2 className="text-[17px] font-bold tracking-[-0.01em]">No results yet</h2>
+      <p className="mt-1 max-w-[40ch] text-sm leading-relaxed text-muted-foreground">
         Scores show up here as soon as the first game finishes.
       </p>
     </div>
@@ -536,15 +534,15 @@ export interface PersonalMatch {
 
 function OutcomeChip({ outcome, won }: { outcome: PersonalMatch['outcome']; won: boolean | null }) {
   if (outcome === 'draw') {
-    return <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">Draw</span>
+    return <span className="w-4 shrink-0 text-center text-[13px] font-extrabold text-muted-foreground" aria-label="Draw">D</span>
   }
   if (won === true) {
-    return <span className="rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-bold text-success">Win</span>
+    return <span className="w-4 shrink-0 text-center text-[13px] font-extrabold text-success" aria-label="Win">W</span>
   }
   if (won === false) {
-    return <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[11px] font-bold text-destructive">Loss</span>
+    return <span className="w-4 shrink-0 text-center text-[13px] font-extrabold text-destructive" aria-label="Loss">L</span>
   }
-  return <span className="text-sm font-bold text-success">✓</span>
+  return <span className="w-4 shrink-0 text-center text-sm font-bold text-success" aria-label="Played">✓</span>
 }
 
 /**
@@ -640,7 +638,7 @@ export function PersonalGameCard({
               </span>
             </>
           ) : (
-            <span className="shrink-0 rounded-md bg-primary px-2 py-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-primary-foreground">
+            <span className="shrink-0 text-xs font-semibold text-primary-ink">
               Your next game
             </span>
           )}
@@ -673,7 +671,7 @@ export function PersonalGameCard({
       {isDone ? (
         <OutcomeChip outcome={match.outcome} won={match.won} />
       ) : isNextUp ? (
-        <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.06em] text-primary-foreground">
+        <span className="shrink-0 text-xs font-semibold text-primary-ink">
           Next
         </span>
       ) : null}

@@ -12,17 +12,18 @@ import { switcherLabel } from '@/lib/seasonCopy'
 import { ordinal } from '@/lib/celebrationLabels'
 import { cheerSharePct } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
+import { GlyphIcon } from '@/components/GlyphIcon'
 import type { CheerStatsRow } from '@/lib/leaderboardData'
 import type { Badge } from '@/lib/seasonBadges'
 import type { SeasonBadgesLoad, SeasonStatsLoad } from '@/hooks/useSeasonStats'
 
-/** "AWARDS ··· 2027 SEASON". The label says which season every number under it counts. */
+/** "Awards ··· 2027 season". The label says which season every number under it counts. */
 export function SectionHeader({ title, scope }: { title: string; scope?: BoardScope }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{title}</h2>
+    <div className="mb-2 flex items-baseline justify-between gap-3">
+      <h2 className="text-[17px] font-bold tracking-[-0.01em] text-foreground">{title}</h2>
       {scope && (
-        <span className="shrink-0 rounded-full border border-primary-ink/35 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-primary-ink">
+        <span className="shrink-0 text-xs font-semibold text-primary-ink">
           {switcherLabel(scope.season, scope.isCurrent)}
         </span>
       )}
@@ -42,46 +43,55 @@ export function SectionError({ what, onRetry }: { what: string; onRetry: () => v
   )
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+/** One figure in the ruled stats row: the number leads, the label sits under it. */
+function StatFigure({ value, label }: { value: string; label: string }) {
   return (
-    <Card>
-      <CardContent className="pt-5 pb-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-2xl font-bold text-primary">{value}</p>
-        {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div className="min-w-0 py-3 [&+&]:border-l [&+&]:border-border [&+&]:pl-3">
+      <p className="text-[22px] font-bold leading-tight tracking-[-0.02em] tabular-nums">{value}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
+    </div>
   )
 }
 
-const RANK_LABELS = ['🥇', '🥈', '🥉']
+/**
+ * 1st, 2nd and 3rd as numbered discs in gold, silver and bronze, in place of medal emoji. Dark ink on all
+ * three: the lightest disc fill is ~9:1 and the darkest (light-theme gold) ~5:1 against #1B1220.
+ */
+const RANK_DISC = ['bg-gold', 'bg-[#B8B2C0]', 'bg-[#C98A55]']
 
-function RankListCard({ label, items, subLabel }: {
+export function RankDisc({ rank }: { rank: number }) {
+  return (
+    <span
+      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-extrabold tabular-nums text-[#1B1220] ${RANK_DISC[rank - 1] ?? 'bg-muted'}`}
+      aria-label={`Rank ${rank}`}
+    >
+      {rank}
+    </span>
+  )
+}
+
+function RankList({ label, items, subLabel }: {
   label: string
   items: Array<{ nameSlug: string; count: number }>
   subLabel: (count: number) => string
 }) {
   return (
-    <Card className="col-span-2">
-      <CardContent className="pt-5 pb-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">{label}</p>
-        {items.length === 0 ? (
-          <p className="text-2xl font-bold text-primary">—</p>
-        ) : (
-          <ul className="space-y-2">
-            {items.map((item, i) => (
-              <li key={i} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2">
-                  <span className="text-base">{RANK_LABELS[i]}</span>
-                  <span className="font-semibold text-sm">{item.nameSlug}</span>
-                </span>
-                <span className="text-xs text-muted-foreground shrink-0">{subLabel(item.count)}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <div className="mt-5">
+      <h3 className="mb-1 text-sm font-semibold text-muted-foreground">{label}</h3>
+      {items.length === 0 ? (
+        <p className="border-t border-border py-3 text-sm text-muted-foreground">None yet</p>
+      ) : (
+        <ul className="border-t border-border">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-center gap-3 border-b border-border py-2.5">
+              <RankDisc rank={i + 1} />
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{item.nameSlug}</span>
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">{subLabel(item.count)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -106,7 +116,7 @@ export function CheerSignature({ stats, scope }: { stats: CheerStatsRow | null; 
       <Card>
         <CardContent className="pt-4 pb-4 space-y-3">
           <div className="flex items-center gap-2">
-            <span className="text-2xl leading-none" aria-hidden="true">{signature.emoji}</span>
+            <GlyphIcon emoji={signature.emoji} size={20} swatch />
             <div className="flex-1 min-w-0">
               <p className="truncate text-[15px] font-semibold leading-tight">{signature.name}</p>
               <p className="text-xs text-muted-foreground tabular-nums">
@@ -147,7 +157,7 @@ export function CheerSignature({ stats, scope }: { stats: CheerStatsRow | null; 
                   style={{ backgroundColor: category.color }}
                   aria-hidden="true"
                 />
-                {category.emoji} {category.name}
+                {category.name}
                 <span className="font-semibold text-foreground tabular-nums">
                   {cheerSharePct(category.of(stats), stats.cheers_received)}%
                 </span>
@@ -162,14 +172,14 @@ export function CheerSignature({ stats, scope }: { stats: CheerStatsRow | null; 
 
 function BadgeList({ badges }: { badges: Badge[] }) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <ul className="border-t border-border">
       {badges.map((a) => (
-        <div key={a.label} className="flex items-center gap-1.5 bg-gold/10 border border-gold/40 rounded-full px-3 py-1.5">
-          <span className="text-base">{a.emoji}</span>
-          <span className="text-xs font-semibold text-gold-ink">{a.label}</span>
-        </div>
+        <li key={a.label} className="flex items-center gap-3 border-b border-border py-2.5">
+          <GlyphIcon emoji={a.emoji} swatch />
+          <span className="text-sm font-semibold">{a.label}</span>
+        </li>
       ))}
-    </div>
+    </ul>
   )
 }
 
@@ -197,12 +207,10 @@ function Awards({ scope, badges }: { scope: BoardScope; badges: SeasonBadgesLoad
 
 function StatsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />
-      ))}
-      <div className="col-span-2 h-24 bg-muted rounded-xl animate-pulse" />
-      <div className="col-span-2 h-24 bg-muted rounded-xl animate-pulse" />
+    <div className="space-y-3">
+      <div className="h-16 bg-muted rounded-lg animate-pulse" />
+      <div className="h-24 bg-muted rounded-lg animate-pulse" />
+      <div className="h-24 bg-muted rounded-lg animate-pulse" />
     </div>
   )
 }
@@ -224,25 +232,24 @@ function Stats({
     body = (
       <>
         {lead && <p className="mb-3 text-sm text-muted-foreground">{lead}.</p>}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Sessions Attended" value={String(s.sessionsAttended)} />
-          <StatCard label="Games Played" value={String(s.gamesPlayed)} />
-          <StatCard
-            label="Win Rate"
-            value={s.gamesPlayed > 0 ? `${s.wins}W ${s.gamesPlayed - s.wins}L` : '—'}
-            sub={s.gamesPlayed > 0 && s.winRate > 0 ? `${s.winRate}% win rate` : 'No recorded games'}
-          />
-          <RankListCard
-            label="Best Partners"
-            items={s.bestPartners.map((p) => ({ nameSlug: p.nameSlug, count: p.wins }))}
-            subLabel={(w) => `${w} win${w !== 1 ? 's' : ''} together`}
-          />
-          <RankListCard
-            label="Toughest Opponents"
-            items={s.toughestOpponents.map((o) => ({ nameSlug: o.nameSlug, count: o.losses }))}
-            subLabel={(l) => `Lost ${l}×`}
+        <div className="grid grid-cols-3 border-y border-border">
+          <StatFigure value={String(s.sessionsAttended)} label={s.sessionsAttended === 1 ? 'session' : 'sessions'} />
+          <StatFigure value={String(s.gamesPlayed)} label={s.gamesPlayed === 1 ? 'game' : 'games'} />
+          <StatFigure
+            value={s.gamesPlayed > 0 ? `${s.winRate}%` : '—'}
+            label={s.gamesPlayed > 0 ? `won · ${s.wins}W ${s.gamesPlayed - s.wins}L` : 'no games yet'}
           />
         </div>
+        <RankList
+          label="Best partners"
+          items={s.bestPartners.map((p) => ({ nameSlug: p.nameSlug, count: p.wins }))}
+          subLabel={(w) => `${w} win${w !== 1 ? 's' : ''} together`}
+        />
+        <RankList
+          label="Toughest opponents"
+          items={s.toughestOpponents.map((o) => ({ nameSlug: o.nameSlug, count: o.losses }))}
+          subLabel={(l) => `Lost ${l}×`}
+        />
       </>
     )
   }

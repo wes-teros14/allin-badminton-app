@@ -502,6 +502,23 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   colour can serve both popups — 4.5:1 on white needs luminance ≤ 0.183, on near-black ≥ 0.283 —
   so any coloured `<option>` should also set its own background and stop depending on the popup.
 
+## Visual rules: no AI-default patterns (owner-approved 2026-11-24)
+
+- Owner banned 8 patterns: cards in cards, purple gradients, pills on everything, three icon-topped
+  cards, emoji for icons, neon glow, arrow on every link, glass panels. Audit + approved POC:
+  `temporary_files/ai-pattern-ban-review-poc.html`.
+- **Emoji are data keys, not icons.** Cheer types and award boards keep their `emoji` field (stored,
+  used in toast text); on screen they render through `components/GlyphIcon.tsx` (lucide, one stroke,
+  category colour via `--glyph`, darkened in light theme by `.glyph-ink` in `index.css`). An unmapped
+  emoji falls back to itself, so a new award needs a `BY_EMOJI` entry to get an icon.
+- Medals are `RankDisc` (numbered gold/silver/bronze, `SeasonSections.tsx`), not 🥇🥈🥉.
+- Status = coloured text (+ dot on session cards), not a pill. Tabs = underline, not filled pills.
+  Results = W / L / D letter. Lists = ruled rows, not boxed rows inside a card.
+- Applied so far: cheer picker, Sessions card, session page tabs/header/results, profile season
+  sections, Home notice board, no-schedule / no-results states. **Not yet:** leaderboard (emoji in
+  `LeaderboardView`, `RankedBoard`, `TodayView`), `CelebrationCard`, announcer button, "Your 2026
+  season" card (🏆), `SessionFeeWaivedLine` "No fee" chip, payment "Sent/Unpaid" chips.
+
 ## Testing
 
 - `npm run test:unit` — vitest, `include: ['src/**/*.test.ts']`, `environment: 'node'`. **Node only: there is no DOM or React Testing Library setup**, so pure functions get unit tests and components do not. Extracting logic into a testable helper is the established response to this — and the helper must live in `src/lib/`, not be exported from the component. A test importing a view or component pulls in `AuthContext` → `src/lib/supabase.ts`, which calls `createClient` at module scope and throws `supabaseUrl is required` with no env: the file fails to *collect*, reporting "no tests" rather than a failure. This is why `navMatch.ts` is a lib module.
