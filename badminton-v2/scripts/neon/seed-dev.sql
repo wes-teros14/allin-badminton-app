@@ -26,7 +26,7 @@ end $$;
 
 truncate
   public.announcements, public.announcer_clips, public.cheer_later_players, public.cheers,
-  public.live_messages, public.match_results, public.matches, public.notifications,
+  public.live_messages, public.match_results, public.matches, public.no_cheer_players, public.notifications,
   public.payment_exempt_players, public.player_cheer_stats, public.player_pair_stats,
   public.player_stats, public.session_finance_notes, public.session_invitations,
   public.session_receipts, public.session_registrations, public.sessions,

@@ -187,6 +187,11 @@ Durable knowledge only. Transient status lives in `handoff.md`.
     `{role: anonymous, aud: authenticated}` signed with a key in the merged JWKS.
   - Neon's Data API **caches JWKS keys by kid**: a new key under a kid it has seen fails with PGRST301
     "signature error". Never reuse a kid for a different key.
+  - **A new table is invisible to the Data API until its schema cache is refreshed** ("Could not find the
+    table … in the schema cache"). `NOTIFY pgrst, 'reload schema'` does nothing on Neon; run
+    `neon data-api refresh-schema --project-id lucky-heart-02739020 --branch <dev|production> --database neondb`
+    after every migration that adds a table (found 2026-11-24, migration 094).
+  - On Neon, FKs that point at users reference `public.profiles(id)` — there is no `auth.users` table.
   - `neon data-api update` can't change the JWKS URL (delete + create). `neon buckets create` needs
     `--access-level public_read`; `--access` is silently ignored and makes a private bucket.
   - The logged-out live board has no write path (only admins/moderators finish games, `CourtCard.tsx:29`).

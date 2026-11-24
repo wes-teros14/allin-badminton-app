@@ -406,6 +406,21 @@
   </div>
 
   <div class="qa">
+    <p class="q">Can we stop workislife99 the moderator from giving cheers? It's a one-time player used as a substitute.</p>
+    <p class="a">
+      Checked 2026-11-24 on production: the account is <code>work-work</code> (nickname Angelo), role moderator, and
+      <strong>already a guest</strong> (<code>is_guest = true</code>). It played 10 games (Oct 4 and Oct 25) and gave 15
+      cheers, all for Oct 4. The cheer screen asks anyone who played in a finished game
+      (<code>useMatchCheers</code> → <code>PlayerLayout</code> gate); nothing checks the guest flag, so its 5 Oct 25 games
+      still wait for 15 cheers. Being a guest already keeps it off every all-time board, so the clean rule is “guests
+      don't give cheers”. Only 2 guest accounts exist and this is the only one that has played.
+      <strong>Decided:</strong> per account, not all guests. Built as a “No cheers” list on Settings → Cheers
+      (migration 094, <code>no_cheer_players</code>, same rules as “Cheer later”); <code>PlayerLayout</code> skips the
+      cheer screen and bar for anyone on it. Past cheers stay; others still cheer them.
+    </p>
+  </div>
+
+  <div class="qa">
     <p class="q">Why do I still see “✅ You’re registered!” for a split second when opening a session?</p>
     <p class="a">
       Diagnosis 2026-10-12, not fixed yet. The banner (<code>SessionPlayerDetailView.tsx:535</code>) shows when you’re

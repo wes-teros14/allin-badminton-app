@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { usePaymentSettings } from '@/hooks/usePaymentSettings'
 import { PaymentExemptCard } from '@/components/PaymentExemptCard'
 import { CheerLaterCard } from '@/components/CheerLaterCard'
+import { NoCheersCard } from '@/components/NoCheersCard'
 import { AnnouncerPhrasesCard } from '@/components/AnnouncerPhrasesCard'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -158,6 +159,9 @@ export function SettingsView() {
 
       <SectionHeading>Cheers</SectionHeading>
       <CheerLaterCard />
+      <div className="pt-4">
+        <NoCheersCard />
+      </div>
 
       <SectionHeading>Announcer</SectionHeading>
       <AnnouncerPhrasesCard />

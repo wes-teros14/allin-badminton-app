@@ -29,6 +29,7 @@ grant update                         on public.announcements          to authent
 grant select                         on public.announcer_clips        to anonymous;
 grant select, insert, update, delete on public.announcer_clips        to authenticated;
 grant select, insert, delete         on public.cheer_later_players    to authenticated;
+grant select, insert, delete         on public.no_cheer_players       to authenticated;
 grant select                         on public.cheer_types            to authenticated;
 grant select, insert                 on public.cheers                 to authenticated;
 grant select, insert, update, delete on public.generator_presets      to authenticated;

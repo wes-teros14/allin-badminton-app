@@ -1,7 +1,7 @@
 /**
  * A Settings card holding a list of players: chips with a remove button, and a
  * picker to add one. Backs "Players who don't pay" (migration 082) and
- * "Cheer later" (migration 084), which share the table shape
+ * "Cheer later" (migration 084) and "No cheers" (migration 094), which share the table shape
  * `{ player_id, added_at, added_by }` and an admin-only write policy.
  *
  * Changes save immediately, unlike the phone number and QR on the same page,
@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useAuth } from '@/hooks/useAuth'
 
-export type PlayerListTable = 'payment_exempt_players' | 'cheer_later_players'
+export type PlayerListTable = 'payment_exempt_players' | 'cheer_later_players' | 'no_cheer_players'
 
 interface PlayerListCardProps {
   table: PlayerListTable

@@ -4,7 +4,7 @@ import { BottomTabBar } from '@/components/BottomTabBar'
 import { NotificationProvider } from '@/contexts/NotificationContext'
 import { useCheersEligibleSessions } from '@/hooks/useActiveSession'
 import { useMatchCheers } from '@/hooks/useMatchCheers'
-import { useCheerLater } from '@/hooks/useCheerLater'
+import { useCheerLater, useNoCheers } from '@/hooks/useCheerLater'
 import { cheersReminderLabel } from '@/lib/cheerReminder'
 import { CheersReminder } from '@/components/CheersReminder'
 import { CheersPanel } from '@/components/CheersPanel'
@@ -36,10 +36,13 @@ export function PlayerLayout() {
   // "Cheer later" players (migration 084) get a bar and a sheet instead of the
   // gate, so the page they are on — usually the admin's Live page — stays mounted.
   const { isCheerLater, isLoading: cheerLaterLoading } = useCheerLater()
+  // "No cheers" players (migration 094) are never asked: their pending cheers count as none.
+  const { isNoCheers, isLoading: noCheersLoading } = useNoCheers()
+  const owesCheers = hasPendingCheers && !isNoCheers
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  const showGate = !cheerLoading && !cheerLaterLoading && hasPendingCheers && !isCheerLater
-  const showReminder = !cheerLaterLoading && hasPendingCheers && isCheerLater
+  const showGate = !cheerLoading && !cheerLaterLoading && !noCheersLoading && owesCheers && !isCheerLater
+  const showReminder = !cheerLaterLoading && !noCheersLoading && owesCheers && isCheerLater
   // The last cheer unmounts the sheet without closing it. Close it here, during
   // render, or the next finished game would open the sheet by itself.
   if (sheetOpen && !showReminder) setSheetOpen(false)
@@ -48,8 +51,8 @@ export function PlayerLayout() {
   // drops showGate without the player having finished. A "Cheer later" player's
   // celebration plays over the bar and waits only while the sheet is open, so a
   // medal is never stuck behind cheers they have chosen to give later.
-  const celebrationHeld = sessionsLoading || cheerLoading || cheerLaterLoading
-    || (isCheerLater ? sheetOpen && hasPendingCheers : hasPendingCheers)
+  const celebrationHeld = sessionsLoading || cheerLoading || cheerLaterLoading || noCheersLoading
+    || (isCheerLater ? sheetOpen && owesCheers : owesCheers)
 
   return (
     <NotificationProvider>

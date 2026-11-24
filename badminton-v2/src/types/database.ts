@@ -244,6 +244,24 @@ export type Database = {
           },
         ]
       }
+      no_cheer_players: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          player_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          player_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          player_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null

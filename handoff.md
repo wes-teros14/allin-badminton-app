@@ -3,29 +3,25 @@
 Updated: 2026-11-24 Manila. Overwrite this file on every update; it is never a running history.
 
 ## Done this session
-- Owner's 8 banned "AI design" patterns applied across the whole app (rules + keep-list in
-  `project_memory.md` → "Visual rules"). POCs: `temporary_files/ai-pattern-ban-review-poc.html` (first 5 screens),
-  `temporary_files/ai-pattern-full-app-poc.html` (remaining 13).
-- Commit a1f2705: cheer picker, Sessions card, session page tabs/header/results, profile sections, Home notice board.
-- Follow-up commit: leaderboard (underline tabs, square season switch, ruled board with `RankDisc`), cheer/award
-  pickers (3-col grid, icon beside word — owner rejected scrolling), leaderboard empty states, Today, celebration
-  card disc, profile season link, cheers reminder bar, `TurnBanner` (shared), fee chips, admin status (dot + text),
-  Players (no outer card, underline filters, `TwoWaySwitch`), announcer button (solid, icons), toasts (`toastIcons.tsx`),
-  generator/roster, Gallery "Live now", live-board reconnect notice.
-- `tsc -b` clean, 715/715 unit tests (cheerBacklog test updated for emoji-free toast text), build pass.
+- Owner's 8 banned "AI design" patterns applied across the whole app (a1f2705, 64aee49). Rules + keep-list in
+  `project_memory.md` → "Visual rules". POCs in `temporary_files/ai-pattern-*.html`.
+- "No cheers" list (migration 094, `no_cheer_players`): admin-managed on Settings → Cheers; anyone listed gets no
+  cheer screen and no reminder bar (`useNoCheers` in `hooks/useCheerLater.ts`, checked in `PlayerLayout`).
+  Owner chose per account, not all guests.
+  - Neon dev: applied, `scripts/neon/tests/no-cheer-rls.sql` 6/6 PASS, verified in app (Raj on → no gate, off → gate).
+  - **Production: applied 2026-11-24 with owner OK, Data API schema refreshed, work-work (Angelo, "workislife99")
+    added to the list.**
+- `tsc -b` clean, 715/715 unit tests, build pass.
 
 ## Current state
-- Pushed to `dev` and `main` (a1f2705 first five screens, 64aee49 the rest). Vercel deploy not checked.
-- Checked on localhost (Neon dev) at 375 px: admin list, Players, leaderboard Awards/Cheers (dark + light), Gallery,
-  live-board announcer. **Not seen on screen** (dev data lacks them): Today with results, celebration card, toasts,
-  turn banner, fee chips, ranked podium with distinct places.
-- Fixed in passing: Today win-rate `text-primary` (2.4:1) → `text-primary-ink`; admin "Playing" white-on-red pill
-  (3.7:1) gone; schedule-locked status used hard-coded #FFB200 (invisible in light theme) → `text-gold-ink`.
+- Pushed to `dev` and `main`. Vercel deploy not checked.
+- Not seen on screen (dev data lacks them): Today with results, celebration card, toasts, turn banner, fee chips.
+- work-work's 15 Oct 4 cheers kept (owner did not ask to remove). Its 5 Oct 25 games simply stop asking.
 - Local stash "pre-pull local handoff/cli-latest 2026-11-24" still there (old handoff edits, likely stale).
 
 ## Next steps
-1. Owner: look at the leaderboard, Today and a cheer toast on a phone after the next live session.
-2. Optional: the All Games board's small monospace caps labels ("ON COURT NOW", "UP NEXT") — not one of the 8 rules.
+1. Owner: open Settings → Cheers on the live site and confirm "No cheers" shows Angelo.
+2. Optional: the All Games board's small monospace caps labels — not one of the 8 rules.
 3. Drop the stash once confirmed stale.
 
 ## Open questions
