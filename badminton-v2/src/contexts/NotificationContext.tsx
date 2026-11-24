@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router'
 import { formatSessionStamp } from '@/lib/sessionStamp'
 import { cheerLine, summariseCheers } from '@/lib/cheerBacklog'
+import { awardToastIcon, cheerToastIcon, receiptToastIcon } from '@/components/toastIcons'
 import { userTopic } from '@/lib/liveChannel'
 import { useLiveChannel } from '@/hooks/useLiveChannel'
 
@@ -90,9 +91,10 @@ function showReceiptToast(
 
   toast(
     receipts.length === 1
-      ? `🧾 ${receipts[0].body} uploaded a payment receipt`
-      : `🧾 ${receipts.length} payment receipts uploaded`,
+      ? `${receipts[0].body} uploaded a payment receipt`
+      : `${receipts.length} payment receipts uploaded`,
     {
+      icon: receiptToastIcon,
       duration: 20000,
       closeButton: true,
       description,
@@ -165,6 +167,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         const summary = summariseCheers(cheers.map(n => ({ slug: n.title, from: n.body })))
         if (summary) {
           toast(summary.title, {
+            icon: cheerToastIcon(summary.slug),
             duration: 20000,
             closeButton: true,
             description: summary.description,
@@ -176,14 +179,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
         // Batch awards
         if (awards.length === 1) {
-          toast(`🏆 New award: ${awards[0].body}!`, {
+          toast(`New award: ${awards[0].body}!`, {
+            icon: awardToastIcon,
             duration: 20000,
             closeButton: true,
             className: 'toast-award',
             action: { label: 'View', onClick: () => navigateRef.current('/leaderboard?tab=awards') },
           })
         } else if (awards.length > 1) {
-          toast(`🏆 ${awards.length} new awards!`, {
+          toast(`${awards.length} new awards!`, {
+            icon: awardToastIcon,
             duration: 20000,
             closeButton: true,
             className: 'toast-award',
@@ -214,9 +219,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         showReceiptToast([n], stamps, path => navigateRef.current(path))
       })
     } else if (n.type === 'cheer') {
-      toast(cheerLine(n.title, n.body), { duration: 20000, closeButton: true })
+      toast(cheerLine(n.title, n.body), { icon: cheerToastIcon(n.title), duration: 20000, closeButton: true })
     } else if (n.type === 'award') {
-      toast(`🏆 New award: ${n.body}!`, {
+      toast(`New award: ${n.body}!`, {
+        icon: awardToastIcon,
         duration: 20000,
         closeButton: true,
         className: 'toast-award',

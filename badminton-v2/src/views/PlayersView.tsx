@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -112,44 +110,65 @@ function GenderToggle({
   )
 }
 
-function PlayerStatusButton({
-  isActive,
+/**
+ * A labelled two-part switch: "Status  [Active | Inactive]". Replaced a filled pill button whose label
+ * flipped between states, which read as an action rather than the current value (2026-11-24).
+ */
+function TwoWaySwitch({
+  label,
+  value,
+  options,
   onToggle,
+  title,
 }: {
-  isActive: boolean
+  label: string
+  value: boolean
+  /** [label when true, label when false] */
+  options: readonly [string, string]
   onToggle: () => void
+  title?: string
 }) {
   return (
-    <Button
-      type="button"
-      variant={isActive ? 'default' : 'outline'}
-      size="sm"
-      onClick={onToggle}
-    >
-      {isActive ? 'Active' : 'Inactive'}
-    </Button>
+    <div className="flex items-center justify-between gap-3" title={title}>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <div role="group" aria-label={label} className="inline-flex overflow-hidden rounded-lg border border-input">
+        {([true, false] as const).map((option, i) => {
+          const on = value === option
+          return (
+            <button
+              key={String(option)}
+              type="button"
+              aria-pressed={on}
+              onClick={() => { if (!on) onToggle() }}
+              className={cn(
+                'min-h-8 px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+                i > 0 && 'border-l border-input',
+                on ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              {options[i]}
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
+function PlayerStatusButton({ isActive, onToggle }: { isActive: boolean; onToggle: () => void }) {
+  return <TwoWaySwitch label="Status" value={isActive} options={['Active', 'Inactive']} onToggle={onToggle} />
+}
+
 /** A guest still plays and shows in session views, but never on an all-time board or award. */
-function GuestButton({
-  isGuest,
-  onToggle,
-}: {
-  isGuest: boolean
-  onToggle: () => void
-}) {
+function GuestButton({ isGuest, onToggle }: { isGuest: boolean; onToggle: () => void }) {
   return (
-    <Button
-      type="button"
-      variant={isGuest ? 'default' : 'outline'}
-      size="sm"
-      onClick={onToggle}
-      aria-pressed={isGuest}
+    <TwoWaySwitch
+      label="Guest"
+      value={isGuest}
+      options={['Yes', 'No']}
+      onToggle={onToggle}
       title="Guests are left off all-time leaderboards and awards"
-    >
-      {isGuest ? 'Guest' : 'Not guest'}
-    </Button>
+    />
   )
 }
 
@@ -199,7 +218,7 @@ function PlayerCard({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               Gender
             </p>
             <GenderToggle
@@ -210,7 +229,7 @@ function PlayerCard({
           </div>
 
           <label className="space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium text-muted-foreground">
               Level
             </span>
             <select
@@ -229,7 +248,7 @@ function PlayerCard({
           </label>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="space-y-2 border-t border-border pt-3">
           <PlayerStatusButton
             isActive={player.isActive}
             onToggle={() => onToggleActive(player.id, !player.isActive)}
@@ -242,7 +261,7 @@ function PlayerCard({
 
         {nameCall && (
           <div className="space-y-1">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name call</p>
+            <p className="text-xs font-medium text-muted-foreground">Name call</p>
             {nameCall}
           </div>
         )}
@@ -305,13 +324,10 @@ export function PlayersView() {
     <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold text-foreground">Players</h1>
-            <Badge>{activeCount} active</Badge>
-            <Badge variant="outline">{inactiveCount} inactive</Badge>
-          </div>
+          <h1 className="text-2xl font-semibold text-foreground">Players</h1>
           <p className="text-sm text-muted-foreground">
-            Manage player details, skill levels, and roster status.
+            <span className="font-semibold text-foreground tabular-nums">{activeCount}</span> active ·{' '}
+            <span className="tabular-nums">{inactiveCount}</span> inactive. Manage player details, skill levels, and roster status.
           </p>
         </div>
 
@@ -323,25 +339,30 @@ export function PlayersView() {
         </Link>
       </div>
 
-      <Card>
-        <CardContent className="space-y-4 p-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
+      <div className="space-y-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-wrap gap-x-5 border-b border-border" role="tablist" aria-label="Filter players">
               {([
                 ['all', 'All'],
                 ['active', 'Active'],
                 ['inactive', 'Inactive'],
                 ...(isAdmin && !clipsError ? [['unrecorded', `No name recording (${unrecordedCount})`] as const] : []),
               ] as const).map(([value, label]) => (
-                <Button
+                <button
                   key={value}
                   type="button"
-                  variant={statusFilter === value ? 'default' : 'outline'}
-                  size="sm"
+                  role="tab"
+                  aria-selected={statusFilter === value}
                   onClick={() => setStatusFilter(value)}
+                  className={cn(
+                    'min-h-11 py-3 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                    statusFilter === value
+                      ? 'text-foreground shadow-[inset_0_-2px_0_var(--primary-ink)]'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
                 >
                   {label}
-                </Button>
+                </button>
               ))}
             </div>
 
@@ -467,7 +488,7 @@ export function PlayersView() {
                           </select>
                         </TableCell>
                         <TableCell className="py-3">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="space-y-2">
                             <PlayerStatusButton
                               isActive={player.isActive}
                               onToggle={() => setActive(player.id, !player.isActive)}
@@ -488,8 +509,7 @@ export function PlayersView() {
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   )
 }

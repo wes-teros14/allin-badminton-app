@@ -511,13 +511,19 @@ Durable knowledge only. Transient status lives in `handoff.md`.
   used in toast text); on screen they render through `components/GlyphIcon.tsx` (lucide, one stroke,
   category colour via `--glyph`, darkened in light theme by `.glyph-ink` in `index.css`). An unmapped
   emoji falls back to itself, so a new award needs a `BY_EMOJI` entry to get an icon.
-- Medals are `RankDisc` (numbered gold/silver/bronze, `SeasonSections.tsx`), not 🥇🥈🥉.
-- Status = coloured text (+ dot on session cards), not a pill. Tabs = underline, not filled pills.
-  Results = W / L / D letter. Lists = ruled rows, not boxed rows inside a card.
-- Applied so far: cheer picker, Sessions card, session page tabs/header/results, profile season
-  sections, Home notice board, no-schedule / no-results states. **Not yet:** leaderboard (emoji in
-  `LeaderboardView`, `RankedBoard`, `TodayView`), `CelebrationCard`, announcer button, "Your 2026
-  season" card (🏆), `SessionFeeWaivedLine` "No fee" chip, payment "Sent/Unpaid" chips.
+- Medals are `components/RankDisc.tsx` (numbered gold/silver/bronze disc, sizes sm/md/lg) on every board,
+  Today, profile and the celebration card — never 🥇🥈🥉. `RankedBoard` is a ruled list (`divide-y`), podium
+  places a faint tint band, no bordered card per place.
+- Status = coloured text + dot (`lib/sessionStatusStyle.ts` for admin, same colours as the player Sessions
+  card), not a pill. Tabs = underline (`shadow-[inset_0_-2px_0_var(--primary-ink)]`). Two-option choices =
+  square two-part switch (`SeasonSwitcher`, Players `TwoWaySwitch`). Results = W / L / D letter.
+- Pickers (Leaderboard Cheers/Awards) keep the old 3-column grid with short labels; icon beside the word
+  (`pickerClassName` / `pickerStyle` in GlyphIcon). Owner rejected a horizontal-scroll row: the old one never scrolled.
+- Toast text carries no emoji: `components/toastIcons.tsx` fills sonner's `icon` slot; `cheerLine` /
+  `summariseCheers` return plain words (+ `slug` for the single-cheer icon).
+- Applied everywhere (a1f2705 + follow-up). **Deliberately kept:** gold sweep on own leaderboard row, gallery
+  photo badges, removable player chips, dialog backdrop blur, share image / Xmas magnets / stamps emoji,
+  Dev login panel, `→` inside help text that describes a path or a calculation.
 
 ## Testing
 

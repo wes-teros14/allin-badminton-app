@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { CircleCheck, Lock } from 'lucide-react'
 import { useRegisteredPlayers } from '@/hooks/useRegisteredPlayers'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
@@ -962,8 +963,8 @@ export function MatchGeneratorPanel({ sessionId, sessionStatus, onLock, rosterVe
           </div>
         ) : stage === 'locked' ? (
           <>
-            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700">
-              <span>🔒</span>
+            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-500">
+              <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span className="font-semibold">Schedule locked — {matches.length} matches queued</span>
             </div>
 
@@ -1430,7 +1431,12 @@ function ConsecutiveAudit({
     }
   }
   if (violations.length === 0) {
-    return <p className="text-green-600 text-xs">✅ Clean Schedule — no consecutive games</p>
+    return (
+      <p className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-500">
+        <CircleCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        Clean schedule — no consecutive games
+      </p>
+    )
   }
   return (
     <table className="w-full text-[11px]">

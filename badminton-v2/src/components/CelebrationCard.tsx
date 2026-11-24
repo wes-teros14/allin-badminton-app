@@ -24,7 +24,8 @@ import { ConfettiBurst } from '@/components/ConfettiBurst'
 import { PODIUM_PLACES, type NewPlacing } from '@/lib/podiumCelebration'
 import { cardHeadline } from '@/lib/celebrationLabels'
 
-const MEDALS = ['🥇', '🥈', '🥉'] as const
+/** Medal fills, the same three as RankDisc on every board. Dark ink on all three. */
+const MEDAL_FILL = ['bg-gold', 'bg-[#B8B2C0]', 'bg-[#C98A55]'] as const
 const ORDINALS = ['1st', '2nd', '3rd'] as const
 
 /**
@@ -55,19 +56,19 @@ const showsMedal = (p: NewPlacing) => p.rank <= PODIUM_PLACES
 /**
  * The bunny stands in for a medal on every non-podium card.
  *
- * Both are sized explicitly to the same box. An emoji takes its size from the
- * font and an image from its height, so leaving either to inherit puts a 30px
- * medal beside an 18px bunny in the same row.
+ * Both are sized explicitly to the same box, so a medal disc and the bunny
+ * never end up at different sizes in the same row. The medal is a numbered
+ * disc (gold / silver / bronze), not an emoji — 2026-11-24 pattern ban.
  */
 function Icon({ placing, px }: { placing: NewPlacing; px: number }) {
   if (showsMedal(placing)) {
     return (
       <span
         aria-hidden="true"
-        className="inline-flex items-center justify-center leading-none"
-        style={{ fontSize: px, width: px, height: px }}
+        className={`inline-grid shrink-0 place-items-center rounded-full font-extrabold leading-none tabular-nums text-[#1B1220] ${MEDAL_FILL[placing.rank - 1]}`}
+        style={{ fontSize: Math.round(px * 0.46), width: px, height: px }}
       >
-        {MEDALS[placing.rank - 1]}
+        {placing.rank}
       </span>
     )
   }

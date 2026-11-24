@@ -7,6 +7,8 @@ import { listenLive } from '@/hooks/useLiveChannel'
 import { formatDisplayName } from '@/lib/formatDisplayName'
 import { useActiveSessions } from '@/hooks/useActiveSession'
 import { NoResultsYet } from '@/components/MatchBoard'
+import { RankDisc } from '@/components/RankDisc'
+import { Button } from '@/components/ui/button'
 import { fetchSeasonMatches } from '@/lib/seasonData'
 import { seasonBefore } from '@/lib/season'
 import { tallyPlayerGames } from '@/lib/seasonTally'
@@ -95,7 +97,6 @@ async function fetchSessionLeaderboard(
   return entries.sort((a, b) => b.winRate - a.winRate || b.wins - a.wins)
 }
 
-const RANK_ICON = (i: number) => (i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1))
 
 export function TodayView() {
   const { activeSessions, isLoading: sessionLoading } = useActiveSessions()
@@ -191,15 +192,17 @@ export function TodayView() {
   return (
     <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 pt-6 pb-10 space-y-6">
       {activeSessions.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex flex-wrap gap-x-5 border-b border-border" role="tablist" aria-label="Sessions today">
           {activeSessions.map((s, i) => (
             <button
               key={s.sessionId}
+              role="tab"
+              aria-selected={i === safeIndex}
               onClick={() => setSelectedIndex(i)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`min-h-11 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 i === safeIndex
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  ? 'text-foreground shadow-[inset_0_-2px_0_var(--primary-ink)]'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {s.name}
@@ -208,34 +211,29 @@ export function TodayView() {
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-primary-ink">🏆 {activeSession.name}</h1>
+      <h1 className="text-[22px] font-bold tracking-[-0.02em] text-foreground">{activeSession.name}</h1>
 
       {loadError ? (
         <div role="alert" className="space-y-2">
           <p className="text-sm text-destructive">Could not load today’s results.</p>
-          <button
-            onClick={() => load()}
-            className="px-3 py-1.5 rounded-full text-sm font-medium bg-muted text-foreground hover:bg-muted/80"
-          >
+          <Button variant="outline" onClick={() => load()} className="min-h-11 px-5">
             Retry
-          </button>
+          </Button>
         </div>
       ) : entries.length === 0 ? (
         <NoResultsYet />
       ) : (
         <>
-          <div className="space-y-2">
+          <div className="border-t border-border">
             {entries.map((entry, i) => (
               <div
                 key={entry.playerId}
-                className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3"
+                className="flex items-center gap-3 border-b border-border py-2.5"
               >
-                <span className="text-sm font-bold text-muted-foreground w-5 text-center shrink-0">
-                  {RANK_ICON(i)}
-                </span>
+                <RankDisc rank={i + 1} />
                 <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold text-primary">{entry.winRate}%</p>
+                  <p className="text-sm font-bold text-primary-ink tabular-nums">{entry.winRate}%</p>
                   <p className="text-xs text-muted-foreground">
                     {entry.wins}W {entry.games - entry.wins}L
                   </p>
@@ -246,18 +244,18 @@ export function TodayView() {
 
           {mostImproved.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
-                🔥 Most Improved Today
+              <h2 className="mb-1.5 text-[17px] font-bold tracking-[-0.01em]">
+                Most improved today
               </h2>
-              <div className="space-y-2">
+              <div className="border-t border-border">
                 {mostImproved.map((entry) => (
                   <div
                     key={entry.playerId}
-                    className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3"
+                    className="flex items-center gap-3 border-b border-border py-2.5"
                   >
                     <span className="flex-1 font-medium text-sm truncate">{entry.displayName}</span>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-green-600">+{entry.improvement}%</p>
+                      <p className="text-sm font-bold text-green-700 dark:text-green-500 tabular-nums">+{entry.improvement}%</p>
                       <p className="text-xs text-muted-foreground">vs {entry.seasonWinRate}% season</p>
                     </div>
                   </div>

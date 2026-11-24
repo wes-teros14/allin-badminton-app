@@ -30,24 +30,24 @@ export function SeasonCaption({ scope, range, rule }: { scope: BoardScope; range
   )
 }
 
-/** "See the 2026 final standings ›". Rendered only when there is a past season to go to. */
+/** "See the 2026 final standings". Rendered only when there is a past season to go to. */
 function PastSeasonLink({ season, onShow }: { season: Season; onShow: (id: string) => void }) {
   return (
     <button
       type="button"
       onClick={() => onShow(season.id)}
-      className="mt-3 inline-flex min-h-11 items-center text-[13px] font-bold text-primary-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+      className="mt-2 inline-flex min-h-11 items-center rounded text-sm font-semibold text-primary-ink underline decoration-primary-ink/40 underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      See the {season.id} final standings&nbsp;›
+      See the {season.id} final standings
     </button>
   )
 }
 
-function StateCard({ icon, title, children }: { icon: string; title: string; children?: ReactNode }) {
+/** A board's stand-in: a heading and a line on the page. No card, no icon on top (2026-11-24 pattern ban). */
+function StateBlock({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-card px-4 pt-[18px] pb-3 text-center">
-      <div className="mb-2 text-[28px] leading-none" aria-hidden="true">{icon}</div>
-      <h2 className="text-[15px] font-extrabold text-foreground">{title}</h2>
+    <div className="pt-2">
+      <h2 className="text-[17px] font-bold tracking-[-0.01em] text-foreground text-balance">{title}</h2>
       {children}
     </div>
   )
@@ -64,9 +64,9 @@ export function BetweenSeasonsCard({
   onShowSeason: (id: string) => void
 }) {
   return (
-    <StateCard icon="🏸" title={line}>
-      {pastSeason ? <PastSeasonLink season={pastSeason} onShow={onShowSeason} /> : <div className="pb-2" />}
-    </StateCard>
+    <StateBlock title={line}>
+      {pastSeason && <PastSeasonLink season={pastSeason} onShow={onShowSeason} />}
+    </StateBlock>
   )
 }
 
@@ -87,11 +87,11 @@ export function NobodyYetCard({
   onShowSeason: (id: string) => void
 }) {
   return (
-    <StateCard icon="🔒" title={title}>
-      {note && <p className="mt-1.5 text-[13px] text-muted-foreground">{note}</p>}
+    <StateBlock title={title}>
+      {note && <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{note}</p>}
       {progress && (
         <>
-          <div className="mt-3 mb-1 flex justify-center gap-1.5" aria-hidden="true">
+          <div className="mt-3 mb-1 flex gap-1.5" aria-hidden="true">
             {Array.from({ length: progress.floor }).map((_, i) => (
               <i
                 key={i}
@@ -104,8 +104,8 @@ export function NobodyYetCard({
           </p>
         </>
       )}
-      {pastSeason ? <PastSeasonLink season={pastSeason} onShow={onShowSeason} /> : <div className="pb-2" />}
-    </StateCard>
+      {pastSeason && <PastSeasonLink season={pastSeason} onShow={onShowSeason} />}
+    </StateBlock>
   )
 }
 

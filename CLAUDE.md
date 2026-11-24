@@ -133,6 +133,7 @@ When I correct you or you catch yourself making a mistake, before continuing, ad
 - When the user names a session, match that exact name in `schedule -- sessions` before generating. "Xmas party games placeholder" is not "🎁 Xmas Party 🎁" — I ran three drafts on the wrong session.
 - Load a design skill (`journey` for navigation/flows, `impeccable` for visuals) before answering any UX question, not only before a mockup — and read what the affected pages already show first. My "logo + page title" top bar duplicated the H1 every page already has.
 - Memory commitment (Committed_AS) is memory promised, not used. Report usage as RAM used + swap, and read chart totals from the tooltip, never from an axis tick.
+- A redesign must keep what the old control already did well. Never turn a control that fits on screen into a horizontal scroller; if the new labels are wider, keep the old grid and short labels.
 
 ## .env Files
 

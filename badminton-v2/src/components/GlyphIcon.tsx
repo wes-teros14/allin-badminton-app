@@ -7,6 +7,7 @@
  * to itself, so a new cheer type or award never renders blank.
  */
 
+import type { CSSProperties } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   BicepsFlexed,
@@ -51,6 +52,23 @@ BY_EMOJI.set('🎲', { Icon: Dices, color: '#C77DD8' })
 
 export function glyphFor(emoji: string): Glyph | null {
   return BY_EMOJI.get(norm(emoji)) ?? null
+}
+
+/**
+ * A cheer / award picker button (Leaderboard Cheers and Awards tabs): icon beside a short word, in the
+ * same 3-column grid the emoji tiles used, so nothing scrolls. The selected one is tinted in its own
+ * colour (`.glyph-pick-on` in index.css), not a purple box.
+ */
+export function pickerClassName(isOn: boolean): string {
+  return `flex min-h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-2 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+    isOn ? 'glyph-pick-on text-foreground' : 'border-border text-muted-foreground hover:text-foreground'
+  }`
+}
+
+/** Sets `--glyph` on a picker button so its selected tint matches its icon. */
+export function pickerStyle(emoji: string): CSSProperties {
+  const glyph = glyphFor(emoji)
+  return glyph ? ({ ['--glyph' as string]: glyph.color } as CSSProperties) : {}
 }
 
 /**

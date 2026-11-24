@@ -30,8 +30,8 @@ function albumSub(a: GalleryAlbum) {
 
 function LiveChip() {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#FEFE6A] px-2 py-0.5 text-[11px] font-bold text-[#1B1220]">
-      <span className="h-1.5 w-1.5 rounded-full bg-[#B3252B]" aria-hidden="true" />Live now
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-destructive">
+      <span className="h-1.5 w-1.5 rounded-full bg-destructive animate-pulse" aria-hidden="true" />Live now
     </span>
   )
 }

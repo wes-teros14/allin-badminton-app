@@ -3,31 +3,31 @@
 Updated: 2026-11-24 Manila. Overwrite this file on every update; it is never a running history.
 
 ## Done this session
-- Audited the app against the owner's 8 banned "AI design" patterns; POC approved:
-  `temporary_files/ai-pattern-ban-review-poc.html`.
-- Applied all 5 POC screens (rules in `project_memory.md` → "Visual rules"):
-  - Cheer picker (`CheersPanel.tsx`): flat ruled rows, drawn icons, "Skip {name}".
-  - Sessions card (`MySessionsView.tsx`): no left stripe, status as dot + text, quiet admin icon buttons.
-  - Session page: underline tabs (`SessionPlayerDetailView.tsx`), game count in header line
-    (`PlayerScheduleHeader.tsx`), W/L/D letters + plain "Next" (`MatchBoard.tsx`).
-  - Profile (`profile/SeasonSections.tsx`): plain section headings, ruled stats row, rank discs, award rows with icons.
-  - Home notice board (`HomeView.tsx`) and no-schedule / no-results states (`MatchBoard.tsx`).
-  - New `components/GlyphIcon.tsx` + `.glyph-ink`/`.glyph-swatch` in `index.css`.
-- `tsc -b` clean, 714/714 unit tests, build pass. Checked on localhost (Neon dev) at 375 px, dark + light;
-  light-theme icon contrast 5.7–8.4:1.
-- Local dev was 168 commits behind origin; pulled first. Old local `handoff.md` + `cli-latest` edits are in
-  `git stash` ("pre-pull local handoff/cli-latest 2026-11-24") — likely stale, not reviewed.
+- Owner's 8 banned "AI design" patterns applied across the whole app (rules + keep-list in
+  `project_memory.md` → "Visual rules"). POCs: `temporary_files/ai-pattern-ban-review-poc.html` (first 5 screens),
+  `temporary_files/ai-pattern-full-app-poc.html` (remaining 13).
+- Commit a1f2705: cheer picker, Sessions card, session page tabs/header/results, profile sections, Home notice board.
+- Follow-up commit: leaderboard (underline tabs, square season switch, ruled board with `RankDisc`), cheer/award
+  pickers (3-col grid, icon beside word — owner rejected scrolling), leaderboard empty states, Today, celebration
+  card disc, profile season link, cheers reminder bar, `TurnBanner` (shared), fee chips, admin status (dot + text),
+  Players (no outer card, underline filters, `TwoWaySwitch`), announcer button (solid, icons), toasts (`toastIcons.tsx`),
+  generator/roster, Gallery "Live now", live-board reconnect notice.
+- `tsc -b` clean, 715/715 unit tests (cheerBacklog test updated for emoji-free toast text), build pass.
 
 ## Current state
-- Pushed to `dev` and `main` (see git log). Vercel production deploy not checked.
-- Not seen with real data: match list W/L letters (dev has no played matches), Live status dot.
+- Pushed to `dev` and `main`. Vercel deploy not checked.
+- Checked on localhost (Neon dev) at 375 px: admin list, Players, leaderboard Awards/Cheers (dark + light), Gallery,
+  live-board announcer. **Not seen on screen** (dev data lacks them): Today with results, celebration card, toasts,
+  turn banner, fee chips, ranked podium with distinct places.
+- Fixed in passing: Today win-rate `text-primary` (2.4:1) → `text-primary-ink`; admin "Playing" white-on-red pill
+  (3.7:1) gone; schedule-locked status used hard-coded #FFB200 (invisible in light theme) → `text-gold-ink`.
+- Local stash "pre-pull local handoff/cli-latest 2026-11-24" still there (old handoff edits, likely stale).
 
 ## Next steps
-1. Owner: look at the cheer picker and Sessions list on a phone after deploy.
-2. Remaining emoji/pills (list in `project_memory.md` → "Visual rules" → Not yet): leaderboard, celebration card,
-   announcer, "Your 2026 season" card, payment chips.
+1. Owner: look at the leaderboard, Today and a cheer toast on a phone after the next live session.
+2. Optional: the All Games board's small monospace caps labels ("ON COURT NOW", "UP NEXT") — not one of the 8 rules.
 3. Drop the stash once confirmed stale.
 
 ## Open questions
-- Carried over: Supabase 500/52x token-refresh retry (offered, undecided); iPhone Safari WebP; kiosk insert
-  rule; offline-backup phone check; Nov 1 session not closed; prod `service_role` not rotated; old Neon branches.
+- Carried over: Supabase 500/52x token-refresh retry (undecided); iPhone Safari WebP; kiosk insert rule; offline-backup
+  phone check; Nov 1 session not closed; prod `service_role` not rotated; old Neon branches.

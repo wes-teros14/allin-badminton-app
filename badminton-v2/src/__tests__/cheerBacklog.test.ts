@@ -4,19 +4,25 @@ import { cheerLine, summariseCheers } from '@/lib/cheerBacklog'
 const cheer = (slug: string, from = 'alex') => ({ slug, from })
 
 describe('summariseCheers', () => {
+  it('puts no emoji in toast text — the icon is drawn separately', () => {
+    const s = summariseCheers([cheer('offense'), cheer('movement')])
+    expect(`${s?.title} ${s?.description}`).not.toMatch(/\p{Extended_Pictographic}/u)
+  })
+
   it('says nothing for an empty backlog', () => {
     expect(summariseCheers([])).toBeNull()
   })
 
-  it('keeps a single cheer in its original wording', () => {
+  it('keeps a single cheer in its original wording, with its slug for the icon', () => {
     expect(summariseCheers([cheer('defense', 's1-alex-tan')])).toEqual({
-      title: '🛡️ Iron Defense from s1-alex-tan!',
+      title: 'Iron Defense from s1-alex-tan!',
+      slug: 'defense',
     })
   })
 
   it('collapses several cheers into one line, most received first', () => {
     const s = summariseCheers([cheer('offense'), cheer('defense'), cheer('defense')])
-    expect(s).toEqual({ title: '🎉 3 new cheers', description: '🛡️ ×2 · ⚔️ ×1' })
+    expect(s).toEqual({ title: '3 new cheers', description: 'Iron Defense ×2 · Fierce Offense ×1' })
   })
 
   it('names three types and folds the rest into a count of cheers, not types', () => {
@@ -27,12 +33,12 @@ describe('summariseCheers', () => {
       cheer('movement'), cheer('good_sport'), cheer('good_sport'),
       cheer('solid_effort'), cheer('solid_effort'),
     ])
-    expect(s?.title).toBe('🎉 12 new cheers')
+    expect(s?.title).toBe('12 new cheers')
     // 3 + 2 + 2 named; good_sport 2 + solid_effort 2 + movement 1 = 5 folded
-    expect(s?.description).toBe('⚔️ ×3 · 🛡️ ×2 · 🎯 ×2 · and 5 more')
+    expect(s?.description).toBe('Fierce Offense ×3 · Iron Defense ×2 · Smooth Technique ×2 · and 5 more')
   })
 
   it('falls back for an unknown cheer type rather than dropping it', () => {
-    expect(cheerLine('great_serve', 'sam')).toBe('🏸 Great Serve from sam!')
+    expect(cheerLine('great_serve', 'sam')).toBe('Great Serve from sam!')
   })
 })

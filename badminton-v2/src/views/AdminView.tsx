@@ -8,7 +8,7 @@ import { RECEIPTS_BUCKET } from '@/lib/receipts'
 import { useSessionList } from '@/hooks/useSessionList'
 import type { Session } from '@/hooks/useSession'
 import { compareSessionsByScheduledDate } from '@/views/MySessionsView'
-import { sessionStatusPillClassName } from '@/lib/sessionStatusStyle'
+import { sessionStatusStyle } from '@/lib/sessionStatusStyle'
 import { ShareSessionDialog } from '@/components/ShareSessionDialog'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -125,8 +125,12 @@ function SessionCard({ session, onClose, onDelete }: { session: Session; onClose
             </p>
           )}
           <span
-            className={`inline-block mt-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold ${sessionStatusPillClassName(session.status)}`}
+            className={`mt-1 inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold ${sessionStatusStyle(session.status).text}`}
           >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${sessionStatusStyle(session.status).dot}${session.status === 'in_progress' ? ' animate-pulse' : ''}`}
+              aria-hidden="true"
+            />
             {STATUS_LABELS[session.status] ?? session.status}
           </span>
         </div>
@@ -196,7 +200,7 @@ export function AdminView() {
 
       {/* Active sessions */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">Sessions</h2>
+        <h2 className="text-[17px] font-bold tracking-[-0.01em]">Sessions</h2>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="h-20 bg-muted rounded-xl animate-pulse" />

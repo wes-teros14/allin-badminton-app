@@ -3,7 +3,8 @@ import { switcherLabel } from '@/lib/seasonCopy'
 
 /**
  * The Leaderboard's season choice: "2027 season | 2026". `options` is current season first, then each past
- * season newest first. One pill, as in the approved POC; the buttons keep a 44px hit area while looking 28px.
+ * season newest first. A small two-part switch (square corners, not a pill — 2026-11-24 pattern ban); the buttons
+ * keep a 44px hit area while looking 28px.
  */
 export function SeasonSwitcher({
   value,
@@ -15,7 +16,7 @@ export function SeasonSwitcher({
   onChange: (id: string) => void
 }) {
   return (
-    <div role="group" aria-label="Season" className="inline-flex shrink-0 rounded-full border border-border bg-secondary p-[3px]">
+    <div role="group" aria-label="Season" className="inline-flex shrink-0 overflow-hidden rounded-lg border border-border">
       {options.map((season, i) => {
         const isOn = season.id === value
         return (
@@ -24,9 +25,11 @@ export function SeasonSwitcher({
             type="button"
             aria-pressed={isOn}
             onClick={() => onChange(season.id)}
-            className={`relative whitespace-nowrap rounded-full px-[11px] py-[5px] text-xs font-bold transition-colors after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            className={`relative whitespace-nowrap px-[11px] py-[6px] text-xs font-bold transition-colors after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+              i > 0 ? 'border-l border-border' : ''
+            } ${
               isOn
-                ? 'bg-card text-foreground shadow-[inset_0_0_0_1px_var(--border)]'
+                ? 'bg-secondary text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >

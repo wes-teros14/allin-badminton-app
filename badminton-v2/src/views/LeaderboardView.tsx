@@ -24,6 +24,7 @@ import { floorCount, floorUnit, seasonRange, seasonStartLine } from '@/lib/seaso
 import { Avatar } from '@/components/Avatar'
 import { PlayerRowBody, RankedBoard, RowStat } from '@/components/RankedBoard'
 import { SeasonSwitcher } from '@/components/SeasonSwitcher'
+import { GlyphIcon, pickerClassName, pickerStyle } from '@/components/GlyphIcon'
 import {
   BetweenSeasonsCard,
   BoardError,
@@ -336,8 +337,7 @@ function CheerShareList({
 
   return (
     <div>
-      <h2 className="mb-2.5 flex items-center gap-2 text-[17px] font-bold tracking-tight text-foreground">
-        <span className="text-2xl leading-none" aria-hidden="true">{category.emoji}</span>
+      <h2 className="mb-2.5 text-[17px] font-bold tracking-tight text-foreground">
         {category.name}
       </h2>
 
@@ -435,14 +435,11 @@ function CheersLeaderboard({ view }: { view: SeasonView }) {
                     onClick={() => setSlug(category.slug)}
                     aria-pressed={isOn}
                     aria-label={category.name}
-                    className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                      isOn
-                        ? 'border-primary bg-primary-subtle text-foreground'
-                        : 'border-border bg-card text-muted-foreground hover:border-primary/60'
-                    }`}
+                    className={pickerClassName(isOn)}
+                    style={pickerStyle(category.emoji)}
                   >
-                    <span className="text-[17px] leading-none" aria-hidden="true">{category.emoji}</span>
-                    <span className="text-[11px] font-bold uppercase tracking-wide">{category.short}</span>
+                    <GlyphIcon emoji={category.emoji} size={16} />
+                    {category.short}
                   </button>
                 )
               })}
@@ -492,7 +489,7 @@ function AwardsLeaderboard({ view }: { view: SeasonView }) {
         const selected = awards.find((a) => a.key === selectedKey) ?? awards[0]
         return (
           <div className="space-y-4 pt-2">
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-3 gap-1.5">
               {awards.map((award) => {
                 const isOn = award.key === selected.key
                 return (
@@ -502,22 +499,18 @@ function AwardsLeaderboard({ view }: { view: SeasonView }) {
                     onClick={() => setSelectedKey(award.key)}
                     aria-pressed={isOn}
                     aria-label={award.label}
-                    className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-xl border py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                      isOn
-                        ? 'border-primary bg-primary-subtle text-foreground'
-                        : 'border-border bg-card text-muted-foreground hover:border-primary/60'
-                    }`}
+                    className={pickerClassName(isOn)}
+                    style={pickerStyle(award.emoji)}
                   >
-                    <span className="text-[17px] leading-none" aria-hidden="true">{award.emoji}</span>
-                    <span className="text-[11px] font-bold uppercase tracking-wide">{award.short}</span>
+                    <GlyphIcon emoji={award.emoji} size={16} />
+                    {award.short}
                   </button>
                 )
               })}
             </div>
 
             <div>
-              <h2 className="flex items-center gap-2 text-[17px] font-bold tracking-tight text-foreground">
-                <span className="text-2xl leading-none" aria-hidden="true">{selected.emoji}</span>
+              <h2 className="text-[17px] font-bold tracking-tight text-foreground">
                 {selected.label}
               </h2>
               <p className="mb-2.5 mt-0.5 text-xs text-muted-foreground">{selected.rule}</p>
@@ -638,7 +631,7 @@ export function LeaderboardView() {
       </div>
 
       {/* Tab switcher */}
-      <div className="flex gap-1 mb-6" role="tablist" aria-label="Leaderboard categories">
+      <div className="mb-5 flex gap-5 overflow-hidden border-b border-border" role="tablist" aria-label="Leaderboard categories">
         {TABS.map((t) => (
           <button
             key={t}
@@ -647,9 +640,9 @@ export function LeaderboardView() {
             aria-selected={tab === t}
             aria-controls={`tabpanel-${t}`}
             onClick={() => setTab(t)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            className={`min-h-11 py-3 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               tab === t
-                ? 'bg-primary text-primary-foreground'
+                ? 'text-foreground shadow-[inset_0_-2px_0_var(--primary-ink)]'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >

@@ -135,9 +135,9 @@ export function RosterPanel({ sessionId, editable = false, paymentOnly = false, 
                         player.totalReceiptCount > 0 ? (
                           <button
                             onClick={() => setViewingPlayerId(player.playerId)}
-                            className="text-xs font-semibold text-primary hover:underline shrink-0"
+                            className="shrink-0 text-xs font-semibold text-primary-ink underline decoration-primary-ink/40 underline-offset-4"
                           >
-                            {player.totalReceiptCount} receipt{player.totalReceiptCount === 1 ? '' : 's'} ›
+                            {player.totalReceiptCount} receipt{player.totalReceiptCount === 1 ? '' : 's'}
                           </button>
                         ) : (
                           <span className="text-xs text-muted-foreground shrink-0">no receipt</span>

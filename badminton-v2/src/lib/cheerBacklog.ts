@@ -5,6 +5,9 @@
  * 200ms apart and 20s long, buried everything else on screen — the receipt
  * backlog was collapsed into one toast for the same reason. A single cheer still
  * reads the way it always did.
+ *
+ * No emoji in the text since 2026-11-24: the toast draws the cheer's icon in its
+ * icon slot (NotificationContext → GlyphIcon), so the words carry no pictures.
  */
 
 export const CHEER_EMOJI: Record<string, string> = {
@@ -36,14 +39,16 @@ export function cheerLabel(slug: string): string {
   return CHEER_LABEL[slug] ?? slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-/** One cheer, as the realtime toast has always said it. */
+/** One cheer, as the realtime toast says it. The icon is drawn separately. */
 export function cheerLine(slug: string, from: string | null): string {
-  return `${cheerEmoji(slug)} ${cheerLabel(slug)} from ${from}!`
+  return `${cheerLabel(slug)} from ${from}!`
 }
 
 export interface CheerSummary {
   title: string
   description?: string
+  /** Set for a single cheer: the slug whose icon the toast shows. A batch shows the generic cheer icon. */
+  slug?: string
 }
 
 /**
@@ -52,7 +57,7 @@ export interface CheerSummary {
  */
 export function summariseCheers(cheers: Array<{ slug: string; from: string | null }>): CheerSummary | null {
   if (cheers.length === 0) return null
-  if (cheers.length === 1) return { title: cheerLine(cheers[0].slug, cheers[0].from) }
+  if (cheers.length === 1) return { title: cheerLine(cheers[0].slug, cheers[0].from), slug: cheers[0].slug }
 
   const bySlug = new Map<string, number>()
   for (const c of cheers) bySlug.set(c.slug, (bySlug.get(c.slug) ?? 0) + 1)
@@ -62,8 +67,8 @@ export function summariseCheers(cheers: Array<{ slug: string; from: string | nul
   const named = ranked.slice(0, NAMED_TYPES)
   const rest = ranked.slice(NAMED_TYPES).reduce((sum, [, n]) => sum + n, 0)
 
-  const parts = named.map(([slug, n]) => `${cheerEmoji(slug)} ×${n}`)
+  const parts = named.map(([slug, n]) => `${cheerLabel(slug)} ×${n}`)
   if (rest > 0) parts.push(`and ${rest} more`)
 
-  return { title: `🎉 ${cheers.length} new cheers`, description: parts.join(' · ') }
+  return { title: `${cheers.length} new cheers`, description: parts.join(' · ') }
 }

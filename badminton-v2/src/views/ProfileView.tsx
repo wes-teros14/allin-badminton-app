@@ -16,7 +16,7 @@ import { toast } from 'sonner'
 import { Avatar } from '@/components/Avatar'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useTheme } from '@/contexts/ThemeContext'
-import { Camera } from 'lucide-react'
+import { Camera, ChevronRight, Trophy } from 'lucide-react'
 import { APP_BUILD_STAMP } from '@/lib/appBuild'
 import { copyText } from '@/lib/copyText'
 
@@ -67,12 +67,12 @@ function PastSeasonLink({ card }: { card: PastSeasonCard }) {
       to={`/profile/season/${card.season.id}`}
       className="flex min-h-11 w-full items-center gap-3 rounded-[14px] border border-gold/35 bg-gold/[0.06] px-3.5 py-3 text-left transition-colors hover:bg-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="text-[22px] leading-none" aria-hidden="true">🏆</span>
+      <Trophy className="h-[22px] w-[22px] shrink-0 text-gold-ink" strokeWidth={2} aria-hidden="true" />
       <span className="min-w-0 flex-1">
         <b className="block text-sm font-bold text-foreground">Your {card.season.id} season</b>
         <span className="text-xs text-muted-foreground tabular-nums">{seasonSummaryLine(card.sessions, card.games)}</span>
       </span>
-      <span className="text-xl leading-none text-gold-ink" aria-hidden="true">›</span>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
     </Link>
   )
 }

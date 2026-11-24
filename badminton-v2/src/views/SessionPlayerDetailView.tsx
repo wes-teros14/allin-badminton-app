@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams } from 'react-router'
 import { toast } from 'sonner'
-import { Paperclip, Trash2 } from 'lucide-react'
+import { CircleCheck, Paperclip, Trash2 } from 'lucide-react'
+import { TurnBanner } from '@/components/TurnBanner'
 import { computeStatsFromResults, winRatePct } from '@/lib/matchResults'
 import { coalesceDelay, createCoalescedRunner } from '@/lib/realtimePolicy'
 import { openDueRegistrations, supabase } from '@/lib/supabase'
@@ -292,7 +293,7 @@ function SessionFeeWaivedLine() {
           <span className="block text-[13.5px] font-semibold">You are registered</span>
           <span className="block text-xs text-muted-foreground">No payment needed for you</span>
         </span>
-        <span className="shrink-0 rounded-md bg-muted px-2 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+        <span className="shrink-0 text-xs font-semibold text-muted-foreground">
           No fee
         </span>
       </div>
@@ -405,7 +406,7 @@ function ScheduleTab({
         <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto px-4 mt-3">
           <div className="rounded-2xl border border-border bg-card p-3.5">
             <div className="mb-4 flex items-center gap-2.5">
-              <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+              <span className="text-[13px] font-semibold text-muted-foreground">
                 Session fee
               </span>
               {sessionPrice != null && (
@@ -414,12 +415,11 @@ function ScheduleTab({
                 </span>
               )}
               <span
-                className={`shrink-0 rounded-md px-2 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.12em] ${
-                  paymentState === 'submitted'
-                    ? 'bg-gold/20 text-gold-ink'
-                    : 'bg-destructive/20 text-destructive'
+                className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold ${
+                  paymentState === 'submitted' ? 'text-gold-ink' : 'text-destructive'
                 }`}
               >
+                <span className={`h-1.5 w-1.5 rounded-full ${paymentState === 'submitted' ? 'bg-gold' : 'bg-destructive'}`} aria-hidden="true" />
                 {paymentState === 'submitted' ? 'Sent' : 'Unpaid'}
               </span>
             </div>
@@ -537,8 +537,9 @@ function ScheduleTab({
                "no fee" row waits for it, so a no-fee player saw this banner
                flash until the schedule landed (2026-10-12). */
             !showPaymentInfo && !showWaived && !paymentSettingsLoading && !isLoading && (
-              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 text-sm text-primary font-medium">
-                ✅ You&apos;re registered!
+              <div className="flex items-center gap-2 border-y border-border py-3 text-sm font-semibold">
+                <CircleCheck className="h-[18px] w-[18px] shrink-0 text-green-700 dark:text-green-500" aria-hidden="true" />
+                You&apos;re registered
               </div>
             )
           ) : (() => {
@@ -575,13 +576,7 @@ function ScheduleTab({
       )}
 
       {!isLoading && (playingMatch || (nextUpMatch && nextUpMatch.gameNumber <= 2)) && (
-        <div className={`mx-4 mt-3 mb-1 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 ${
-          playingMatch ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
-        }`}>
-          {playingMatch
-            ? "🏸 It's your turn! Please head to the court now."
-            : "🏃 Your match is one of the first — late arrivals may result in fewer games played."}
-        </div>
+        <TurnBanner playing={!!playingMatch} />
       )}
 
       {/*

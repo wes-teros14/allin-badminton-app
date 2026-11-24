@@ -58,7 +58,7 @@ export function LiveBoardView() {
       {showReconnecting && hasSession && (
         <div
           role="status"
-          className="absolute bottom-3 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-400/40 bg-background/90 px-4 py-1.5 text-sm font-semibold tracking-wide text-amber-400 shadow-lg"
+          className="absolute bottom-3 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-amber-400/40 bg-background px-4 py-1.5 text-sm font-semibold tracking-wide text-amber-400 shadow-lg"
         >
           <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" aria-hidden="true" />
           Reconnecting… board may be out of date

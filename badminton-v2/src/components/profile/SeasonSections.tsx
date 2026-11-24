@@ -13,6 +13,7 @@ import { ordinal } from '@/lib/celebrationLabels'
 import { cheerSharePct } from '@/lib/cheerShare'
 import { CHEER_CATEGORIES, signatureCheer } from '@/lib/cheerTypes'
 import { GlyphIcon } from '@/components/GlyphIcon'
+import { RankDisc } from '@/components/RankDisc'
 import type { CheerStatsRow } from '@/lib/leaderboardData'
 import type { Badge } from '@/lib/seasonBadges'
 import type { SeasonBadgesLoad, SeasonStatsLoad } from '@/hooks/useSeasonStats'
@@ -50,23 +51,6 @@ function StatFigure({ value, label }: { value: string; label: string }) {
       <p className="text-[22px] font-bold leading-tight tracking-[-0.02em] tabular-nums">{value}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">{label}</p>
     </div>
-  )
-}
-
-/**
- * 1st, 2nd and 3rd as numbered discs in gold, silver and bronze, in place of medal emoji. Dark ink on all
- * three: the lightest disc fill is ~9:1 and the darkest (light-theme gold) ~5:1 against #1B1220.
- */
-const RANK_DISC = ['bg-gold', 'bg-[#B8B2C0]', 'bg-[#C98A55]']
-
-export function RankDisc({ rank }: { rank: number }) {
-  return (
-    <span
-      className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-extrabold tabular-nums text-[#1B1220] ${RANK_DISC[rank - 1] ?? 'bg-muted'}`}
-      aria-label={`Rank ${rank}`}
-    >
-      {rank}
-    </span>
   )
 }
 

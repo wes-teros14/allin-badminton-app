@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router'
+import { ChevronLeft } from 'lucide-react'
+import { TurnBanner } from '@/components/TurnBanner'
 import { usePlayerList } from '@/hooks/usePlayerList'
 import { usePlayerSchedule } from '@/hooks/usePlayerSchedule'
 import { useAuth } from '@/hooks/useAuth'
@@ -350,9 +352,10 @@ export function AllMatchesView({ sessionId, embedded = false }: { sessionId: str
           <div className="mt-2 flex justify-end">
             <Link
               to={`/match-schedule/session/${sessionId}`}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex min-h-11 items-center gap-1 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
             >
-              ← My Games
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+              My Games
             </Link>
           </div>
         )}
@@ -464,16 +467,7 @@ function ScheduleView({ nameSlug, sessionId: sessionIdParam }: { nameSlug: strin
       )}
 
       {!isLoading && (playingMatch || (nextUpMatch && nextUpMatch.gameNumber <= 2)) && (
-        <div className={`mx-4 mt-3 mb-1 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 ${
-          playingMatch
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-foreground'
-        }`}>
-          {playingMatch
-            ? '🏸 It\'s your turn! Please head to the court now.'
-            : '🏃 Your match is one of the first — late arrivals may result in fewer games played.'
-          }
-        </div>
+        <TurnBanner playing={!!playingMatch} />
       )}
 
       {!isLoading && sessionId && sessionStatus !== 'registration_open' && (

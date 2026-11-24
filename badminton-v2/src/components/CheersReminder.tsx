@@ -7,6 +7,7 @@
 
 import type { ReactNode } from 'react'
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog'
+import { Megaphone } from 'lucide-react'
 
 interface CheersReminderProps {
   /** e.g. "2 games done · 6 cheers to give" — see cheersReminderLabel. */
@@ -26,9 +27,9 @@ export function CheersReminder({ label, open, onOpenChange, children }: CheersRe
           <DialogPrimitive.Trigger
             className="pointer-events-auto mx-auto flex min-h-12 w-full max-w-sm items-center gap-3 rounded-xl bg-primary px-3 py-2.5 text-left text-sm text-white shadow-lg transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <span className="text-lg leading-none" aria-hidden="true">🎉</span>
+            <Megaphone className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden="true" />
             <span className="flex-1">{label}</span>
-            <span className="rounded-md bg-white/15 px-2 py-1 text-xs font-semibold">Cheer</span>
+            <span className="text-[13px] font-bold">Cheer now</span>
           </DialogPrimitive.Trigger>
         </div>
       )}

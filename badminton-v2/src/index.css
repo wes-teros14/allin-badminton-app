@@ -309,3 +309,8 @@ html:not(.dark) .theme-orb {
 .dark .glyph-ink { color: var(--glyph); }
 .glyph-swatch { background: color-mix(in oklab, var(--glyph) 14%, transparent); }
 .dark .glyph-swatch { background: color-mix(in oklab, var(--glyph) 16%, transparent); }
+/* Selected cheer / award picker button (GlyphIcon.tsx pickerClassName). */
+.glyph-pick-on {
+  border-color: color-mix(in oklab, var(--glyph) 55%, transparent);
+  background: color-mix(in oklab, var(--glyph) 14%, transparent);
+}
