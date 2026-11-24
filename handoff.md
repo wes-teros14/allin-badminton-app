@@ -15,7 +15,7 @@ Updated: 2026-11-24 Manila. Overwrite this file on every update; it is never a r
 - `tsc -b` clean, 715/715 unit tests (cheerBacklog test updated for emoji-free toast text), build pass.
 
 ## Current state
-- Pushed to `dev` and `main`. Vercel deploy not checked.
+- Pushed to `dev` and `main` (a1f2705 first five screens, 64aee49 the rest). Vercel deploy not checked.
 - Checked on localhost (Neon dev) at 375 px: admin list, Players, leaderboard Awards/Cheers (dark + light), Gallery,
   live-board announcer. **Not seen on screen** (dev data lacks them): Today with results, celebration card, toasts,
   turn banner, fee chips, ranked podium with distinct places.
