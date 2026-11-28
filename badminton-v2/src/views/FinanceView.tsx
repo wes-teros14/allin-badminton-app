@@ -1,8 +1,10 @@
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { ReceiptText } from 'lucide-react'
 import { toast } from 'sonner'
-import { useFinanceSessions } from '@/hooks/useFinanceSessions'
+import { financeSessionsInSeason, summarizeFinanceTotals, useFinanceSessions } from '@/hooks/useFinanceSessions'
+import { SeasonSwitcher } from '@/components/SeasonSwitcher'
+import { boardScope, currentSeason, localToday, pastSeasons } from '@/lib/season'
 import { formatPeso } from '@/utils/formatPeso'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -10,8 +12,25 @@ import {
 } from '@/components/ui/table'
 
 export default function FinanceView() {
-  const { sessions, totals, isLoading, fetchError } = useFinanceSessions()
+  const { sessions: allSessions, isLoading, fetchError } = useFinanceSessions()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [today] = useState(localToday)
+  const options = useMemo(() => [currentSeason(today), ...pastSeasons(today)], [today])
+  const season = boardScope(searchParams.get('season'), today).season
+  // Totals and rows reset each season, on the leaderboard's season dates.
+  const sessions = useMemo(() => financeSessionsInSeason(allSessions, season), [allSessions, season])
+  const totals = useMemo(() => summarizeFinanceTotals(sessions), [sessions])
+
+  const showSeason = useCallback((id: string) => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      // The current season is the default: its URL carries no ?season=.
+      if (id === options[0].id) params.delete('season')
+      else params.set('season', id)
+      return params
+    }, { replace: true })
+  }, [setSearchParams, options])
 
   useEffect(() => {
     if (fetchError) toast.error('Could not load finance data. Try refreshing.')
@@ -49,7 +68,12 @@ export default function FinanceView() {
   return (
     <div className="p-6 max-w-lg lg:max-w-2xl mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h1 className="text-lg font-semibold text-primary">Finance</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold text-primary">Finance</h1>
+          {options.length > 1 && (
+            <SeasonSwitcher value={season.id} options={options} onChange={showSeason} />
+          )}
+        </div>
         <div className="flex items-center gap-4">
           {renderTotal('All Sessions', totals.allSessions)}
           {renderTotal('Completed', totals.completed)}
@@ -67,7 +91,9 @@ export default function FinanceView() {
           ) : sessions.length === 0 ? (
             <div className="py-12 text-center space-y-2">
               <ReceiptText className="size-8 text-muted-foreground mx-auto" aria-hidden="true" />
-              <p className="text-sm font-semibold">No sessions yet</p>
+              <p className="text-sm font-semibold">
+                {allSessions.length === 0 ? 'No sessions yet' : `No sessions in ${season.id} yet`}
+              </p>
               <p className="text-sm text-muted-foreground">
                 Finance data will appear here once sessions are created.
               </p>

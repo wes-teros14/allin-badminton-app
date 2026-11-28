@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { summarizeFinanceTotals, type FinanceSessionRow } from '@/hooks/useFinanceSessions'
+import { financeSessionsInSeason, summarizeFinanceTotals, type FinanceSessionRow } from '@/hooks/useFinanceSessions'
 import type { SessionStatus } from '@/types/app'
 
 vi.mock('@/lib/supabase', () => ({
@@ -111,5 +111,22 @@ describe('summarizeFinanceTotals — completed only', () => {
       row(400, 'schedule_locked', 'b'),
     ])
     expect(totals.completed).toBeLessThanOrEqual(totals.allSessions)
+  })
+})
+
+describe('financeSessionsInSeason', () => {
+  const dated = (date: string, profit: number) => ({ ...row(profit, 'complete', date), date })
+  const rows = [dated('2026-11-15', 100), dated('2026-11-22', -50), dated('2026-11-29', 30), dated('2026-03-01', 7)]
+
+  it('puts the Nov 22 Xmas Party and later sessions in 2027, Nov 15 and earlier in 2026', async () => {
+    const { seasonById } = await import('@/lib/season')
+    expect(financeSessionsInSeason(rows, seasonById('2027')!).map((r) => r.date)).toEqual(['2026-11-22', '2026-11-29'])
+    expect(financeSessionsInSeason(rows, seasonById('2026')!).map((r) => r.date)).toEqual(['2026-11-15', '2026-03-01'])
+  })
+
+  it('totals reset per season', async () => {
+    const { seasonById } = await import('@/lib/season')
+    expect(summarizeFinanceTotals(financeSessionsInSeason(rows, seasonById('2027')!))).toEqual({ allSessions: -20, completed: -20 })
+    expect(summarizeFinanceTotals(financeSessionsInSeason(rows, seasonById('2026')!))).toEqual({ allSessions: 107, completed: 107 })
   })
 })
