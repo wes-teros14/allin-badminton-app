@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { SessionStatus } from '@/types/app'
+import { inWindow, seasonWindow, type Season } from '@/lib/season'
 
 export interface FinanceSessionRow {
   sessionId: string
@@ -51,6 +52,15 @@ export function summarizeFinanceTotals(sessions: FinanceSessionRow[]): FinanceTo
     allSessions: sum(sessions),
     completed: sum(sessions.filter((s) => s.status === 'complete')),
   }
+}
+
+/**
+ * The sessions whose date falls in `season` (the same date spans the leaderboard uses, `lib/season.ts`).
+ * Finance totals reset with each season; the Nov 22 2026 Xmas Party counts in 2027 (owner, 2026-11-28).
+ */
+export function financeSessionsInSeason<T extends { date: string }>(sessions: T[], season: Season): T[] {
+  const window = seasonWindow(season)
+  return sessions.filter((s) => inWindow(s.date, window))
 }
 
 export function useFinanceSessions(): FinanceSessionsState {
