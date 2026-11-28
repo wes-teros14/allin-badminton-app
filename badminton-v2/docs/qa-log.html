@@ -3253,6 +3253,17 @@
   </div>
 
   <h2 class="topic" id="payments">Payments &amp; the fee card</h2>
+  <div class="qa">
+    <p class="q">Can the Finance "All Sessions" and "Completed" totals be cut off per year? (Nov 28)</p>
+    <p class="a">
+      Yes. Finance now uses the leaderboard's seasons (<code>lib/season.ts</code>), with the same
+      "2027 season | 2026" switcher. The rows and both totals cover only the chosen season. 2027 starts
+      on 2026-11-16, so the Nov 22 Xmas Party counts in 2027 (owner's call). The filter is
+      <code>financeSessionsInSeason</code> in <code>hooks/useFinanceSessions.ts</code>; past seasons
+      stay one tap away.
+    </p>
+  </div>
+
 
   <div class="qa">
     <p class="q">Why do I still see "You are registered" when the matches are already created?</p>
